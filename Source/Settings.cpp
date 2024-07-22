@@ -1,0 +1,18 @@
+// Copyright 2024 JesseTheCatLover. All Rights Reserved.
+
+#include "Settings.h"
+
+Settings::Settings(): Window{800, 600}, Viewport{false}
+{}
+
+Settings::Settings(unsigned int Width, unsigned int Height, bool bWireframe):
+Window{Width, Height}, Viewport{bWireframe}
+{}
+
+Settings::Settings(S_Window Win, S_Viewport View):
+Window(Win), Viewport(View)
+{}
+
+Settings::Settings(S_Window Win, S_Viewport View, S_Camera Camera):
+        Window(Win), Viewport(View), Camera(Camera)
+{}
