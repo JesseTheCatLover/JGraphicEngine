@@ -50,6 +50,46 @@ void JShader::SetFloat(const std::string& name, float value) const
     glUniform1f(glGetUniformLocation(program, name.c_str()), value);
 }
 
+void JShader::SetVec2(const std::string &name, glm::vec2 value) const
+{
+    glUniform2fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
+}
+
+void JShader::SetVec2(const std::string &name, float x, float y) const
+{
+    glUniform2f(glGetUniformLocation(program, name.c_str()), x, y);
+}
+
+void JShader::SetVec3(const std::string &name, glm::vec3 value) const
+{
+    glUniform3fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
+}
+
+void JShader::SetVec3(const std::string &name, float x, float y, float z) const
+{
+    glUniform3f(glGetUniformLocation(program, name.c_str()), x, y, z);
+}
+
+void JShader::SetVec4(const std::string &name, glm::vec4 value) const
+{
+    glUniform4fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
+}
+
+void JShader::SetVec4(const std::string &name, float x, float y, float z, float w) const
+{
+    glUniform4f(glGetUniformLocation(program, name.c_str()), x, y, z, w);
+}
+
+void JShader::SetMat2(const std::string &name, const glm::mat2 &mat) const
+{
+    glUniformMatrix2fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+}
+
+void JShader::SetMat3(const std::string &name, const glm::mat3 &mat) const
+{
+    glUniformMatrix3fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+}
+
 void JShader::SetMat4(const std::string &name, const glm::mat4 &mat) const
 {
     glUniformMatrix4fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
@@ -61,7 +101,7 @@ std::string JShader::LoadShaderSource(const std::string& path)
     std::stringstream stream;
     std::string source;
 
-    file.open("E:\\C++ Projects\\OpenGLProject\\OpenGLProject\\Shaders\\" + path);
+    file.open("E:\\C++ Projects\\JGraphicEngine\\JGraphicEngine\\Shaders\\" + path);
     if (file.is_open()) {
         stream << file.rdbuf();
         source = stream.str();

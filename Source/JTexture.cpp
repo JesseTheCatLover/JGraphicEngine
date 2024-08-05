@@ -14,7 +14,7 @@ JTexture::JTexture(const std::string &fileName)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    data = stbi_load(("E:\\C++ Projects\\OpenGLProject\\OpenGLProject\\Resources\\Textures\\" + fileName).c_str(), &width, &height, &nrChannels, 0);
+    data = stbi_load(("E:\\C++ Projects\\JGraphicEngine\\JGraphicEngine\\Resources\\Textures\\" + fileName).c_str(), &width, &height, &nrChannels, 0);
 
     if(data)
     {
