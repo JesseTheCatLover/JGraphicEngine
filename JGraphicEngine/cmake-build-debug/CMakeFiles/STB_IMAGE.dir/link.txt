@@ -1,0 +1,2 @@
+D:\Tools\MinGW\bin\ar.exe qc libSTB_IMAGE.a CMakeFiles/STB_IMAGE.dir/Source/ThirdParty/stb_image.cpp.obj
+D:\Tools\MinGW\bin\ranlib.exe libSTB_IMAGE.a

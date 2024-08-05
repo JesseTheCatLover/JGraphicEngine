@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChatHistory">
+    <accountData>
+      <list>
+        <AccountData>
+          <accountId value="VXNlcjo0OTA1MDA=" />
+          <chats>
+            <list>
+              <chat>
+                <internalId value="1bcf0229-329b-4dc0-9340-5bebd481f849" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+                <messages>
+                  <list>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="why my code doesn't print the triangles" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="Based on the provided code snippets, it seems that you are trying to render a triangle using Vulkan. However, the code you provided is incomplete, and it's difficult to determine the exact issue without seeing the complete implementation.&#10;&#10;Here are a few potential reasons why your code might not be rendering the triangles:&#10;&#10;1. **Incomplete Vulkan Initialization**: The code snippets you provided do not show the complete Vulkan initialization process, which includes creating a Vulkan instance, selecting a physical device, creating a logical device, and setting up the necessary Vulkan objects (command pools, command buffers, render pass, etc.). If any of these steps are missing or incorrect, the rendering might not work as expected.&#10;&#10;2. **Incorrect Shader Code**: The code snippets include the bytecode for the vertex and fragment shaders, but it's not clear how these shaders are loaded and used in the rendering pipeline. If the shader code is incorrect or not properly loaded, the rendering might be affected.&#10;&#10;3. **Incorrect Vertex Data**: The code snippet from `triangle-opengles.c` shows the vertex data for an OpenGL ES example, but it's not clear if this data is being used in the Vulkan example. If the vertex data is incorrect or not properly loaded into Vulkan buffers, the rendering might be incorrect.&#10;&#10;4. **Incorrect Rendering Commands**: The code snippets do not show how the rendering commands are recorded and submitted to the Vulkan queue. If the rendering commands are incorrect or missing, the triangles might not be rendered correctly.&#10;&#10;5. **Incorrect Swapchain Setup**: The code snippets mention `SwapchainBuffers` and `swapchain`, but the setup and usage of the swapchain are not shown. If the swapchain is not properly set up or used, the rendering might not be visible.&#10;&#10;6. **Validation Layer Issues**: The code snippet includes a `validate` boolean variable, which might be related to enabling Vulkan validation layers. If the validation layers are enabled and there are issues with the Vulkan setup or rendering commands, the validation layers might report errors or" />
+                    </message>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="its opengl not vulkan" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="Ah, I see. Based on the codebase context you provided from `OpenGLProject\ClionLibs\glfw\examples\triangle-opengl.c`, it appears that you are trying to render a triangle using OpenGL, not Vulkan.&#10;&#10;In that case, here are a few potential reasons why the triangle might not be rendering:&#10;&#10;1. **Incorrect OpenGL Context Creation**: The code creates an OpenGL 3.3 core profile context. If your system does not support OpenGL 3.3 or the core profile, the context creation might fail, and the rendering will not work.&#10;&#10;2. **Shader Compilation Errors**: The code compiles the vertex and fragment shaders, but it does not check for compilation errors. If there are errors in the shader code, the shaders might not compile correctly, and the rendering will be affected.&#10;&#10;3. **Incorrect Vertex Data**: The code sets up a vertex buffer with the triangle vertex data, but it does not check if the buffer creation and data upload were successful. If there are issues with the vertex buffer, the rendering might be incorrect.&#10;&#10;4. **Incorrect Attribute Binding**: The code binds the vertex position and color attributes to the shader program, but it does not check if the attribute locations are correct. If the attribute locations are incorrect, the rendering might be affected.&#10;&#10;5. **Incorrect Projection/View Matrices**: The code calculates the model-view-projection (MVP) matrix using the `mat4x4` library, but it does not check if the matrix calculations are correct. If the MVP matrix is incorrect, the rendering might be distorted or incorrect.&#10;&#10;6. **Window/Context Issues**: The code creates a GLFW window and makes the OpenGL context current, but it does not check for errors during these operations. If there are issues with the window or context creation, the rendering might not work correctly.&#10;&#10;To debug the issue, you can try the following:&#10;&#10;1. Check if the GLFW window and OpenGL context are created successfully by inspecting the return values and error callbacks.&#10;2. Check if the shaders compile successfully by inspecting the compilation status and log.&#10;3. Check if the vertex buffer creation and data upload are successful by inspecting the OpenGL error state.&#10;4. Verify that the attribute locations are correct by inspecting the shader code and the attribute binding calls.&#10;5. Inspect the MVP matrix calculations to ensure they are correct" />
+                    </message>
+                  </list>
+                </messages>
+                <updatedAt value="2024-07-07T16:12:06.2859275" />
+              </chat>
+              <chat>
+                <internalId value="9a4dd4fa-3ed8-47f2-8683-ba224707785d" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+              <chat>
+                <internalId value="8b73a6c5-6074-4dca-8e51-1c6aa78d715c" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+              <chat>
+                <internalId value="2a17f478-3998-4310-bbd6-c8660546e02b" />
+              </chat>
+              <chat>
+                <internalId value="2833cd01-ecd3-491c-bc31-43685b7cd5d5" />
+              </chat>
+              <chat>
+                <internalId value="28f82c12-1d61-4f19-920c-7219b158e0bb" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+              <chat>
+                <internalId value="fe540750-6c86-441a-88cc-0d1c4da19390" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+                <messages>
+                  <list>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="why my code doesn't work" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="Unfortunately, without the specific code you're referring to, I cannot provide an accurate explanation for why it doesn't work. Please provide the relevant code snippets or files, along with any error messages or unexpected behavior you're experiencing. With that information, I'll be able to analyze the code and provide insights into potential issues or bugs." />
+                    </message>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="run the code and check it out yourself" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="I'm an AI assistant without the ability to run or compile code. I can only analyze the provided code snippets and context. Based on the information you've shared so far, which appears to be isolated variable and function declarations from various files, there isn't enough context for me to determine why the code isn't working or to reproduce any issues. To provide a more helpful analysis, I would need access to the complete source code files, the build system, and information about the specific errors or unexpected behavior you're encountering when running the code." />
+                    </message>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="why the shader class doesn't work" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="Based on the codebase context provided for the Shaders class, there are a few potential issues that could cause it to not work correctly:&#10;&#10;1. **Incorrect shader source code loading**: In the `Shaders` constructor, the vertex shader source code is loaded into `vShaderCode`, and the fragment shader source code is loaded into `fShaderCode`. However, when compiling the shaders, the vertex shader is compiled with `fShaderCode`, and the fragment shader is compiled with `vShaderCode`. This will likely cause compilation errors.&#10;&#10;```cpp&#10;vertex = glCreateShader(GL_VERTEX_SHADER);&#10;glShaderSource(vertex, 1, &amp;fShaderCode, NULL); // Should be vShaderCode&#10;glCompileShader(vertex);&#10;&#10;fragment = glCreateShader(GL_FRAGMENT_SHADER);&#10;glShaderSource(fragment, 1, &amp;vShaderCode, NULL); // Should be fShaderCode&#10;glCompileShader(fragment);&#10;```&#10;&#10;2. **Incorrect uniform setting function**: The `SetFloat` function in the `Shaders` class is using `glUniform1i` instead of `glUniform1f`. This will cause issues when trying to set float uniform values in the shaders.&#10;&#10;```cpp&#10;void Shaders::SetFloat(const std::string &amp;Name, float Value) const&#10;{&#10;    glUniform1i(glGetUniformLocation(ID, Name.c_str()), Value); // Should be glUniform1f&#10;}&#10;```&#10;&#10;3. **Potential shader compilation errors**: The code doesn't handle shader compilation errors for the vertex shader. If there are any compilation errors in the vertex shader, they won't be reported.&#10;&#10;```cpp&#10;glGetShaderiv(vertex, GL_COMPILE_STATUS, &amp;success);&#10;if(!success)&#10;{&#10;    glGetShaderInfoLog(vertex, 512, NULL, infoLog);&#10;    std::cout &lt;&lt; &quot;ERROR::SHADER::VERTEX::COMPILATION_FAILED\n&quot; &lt;&lt; infoLog &lt;&lt; std::endl;&#10;};&#10;```&#10;&#10;To fix these issues, you should:&#10;&#10;1. Swap the `vShaderCode` and `fShaderCode` arguments when compiling the vertex and fragment shaders.&#10;2. Change `glUniform1i` to `glUniform1f` in the `SetFloat` function.&#10;3. Add error handling for vertex shader compilation errors, similar to the fragment shader error handling.&#10;&#10;After making these changes, the `Shaders` class should work correctly, assuming there are no other issues in the code or shader source files." />
+                    </message>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="terminate called after throwing an instance of 'std::ios_base::failure'&#10;  what():  basic_ios::clear&#10;&#10;what does this mean" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="The error message &quot;terminate called after throwing an instance of 'std::ios_base::failure' what(): basic_ios::clear&quot; typically occurs when there is an issue with file input/output operations in C++.&#10;&#10;Specifically, this error is thrown when an exception of type `std::ios_base::failure` is raised, which is a derived class of `std::exception`. This exception is thrown by the C++ standard library's I/O classes (such as `std::ifstream` and `std::ofstream`) when an error occurs during file operations.&#10;&#10;The `what()` member function is a part of the `std::exception` class and is used to retrieve a human-readable description of the exception. In this case, the error message &quot;basic_ios::clear&quot; indicates that the error is related to the `clear()` function of the `std::ios_base` class, which is the base class for all I/O stream classes in C++.&#10;&#10;Based on the codebase context provided, this error is likely occurring in the `Shaders` class constructor when trying to open the vertex and fragment shader files using `std::ifstream`. The specific line that might be causing the issue is:&#10;&#10;```cpp&#10;vShaderFile.open(VertexPath);&#10;fShaderFile.open(FragmentPath);&#10;```&#10;&#10;This error can occur due to various reasons, such as:&#10;&#10;1. The file paths (`VertexPath` and `FragmentPath`) are incorrect, and the files cannot be found.&#10;2. The program does not have the necessary permissions to read the files.&#10;3. The files are already open or in use by another process.&#10;&#10;To resolve this issue, you should:&#10;&#10;1. Double-check the file paths to ensure they are correct and that the files exist in the specified locations.&#10;2. Ensure that the program has the necessary permissions to read the files.&#10;3. Check if the files are not already open or in use by another process.&#10;4. Add error handling and exception catching around the `open()` calls to gracefully handle any potential exceptions and provide more informative error messages.&#10;&#10;By addressing these potential issues, you should be able to resolve the &quot;terminate called after throwing an instance of 'std::ios_base::failure' what(): basic_ios::clear&quot; error in your codebase." />
+                    </message>
+                  </list>
+                </messages>
+                <updatedAt value="2024-07-12T15:20:17.6585251" />
+              </chat>
+              <chat>
+                <internalId value="1e7dc6f7-b8c6-4ce8-be24-7e0833117896" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+              <chat>
+                <internalId value="6a96cf3e-f4fc-4de5-bc5e-a2d9fb1078ad" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+              <chat>
+                <internalId value="98170dd0-3a58-4a85-ad53-23f0878c082a" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+              <chat>
+                <internalId value="2bdc8a5a-39f5-47c0-9dc8-e30ab9fbca84" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+                <messages>
+                  <list>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="why when i create an instance of shaders class and pass the shader locations it can't find the shaders and i have to pass the absoulute directory of them" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="Based on the provided code context, the issue you're facing is likely due to the way the shader source files are being loaded using the `LoadShaderSource` function. This function attempts to open the file using the provided path as a relative path from the current working directory of the application.&#10;&#10;If the application's working directory is different from the directory where the shader files are located, the relative paths will not work, and the function will fail to open the files.&#10;&#10;To resolve this issue, you have a few options:&#10;&#10;1. **Use Absolute Paths**: As you mentioned, passing the absolute directory paths for the shader files should work. However, this approach may not be ideal as it makes your code less portable and harder to maintain if you need to move the project to a different location.&#10;&#10;2. **Set the Working Directory**: Before loading the shader files, you can set the working directory of your application to the directory where the shader files are located. This can be done using platform-specific functions or libraries. For example, on Windows, you can use the `SetCurrentDirectory` function from the Windows API.&#10;&#10;3. **Use Relative Paths Correctly**: Ensure that the relative paths you're passing to the `LoadShaderSource` function are correct relative to the application's working directory. You can print the current working directory to the console or debug output to verify the expected path.&#10;&#10;4. **Load Shader Files from Resources**: Instead of loading shader files from the file system, you can embed the shader source code as string literals or resources within your application. This approach can make your application more self-contained and easier to distribute, but it may make updating the shaders more complicated.&#10;&#10;Without seeing the rest of your code and the project structure, it's difficult to provide a more specific solution. However, the options mentioned above should help you resolve the issue of not being able to find the shader files." />
+                    </message>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="how to set the working directory" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="Based on the provided codebase context, there is no direct way to set the working directory for loading shader files. The `LoadShaderSource` function in `Shaders.cpp` assumes that the shader file paths are relative to the current working directory of the application.&#10;&#10;However, you can modify the `LoadShaderSource` function to accept absolute paths instead of relative paths. This way, you can provide the full paths to the shader files, and the function will be able to load them correctly regardless of the current working directory.&#10;&#10;Here's how you can modify the `LoadShaderSource` function:&#10;&#10;```cpp&#10;std::string Shaders::LoadShaderSource(const std::string&amp; path) {&#10;    std::ifstream file;&#10;    std::stringstream stream;&#10;    std::string source;&#10;&#10;    // Use the provided path as an absolute path&#10;    file.open(path, std::ios::in);&#10;&#10;    if (file.is_open()) {&#10;        stream &lt;&lt; file.rdbuf();&#10;        source = stream.str();&#10;        file.close();&#10;    } else {&#10;        std::cerr &lt;&lt; &quot;ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: &quot; &lt;&lt; path &lt;&lt; std::endl;&#10;    }&#10;&#10;    return source;&#10;}&#10;```&#10;&#10;With this modification, you can create an instance of the `Shaders` class and pass the absolute paths to the vertex and fragment shader files:&#10;&#10;```cpp&#10;Shaders myShaders(&quot;/path/to/your/vertexShader.vert&quot;, &quot;/path/to/your/fragmentShader.frag&quot;);&#10;```&#10;&#10;Replace `/path/to/your/vertexShader.vert` and `/path/to/your/fragmentShader.frag` with the actual absolute paths to your shader files.&#10;&#10;By using absolute paths, you don't need to worry about setting the working directory, as the shader files will be loaded correctly regardless of the current working directory of the application." />
+                    </message>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="i want to set the working directory in the shader class" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="Based on the provided codebase context, there is no functionality to set the working directory within the `Shaders` class itself. The `Shaders` class is designed to load and manage shader programs, but it does not handle setting the working directory of the application.&#10;&#10;However, you can modify the `Shaders` class to accept an additional parameter for the base directory where the shader files are located. This way, you can set the base directory when creating an instance of the `Shaders` class, and the `LoadShaderSource` function can use this base directory to construct the full paths to the shader files.&#10;&#10;Here's how you can modify the `Shaders` class:&#10;&#10;1. In `Shaders.h`, add a private member variable to store the base directory:&#10;&#10;```cpp&#10;private:&#10;    std::string baseDirectory;&#10;```&#10;&#10;2. Modify the constructor in `Shaders.h` to accept the base directory as an additional parameter:&#10;&#10;```cpp&#10;public:&#10;    Shaders(const std::string&amp; vertexPath, const std::string&amp; fragmentPath, const std::string&amp; baseDir);&#10;```&#10;&#10;3. In `Shaders.cpp`, update the constructor implementation to store the base directory:&#10;&#10;```cpp&#10;Shaders::Shaders(const std::string&amp; vertexPath, const std::string&amp; fragmentPath, const std::string&amp; baseDir)&#10;{&#10;    baseDirectory = baseDir;&#10;    // ... (rest of the constructor code)&#10;}&#10;```&#10;&#10;4. Modify the `LoadShaderSource` function in `Shaders.cpp` to use the base directory when constructing the full path:&#10;&#10;```cpp&#10;std::string Shaders::LoadShaderSource(const std::string&amp; path) {&#10;    std::ifstream file;&#10;    std::stringstream stream;&#10;    std::string source;&#10;&#10;    // Construct the full path using the base directory&#10;    std::string fullPath = baseDirectory + &quot;/&quot; + path;&#10;&#10;    file.open(fullPath);&#10;    if (file.is_open()) {&#10;        stream &lt;&lt; file.rdbuf();&#10;        source = stream.str();&#10;        file.close();&#10;    } else {&#10;        std::cerr &lt;&lt; &quot;ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: &quot; &lt;&lt; fullPath &lt;&lt; std::endl;&#10;    }&#10;&#10;    return source;&#10;}&#10;```&#10;&#10;With these modifications, you can create an instance of the `Shaders` class and provide the base directory where the shader files are located:&#10;&#10;```cpp&#10;Shaders myShaders(&quot;vertexShader.vert&quot;, &quot;fragmentShader.frag&quot;, &quot;/path/to/shaders&quot;);&#10;```&#10;&#10;In this example, the shader files `vertexShader.vert` and `fragmentShader.frag` are assumed to be located in the `/path/to/shaders` directory.&#10;&#10;By providing the base directory, the `LoadShaderSource` function will construct the full paths to the shader files using this base directory, allowing you to load the shaders correctly without having to set the working directory of the application." />
+                    </message>
+                  </list>
+                </messages>
+                <updatedAt value="2024-07-13T02:11:30.9972267" />
+              </chat>
+              <chat>
+                <internalId value="6a8099d2-0d53-405b-ac98-878e53c36507" />
+              </chat>
+              <chat>
+                <internalId value="f364e1f5-cc08-4105-8894-7120d8f21d36" />
+                <messages>
+                  <list>
+                    <message>
+                      <speaker value="HUMAN" />
+                      <text value="why my camera implementation doesn't rotate the camera using mouse movements?" />
+                    </message>
+                    <message>
+                      <speaker value="ASSISTANT" />
+                      <text value="&lt;html&gt;&lt;b&gt;&amp;#9888; Error performing this action&lt;/b&gt;&lt;br&gt;&lt;br&gt;Please retry sending your message. If you tried to run a command, try it again.&lt;br&gt;If the issue persists, please &lt;a href=&quot;https://github.com/sourcegraph/jetbrains/issues/new?template=bug_report.yml&amp;labels=bug&amp;projects=sourcegraph/381&amp;title=bug%3A+Request+to+https%3A%2F%2Fsourcegraph.com%2F.api%2Fcompletions%2Fstream%3Fclient-name%3Djetbrains%26client-version%3D6.0.12+failed+with+400+Bad+Re...&amp;about=CLion+2024.1.4%0ABuild+%23CL-241.18034.45%2C+built+on+June+19%2C+2024%0ALicensed+to+JetBrains+YYDS%0AYou+have+a+perpetual+fallback+license+for+this+version.%0ASubscription+is+active+until+October+24%2C+2048.%0ARuntime+version%3A+17.0.11%2B1-b1207.24+amd64%0AVM%3A+OpenJDK+64-Bit+Server+VM+by+JetBrains+s.r.o.%0AWindows+10.0%0AGC%3A+G1+Young+Generation%2C+G1+Old+Generation%0AMemory%3A+2048M%0ACores%3A+8%0ARegistry%3A%0A++actionSystem.update.actions.warn.dataRules.on.edt%3Dfalse%0A++debugger.attach.dialog.enabled%3Dtrue%0A++run.processes.with.pty%3DTRUE%0A++ide.slow.operations.assertion%3Dfalse%0A++wsl.use.remote.agent.for.launch.processes%3Dfalse%0ANon-Bundled+Plugins%3A%0A++OpenGL-Plugin+%281.0.74%29%0A++GLSL+%281.24%29%0A++Rider+UI+Theme+Pack+%280.14.11%29%0A++io.github.fatihbozik.intellij-license-generator+%280.0.19%29%0A++com.intellij.ml.llm+%28241.18034.12%29%0A++com.sourcegraph.jetbrains+%286.0.12%29%0A&amp;logs=Stacktrace%3A%0A%60%60%60text%0ARequest+to+https%3A%2F%2Fsourcegraph.com%2F.api%2Fcompletions%2Fstream%3Fclient-name%3Djetbrains%26client-version%3D6.0.12+failed+with+400+Bad+Request%3A+the+requested+chat+model+is+not+available+%28%22%28pending%29%22%2C+onProTier%3Dfalse%29%0A%0A%60%60%60&quot;&gt;create a support ticket&lt;/a&gt;.&lt;br&gt;&lt;br&gt;&lt;sub&gt;Error: Request to https://sourcegraph.com/.api/completions/stream?client-name=jetbrains&amp;client-version=6.0.12 failed with 400 Bad Request: the requested chat model is not available (&quot;(pending)&quot;, onProTier=false)&#10;&lt;/sub&gt;&lt;/html&gt;" />
+                    </message>
+                  </list>
+                </messages>
+                <updatedAt value="2024-07-21T17:43:49.8759095" />
+              </chat>
+              <chat>
+                <internalId value="19683597-e837-4f44-b5bc-ce63d2b6d599" />
+              </chat>
+              <chat>
+                <internalId value="239b6535-9c68-4624-b10a-15ed0cde0c7e" />
+              </chat>
+              <chat>
+                <internalId value="a8172162-98cf-4ec6-8bc9-6d0df09db4e7" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+              <chat>
+                <internalId value="3025e111-205d-4ae3-8638-5cb36a932f11" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+              <chat>
+                <internalId value="c81e807b-3c4d-48a2-a388-6110f83d4ce0" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+              <chat>
+                <internalId value="b480ada4-0174-4342-a85b-af041a98e670" />
+                <llm>
+                  <llm>
+                    <model value="anthropic/claude-3-sonnet-20240229" />
+                    <provider value="Anthropic" />
+                    <title value="Claude 3 Sonnet" />
+                  </llm>
+                </llm>
+              </chat>
+            </list>
+          </chats>
+          <defaultLlm>
+            <llm>
+              <model value="anthropic/claude-3-sonnet-20240229" />
+              <provider value="Anthropic" />
+              <title value="Claude 3 Sonnet" />
+            </llm>
+          </defaultLlm>
+        </AccountData>
+      </list>
+    </accountData>
+  </component>
+</project>

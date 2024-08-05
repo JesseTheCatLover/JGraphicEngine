@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="GLFW"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\Libs\;CMake Files\Libs\glfw\;CMake Files\Libs\glfw\CMake\;CMake Files\Libs\glfw\src\;CMake Files\Libs\glfw\docs\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="uninstall">
+				<Option working_dir="E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/Makefile&quot;  VERBOSE=1 uninstall"/>
+					<CompileFile command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="glfw">
+				<Option output="E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/libglfw3.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-D_GLFW_WIN32"/>
+					<Add option="-DUNICODE"/>
+					<Add option="-D_UNICODE"/>
+					<Add option="-DWINVER=0x0501"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/include"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glad/include"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glm"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/deps/mingw"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include/c++"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include/c++/mingw32"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include/c++/backward"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/../../../../include"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include-fixed"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/../../../../mingw32/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 glfw"/>
+					<CompileFile command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="glfw/fast">
+				<Option output="E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/libglfw3.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-D_GLFW_WIN32"/>
+					<Add option="-DUNICODE"/>
+					<Add option="-D_UNICODE"/>
+					<Add option="-DWINVER=0x0501"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/include"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glad/include"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glm"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src"/>
+					<Add directory="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/deps/mingw"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include/c++"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include/c++/mingw32"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include/c++/backward"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/../../../../include"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/include-fixed"/>
+					<Add directory="d:\tools\mingw\bin\../lib/gcc/mingw32/6.3.0/../../../../mingw32/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 glfw/fast"/>
+					<CompileFile command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="update_mappings">
+				<Option working_dir="E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 update_mappings"/>
+					<CompileFile command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="D:/Tools/MinGW/bin/mingw32-make.exe -f &quot;E:/C++ Projects/JGraphicEngine/JGraphicEngine/cmake-build-debug/Libs/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/CMake/GenerateMappings.cmake">
+			<Option target="update_mappings"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/include/GLFW/glfw3.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/include/GLFW/glfw3native.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/context.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/egl_context.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/init.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/input.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/internal.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/mappings.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/mappings.h.in">
+			<Option target="update_mappings"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/monitor.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/null_init.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/null_joystick.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/null_joystick.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/null_monitor.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/null_platform.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/null_window.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/osmesa_context.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/platform.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/platform.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/vulkan.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/wgl_context.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_init.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_joystick.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_joystick.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_module.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_monitor.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_platform.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_thread.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_thread.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_time.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_time.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/win32_window.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/window.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\Libs\glfw\"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/CMake/cmake_uninstall.cmake.in">
+			<Option virtualFolder="CMake Files\Libs\glfw\CMake\"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/CMake/glfw3.pc.in">
+			<Option virtualFolder="CMake Files\Libs\glfw\CMake\"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/CMake/glfw3Config.cmake.in">
+			<Option virtualFolder="CMake Files\Libs\glfw\CMake\"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/src/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\Libs\glfw\src\"/>
+		</Unit>
+		<Unit filename="E:/C++ Projects/JGraphicEngine/JGraphicEngine/Libs/glfw/docs/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\Libs\glfw\docs\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
