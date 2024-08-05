@@ -78,9 +78,9 @@ void JCamera::ProcessKeyboard(ECameraMovement Direction, float DeltaTime)
     else
     {
         if(Direction == ECM_Up)
-            Position += Up * Velocity;
+            Position += WorldUp * Velocity;
         if(Direction == ECM_Down)
-            Position -= Up * Velocity;
+            Position -= WorldUp * Velocity;
     }
 }
 

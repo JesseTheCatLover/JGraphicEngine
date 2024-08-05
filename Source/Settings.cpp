@@ -1,8 +1,8 @@
-// Copyright 2024 JesseTheCatLover. All Rights Reserved.
+// Copyright (c) 2024 JesseTheCatLover. All Rights Reserved.
 
 #include "Settings.h"
 
-Settings::Settings(): Window{800, 600}, Viewport{false}
+Settings::Settings(): Window{1920, 1080}, Viewport{false}
 {}
 
 Settings::Settings(unsigned int Width, unsigned int Height, bool bWireframe):

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(OpenGLProject)
+project(JGraphicEngine)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -32,8 +32,8 @@ add_library(STB_IMAGE "Source/ThirdParty/stb_image.cpp")
 set(LIBS ${LIBS} STB_IMAGE)
 
 # Create an executable
-add_executable(OpenGLProject Main.cpp)
+add_executable(JGraphicEngine Main.cpp)
 
 # Link GLFW, GLAD, and other necessary libraries
-target_link_libraries(OpenGLProject ProjectLibrary glfw glad ${CMAKE_DL_LIBS})
-target_link_libraries(OpenGLProject ${LIBS})
+target_link_libraries(JGraphicEngine ProjectLibrary glfw glad ${CMAKE_DL_LIBS})
+target_link_libraries(JGraphicEngine ${LIBS})
