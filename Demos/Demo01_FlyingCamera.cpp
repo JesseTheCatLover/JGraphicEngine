@@ -1,13 +1,15 @@
 // Copyright 2024 JesseTheCatLover. All Rights Reserved.
 
+#define GLFW_INCLUDE_NONE
+
 #include <iostream>
-#include <glad/glad.h>
+#include <glad/gl.h>
 #include <GLFW/glfw3.h>
-#include "Source/JShader.h"
-#include "Source/JTexture.h"
-#include "Source/Settings.h"
-#include "Source/ThirdParty/stb_image.h"
-#include "Source/JCamera.h"
+#include "../Source/JShader.h"
+#include "../Source/JTexture.h"
+#include "../Source/Settings.h"
+#include <stb_image.h>
+#include "../Source/JCamera.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -62,7 +64,7 @@ int main()
     glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPos(Window, LastX, LastY);
 
-    if(!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress))
+    if(!gladLoadGL((GLADloadfunc) glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;

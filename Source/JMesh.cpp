@@ -1,5 +1,7 @@
 // Copyright 2024 JesseTheCatLover. All Rights Reserved.
 
+#include <glad/gl.h>
+#include <string>
 #include "JMesh.h"
 #include "JShader.h"
 

@@ -3,8 +3,8 @@
 #pragma once
 
 #include <string>
-#include <glad/glad.h>
-#include <glfw/glfw3.h>
+#include <glad/gl.h>
+#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
 using namespace std;

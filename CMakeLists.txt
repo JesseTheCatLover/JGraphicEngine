@@ -4,6 +4,7 @@ include(FetchContent)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # Define ENGINE_DIRECTORY for different builds
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -12,27 +13,36 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_definitions(-DENGINE_DIRECTORY=".")
 endif()
 
-# Include directories for GLFW, GLAD, GLM, and Assimp
-include_directories(3rdPartyLibs/glfw/include)
-include_directories(3rdPartyLibs/glad/include)
-include_directories(3rdPartyLibs/glm)
-include_directories(3rdPartyLibs/assimp/include)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Treat warnings as errors" FORCE)
 
-# Add the GLFW library
-add_subdirectory(3rdPartyLibs/glfw)
+FetchContent_Declare(
+  glfw
+  GIT_TAG 3.4
+  GIT_SHALLOW TRUE
+  GIT_REPOSITORY https://github.com/glfw/glfw.git
+)
 
-# Add GLAD source files
-add_library(glad STATIC ${CMAKE_SOURCE_DIR}/3rdPartyLibs/glad/src/glad.c)
+FetchContent_Declare(
+  assimp
+  GIT_TAG v5.4.3
+  GIT_SHALLOW TRUE
+  GIT_REPOSITORY https://github.com/assimp/assimp.git
+)
 
-# Add STB library
-add_library(STB_IMAGE "Source/ThirdParty/stb_image.cpp")
+FetchContent_Declare(
+  glm
+  GIT_TAG cmake-fix
+  GIT_SHALLOW TRUE
+  GIT_REPOSITORY https://github.com/Saman-Safaei-Dev/glm.git
+)
 
-# Add Assimp library
-#set(ASSIMP_LIBRARY ${CMAKE_SOURCE_DIR}/3rdPartyLibs/assimp/lib/assimp.pc)
+FetchContent_MakeAvailable(glfw assimp glm)
 
 add_executable(
   JGraphicEngine
   Main.cpp
+  LibSrc/gl.c
+  LibSrc/stb_image.cpp
   Source/JShader.cpp
   Source/Settings.cpp
   Source/JTexture.cpp
@@ -41,5 +51,5 @@ add_executable(
   Source/JModel.cpp
 )
 
-# Link GLFW, GLAD, Assimp, and other necessary libraries
-target_link_libraries(JGraphicEngine glfw glad ${CMAKE_DL_LIBS} ${ASSIMP_LIBRARY} STB_IMAGE)
+target_link_libraries(JGraphicEngine PRIVATE glfw assimp glm)
+target_include_directories(JGraphicEngine PRIVATE "${CMAKE_SOURCE_DIR}/Include")

@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include "JTexture.h"
-#include "ThirdParty/stb_image.h"
+#include <stb_image.h>
 
 JTexture::JTexture(const std::string &fileName)
 {

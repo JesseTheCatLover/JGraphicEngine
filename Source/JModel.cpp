@@ -3,7 +3,7 @@
 #include "JModel.h"
 #include "JShader.h"
 #include <iostream>
-#include "ThirdParty/stb_image.h"
+#include <stb_image.h>
 
 JModel::JModel(string Path)
 {
