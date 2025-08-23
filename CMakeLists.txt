@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(JGraphicEngine)
+include(FetchContent)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -29,21 +30,16 @@ add_library(STB_IMAGE "Source/ThirdParty/stb_image.cpp")
 # Add Assimp library
 #set(ASSIMP_LIBRARY ${CMAKE_SOURCE_DIR}/3rdPartyLibs/assimp/lib/assimp.pc)
 
-# Create libraries and executable
-add_library(ProjectLibrary Source/JShader.cpp
-        Source/JShader.h Source/Settings.h Source/Settings.cpp
-        Source/ThirdParty/stb_image.h
-        Source/JTexture.cpp
-        Source/JTexture.h
-        Source/JCamera.cpp
-        Source/JCamera.h
-        Source/JMesh.cpp
-        Source/JMesh.h
-        Source/JModel.cpp
-        Source/JModel.h
+add_executable(
+  JGraphicEngine
+  Main.cpp
+  Source/JShader.cpp
+  Source/Settings.cpp
+  Source/JTexture.cpp
+  Source/JCamera.cpp
+  Source/JMesh.cpp
+  Source/JModel.cpp
 )
 
-add_executable(JGraphicEngine Main.cpp)
-
 # Link GLFW, GLAD, Assimp, and other necessary libraries
-target_link_libraries(JGraphicEngine ProjectLibrary glfw glad ${CMAKE_DL_LIBS} ${ASSIMP_LIBRARY} STB_IMAGE)
+target_link_libraries(JGraphicEngine glfw glad ${CMAKE_DL_LIBS} ${ASSIMP_LIBRARY} STB_IMAGE)
