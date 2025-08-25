@@ -15,6 +15,8 @@ endif()
 
 set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Treat warnings as errors" FORCE)
 
+# Thanks to Saman, assimp is finally built and linked.
+
 FetchContent_Declare(
   glfw
   GIT_TAG 3.4

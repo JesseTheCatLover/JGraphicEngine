@@ -1,17 +1,21 @@
-// Copyright (c) 2024. JesseTheCatLover. All Rights Reserved.
+// Copyright (c) 2025. JesseTheCatLover. All Rights Reserved.
 
 #include "JModel.h"
 #include "JShader.h"
 #include <iostream>
 #include <stb_image.h>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 JModel::JModel(string Path)
 {
-    LoadModel(Path);
+    LoadModel(Path); // Load the model at construction
 }
 
 void JModel::Draw(JShader &Shader)
 {
+    // Draw all meshes
     for(unsigned int i = 0; i < Meshes.size(); i++)
         Meshes[i].Draw(Shader);
 }
@@ -19,165 +23,178 @@ void JModel::Draw(JShader &Shader)
 void JModel::LoadModel(string Path)
 {
     Assimp::Importer Import;
-    const aiScene* Scene = Import.ReadFile((string(ENGINE_DIRECTORY) + "/Resources/Meshes/" + Path).c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
-    if(!Scene || Scene -> mFlags & AI_SCENE_FLAGS_INCOMPLETE || !Scene -> mRootNode)
+    const aiScene* Scene = Import.ReadFile(
+        (string(ENGINE_DIRECTORY) + "/Resources/Meshes/" + Path).c_str(),
+        aiProcess_Triangulate |        // Ensure triangles
+        aiProcess_FlipUVs |            // Flip UVs for OpenGL
+        aiProcess_GenSmoothNormals |   // Generate normals if missing
+        aiProcess_CalcTangentSpace     // Generate tangents/bitangents if missing
+    );
+
+    // Check for errors
+    if(!Scene || Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !Scene->mRootNode)
     {
-        cout << "ERROR::ASSIMP::" << Import.GetErrorString() << endl;
+        std::cout << "ERROR::ASSIMP::" << Import.GetErrorString() << std::endl;
         return;
     }
+
+    // Extract directory path
     Directory = Path.substr(0, Path.find_last_of('/'));
-    ProcessNode(Scene -> mRootNode, Scene);
+    ProcessNode(Scene->mRootNode, Scene);
 }
 
 void JModel::ProcessNode(aiNode *Node, const aiScene *Scene)
 {
-    // Process all nodes
-    for(unsigned int i = 0; i < Node -> mNumMeshes; i++)
+    // Process all meshes of this node
+    for(unsigned int i = 0; i < Node->mNumMeshes; i++)
     {
-        aiMesh* Mesh = Scene -> mMeshes[Node -> mMeshes[i]];
+        aiMesh* Mesh = Scene->mMeshes[Node->mMeshes[i]];
         Meshes.push_back(ProcessMesh(Mesh, Scene));
     }
-    // For the children as well
-    for(unsigned int i = 0; i < Node -> mNumChildren; i++)
-    {
-        ProcessNode(Node -> mChildren[i], Scene);
-    }
+
+    // Recursively process children
+    for(unsigned int i = 0; i < Node->mNumChildren; i++)
+        ProcessNode(Node->mChildren[i], Scene);
 }
 
 JMesh JModel::ProcessMesh(aiMesh *Mesh, const aiScene *Scene)
 {
-    vector<S_Vertex> vertices;
-    vector<unsigned int> indices;
-    vector<S_Texture> textures;
+    std::cout << "Processing mesh with " << Mesh->mNumVertices << " vertices\n";
 
-    // Walk through each mesh's vertices
-    for(unsigned int i = 0; i < Mesh -> mNumVertices; i++)
+    // Debug checks before reading:
+    std::cout << "Has normals? " << (Mesh->HasNormals() ? "YES" : "NO") << "\n";
+    std::cout << "Has tangents/bitangents? " << (Mesh->HasTangentsAndBitangents() ? "YES" : "NO") << "\n";
+    std::cout << "Has texcoords[0]? " << (Mesh->mTextureCoords[0] ? "YES" : "NO") << "\n";
+
+    std::vector<S_Vertex> vertices;
+    std::vector<unsigned int> indices;
+    std::vector<S_Texture> textures;
+
+    // Walk through each vertex
+    for(unsigned int i = 0; i < Mesh->mNumVertices; i++)
     {
-        S_Vertex vertex;
-        glm::vec3 vector; // Temp placeholder vector
+        S_Vertex Vertex{};
         // Position
-        vector.x = Mesh -> mVertices[i].x;
-        vector.y = Mesh -> mVertices[i].y;
-        vector.z = Mesh -> mVertices[i].z;
-        vertex.Position = vector;
-        // Normal
-        if(Mesh -> HasNormals())
+        Vertex.Position = glm::vec3(Mesh->mVertices[i].x, Mesh->mVertices[i].y, Mesh->mVertices[i].z);
+
+        // Normal (safe reading)
+        Vertex.Normal = Mesh->HasNormals() ? glm::vec3(Mesh->mNormals[i].x, Mesh->mNormals[i].y, Mesh->mNormals[i].z) : glm::vec3(0.0f);
+
+        // Texture coordinates (safe)
+        Vertex.TexCoords = Mesh->mTextureCoords[0] ? glm::vec2(Mesh->mTextureCoords[0][i].x, Mesh->mTextureCoords[0][i].y) : glm::vec2(0.0f);
+
+        // Tangent / Bitangent (safe)
+        if(Mesh->HasTangentsAndBitangents())
         {
-            vector.x = Mesh -> mNormals[i].x;
-            vector.y = Mesh -> mNormals[i].y;
-            vector.z = Mesh -> mNormals[i].z;
-            vertex.Normal = vector;
-        }
-        // Texture coordinates
-        if(Mesh -> mTextureCoords[0]) // If mesh contains textcoords:
-        {
-            glm::vec2 vec2;
-            vec2.x = Mesh -> mTextureCoords[0][i].x;
-            vec2.y = Mesh -> mTextureCoords[0][i].y;
-            vertex.TexCoords = vec2;
-            // Tangent
-            vector.x = Mesh -> mTangents[i].x;
-            vector.y = Mesh -> mTangents[i].y;
-            vector.z = Mesh -> mTangents[i].z;
-            vertex.Tangent = vector;
-            // Bitangent
-            vector.x = Mesh -> mBitangents[i].x;
-            vector.y = Mesh -> mBitangents[i].y;
-            vector.z = Mesh -> mBitangents[i].z;
-            vertex.Bitangent = vector;
+            Vertex.Tangent   = glm::vec3(Mesh->mTangents[i].x, Mesh->mTangents[i].y, Mesh->mTangents[i].z);
+            Vertex.Bitangent = glm::vec3(Mesh->mBitangents[i].x, Mesh->mBitangents[i].y, Mesh->mBitangents[i].z);
         }
         else
-            vertex.TexCoords = glm::vec2(0.f, 0.f);
+            Vertex.Tangent = Vertex.Bitangent = glm::vec3(0.0f);
 
-        vertices.push_back(vertex);
+        vertices.push_back(Vertex);
     }
 
-    // Walk through mesh's faces
-    for(unsigned int i = 0; i < Mesh -> mNumFaces; i++)
+    // Process indices
+    for(unsigned int i = 0; i < Mesh->mNumFaces; i++)
     {
-        aiFace face = Mesh -> mFaces[i];
-        // Retrieve indices
+        const aiFace& face = Mesh->mFaces[i];
         for(unsigned int j = 0; j < face.mNumIndices; j++)
             indices.push_back(face.mIndices[j]);
     }
 
     // Process material
-    if(Mesh -> mMaterialIndex >= 0)
+    if(Mesh->mMaterialIndex >= 0)
     {
-        aiMaterial* material = Scene -> mMaterials[Mesh -> mMaterialIndex];
+        aiMaterial* material = Scene->mMaterials[Mesh->mMaterialIndex];
 
-        // Diffuse maps
-        vector<S_Texture> DiffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+        // Load diffuse, specular, normal, height maps
+        auto DiffuseMaps  = LoadMaterialTextures(material, aiTextureType_DIFFUSE,  "texture_diffuse", Scene);
+        auto SpecularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", Scene);
+        auto NormalMaps   = LoadMaterialTextures(material, aiTextureType_HEIGHT,   "texture_normal", Scene);
+        auto HeightMaps   = LoadMaterialTextures(material, aiTextureType_AMBIENT,  "texture_height", Scene);
+
         textures.insert(textures.end(), DiffuseMaps.begin(), DiffuseMaps.end());
-
-        // Specular maps
-        vector<S_Texture> SpecularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
         textures.insert(textures.end(), SpecularMaps.begin(), SpecularMaps.end());
-
-        // Normal maps
-        vector<S_Texture> NormalMaps = LoadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
         textures.insert(textures.end(), NormalMaps.begin(), NormalMaps.end());
-
-        // Height maps
-        vector<S_Texture> HeightMaps = LoadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
         textures.insert(textures.end(), HeightMaps.begin(), HeightMaps.end());
     }
 
     return JMesh(vertices, indices, textures);
 }
 
-vector<S_Texture> JModel::LoadMaterialTextures(aiMaterial *Mat, aiTextureType Type, string TypeName)
+std::vector<S_Texture> JModel::LoadMaterialTextures(aiMaterial* Mat, aiTextureType Type, std::string TypeName, const aiScene* Scene)
 {
-    vector<S_Texture> textures;
-    for(unsigned int i = 0; i < Mat ->GetTextureCount(Type); i++)
+    std::vector<S_Texture> textures;
+
+    for(unsigned int i = 0; i < Mat->GetTextureCount(Type); i++)
     {
         aiString str;
-        Mat -> GetTexture(Type, i, &str);
-        // Check if texture was loaded before, (Should skip?):
+        Mat->GetTexture(Type, i, &str);
+
+        // Check if texture is already loaded
         bool skip = false;
-        for(unsigned int j = 0; j < TexturesLoaded.size(); j++)
+        for(const auto& loaded : TexturesLoaded)
         {
-            if(std::strcmp(TexturesLoaded[j].Path.data(), str.C_Str()) == 0)
+            if(std::strcmp(loaded.Path.data(), str.C_Str()) == 0)
             {
-                textures.push_back(TexturesLoaded[j]);
-                skip = true; break; // a texture with the same filepath has already been loaded, skip this one.
+                textures.push_back(loaded);
+                skip = true;
+                break;
             }
         }
-        if(!skip) // If texture hasn't been loaded already, load it.
-        {
-            S_Texture texture;
-            texture.ID = TextureFromFile(str.C_Str(), this->Directory);
-            texture.Type = TypeName;
-            texture.Path = str.C_Str();
+        if(skip) continue;
 
-            textures.push_back(texture);
-            TexturesLoaded.push_back(texture); // Ensure we won't load duplicate textures.
-        }
+        // Load new texture
+        S_Texture texture;
+        texture.ID   = TextureFromFile(Scene, str, this->Directory);
+        texture.Type = TypeName;
+        texture.Path = str.C_Str();
+
+        textures.push_back(texture);
+        TexturesLoaded.push_back(texture);
     }
+
     return textures;
 }
 
-unsigned int JModel::TextureFromFile(const char* path, const string &directory, bool gamma)
+// Load texture from embedded data or external file
+unsigned int JModel::TextureFromFile(const aiScene* Scene, const aiString& str, const std::string& directory)
 {
-    string filename = string(path);
-    filename = directory + '/' + filename;
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
 
-    unsigned int TextureID;
-    glGenTextures(1, &TextureID);
+    unsigned char* data = nullptr;
+    int width, height, nrChannels = 0;
 
-    int width, height, nrComponent;
-    unsigned char *data = stbi_load(filename.c_str(), &width, &height, &nrComponent, 0);
+    // Embedded texture
+    if(str.C_Str()[0] == '*')
+    {
+        int index = atoi(str.C_Str() + 1);
+        const aiTexture* atex = Scene->mTextures[index];
+
+        if(atex->mHeight == 0) // compressed format
+            data = stbi_load_from_memory(reinterpret_cast<unsigned char*>(atex->pcData), atex->mWidth, &width, &height, &nrChannels, 0);
+        else
+        {
+            std::cout << "Unsupported raw texture format!" << std::endl;
+            return 0;
+        }
+    }
+    else // External file
+    {
+        std::string filename = std::string(ENGINE_DIRECTORY) + "/Resources/Meshes/" + directory + '/' + std::string(str.C_Str());
+        data = stbi_load(filename.c_str(), &width, &height, &nrChannels, 0);
+    }
+
     if(data)
     {
-        GLenum format;
-        if(nrComponent == 1)
-            format = GL_RED;
-        else if(nrComponent == 3)
-            format = GL_RGB;
-        else if(nrComponent == 4)
-            format = GL_RGBA;
+        GLenum format = GL_RGB;
+        if(nrChannels == 1) format = GL_RED;
+        else if(nrChannels == 3) format = GL_RGB;
+        else if(nrChannels == 4) format = GL_RGBA;
 
-        glBindTexture(GL_TEXTURE_2D, TextureID);
+        glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -186,13 +203,13 @@ unsigned int JModel::TextureFromFile(const char* path, const string &directory, 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        stbi_image_free(data);
+        if(str.C_Str()[0] != '*') stbi_image_free(data); // free external texture data
     }
     else
     {
-        cout << "Texture failed to load at path: " << path << endl;
-        stbi_image_free(data);
+        std::cout << "Failed to load texture: " << str.C_Str() << std::endl;
+        if(str.C_Str()[0] != '*') stbi_image_free(data);
     }
 
-    return TextureID;
+    return textureID;
 }
