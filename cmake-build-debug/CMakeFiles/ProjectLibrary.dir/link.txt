@@ -1,2 +1,0 @@
-D:\Tools\MinGW\bin\ar.exe qc libProjectLibrary.a CMakeFiles/ProjectLibrary.dir/Source/JShader.cpp.obj CMakeFiles/ProjectLibrary.dir/Source/Settings.cpp.obj CMakeFiles/ProjectLibrary.dir/Source/JTexture.cpp.obj CMakeFiles/ProjectLibrary.dir/Source/JCamera.cpp.obj
-D:\Tools\MinGW\bin\ranlib.exe libProjectLibrary.a
