@@ -1,4 +1,4 @@
-// Copyright (c) 2024. JesseTheCatLover. All Rights Reserved.
+// Copyright (c) 2025. JesseTheCatLover. All Rights Reserved.
 
 #pragma once
 #include <vector>
@@ -25,6 +25,6 @@ private:
     void LoadModel(string Path);
     void ProcessNode(aiNode* Node, const aiScene* Scene);
     class JMesh ProcessMesh(aiMesh* Mesh, const aiScene* Scene);
-    vector<S_Texture> LoadMaterialTextures(aiMaterial* Mat, aiTextureType Type, string TypeName);
-    unsigned int TextureFromFile(const char* path, const string &directory, bool gamma = false);
+    vector<S_Texture> LoadMaterialTextures(aiMaterial* Mat, aiTextureType Type, string TypeName, const aiScene* Scene);
+    unsigned int TextureFromFile(const aiScene* Scene, const aiString& str, const std::string& directory);
 };

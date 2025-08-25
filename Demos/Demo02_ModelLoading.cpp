@@ -12,6 +12,8 @@
 #include <iostream>
 #include <GLFW/glfw3.h>
 
+class Settings;
+
 void ProcessInput(GLFWwindow *Window);
 
 // Callbacks

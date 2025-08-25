@@ -1,4 +1,4 @@
-// Copyright 2024 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include <glad/gl.h>
 #include <string>
@@ -7,16 +7,18 @@
 
 JMesh::JMesh(vector<S_Vertex> Vertices, vector<unsigned int> Indices, vector<S_Texture> Textures)
 {
-    this->Vertices = Vertices; this->Indices = Indices; this->Textures = Textures;
+    this->Vertices = Vertices;
+    this->Indices = Indices;
+    this->Textures = Textures;
     SetupMesh();
 }
 
 void JMesh::Draw(JShader &Shader)
 {
-    unsigned int diffuseNr = 0;
-    unsigned int specularNr = 0;
-    unsigned int normalNr = 0;
-    unsigned int heightNr = 0;
+    unsigned int diffuseNr = 1;
+    unsigned int specularNr = 1;
+    unsigned int normalNr = 1;
+    unsigned int heightNr = 1;
     for(unsigned int i = 0; i < Textures.size(); i++)
     {
         glActiveTexture(GL_TEXTURE0 + i); // Activate proper texture unit before binding
@@ -39,7 +41,7 @@ void JMesh::Draw(JShader &Shader)
 
     // Draw mesh
     glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, Indices.size(), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(Indices.size()), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
 

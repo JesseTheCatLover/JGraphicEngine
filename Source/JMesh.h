@@ -1,4 +1,4 @@
-// Copyright 2024 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
 #include <glm/glm.hpp>
