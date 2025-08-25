@@ -1,3 +1,0 @@
-"D:\Tools\CLion 2024.1.4\bin\cmake\win\x64\bin\cmake.exe" -E rm -f CMakeFiles\JGraphicEngine.dir/objects.a
-D:\Tools\MinGW\bin\ar.exe qc CMakeFiles\JGraphicEngine.dir/objects.a @CMakeFiles\JGraphicEngine.dir\objects1.rsp
-D:\Tools\MinGW\bin\c++.exe -g -Wl,--whole-archive CMakeFiles\JGraphicEngine.dir/objects.a -Wl,--no-whole-archive -o JGraphicEngine.exe -Wl,--out-implib,libJGraphicEngine.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\JGraphicEngine.dir\linkLibs.rsp
