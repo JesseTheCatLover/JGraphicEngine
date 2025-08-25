@@ -1,6 +1,5 @@
 // Copyright (c) 2024. JesseTheCatLover. All Rights Reserved.
 
-#include <iostream>
 #include "JCamera.h"
 #include "Settings.h"
 

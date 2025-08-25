@@ -5,17 +5,23 @@
 #include <sstream>
 #include <iostream>
 
-JShader::JShader(const std::string &vertexPath, const std::string &fragmentPath)
+JShader::JShader(const string &VertexPath, const string &FragmentPath, const char* GeometryPath)
 {
-    std::string vertexCode = LoadShaderSource(vertexPath);
-    std::string fragmentCode = LoadShaderSource(fragmentPath);
+    string VertexCode = LoadShaderSource(VertexPath + ".vert");
+    string FragmentCode = LoadShaderSource(FragmentPath + ".frag");
 
-    GLuint vertexShader = CompileShader(vertexCode, GL_VERTEX_SHADER);
-    GLuint fragmentShader = CompileShader(fragmentCode, GL_FRAGMENT_SHADER);
+    GLuint VertexShader = CompileShader(VertexCode, GL_VERTEX_SHADER);
+    GLuint FragmentShader = CompileShader(FragmentCode, GL_FRAGMENT_SHADER);
 
     program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
+    glAttachShader(program, VertexShader);
+    glAttachShader(program, FragmentShader);
+    if(GeometryPath) // (GeometryShader is optional)
+    {
+        string GeometryCode = LoadShaderSource(GeometryPath); // TODO: define a geometry shader postfix in here
+        GLuint GeometryShader = CompileShader(GeometryCode, GL_GEOMETRY_SHADER);
+        glAttachShader(program, GeometryShader);
+    }
     glLinkProgram(program);
 
     GLint success;
@@ -23,11 +29,11 @@ JShader::JShader(const std::string &vertexPath, const std::string &fragmentPath)
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(program, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+        cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << endl;
     }
 
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    glDeleteShader(VertexShader);
+    glDeleteShader(FragmentShader);
 }
 
 void JShader::Use()
@@ -35,86 +41,86 @@ void JShader::Use()
     glUseProgram(program);
 }
 
-void JShader::SetBool(const std::string& name, bool value) const
+void JShader::SetBool(const string& name, bool value) const
 {
     glUniform1i(glGetUniformLocation(program, name.c_str()), (int)value);
 }
 
-void JShader::SetInt(const std::string& name, int value) const
+void JShader::SetInt(const string& name, int value) const
 {
     glUniform1i(glGetUniformLocation(program, name.c_str()), value);
 }
 
-void JShader::SetFloat(const std::string& name, float value) const
+void JShader::SetFloat(const string& name, float value) const
 {
     glUniform1f(glGetUniformLocation(program, name.c_str()), value);
 }
 
-void JShader::SetVec2(const std::string &name, glm::vec2 value) const
+void JShader::SetVec2(const string &name, glm::vec2 value) const
 {
     glUniform2fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
 }
 
-void JShader::SetVec2(const std::string &name, float x, float y) const
+void JShader::SetVec2(const string &name, float x, float y) const
 {
     glUniform2f(glGetUniformLocation(program, name.c_str()), x, y);
 }
 
-void JShader::SetVec3(const std::string &name, glm::vec3 value) const
+void JShader::SetVec3(const string &name, glm::vec3 value) const
 {
     glUniform3fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
 }
 
-void JShader::SetVec3(const std::string &name, float x, float y, float z) const
+void JShader::SetVec3(const string &name, float x, float y, float z) const
 {
     glUniform3f(glGetUniformLocation(program, name.c_str()), x, y, z);
 }
 
-void JShader::SetVec4(const std::string &name, glm::vec4 value) const
+void JShader::SetVec4(const string &name, glm::vec4 value) const
 {
     glUniform4fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
 }
 
-void JShader::SetVec4(const std::string &name, float x, float y, float z, float w) const
+void JShader::SetVec4(const string &name, float x, float y, float z, float w) const
 {
     glUniform4f(glGetUniformLocation(program, name.c_str()), x, y, z, w);
 }
 
-void JShader::SetMat2(const std::string &name, const glm::mat2 &mat) const
+void JShader::SetMat2(const string &name, const glm::mat2 &mat) const
 {
     glUniformMatrix2fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
 }
 
-void JShader::SetMat3(const std::string &name, const glm::mat3 &mat) const
+void JShader::SetMat3(const string &name, const glm::mat3 &mat) const
 {
     glUniformMatrix3fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
 }
 
-void JShader::SetMat4(const std::string &name, const glm::mat4 &mat) const
+void JShader::SetMat4(const string &name, const glm::mat4 &mat) const
 {
     glUniformMatrix4fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
 }
 
-std::string JShader::LoadShaderSource(const std::string& path)
+string JShader::LoadShaderSource(const string& path)
 {
-    std::ifstream file;
-    std::stringstream stream;
-    std::string source;
+    ifstream file;
+    stringstream stream;
+    string source;
 
-    file.open("E:\\C++ Projects\\JGraphicEngine\\JGraphicEngine\\Shaders\\" + path);
+    file.open(string(ENGINE_DIRECTORY) + "/Shaders/" + path);
     if (file.is_open()) {
         stream << file.rdbuf();
         source = stream.str();
         file.close();
     } else
     {
-        std::cerr << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << path << std::endl;
+        cerr << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << path << endl;
     }
 
     return source;
 }
 
-GLuint JShader::CompileShader(const std::string& source, GLenum type)
+GLuint JShader::CompileShader(const string& source, GLenum type)
 {
     GLuint shader = glCreateShader(type);
     const char* src = source.c_str();
@@ -126,7 +132,7 @@ GLuint JShader::CompileShader(const std::string& source, GLenum type)
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
+        cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << endl;
     }
 
     return shader;
