@@ -9,6 +9,9 @@ It’s a work-in-progress project that grows over time as I experiment with new 
 - Modern rendering practices (in progress)  
 - Expandable and evolving with new experiments  
 
+![Overview Photo](https://i.postimg.cc/8PR63pJ6/2025-08-30-12-03-41-2.jpg)
+<sub><a href="https://sketchfab.com/3d-models/the-armoury-adbe88dcf04d4a87a4c2f62ed6ca0880">3D Model Source</a></sub>
+
 ## Getting Started  
 Clone the repo and build with CMake:  
 
