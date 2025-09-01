@@ -76,6 +76,7 @@ int main() {
 
   // Build and compile our shader program
   JShader ShaderProgram("ModelLoading", "ModelLoading");
+  JShader OutlinerShader("OutlineShader", "BlackColor");
 
   JModel DioBrando("Dio Brando/DioMansion.obj");
 
@@ -91,26 +92,62 @@ int main() {
 
     // Rendering commands
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     Setting->GetbWireFrame() ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
                              : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    // Enable the shader
-    ShaderProgram.Use();
-
-    // Transform
-    glm::mat4 projection = glm::perspective(
-        glm::radians(Camera->Zoom),
-        (float)Setting->GetScreenWidth() / (float)Setting->GetScreenHeight(),
-        0.1f, 100.0f);
-    ShaderProgram.SetMat4("projection", projection);
-
+    // --- Common transforms ---
+    glm::mat4 projection = glm::perspective(glm::radians(Camera->Zoom),
+                                            (float)Setting->GetScreenWidth() / (float)Setting->GetScreenHeight(),
+                                            0.1f, 100.0f);
     glm::mat4 view = Camera->GetViewMatrix();
-    ShaderProgram.SetMat4("view", view);
+    glm::mat4 model{1.f};
 
-    // World transformation
-    glm::mat4 Model{1.f};
-    ShaderProgram.SetMat4("model", Model);
+    // --- 1. Draw model normally ---
+    glEnable(GL_DEPTH_TEST);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // set stencil to 1 where fragments are drawn
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glStencilMask(0xFF);
+    ShaderProgram.Use();
+    ShaderProgram.SetMat4("projection", projection);
+    ShaderProgram.SetMat4("view", view);
+    ShaderProgram.SetMat4("model", model);
+    DioBrando.Draw(ShaderProgram);
+
+    // 1. Draw outline (backfaces only)
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT); // render only backfaces
+    glEnable(GL_DEPTH_TEST);
+
+    OutlinerShader.Use();
+    OutlinerShader.SetMat4("projection", projection);
+    OutlinerShader.SetMat4("view", view);
+    OutlinerShader.SetMat4("model", model);
+    OutlinerShader.SetFloat("outlineThickness", 0.03f); // adjust thickness
+    DioBrando.Draw(OutlinerShader);
+
+    // 2. Draw normal model (frontfaces)
+    glCullFace(GL_BACK); // render frontfaces
+    ShaderProgram.Use();
+    ShaderProgram.SetMat4("projection", projection);
+    ShaderProgram.SetMat4("view", view);
+    ShaderProgram.SetMat4("model", model);
+    DioBrando.Draw(ShaderProgram);
+
+    glDisable(GL_CULL_FACE);
+
+    glm::vec3 position = glm::vec3(-25.f, 0.0f, 0.f);
+    model = glm::translate(model, position);
+
+    // --- 1. Draw model normally ---
+    glEnable(GL_DEPTH_TEST);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // set stencil to 1 where fragments are drawn
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glStencilMask(0xFF);
+    ShaderProgram.Use();
+    ShaderProgram.SetMat4("projection", projection);
+    ShaderProgram.SetMat4("view", view);
+    ShaderProgram.SetMat4("model", model);
     DioBrando.Draw(ShaderProgram);
 
     // Check and call events (Swap and buffers)
