@@ -1,6 +1,7 @@
 // Copyright (c) 2024. JesseTheCatLover. All Rights Reserved.
 
 #include "JShader.h"
+
 #include <fstream>
 #include <sstream>
 #include <iostream>

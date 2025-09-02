@@ -1,6 +1,7 @@
 // Copyright (c) 2025. JesseTheCatLover. All Rights Reserved.
 
 #include "JModel.h"
+
 #include "JShader.h"
 #include <iostream>
 #include <stb_image.h>

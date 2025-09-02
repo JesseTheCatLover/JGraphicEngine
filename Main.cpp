@@ -2,17 +2,14 @@
 
 #define GLFW_INCLUDE_NONE
 
-#include "Source/JCamera.h"
-#include "Source/JModel.h"
-#include "Source/JShader.h"
-#include "Source/Settings.h"
+#include <Core/Core.h>
+#include <Rendering/Rendering.h>
+#include <Scene/Scene.h>
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <GLFW/glfw3.h>
-
-#include "Source/JActor.h"
 
 void ProcessInput(GLFWwindow *Window);
 
@@ -96,7 +93,7 @@ int main() {
   SceneActors.back().Position = glm::vec3(-25.f, 0.0f, 0.f);
 
   // ----------------- Render Loop -----------------
-  while (!glfwWindowShouldClose(Window)) // RenderLoop
+  while (!glfwWindowShouldClose(Window))
   {
     // DeltaTime
     float CurrentFrame = static_cast<float>(glfwGetTime());
@@ -144,6 +141,7 @@ int main() {
   return 0;
 }
 
+// --------------------- Input & Callbacks ---------------------
 void ProcessInput(GLFWwindow *Window) {
   if (glfwGetKey(Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
     glfwSetWindowShouldClose(Window, true);

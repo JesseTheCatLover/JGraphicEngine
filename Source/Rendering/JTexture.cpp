@@ -1,7 +1,7 @@
 // Copyright (c) 2024. JesseTheCatLover. All Rights Reserved.
 
-#include <iostream>
 #include "JTexture.h"
+#include <iostream>
 #include <stb_image.h>
 
 JTexture::JTexture(const std::string &fileName)
