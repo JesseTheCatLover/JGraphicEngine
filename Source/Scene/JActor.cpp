@@ -2,8 +2,8 @@
 
 #include "JActor.h"
 
-#include "JModel.h"
-#include "JShader.h"
+#include "../Rendering/JModel.h"
+#include "../Rendering/JShader.h"
 #include "glm/ext/matrix_transform.hpp"
 
 

@@ -1,8 +1,9 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
+#include "JMesh.h"
+
 #include <glad/gl.h>
 #include <string>
-#include "JMesh.h"
 #include "JShader.h"
 
 JMesh::JMesh(vector<S_Vertex> Vertices, vector<unsigned int> Indices, vector<S_Texture> Textures)
