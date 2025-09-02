@@ -1,4 +1,4 @@
-// Copyright 2024 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #define GLFW_INCLUDE_NONE
 
@@ -11,6 +11,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <GLFW/glfw3.h>
+
+#include "Source/JActor.h"
 
 void ProcessInput(GLFWwindow *Window);
 
@@ -37,6 +39,7 @@ float DeltaTime = 0.f;
 float LastFrame = 0.f;
 
 int main() {
+  // ----------------- GLFW Init -----------------
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -74,12 +77,25 @@ int main() {
   if (Setting->GetbWireFrame())
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-  // Build and compile our shader program
+  // ----------------- Shaders -----------------
   JShader ShaderProgram("ModelLoading", "ModelLoading");
-  JShader OutlinerShader("OutlineShader", "BlackColor");
+  JShader BlackColorShader("OutlineShader", "BlackColor");
 
+  // ----------------- Load Models -----------------
   JModel DioBrando("Dio Brando/DioMansion.obj");
 
+  // ----------------- Scene -----------------
+  std::vector<JActor> SceneActors;
+  SceneActors.emplace_back(&DioBrando);
+  SceneActors.back().Position = glm::vec3(0,0,0);
+  SceneActors.back().Scale = glm::vec3(1.0f);
+  SceneActors.back().Config.bDrawOutline = true;
+
+  // Example of a second object
+  SceneActors.emplace_back(&DioBrando);
+  SceneActors.back().Position = glm::vec3(-25.f, 0.0f, 0.f);
+
+  // ----------------- Render Loop -----------------
   while (!glfwWindowShouldClose(Window)) // RenderLoop
   {
     // DeltaTime
@@ -90,65 +106,32 @@ int main() {
     // Inputs
     ProcessInput(Window);
 
-    // Rendering commands
+    // Clear buffers
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     Setting->GetbWireFrame() ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
                              : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    // --- Common transforms ---
-    glm::mat4 projection = glm::perspective(glm::radians(Camera->Zoom),
-                                            (float)Setting->GetScreenWidth() / (float)Setting->GetScreenHeight(),
-                                            0.1f, 100.0f);
+    // ----------------- Camera & Projection -----------------
+    glm::mat4 projection = glm::perspective(
+        glm::radians(Camera->Zoom),
+        (float)Setting->GetScreenWidth() / (float)Setting->GetScreenHeight(),
+        0.1f, 100.0f
+    );
     glm::mat4 view = Camera->GetViewMatrix();
-    glm::mat4 model{1.f};
 
-    // --- 1. Draw model normally ---
-    glEnable(GL_DEPTH_TEST);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // set stencil to 1 where fragments are drawn
-    glStencilFunc(GL_ALWAYS, 1, 0xFF);
-    glStencilMask(0xFF);
     ShaderProgram.Use();
     ShaderProgram.SetMat4("projection", projection);
     ShaderProgram.SetMat4("view", view);
-    ShaderProgram.SetMat4("model", model);
-    DioBrando.Draw(ShaderProgram);
 
-    // 1. Draw outline (backfaces only)
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_FRONT); // render only backfaces
-    glEnable(GL_DEPTH_TEST);
+    BlackColorShader.Use();
+    BlackColorShader.SetMat4("projection", projection);
+    BlackColorShader.SetMat4("view", view);
 
-    OutlinerShader.Use();
-    OutlinerShader.SetMat4("projection", projection);
-    OutlinerShader.SetMat4("view", view);
-    OutlinerShader.SetMat4("model", model);
-    OutlinerShader.SetFloat("outlineThickness", 0.03f); // adjust thickness
-    DioBrando.Draw(OutlinerShader);
-
-    // 2. Draw normal model (frontfaces)
-    glCullFace(GL_BACK); // render frontfaces
-    ShaderProgram.Use();
-    ShaderProgram.SetMat4("projection", projection);
-    ShaderProgram.SetMat4("view", view);
-    ShaderProgram.SetMat4("model", model);
-    DioBrando.Draw(ShaderProgram);
-
-    glDisable(GL_CULL_FACE);
-
-    glm::vec3 position = glm::vec3(-25.f, 0.0f, 0.f);
-    model = glm::translate(model, position);
-
-    // --- 1. Draw model normally ---
-    glEnable(GL_DEPTH_TEST);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // set stencil to 1 where fragments are drawn
-    glStencilFunc(GL_ALWAYS, 1, 0xFF);
-    glStencilMask(0xFF);
-    ShaderProgram.Use();
-    ShaderProgram.SetMat4("projection", projection);
-    ShaderProgram.SetMat4("view", view);
-    ShaderProgram.SetMat4("model", model);
-    DioBrando.Draw(ShaderProgram);
+    // ----------------- Draw Scene -----------------
+    for (auto& act : SceneActors) {
+      act.DrawConfig(ShaderProgram, BlackColorShader);
+    }
 
     // Check and call events (Swap and buffers)
     glfwSwapBuffers(Window);

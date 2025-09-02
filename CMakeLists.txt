@@ -51,6 +51,7 @@ add_executable(
   Source/JCamera.cpp
   Source/JMesh.cpp
   Source/JModel.cpp
+  Source/JActor.cpp
 )
 
 target_link_libraries(JGraphicEngine PRIVATE glfw assimp glm)
