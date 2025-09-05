@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(JGraphicEngine)
+include(FetchContent)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
