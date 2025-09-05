@@ -69,6 +69,8 @@ int main() {
   }
 
   glEnable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   // Wireframes
   if (Setting->GetbWireFrame())
@@ -80,6 +82,7 @@ int main() {
 
   // ----------------- Load Models -----------------
   JModel DioBrando("Dio Brando/DioMansion.obj");
+  JModel MedievalWindow("MedievalWindow/MedievalWindow.obj");
 
   // ----------------- Scene -----------------
   std::vector<JActor> SceneActors;
@@ -91,6 +94,15 @@ int main() {
   // Example of a second object
   SceneActors.emplace_back(&DioBrando);
   SceneActors.back().Position = glm::vec3(-25.f, 0.0f, 0.f);
+
+  // Transparent windows
+  SceneActors.emplace_back(&MedievalWindow);
+  SceneActors.back().Config.bIsTransparent = true;
+  SceneActors.back().Position = glm::vec3(-25.f, 0.0f, 20.f);
+
+  SceneActors.emplace_back(&MedievalWindow);
+  SceneActors.back().Config.bIsTransparent = true;
+  SceneActors.back().Position = glm::vec3(-15.f, 0.0f, -10.f);
 
   // ----------------- Render Loop -----------------
   while (!glfwWindowShouldClose(Window))
@@ -126,7 +138,28 @@ int main() {
     BlackColorShader.SetMat4("view", view);
 
     // ----------------- Draw Scene -----------------
-    for (auto& act : SceneActors) {
+    std::vector<std::pair<float, JActor>> sortedTransparent;
+    for (auto& act : SceneActors)
+    {
+      if (act.Config.bIsTransparent)
+      {
+        float distance = glm::length(Camera->Position - act.Position);
+        sortedTransparent.emplace_back(distance, act);
+      }
+      else
+      {
+        // Draw opaque immediately
+        act.DrawConfig(ShaderProgram, BlackColorShader);
+      }
+    }
+
+    // Sort transparent ones farthest to nearest
+    std::sort(sortedTransparent.begin(), sortedTransparent.end(),
+    [](const auto& a, const auto& b) { return a.first > b.first;});
+
+    // Draw transparent ones in back-to-front order
+    for (auto& [distance, act] : sortedTransparent)
+    {
       act.DrawConfig(ShaderProgram, BlackColorShader);
     }
 
