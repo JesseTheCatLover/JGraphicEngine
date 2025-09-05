@@ -15,6 +15,7 @@ public:
     glm::vec3 Scale;
 
     struct S_JActorRenderConfig {
+        bool bIsTransparent = false;     // Opaque or Transparent
         bool bDrawOutline = false;       // whether to render an outline
         float OutlineThickness = 0.03f;  // how thick the outline should be
         bool bWireframe = false;         // optional: wireframe mode
