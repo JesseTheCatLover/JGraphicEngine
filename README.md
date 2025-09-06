@@ -33,6 +33,9 @@ The `/Demos` folder contains standalone programs that **showcase the features of
 - **Demo02_ModelLoading.cpp** *(Expanding the World)*  
   Added support for importing and rendering external 3D models, moving beyond primitives.  
 
+- **Demo03_PostProcessing.cpp** *(Visual Effects & Screen Shaders)*  
+  Added a post-processing system with effects like grayscale, pixelation, and scanlines to extend the engine’s rendering capabilities.
+
 ---
 
 ### ▶️ Running a Demo  
@@ -42,3 +45,4 @@ After building with **CMake**, demos can be run directly from the build director
 ```bash
 ./Demo01_FlyingCamera
 ./Demo02_ModelLoading
+./Demo03_PostProcessing

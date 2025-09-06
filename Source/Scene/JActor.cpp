@@ -34,7 +34,13 @@ void JActor::DrawConfig(JShader& shader, JShader &outlineShader) const
         glStencilFunc(GL_ALWAYS, 1, 0xFF);
         glStencilMask(0xFF);
     }
+    if (Config.bBackCulling)
+    {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+    }
     Draw(shader);
+    glDisable(GL_CULL_FACE);
 
     if (Config.bDrawOutline)
     {

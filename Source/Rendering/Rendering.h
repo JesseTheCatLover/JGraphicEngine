@@ -4,3 +4,4 @@
 #include "JShader.h"
 #include "JMesh.h"
 #include "JModel.h"
+#include "JPostProcessor.h"

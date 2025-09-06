@@ -19,6 +19,7 @@ public:
         bool bDrawOutline = false;       // whether to render an outline
         float OutlineThickness = 0.03f;  // how thick the outline should be
         bool bWireframe = false;         // optional: wireframe mode
+        bool bBackCulling = false;       // whether to cull back faces
     };
 
     S_JActorRenderConfig Config;
