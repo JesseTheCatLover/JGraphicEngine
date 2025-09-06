@@ -62,11 +62,6 @@ JMesh JModel::ProcessMesh(aiMesh *Mesh, const aiScene *Scene)
 {
     std::cout << "Processing mesh " << Mesh->mName.C_Str() << " with " << Mesh->mNumVertices << " vertices\n";
 
-    // Debug checks before reading:
-    std::cout << "Has normals? " << (Mesh->HasNormals() ? "YES" : "NO") << "\n";
-    std::cout << "Has tangents/bitangents? " << (Mesh->HasTangentsAndBitangents() ? "YES" : "NO") << "\n";
-    std::cout << "Has texcoords[0]? " << (Mesh->mTextureCoords[0] ? "YES" : "NO") << "\n\n";
-
     std::vector<S_Vertex> vertices;
     std::vector<unsigned int> indices;
     std::vector<S_Texture> textures;
