@@ -5,3 +5,4 @@
 #include "JMesh.h"
 #include "JModel.h"
 #include "JPostProcessor.h"
+#include "JSkybox.h"
