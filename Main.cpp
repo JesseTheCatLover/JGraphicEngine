@@ -101,11 +101,18 @@ int main() {
 
   // ----------------- Shaders -----------------
   JShader ShaderProgram("ModelLoading", "ModelLoading");
+  JShader ReflectShader("EnvironmentCapture", "EnvironmentReflect");
+  JShader RefractionShader("EnvironmentCapture", "EnvironmentRefraction");
   JShader BlackColorShader("OutlineShader", "BlackColor");
 
   // ----------------- Load Models -----------------
   JModel DioBrando("Dio Brando/DioMansion.obj");
   JModel MedievalWindow("MedievalWindow/MedievalWindow.obj");
+  JModel Cube("Cube/Cube.obj");
+
+  // ----------------- Skybox -----------------
+  JSkybox SeaSkybox("Sea", "Skybox", "Skybox");
+
 
   // ----------------- Scene -----------------
   std::vector<JActor> SceneActors;
@@ -128,6 +135,11 @@ int main() {
   SceneActors.emplace_back(&MedievalWindow);
   SceneActors.back().Config.bIsTransparent = true;
   SceneActors.back().Position = glm::vec3(-15.f, 0.0f, -10.f);
+
+  SceneActors.emplace_back(&Cube);
+  SceneActors.back().Position = glm::vec3(15.f, 0.0f, -10.f);
+  SceneActors.back().Scale = glm::vec3(2.0f);
+
 
   // ----------------- Render Loop -----------------
   while (!glfwWindowShouldClose(Window))
@@ -183,6 +195,16 @@ int main() {
     ShaderProgram.SetMat4("projection", projection);
     ShaderProgram.SetMat4("view", view);
 
+    ReflectShader.Use();
+    ReflectShader.SetMat4("projection", projection);
+    ReflectShader.SetMat4("view", view);
+    ReflectShader.SetVec3("cameraPos", Camera->Position);
+
+    RefractionShader.Use();
+    RefractionShader.SetMat4("projection", projection);
+    RefractionShader.SetMat4("view", view);
+    RefractionShader.SetVec3("cameraPos", Camera->Position);
+
     BlackColorShader.Use();
     BlackColorShader.SetMat4("projection", projection);
     BlackColorShader.SetMat4("view", view);
@@ -199,7 +221,7 @@ int main() {
       else
       {
         // Draw opaque immediately
-        act.DrawConfig(ShaderProgram, BlackColorShader);
+        act.DrawConfig(RefractionShader, BlackColorShader);
       }
     }
 
@@ -210,11 +232,14 @@ int main() {
     // Draw transparent ones in back-to-front order
     for (auto& [distance, act] : sortedTransparent)
     {
-      act.DrawConfig(ShaderProgram, BlackColorShader);
+      act.DrawConfig(RefractionShader, BlackColorShader);
     }
 
     // Reset wireframe so post-process quad is normal
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    // --- Draw skybox ---
+    SeaSkybox.Draw(view, projection);
 
     // --- End PostProcessing ---
     int fbWidth, fbHeight;
