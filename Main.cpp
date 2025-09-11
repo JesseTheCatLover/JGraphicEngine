@@ -20,17 +20,20 @@ inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height) {
 }
 void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn);
 void ScrollCallback(GLFWwindow *Window, double xOffset, double yOffset);
+void KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 // Settings
 Settings DefaultSetting;
 Settings *Setting = &DefaultSetting;
 bool bCanChangeWireframe = true;
+enum ViewMode { OBJECT, VIEW, };
 
 // Camera
 JCamera DefaultCamera(glm::vec3(0.f, 0.f, 3.f));
 JCamera *Camera = &DefaultCamera;
 float LastX = Setting->GetScreenWidth() / 2.f;
 float LastY = Setting->GetScreenHeight() / 2.f;
+ViewMode viewMode = ViewMode::VIEW;
 
 // Timing
 float DeltaTime = 0.f;
@@ -58,6 +61,7 @@ int main() {
   glfwSetFramebufferSizeCallback(Window, FramebufferSizeCallback);
   glfwSetCursorPosCallback(Window, MouseCallback);
   glfwSetScrollCallback(Window, ScrollCallback);
+  glfwSetKeyCallback(Window, KeyboardCallback);
 
   // Capture and hide the cursor
   glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -178,4 +182,26 @@ void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn) {
 void ScrollCallback(GLFWwindow *Window, double xOffset, double yOffset) {
   Camera->ProcessMouseScroll(static_cast<float>(yOffset),
                              Setting->GetCameraMaxFOV());
+}
+
+void KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    glfwSetWindowShouldClose(window, true);
+
+  if (key == GLFW_KEY_J && action == GLFW_PRESS) {
+    if (viewMode == ViewMode::VIEW) {
+      glfwSetCursorPos(window, LastX, LastY);
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+      viewMode = ViewMode::OBJECT;
+    } else if (viewMode == ViewMode::OBJECT) {
+      glfwSetCursorPos(window, LastX, LastY);
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+      viewMode = ViewMode::VIEW;
+    }
+  }
+
+  if (key == GLFW_KEY_F && action == GLFW_PRESS)
+    Setting->SetbWireFrame(
+        !Setting->GetbWireFrame()); // Toggling the wireframe mode
 }
