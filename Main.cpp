@@ -144,6 +144,8 @@ void ProcessInput(GLFWwindow *Window) {
 }
 
 void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn) {
+  if (viewMode != ViewMode::VIEW) return;
+
   const float xPos = static_cast<float>(xPosIn);
   const float yPos = static_cast<float>(yPosIn);
 
