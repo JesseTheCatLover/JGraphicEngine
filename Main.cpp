@@ -15,6 +15,7 @@ void ProcessInput(GLFWwindow *Window);
 inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height);
 void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn);
 void ScrollCallback(GLFWwindow *Window, double xOffset, double yOffset);
+void KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 // PostProcessor
 JPostProcessor* GPostProcessor = nullptr;
@@ -23,12 +24,14 @@ JPostProcessor* GPostProcessor = nullptr;
 Settings DefaultSetting;
 Settings *Setting = &DefaultSetting;
 bool bCanChangeWireframe = true;
+enum ViewMode { Scene, UI, };
 
 // Camera
 JCamera DefaultCamera(glm::vec3(0.f, 0.f, 3.f));
 JCamera *Camera = &DefaultCamera;
 float LastX = Setting->GetScreenWidth() / 2.f;
 float LastY = Setting->GetScreenHeight() / 2.f;
+ViewMode viewMode = ViewMode::Scene;
 
 // Timing
 float DeltaTime = 0.f;
@@ -57,6 +60,7 @@ int main() {
   glfwSetFramebufferSizeCallback(Window, FramebufferSizeCallback);
   glfwSetCursorPosCallback(Window, MouseCallback);
   glfwSetScrollCallback(Window, ScrollCallback);
+  glfwSetKeyCallback(Window, KeyboardCallback);
 
   // Capture and hide the cursor
   glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -258,29 +262,8 @@ int main() {
 }
 
 // --------------------- Input & Callbacks ---------------------
-void ProcessInput(GLFWwindow *Window) {
-  if (glfwGetKey(Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-    glfwSetWindowShouldClose(Window, true);
-  }
-
-  if (glfwGetKey(Window, GLFW_KEY_J) == GLFW_PRESS) {
-    glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    glfwSetCursorPos(Window, LastX, LastY);
-  }
-
-  if (glfwGetKey(Window, GLFW_KEY_I) == GLFW_PRESS) {
-    glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    glfwSetCursorPos(Window, LastX, LastY);
-  }
-
-  if (glfwGetKey(Window, GLFW_KEY_F) == GLFW_PRESS && bCanChangeWireframe) {
-    bCanChangeWireframe = false;
-    Setting->SetbWireFrame(
-        !Setting->GetbWireFrame()); // Toggling the wireframe mode
-  }
-  if (glfwGetKey(Window, GLFW_KEY_F) == GLFW_RELEASE) {
-    bCanChangeWireframe = true;
-  }
+void ProcessInput(GLFWwindow *Window)
+{
   if (glfwGetKey(Window, GLFW_KEY_W) == GLFW_PRESS)
     Camera->ProcessKeyboard(ECM_Forward, DeltaTime);
   if (glfwGetKey(Window, GLFW_KEY_S) == GLFW_PRESS)
@@ -296,12 +279,16 @@ void ProcessInput(GLFWwindow *Window) {
 }
 
 // Callbacks
-inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height) {
+inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height)
+{
   glViewport(0, 0, Width, Height);
   GPostProcessor->Resize(Width, Height);
 }
 
-void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn) {
+void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn)
+{
+  if (viewMode != ViewMode::Scene) return;
+
   const float xPos = static_cast<float>(xPosIn);
   const float yPos = static_cast<float>(yPosIn);
 
@@ -315,7 +302,32 @@ void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn) {
   Camera->ProcessMouseMovement(xOffset, yOffset);
 }
 
-void ScrollCallback(GLFWwindow *Window, double xOffset, double yOffset) {
+void ScrollCallback(GLFWwindow *Window, double xOffset, double yOffset)
+{
   Camera->ProcessMouseScroll(static_cast<float>(yOffset),
                              Setting->GetCameraMaxFOV());
+}
+
+void KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    glfwSetWindowShouldClose(window, true);
+
+  if (key == GLFW_KEY_J && action == GLFW_PRESS)
+    {
+    if (viewMode == ViewMode::Scene)
+      {
+      glfwSetCursorPos(window, LastX, LastY);
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+      viewMode = ViewMode::UI;
+    } else if (viewMode == ViewMode::UI) {
+      glfwSetCursorPos(window, LastX, LastY);
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+      viewMode = ViewMode::Scene;
+    }
+  }
+
+  if (key == GLFW_KEY_F && action == GLFW_PRESS)
+    Setting->SetbWireFrame(
+        !Setting->GetbWireFrame()); // Toggling the wireframe mode
 }
