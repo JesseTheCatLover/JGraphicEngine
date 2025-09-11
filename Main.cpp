@@ -129,28 +129,6 @@ int main() {
 }
 
 void ProcessInput(GLFWwindow *Window) {
-  if (glfwGetKey(Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-    glfwSetWindowShouldClose(Window, true);
-  }
-
-  if (glfwGetKey(Window, GLFW_KEY_J) == GLFW_PRESS) {
-    glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    glfwSetCursorPos(Window, LastX, LastY);
-  }
-
-  if (glfwGetKey(Window, GLFW_KEY_I) == GLFW_PRESS) {
-    glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    glfwSetCursorPos(Window, LastX, LastY);
-  }
-
-  if (glfwGetKey(Window, GLFW_KEY_F) == GLFW_PRESS && bCanChangeWireframe) {
-    bCanChangeWireframe = false;
-    Setting->SetbWireFrame(
-        !Setting->GetbWireFrame()); // Toggling the wireframe mode
-  }
-  if (glfwGetKey(Window, GLFW_KEY_F) == GLFW_RELEASE) {
-    bCanChangeWireframe = true;
-  }
   if (glfwGetKey(Window, GLFW_KEY_W) == GLFW_PRESS)
     Camera->ProcessKeyboard(ECM_Forward, DeltaTime);
   if (glfwGetKey(Window, GLFW_KEY_S) == GLFW_PRESS)
