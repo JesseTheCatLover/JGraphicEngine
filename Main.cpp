@@ -26,14 +26,14 @@ void KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
 Settings DefaultSetting;
 Settings *Setting = &DefaultSetting;
 bool bCanChangeWireframe = true;
-enum ViewMode { OBJECT, VIEW, };
+enum ViewMode { Scene, UI, };
 
 // Camera
 JCamera DefaultCamera(glm::vec3(0.f, 0.f, 3.f));
 JCamera *Camera = &DefaultCamera;
 float LastX = Setting->GetScreenWidth() / 2.f;
 float LastY = Setting->GetScreenHeight() / 2.f;
-ViewMode viewMode = ViewMode::VIEW;
+ViewMode viewMode = ViewMode::Scene;
 
 // Timing
 float DeltaTime = 0.f;
@@ -144,7 +144,7 @@ void ProcessInput(GLFWwindow *Window) {
 }
 
 void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn) {
-  if (viewMode != ViewMode::VIEW) return;
+  if (viewMode != ViewMode::Scene) return;
 
   const float xPos = static_cast<float>(xPosIn);
   const float yPos = static_cast<float>(yPosIn);
@@ -170,14 +170,14 @@ void KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
     glfwSetWindowShouldClose(window, true);
 
   if (key == GLFW_KEY_J && action == GLFW_PRESS) {
-    if (viewMode == ViewMode::VIEW) {
+    if (viewMode == ViewMode::Scene) {
       glfwSetCursorPos(window, LastX, LastY);
       glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-      viewMode = ViewMode::OBJECT;
-    } else if (viewMode == ViewMode::OBJECT) {
+      viewMode = ViewMode::UI;
+    } else if (viewMode == ViewMode::UI) {
       glfwSetCursorPos(window, LastX, LastY);
       glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-      viewMode = ViewMode::VIEW;
+      viewMode = ViewMode::Scene;
     }
   }
 
