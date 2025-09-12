@@ -53,6 +53,22 @@ file(GLOB_RECURSE ENGINE_SRC
 # Create executable
 add_executable(JGraphicEngine ${ENGINE_SRC} Main.cpp)
 
+# ImGui
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/external/imgui)
+
+set(IMGUI_SRC
+        ${IMGUI_DIR}/imgui.cpp
+        ${IMGUI_DIR}/imgui_draw.cpp
+        ${IMGUI_DIR}/imgui_tables.cpp
+        ${IMGUI_DIR}/imgui_widgets.cpp
+)
+
+# Add backend files to ImGui
+list(APPEND IMGUI_SRC
+        ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+        ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+)
+
 # Include directories
 target_include_directories(JGraphicEngine PRIVATE
         "${CMAKE_SOURCE_DIR}/Source"
@@ -60,5 +76,14 @@ target_include_directories(JGraphicEngine PRIVATE
         "${CMAKE_SOURCE_DIR}/Include"
 )
 
+add_library(imgui ${IMGUI_SRC})
+
+target_include_directories(imgui PUBLIC
+        ${IMGUI_DIR}
+        ${IMGUI_DIR}/backends
+)
+
+# Link ImGui to GLFW so includes and flags propagate
+target_link_libraries(imgui PUBLIC glfw)
 # Link libraries
-target_link_libraries(JGraphicEngine PRIVATE glfw assimp glm)
+target_link_libraries(JGraphicEngine PRIVATE glfw assimp glm imgui)

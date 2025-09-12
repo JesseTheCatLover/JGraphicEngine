@@ -10,6 +10,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <GLFW/glfw3.h>
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+
 
 void ProcessInput(GLFWwindow *Window);
 inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height);
@@ -70,6 +74,16 @@ int main() {
     std::cout << "Failed to initialize GLAD" << std::endl;
     return -1;
   }
+
+  // ----------------- ImGui Init -----------------
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO(); (void)io;
+  ImGui::StyleColorsDark(); // or Classic/Light
+
+  ImGui_ImplGlfw_InitForOpenGL(Window, true);
+  ImGui_ImplOpenGL3_Init("#version 330"); // matches your OpenGL 3.3
+
 
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
@@ -148,6 +162,11 @@ int main() {
   // ----------------- Render Loop -----------------
   while (!glfwWindowShouldClose(Window))
   {
+    // --- ImGui Frame Start ---
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
     // DeltaTime
     float CurrentFrame = static_cast<float>(glfwGetTime());
     DeltaTime = CurrentFrame - LastFrame;
@@ -155,28 +174,6 @@ int main() {
 
     // Inputs
     ProcessInput(Window);
-
-    // TODO: TEMP Input for demo
-    if (glfwGetKey(Window, GLFW_KEY_0) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorNoEffect;
-    if (glfwGetKey(Window, GLFW_KEY_1) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorBlur;
-    if (glfwGetKey(Window, GLFW_KEY_2) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorChroma;
-    if (glfwGetKey(Window, GLFW_KEY_3) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorSharpen;
-    if (glfwGetKey(Window, GLFW_KEY_4) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorGrayscale;
-    if (glfwGetKey(Window, GLFW_KEY_5) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorCRT;
-    if (glfwGetKey(Window, GLFW_KEY_6) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorPixelate;
-    if (glfwGetKey(Window, GLFW_KEY_7) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorWavy;
-    if (glfwGetKey(Window, GLFW_KEY_8) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorInverter;
-    if (glfwGetKey(Window, GLFW_KEY_9) == GLFW_PRESS)
-      GPostProcessor = &PostProcessorEdge;
 
     // --- Begin PostProcessing ---
     GPostProcessor->Begin();
@@ -212,6 +209,23 @@ int main() {
     BlackColorShader.Use();
     BlackColorShader.SetMat4("projection", projection);
     BlackColorShader.SetMat4("view", view);
+
+    // --- Draw GUI ---
+    if (viewMode == ViewMode::UI)
+    {
+      ImGui::Begin("Debug Window");
+      ImGui::Text("DeltaTime: %.3f ms", DeltaTime * 1000.0f);
+      ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)",
+                  Camera->Position.x, Camera->Position.y, Camera->Position.z);
+
+      // Example: switch postprocessor from UI
+      if (ImGui::Button("No Effect"))       GPostProcessor = &PostProcessorNoEffect;
+      if (ImGui::Button("Blur"))            GPostProcessor = &PostProcessorBlur;
+      if (ImGui::Button("Grayscale"))       GPostProcessor = &PostProcessorGrayscale;
+      // add others similarly...
+
+      ImGui::End();
+    }
 
     // ----------------- Draw Scene -----------------
     std::vector<std::pair<float, JActor>> sortedTransparent;
@@ -250,12 +264,20 @@ int main() {
     glfwGetFramebufferSize(Window, &fbWidth, &fbHeight);
     GPostProcessor->End(fbWidth, fbHeight);
 
+    // --- Render ImGui ---
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
     // Check and call events (Swap and buffers)
     glfwSwapBuffers(Window);
     glfwPollEvents();
   }
 
   // De-allocated all resources
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+
   glfwTerminate();
 
   return 0;
