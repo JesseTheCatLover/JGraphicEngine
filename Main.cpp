@@ -214,7 +214,11 @@ int main() {
     if (viewMode == ViewMode::UI)
     {
       ImGui::Begin("Debug Window");
-      ImGui::Text("DeltaTime: %.3f ms", DeltaTime * 1000.0f);
+      static float fps = 0.0f;
+      static float smoothing = 0.99f; // closer to 1 = smoother
+      float currentFPS = 1.0f / DeltaTime;
+      fps = fps * smoothing + currentFPS * (1.0f - smoothing);
+      ImGui::Text("FPS: %.0f ms", fps);
       ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)",
                   Camera->Position.x, Camera->Position.y, Camera->Position.z);
 
