@@ -2,17 +2,17 @@
 
 #define GLFW_INCLUDE_NONE
 
-#include <Core/Core.h>
-#include <Rendering/Rendering.h>
-#include <Scene/Scene.h>
+#include <Engine/Core/Core.h>
+#include <Engine/Rendering/Rendering.h>
+#include <Engine/Scene/Scene.h>
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <GLFW/glfw3.h>
 #include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
+#include "Editor/EditorApp.h"
+#include "Engine/JEngine.h"
 
 
 void ProcessInput(GLFWwindow *Window);
@@ -75,15 +75,8 @@ int main() {
     return -1;
   }
 
-  // ----------------- ImGui Init -----------------
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGuiIO& io = ImGui::GetIO(); (void)io;
-  ImGui::StyleColorsDark(); // or Classic/Light
-
-  ImGui_ImplGlfw_InitForOpenGL(Window, true);
-  ImGui_ImplOpenGL3_Init("#version 330"); // matches your OpenGL 3.3
-
+  // Get EngineState
+  EngineState& State = JEngine::Get().GetState();
 
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
@@ -133,46 +126,43 @@ int main() {
 
 
   // ----------------- Scene -----------------
-  std::vector<JActor> SceneActors;
-  SceneActors.emplace_back(&DioBrando);
-  SceneActors.back().Position = glm::vec3(0,0,0);
-  SceneActors.back().Scale = glm::vec3(1.0f);
-  SceneActors.back().Config.bDrawOutline = true;
-  SceneActors.back().Config.bBackCulling = true;
+  State.GetSceneActors().emplace_back(&DioBrando, "DioBrando Outline");
+  State.GetSceneActors().back().Position = glm::vec3(0,0,0);
+  State.GetSceneActors().back().Scale = glm::vec3(1.0f);
+  State.GetSceneActors().back().Config.bDrawOutline = true;
+  State.GetSceneActors().back().Config.bBackCulling = true;
 
   // Example of a second object
-  SceneActors.emplace_back(&DioBrando);
-  SceneActors.back().Position = glm::vec3(-25.f, 0.0f, 0.f);
-  SceneActors.back().Config.bBackCulling = true;
+  State.GetSceneActors().emplace_back(&DioBrando, "DioBrando");
+  State.GetSceneActors().back().Position = glm::vec3(-25.f, 0.0f, 0.f);
+  State.GetSceneActors().back().Config.bBackCulling = true;
 
   // Transparent windows
-  SceneActors.emplace_back(&MedievalWindow);
-  SceneActors.back().Config.bIsTransparent = true;
-  SceneActors.back().Position = glm::vec3(-25.f, 0.0f, 20.f);
+  State.GetSceneActors().emplace_back(&MedievalWindow, "Window 1");
+  State.GetSceneActors().back().Config.bIsTransparent = true;
+  State.GetSceneActors().back().Position = glm::vec3(-25.f, 0.0f, 20.f);
 
-  SceneActors.emplace_back(&MedievalWindow);
-  SceneActors.back().Config.bIsTransparent = true;
-  SceneActors.back().Position = glm::vec3(-15.f, 0.0f, -10.f);
+  State.GetSceneActors().emplace_back(&MedievalWindow, "Window 2");
+  State.GetSceneActors().back().Config.bIsTransparent = true;
+  State.GetSceneActors().back().Position = glm::vec3(-15.f, 0.0f, -10.f);
 
-  SceneActors.emplace_back(&Cube);
-  SceneActors.back().Position = glm::vec3(15.f, 0.0f, -10.f);
-  SceneActors.back().Scale = glm::vec3(2.0f);
+  State.GetSceneActors().emplace_back(&Cube, "Cube");
+  State.GetSceneActors().back().Position = glm::vec3(15.f, 0.0f, -10.f);
+  State.GetSceneActors().back().Scale = glm::vec3(2.0f);
 
+  // ----------------- GUI Init -----------------
+  EditorApp Editor(Window);
 
   // ----------------- Render Loop -----------------
   while (!glfwWindowShouldClose(Window))
   {
-    // --- ImGui Frame Start ---
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
     // DeltaTime
-    float CurrentFrame = static_cast<float>(glfwGetTime());
-    DeltaTime = CurrentFrame - LastFrame;
-    LastFrame = CurrentFrame;
+    float currentFrame = static_cast<float>(glfwGetTime());
+    State.SetDeltaTime(currentFrame - LastFrame);
+    LastFrame = currentFrame;
 
     // Inputs
+    DeltaTime = State.GetDeltaTime(); // TODO: Temporarily here
     ProcessInput(Window);
 
     // --- Begin PostProcessing ---
@@ -183,6 +173,9 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     Setting->GetbWireFrame() ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
                              : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    // --- Begin Editor Frame ---
+    Editor.BeginFrame();
 
     // ----------------- Camera & Projection -----------------
     glm::mat4 projection = glm::perspective(
@@ -210,7 +203,7 @@ int main() {
     BlackColorShader.SetMat4("projection", projection);
     BlackColorShader.SetMat4("view", view);
 
-    // --- Draw GUI ---
+    // --- Draw Editor ---
     if (viewMode == ViewMode::UI)
     {
       ImGui::Begin("Debug Window");
@@ -229,11 +222,13 @@ int main() {
       // add others similarly...
 
       ImGui::End();
+
+      Editor.RenderPanels();
     }
 
     // ----------------- Draw Scene -----------------
     std::vector<std::pair<float, JActor>> sortedTransparent;
-    for (auto& act : SceneActors)
+    for (auto& act : State.GetSceneActors())
     {
       if (act.Config.bIsTransparent)
       {
@@ -268,9 +263,8 @@ int main() {
     glfwGetFramebufferSize(Window, &fbWidth, &fbHeight);
     GPostProcessor->End(fbWidth, fbHeight);
 
-    // --- Render ImGui ---
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    // --- Render Editor ---
+    Editor.EndFrame();
 
     // Check and call events (Swap and buffers)
     glfwSwapBuffers(Window);
@@ -278,10 +272,8 @@ int main() {
   }
 
   // De-allocated all resources
-  ImGui_ImplOpenGL3_Shutdown();
-  ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext();
-
+  Editor.Shutdown();
+  glfwDestroyWindow(Window);
   glfwTerminate();
 
   return 0;

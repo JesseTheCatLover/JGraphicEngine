@@ -2,6 +2,6 @@
 
 #pragma once
 
-class InspectorPanel {
-
+class InspectorPanel
+{
 };
