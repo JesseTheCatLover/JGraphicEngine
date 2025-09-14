@@ -43,9 +43,11 @@ FetchContent_MakeAvailable(glfw assimp glm)
 
 # Gather source files
 file(GLOB_RECURSE ENGINE_SRC
-        "${CMAKE_SOURCE_DIR}/Source/Core/*.cpp"
-        "${CMAKE_SOURCE_DIR}/Source/Rendering/*.cpp"
-        "${CMAKE_SOURCE_DIR}/Source/Scene/*.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/Engine/Core/*.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/Engine/Rendering/*.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/Engine/Scene/*.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/Editor/*.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/Editor/Panels/*.cpp"
         "${CMAKE_SOURCE_DIR}/LibSrc/*.cpp"
         "${CMAKE_SOURCE_DIR}/LibSrc/*.c"
 )
@@ -80,5 +82,6 @@ target_include_directories(imgui PUBLIC
 
 # Link ImGui to GLFW so includes and flags propagate
 target_link_libraries(imgui PUBLIC glfw)
+
 # Link libraries
 target_link_libraries(JGraphicEngine PRIVATE glfw assimp glm imgui)
