@@ -14,7 +14,6 @@
 #include "Editor/EditorApp.h"
 #include "Engine/JEngine.h"
 
-
 void ProcessInput(GLFWwindow *Window);
 inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height);
 void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn);

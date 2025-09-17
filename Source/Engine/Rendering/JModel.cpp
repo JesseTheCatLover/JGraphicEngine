@@ -25,7 +25,7 @@ void JModel::LoadModel(string Path)
 {
     Assimp::Importer Import;
     const aiScene* Scene = Import.ReadFile(
-        (string(ENGINE_DIRECTORY) + "/Resources/Meshes/" + Path).c_str(),
+        (string(ENGINE_DIRECTORY) + "/Assets/Meshes/" + Path).c_str(),
         aiProcess_Triangulate |        // Ensure triangles
         aiProcess_FlipUVs |            // Flip UVs for OpenGL
         aiProcess_GenSmoothNormals |   // Generate normals if missing
@@ -179,7 +179,7 @@ unsigned int JModel::TextureFromFile(const aiScene* Scene, const aiString& str, 
     }
     else // External file
     {
-        std::string filename = std::string(ENGINE_DIRECTORY) + "/Resources/Meshes/" + directory + '/' + std::string(str.C_Str());
+        std::string filename = std::string(ENGINE_DIRECTORY) + "/Assets/Meshes/" + directory + '/' + std::string(str.C_Str());
         data = stbi_load(filename.c_str(), &width, &height, &nrChannels, 0);
     }
 
