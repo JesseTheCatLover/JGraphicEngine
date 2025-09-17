@@ -45,7 +45,7 @@ void JTexture::Load2D(const std::string& fileName)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    std::string fullPath = std::string(ENGINE_DIRECTORY) + "/Resources/Textures/" + fileName;
+    std::string fullPath = std::string(ENGINE_DIRECTORY) + "/Assets/Textures/" + fileName;
     data = stbi_load(fullPath.c_str(), &width, &height, &nrChannels, 0);
 
     if (data) {
@@ -71,7 +71,7 @@ void JTexture::LoadCubeMap(const std::string& directory)
         // Try all supported extensions
         for (const auto& ext : kCubemapExtensions)
         {
-            filePath = std::string(ENGINE_DIRECTORY) + "/Resources/Skyboxes/" +
+            filePath = std::string(ENGINE_DIRECTORY) + "/Assets/Skyboxes/" +
                        directory + "/" + kCubemapNames[i] + ext;
 
             faceData = stbi_load(filePath.c_str(), &width, &height, &nrChannels, 0);

@@ -108,7 +108,7 @@ string JShader::LoadShaderSource(const string& path)
     stringstream stream;
     string source;
 
-    file.open(string(ENGINE_DIRECTORY) + "/Shaders/" + path);
+    file.open(string(ENGINE_DIRECTORY) + "/Assets/Shaders/" + path);
     if (file.is_open()) {
         stream << file.rdbuf();
         source = stream.str();
