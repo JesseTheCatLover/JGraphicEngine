@@ -1,17 +1,10 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(JGraphicEngine)
 include(FetchContent)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-
-# ENGINE_DIRECTORY for builds
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_definitions(-DENGINE_DIRECTORY="${CMAKE_SOURCE_DIR}")
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_definitions(-DENGINE_DIRECTORY=".")
-endif()
 
 set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Treat warnings as errors" FORCE)
 
@@ -39,47 +32,21 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glfw assimp glm)
 
-# Gather source files
-file(GLOB_RECURSE ENGINE_SRC
-        "${CMAKE_SOURCE_DIR}/Source/Engine/Core/*.cpp"
-        "${CMAKE_SOURCE_DIR}/Source/Engine/Rendering/*.cpp"
-        "${CMAKE_SOURCE_DIR}/Source/Engine/Scene/*.cpp"
-        "${CMAKE_SOURCE_DIR}/Source/Editor/*.cpp"
-        "${CMAKE_SOURCE_DIR}/Source/Editor/Panels/*.cpp"
-        "${CMAKE_SOURCE_DIR}/LibSrc/*.cpp"
-        "${CMAKE_SOURCE_DIR}/LibSrc/*.c"
-)
+# Add submodules
+# --- ThirdParty libraries ---
+add_subdirectory(ThirdParty)
+# --- Engine modules
+add_subdirectory(Source/Engine)
+add_subdirectory(Source/Editor)
 
-# Create executable
-add_executable(JGraphicEngine ${ENGINE_SRC} Main.cpp)
+# Create executable and link
+add_executable(JGraphicEngine Main.cpp)
+target_link_libraries(JGraphicEngine PRIVATE Engine Editor)
 
-# ImGui
-set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/external/imgui)
-set(IMGUI_SRC
-        ${IMGUI_DIR}/imgui.cpp
-        ${IMGUI_DIR}/imgui_draw.cpp
-        ${IMGUI_DIR}/imgui_tables.cpp
-        ${IMGUI_DIR}/imgui_widgets.cpp
-        ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
-        ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
-)
+# --- Engine directory macro ---
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(Engine PUBLIC ENGINE_DIRECTORY="${CMAKE_SOURCE_DIR}")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_definitions(Engine PUBLIC ENGINE_DIRECTORY="${CMAKE_SOURCE_DIR}")
+endif()
 
-# Include directories
-target_include_directories(JGraphicEngine PRIVATE
-        "${CMAKE_SOURCE_DIR}/Source"
-        "${CMAKE_SOURCE_DIR}/LibSrc"
-        "${CMAKE_SOURCE_DIR}/Include"
-)
-
-add_library(imgui ${IMGUI_SRC})
-
-target_include_directories(imgui PUBLIC
-        ${IMGUI_DIR}
-        ${IMGUI_DIR}/backends
-)
-
-# Link ImGui to GLFW so includes and flags propagate
-target_link_libraries(imgui PUBLIC glfw)
-
-# Link libraries
-target_link_libraries(JGraphicEngine PRIVATE glfw assimp glm imgui)

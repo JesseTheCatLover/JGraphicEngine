@@ -1,7 +1,7 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-#include "GLFW/glfw3.h"
+#include <GLFW/glfw3.h>
 
 class ImGuiLayer
 {

@@ -4,7 +4,7 @@
 
 #include "JShader.h"
 #include <iostream>
-#include <stb_image.h>
+#include <stb/stb_image.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>

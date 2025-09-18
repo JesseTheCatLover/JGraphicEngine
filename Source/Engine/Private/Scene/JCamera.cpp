@@ -1,7 +1,7 @@
 // Copyright (c) 2024. JesseTheCatLover. All Rights Reserved.
 
-#include "JCamera.h"
-#include "../Core/Settings.h"
+#include "../../Public/Scene/JCamera.h"
+#include "../../Public/Core/Settings.h"
 
 JCamera::JCamera():
 Yaw(-90.f),
