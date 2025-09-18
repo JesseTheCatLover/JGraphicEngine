@@ -2,7 +2,7 @@
 
 #include "JTexture.h"
 #include <iostream>
-#include <stb_image.h>
+#include <stb/stb_image.h>
 
 // Standard cubemap face names
 static const std::vector<std::string> kCubemapNames = {

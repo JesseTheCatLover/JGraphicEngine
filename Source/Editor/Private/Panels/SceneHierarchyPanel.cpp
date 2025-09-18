@@ -3,9 +3,9 @@
 #include "SceneHierarchyPanel.h"
 
 #include "imgui.h"
-#include "Editor/EditorContext.h"
-#include "Engine/Core/EngineState.h"
-#include "Engine/Scene/JActor.h"
+#include "../EditorContext.h"
+#include "Core/EngineState.h"
+#include "Scene/JActor.h"
 
 void SceneHierarchyPanel::Draw(const EditorContext& context)
 {

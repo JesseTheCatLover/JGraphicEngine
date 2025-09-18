@@ -1,6 +1,6 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "JActor.h"
+#include "../../Public/Scene/JActor.h"
 
 #include "../Rendering/JModel.h"
 #include "../Rendering/JShader.h"

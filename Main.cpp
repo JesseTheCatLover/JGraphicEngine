@@ -2,17 +2,17 @@
 
 #define GLFW_INCLUDE_NONE
 
-#include <Engine/Core/Core.h>
-#include <Engine/Rendering/Rendering.h>
-#include <Engine/Scene/Scene.h>
+#include <Core/Core.h>
+#include <Rendering/Rendering.h>
+#include <Scene/Scene.h>
+#include <EditorApp.h>
+#include <JEngine.h>
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <GLFW/glfw3.h>
-#include "imgui.h"
-#include "Editor/EditorApp.h"
-#include "Engine/JEngine.h"
+#include <imgui.h>
 
 void ProcessInput(GLFWwindow *Window);
 inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height);

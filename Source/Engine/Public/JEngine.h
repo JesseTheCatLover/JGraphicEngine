@@ -21,7 +21,7 @@ public:
     EngineState& GetState() { return m_State; }
 
 private:
-    JEngine() = default;
+    JEngine() : m_State() {}
     ~JEngine() = default;
 
     EngineState m_State;

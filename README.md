@@ -22,27 +22,3 @@ mkdir build && cd build
 cmake ..
 make
 ```
-
-## 🎮 Demos  
-
-The `/Demos` folder contains standalone programs that **showcase the features of the engine** and reflect the **progress of the project over time**. Each demo focuses on a specific concept or milestone:
-
-- **Demo01_FlyingCamera.cpp** *(First Steps)*  
-  Introduced a free camera system with movement and look controls — the foundation for exploring 3D space.  
-
-- **Demo02_ModelLoading.cpp** *(Expanding the World)*  
-  Added support for importing and rendering external 3D models, moving beyond primitives.  
-
-- **Demo03_PostProcessing.cpp** *(Visual Effects & Screen Shaders)*  
-  Added a post-processing system with effects like grayscale, pixelation, and scanlines to extend the engine’s rendering capabilities.
-
----
-
-### ▶️ Running a Demo  
-
-After building with **CMake**, demos can be run directly from the build directory:  
-
-```bash
-./Demo01_FlyingCamera
-./Demo02_ModelLoading
-./Demo03_PostProcessing

@@ -1,6 +1,6 @@
 // Copyright (c) 2024 JesseTheCatLover. All Rights Reserved.
 
-#include "Settings.h"
+#include "../../Public/Core/Settings.h"
 
 Settings::Settings(): Window{1920, 1080}, Viewport{false}
 {}
