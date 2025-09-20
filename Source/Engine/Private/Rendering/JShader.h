@@ -26,11 +26,14 @@ public:
     void SetMat2(const string &name, const glm::mat2 &mat) const;
     void SetMat3(const string &name, const glm::mat3 &mat) const;
     void SetMat4(const string &name, const glm::mat4 &mat) const;
-    GLuint GetProgram() const { return program; }
+
+    void LinkUniformBlock(const std::string& blockName, GLuint bindingPoint) const;
+
+    GLuint GetProgram() const { return m_Program; }
     ~JShader();
 
 private:
-    GLuint program;
+    GLuint m_Program;
     string LoadShaderSource(const string &path);
     GLuint CompileShader(const string &source, GLenum type);
 };

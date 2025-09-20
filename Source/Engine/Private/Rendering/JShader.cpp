@@ -14,22 +14,22 @@ JShader::JShader(const string &VertexPath, const string &FragmentPath, const cha
     GLuint VertexShader = CompileShader(VertexCode, GL_VERTEX_SHADER);
     GLuint FragmentShader = CompileShader(FragmentCode, GL_FRAGMENT_SHADER);
 
-    program = glCreateProgram();
-    glAttachShader(program, VertexShader);
-    glAttachShader(program, FragmentShader);
+    m_Program = glCreateProgram();
+    glAttachShader(m_Program, VertexShader);
+    glAttachShader(m_Program, FragmentShader);
     if(GeometryPath) // (GeometryShader is optional)
     {
         string GeometryCode = LoadShaderSource(GeometryPath); // TODO: define a geometry shader postfix in here
         GLuint GeometryShader = CompileShader(GeometryCode, GL_GEOMETRY_SHADER);
-        glAttachShader(program, GeometryShader);
+        glAttachShader(m_Program, GeometryShader);
     }
-    glLinkProgram(program);
+    glLinkProgram(m_Program);
 
     GLint success;
     GLchar infoLog[512];
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    glGetProgramiv(m_Program, GL_LINK_STATUS, &success);
     if (!success) {
-        glGetProgramInfoLog(program, 512, NULL, infoLog);
+        glGetProgramInfoLog(m_Program, 512, NULL, infoLog);
         cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << endl;
     }
 
@@ -39,67 +39,81 @@ JShader::JShader(const string &VertexPath, const string &FragmentPath, const cha
 
 void JShader::Use()
 {
-    glUseProgram(program);
+    glUseProgram(m_Program);
 }
 
 void JShader::SetBool(const string& name, bool value) const
 {
-    glUniform1i(glGetUniformLocation(program, name.c_str()), (int)value);
+    glUniform1i(glGetUniformLocation(m_Program, name.c_str()), (int)value);
 }
 
 void JShader::SetInt(const string& name, int value) const
 {
-    glUniform1i(glGetUniformLocation(program, name.c_str()), value);
+    glUniform1i(glGetUniformLocation(m_Program, name.c_str()), value);
 }
 
 void JShader::SetFloat(const string& name, float value) const
 {
-    glUniform1f(glGetUniformLocation(program, name.c_str()), value);
+    glUniform1f(glGetUniformLocation(m_Program, name.c_str()), value);
 }
 
 void JShader::SetVec2(const string &name, glm::vec2 value) const
 {
-    glUniform2fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
+    glUniform2fv(glGetUniformLocation(m_Program, name.c_str()), 1, &value[0]);
 }
 
 void JShader::SetVec2(const string &name, float x, float y) const
 {
-    glUniform2f(glGetUniformLocation(program, name.c_str()), x, y);
+    glUniform2f(glGetUniformLocation(m_Program, name.c_str()), x, y);
 }
 
 void JShader::SetVec3(const string &name, glm::vec3 value) const
 {
-    glUniform3fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
+    glUniform3fv(glGetUniformLocation(m_Program, name.c_str()), 1, &value[0]);
 }
 
 void JShader::SetVec3(const string &name, float x, float y, float z) const
 {
-    glUniform3f(glGetUniformLocation(program, name.c_str()), x, y, z);
+    glUniform3f(glGetUniformLocation(m_Program, name.c_str()), x, y, z);
 }
 
 void JShader::SetVec4(const string &name, glm::vec4 value) const
 {
-    glUniform4fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
+    glUniform4fv(glGetUniformLocation(m_Program, name.c_str()), 1, &value[0]);
 }
 
 void JShader::SetVec4(const string &name, float x, float y, float z, float w) const
 {
-    glUniform4f(glGetUniformLocation(program, name.c_str()), x, y, z, w);
+    glUniform4f(glGetUniformLocation(m_Program, name.c_str()), x, y, z, w);
 }
 
 void JShader::SetMat2(const string &name, const glm::mat2 &mat) const
 {
-    glUniformMatrix2fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+    glUniformMatrix2fv(glGetUniformLocation(m_Program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
 }
 
 void JShader::SetMat3(const string &name, const glm::mat3 &mat) const
 {
-    glUniformMatrix3fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+    glUniformMatrix3fv(glGetUniformLocation(m_Program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
 }
 
 void JShader::SetMat4(const string &name, const glm::mat4 &mat) const
 {
-    glUniformMatrix4fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(m_Program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+}
+
+void JShader::LinkUniformBlock(const std::string &blockName, GLuint bindingPoint) const
+{
+    GLuint blockIndex = glGetUniformBlockIndex(m_Program, blockName.c_str());
+    if (blockIndex != GL_INVALID_INDEX)
+    {
+        glUniformBlockBinding(m_Program, blockIndex, bindingPoint);
+    }
+    else
+    {
+        std::cerr << "[JShader] Warning: UBO block '"
+                  << blockName << "' not found in shader.\n";
+    }
 }
 
 string JShader::LoadShaderSource(const string& path)
@@ -140,5 +154,5 @@ GLuint JShader::CompileShader(const string& source, GLenum type)
 }
 
 JShader::~JShader() {
-    glDeleteProgram(program);
+    glDeleteProgram(m_Program);
 }
