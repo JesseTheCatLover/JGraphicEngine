@@ -14,6 +14,8 @@
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 
+#include "glm/gtc/type_ptr.hpp"
+
 void ProcessInput(GLFWwindow *Window);
 inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height);
 void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn);
@@ -115,6 +117,19 @@ int main() {
   JShader RefractionShader("EnvironmentCapture", "EnvironmentRefraction");
   JShader BlackColorShader("OutlineShader", "BlackColor");
 
+  // --- UBO ---
+  GLuint uboCamera;
+  glGenBuffers(1, &uboCamera);
+  glBindBuffer(GL_UNIFORM_BUFFER, uboCamera);
+  glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW);
+  glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboCamera); // binding point 0
+
+  // link shaders to this block
+  ShaderProgram.LinkUniformBlock("CameraData", 0);
+  ReflectShader.LinkUniformBlock("CameraData", 0);
+  RefractionShader.LinkUniformBlock("CameraData", 0);
+  BlackColorShader.LinkUniformBlock("CameraData", 0);
+
   // ----------------- Load Models -----------------
   JModel DioBrando("Dio Brando/DioMansion.obj");
   JModel MedievalWindow("MedievalWindow/MedievalWindow.obj");
@@ -184,23 +199,15 @@ int main() {
     );
     glm::mat4 view = Camera->GetViewMatrix();
 
-    ShaderProgram.Use();
-    ShaderProgram.SetMat4("projection", projection);
-    ShaderProgram.SetMat4("view", view);
+    glBindBuffer(GL_UNIFORM_BUFFER, uboCamera);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projection));
+    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(view));
 
     ReflectShader.Use();
-    ReflectShader.SetMat4("projection", projection);
-    ReflectShader.SetMat4("view", view);
     ReflectShader.SetVec3("cameraPos", Camera->Position);
 
     RefractionShader.Use();
-    RefractionShader.SetMat4("projection", projection);
-    RefractionShader.SetMat4("view", view);
     RefractionShader.SetVec3("cameraPos", Camera->Position);
-
-    BlackColorShader.Use();
-    BlackColorShader.SetMat4("projection", projection);
-    BlackColorShader.SetMat4("view", view);
 
     // --- Draw Editor ---
     if (viewMode == ViewMode::UI)
