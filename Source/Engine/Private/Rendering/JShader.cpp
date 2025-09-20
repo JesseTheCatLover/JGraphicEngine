@@ -111,8 +111,7 @@ void JShader::LinkUniformBlock(const std::string &blockName, GLuint bindingPoint
     }
     else
     {
-        std::cerr << "[JShader] Warning: UBO block '"
-                  << blockName << "' not found in shader.\n";
+        std::cerr << "[JShader] Warning: UBO block '" << blockName << "' not found in shader.\n";
     }
 }
 

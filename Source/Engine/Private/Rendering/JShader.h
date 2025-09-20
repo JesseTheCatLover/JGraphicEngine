@@ -34,6 +34,7 @@ public:
 
 private:
     GLuint m_Program;
-    string LoadShaderSource(const string &path);
+
+    static string LoadShaderSource(const string &path);
     GLuint CompileShader(const string &source, GLenum type);
 };
