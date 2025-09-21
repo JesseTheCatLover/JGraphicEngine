@@ -1,9 +1,9 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "../../Public/Scene/JActor.h"
+#include "Scene/JActor.h"
 
-#include "../Rendering/JModel.h"
-#include "../Rendering/JShader.h"
+#include "Rendering/JModel.h"
+#include "Rendering/JShader.h"
 #include "glm/ext/matrix_transform.hpp"
 
 
@@ -21,7 +21,7 @@ glm::mat4 JActor::GetModelMatrix() const
 void JActor::Draw(JShader &shader) const
 {
     shader.Use();
-    shader.SetMat4("model", GetModelMatrix());
+    shader.SetMat4("u_Model", GetModelMatrix());
     Model->Draw(shader);
 }
 

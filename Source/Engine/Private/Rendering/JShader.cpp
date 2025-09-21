@@ -6,25 +6,31 @@
 #include <sstream>
 #include <iostream>
 
-JShader::JShader(const string &VertexPath, const string &FragmentPath, const char* GeometryPath)
+JShader::JShader(const string &VertexPath, const string &FragmentPath, const char *GeometryPath)
 {
-    string VertexCode = LoadShaderSource(VertexPath + ".vert");
-    string FragmentCode = LoadShaderSource(FragmentPath + ".frag");
-
-    GLuint VertexShader = CompileShader(VertexCode, GL_VERTEX_SHADER);
-    GLuint FragmentShader = CompileShader(FragmentCode, GL_FRAGMENT_SHADER);
-
     m_Program = glCreateProgram();
+
+    // Vertex
+    string VertexCode = LoadShaderSource(VertexPath + ".vert");
+    GLuint VertexShader = CompileShader(VertexCode, GL_VERTEX_SHADER);
     glAttachShader(m_Program, VertexShader);
+
+    // Fragment
+    string FragmentCode = LoadShaderSource(FragmentPath + ".frag");
+    GLuint FragmentShader = CompileShader(FragmentCode, GL_FRAGMENT_SHADER);
     glAttachShader(m_Program, FragmentShader);
-    if(GeometryPath) // (GeometryShader is optional)
+
+    // Optional Geometry
+    GLuint GeometryShader = 0;
+    if (GeometryPath)
     {
-        string GeometryCode = LoadShaderSource(GeometryPath); // TODO: define a geometry shader postfix in here
-        GLuint GeometryShader = CompileShader(GeometryCode, GL_GEOMETRY_SHADER);
+        string GeometryCode = LoadShaderSource(string(GeometryPath) + ".geom");
+        GeometryShader = CompileShader(GeometryCode, GL_GEOMETRY_SHADER);
         glAttachShader(m_Program, GeometryShader);
     }
-    glLinkProgram(m_Program);
 
+    // Link once
+    glLinkProgram(m_Program);
     GLint success;
     GLchar infoLog[512];
     glGetProgramiv(m_Program, GL_LINK_STATUS, &success);
@@ -33,9 +39,12 @@ JShader::JShader(const string &VertexPath, const string &FragmentPath, const cha
         cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << endl;
     }
 
+    // Cleanup
     glDeleteShader(VertexShader);
     glDeleteShader(FragmentShader);
+    if (GeometryShader) glDeleteShader(GeometryShader);
 }
+
 
 void JShader::Use()
 {
