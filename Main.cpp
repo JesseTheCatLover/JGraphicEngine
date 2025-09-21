@@ -116,6 +116,7 @@ int main() {
   JShader ReflectShader("EnvironmentCapture", "EnvironmentReflect");
   JShader RefractionShader("EnvironmentCapture", "EnvironmentRefraction");
   JShader BlackColorShader("OutlineShader", "BlackColor");
+  JShader ExplosionShader("Explosion", "Explosion", "Geometry/Explosion");
 
   // --- UBO ---
   GLuint uboCamera;
@@ -129,6 +130,7 @@ int main() {
   ReflectShader.LinkUniformBlock("CameraData", 0);
   RefractionShader.LinkUniformBlock("CameraData", 0);
   BlackColorShader.LinkUniformBlock("CameraData", 0);
+  ExplosionShader.LinkUniformBlock("CameraData", 0);
 
   // ----------------- Load Models -----------------
   JModel DioBrando("Dio Brando/DioMansion.obj");
@@ -144,12 +146,13 @@ int main() {
   State.GetSceneActors().back().Position = glm::vec3(0,0,0);
   State.GetSceneActors().back().Scale = glm::vec3(1.0f);
   State.GetSceneActors().back().Config.bDrawOutline = true;
-  State.GetSceneActors().back().Config.bBackCulling = true;
+  State.GetSceneActors().back().Config.bBackCulling = false;
 
+  /*
   // Example of a second object
   State.GetSceneActors().emplace_back(&DioBrando, "DioBrando");
   State.GetSceneActors().back().Position = glm::vec3(-25.f, 0.0f, 0.f);
-  State.GetSceneActors().back().Config.bBackCulling = true;
+  State.GetSceneActors().back().Config.bBackCulling = false; */
 
   // Transparent windows
   State.GetSceneActors().emplace_back(&MedievalWindow, "Window 1");
@@ -159,10 +162,6 @@ int main() {
   State.GetSceneActors().emplace_back(&MedievalWindow, "Window 2");
   State.GetSceneActors().back().Config.bIsTransparent = true;
   State.GetSceneActors().back().Position = glm::vec3(-15.f, 0.0f, -10.f);
-
-  State.GetSceneActors().emplace_back(&Cube, "Cube");
-  State.GetSceneActors().back().Position = glm::vec3(15.f, 0.0f, -10.f);
-  State.GetSceneActors().back().Scale = glm::vec3(2.0f);
 
   // ----------------- GUI Init -----------------
   EditorApp Editor(Window);
@@ -209,6 +208,9 @@ int main() {
     RefractionShader.Use();
     RefractionShader.SetVec3("cameraPos", Camera->Position);
 
+    ExplosionShader.Use();
+    ExplosionShader.SetFloat("u_Time", glfwGetTime());
+
     // --- Draw Editor ---
     if (viewMode == ViewMode::UI)
     {
@@ -244,7 +246,7 @@ int main() {
       else
       {
         // Draw opaque immediately
-        act.DrawConfig(RefractionShader, BlackColorShader);
+        act.DrawConfig(ExplosionShader, ExplosionShader);
       }
     }
 
@@ -255,7 +257,7 @@ int main() {
     // Draw transparent ones in back-to-front order
     for (auto& [distance, act] : sortedTransparent)
     {
-      act.DrawConfig(RefractionShader, BlackColorShader);
+      act.DrawConfig(ShaderProgram, ShaderProgram);
     }
 
     // Reset wireframe so post-process quad is normal

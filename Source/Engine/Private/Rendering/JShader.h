@@ -12,7 +12,7 @@ using namespace std;
 class JShader
 {
 public:
-    JShader(const string &VertexPath, const string &FragmentPath, const char* GeometryPath = nullptr);
+    JShader(const string &VertexPath, const string &FragmentPath, const char *GeometryPath = nullptr);
     void Use();
     void SetBool(const string &name, bool value) const;
     void SetInt(const string &name, int value) const;
