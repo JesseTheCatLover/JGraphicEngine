@@ -15,7 +15,7 @@
 #include <imgui.h>
 #include "glm/gtc/type_ptr.hpp"
 #include "Rendering/JRenderer.h"
-#include "Core/PostProcessManager.h"
+#include "Framework/PostProcessManager.h"
 
 
 void ProcessInput(GLFWwindow *Window);
