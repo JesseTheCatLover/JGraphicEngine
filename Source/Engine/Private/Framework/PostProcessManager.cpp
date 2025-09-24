@@ -1,6 +1,6 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Core/PostProcessManager.h"
+#include "Framework/PostProcessManager.h"
 
 #include "Rendering/JFramebufferTarget.h"
 #include <glad/gl.h>
