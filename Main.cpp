@@ -13,8 +13,10 @@
 #include <iostream>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
-
 #include "glm/gtc/type_ptr.hpp"
+#include "Rendering/JRenderer.h"
+#include "Core/PostProcessManager.h"
+
 
 void ProcessInput(GLFWwindow *Window);
 inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height);
@@ -22,8 +24,10 @@ void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn);
 void ScrollCallback(GLFWwindow *Window, double xOffset, double yOffset);
 void KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
-// PostProcessor
-JPostProcessor* GPostProcessor = nullptr;
+
+// Global renderer & post-process manager
+JRenderer* GRenderer = nullptr;
+PostProcessManager* GPostProcessManager = nullptr;
 
 // Settings
 Settings DefaultSetting;
@@ -60,7 +64,7 @@ int main() {
     return -1;
   }
 
-  // Select our window to draw and assigning callbacks
+  // Assigning callbacks
   glfwMakeContextCurrent(Window);
   glfwSetFramebufferSizeCallback(Window, FramebufferSizeCallback);
   glfwSetCursorPosCallback(Window, MouseCallback);
@@ -83,40 +87,20 @@ int main() {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  // Wireframes
-  if (Setting->GetbWireFrame())
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  // ----------------- Rendering & PostProcessor -----------------
+  // Initialize scene renderer
+  GRenderer = new JRenderer(Setting->GetScreenWidth(), Setting->GetScreenHeight(), 4);
+  // Initialize post-processing manager
+  GPostProcessManager = new PostProcessManager(Setting->GetScreenWidth(), Setting->GetScreenHeight());
 
-  // ----------------- Post Processors -----------------
-  JPostProcessor PostProcessorNoEffect(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-    "PostProcess","PostProcessNoEffect");
-  JPostProcessor PostProcessorBlur(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-    "PostProcess", "PostProcess/RadialBlur");
-  JPostProcessor PostProcessorGrayscale(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-    "PostProcess", "PostProcess/Grayscale");
-  JPostProcessor PostProcessorSharpen(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-    "PostProcess", "PostProcess/SharpenKernel");
-  JPostProcessor PostProcessorChroma(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-    "PostProcess", "PostProcess/Chroma");
-  JPostProcessor PostProcessorInverter(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-    "PostProcess", "PostProcess/ColorInverter");
-  JPostProcessor PostProcessorCRT(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-    "PostProcess", "PostProcess/CRTScanline");
-  JPostProcessor PostProcessorEdge(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-    "PostProcess", "PostProcess/EdgeDetection");
-  JPostProcessor PostProcessorPixelate(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-    "PostProcess", "PostProcess/PixelatedMosaic");
-  JPostProcessor PostProcessorWavy(Setting->GetScreenWidth(), Setting->GetScreenHeight(),
-   "PostProcess", "PostProcess/WavyDistortion");
-
-  GPostProcessor = &PostProcessorNoEffect;
+  // Add effects
+  GPostProcessManager->AddProcessor(std::make_unique<JPostProcessor>("PostProcess", "PostProcessNoEffect"));
+  GPostProcessManager->AddProcessor(std::make_unique<JPostProcessor>("PostProcess", "PostProcess/Chroma"));
+  GPostProcessManager->AddProcessor(std::make_unique<JPostProcessor>("PostProcess", "PostProcess/CRTScanline"));
 
   // ----------------- Shaders -----------------
   JShader ShaderProgram("ModelLoading", "ModelLoading");
-  JShader ReflectShader("EnvironmentCapture", "EnvironmentReflect");
-  JShader RefractionShader("EnvironmentCapture", "EnvironmentRefraction");
   JShader BlackColorShader("OutlineShader", "BlackColor");
-  JShader ExplosionShader("Explosion", "Explosion", "Geometry/Explosion");
 
   // --- UBO ---
   GLuint uboCamera;
@@ -127,19 +111,14 @@ int main() {
 
   // link shaders to this block
   ShaderProgram.LinkUniformBlock("CameraData", 0);
-  ReflectShader.LinkUniformBlock("CameraData", 0);
-  RefractionShader.LinkUniformBlock("CameraData", 0);
   BlackColorShader.LinkUniformBlock("CameraData", 0);
-  ExplosionShader.LinkUniformBlock("CameraData", 0);
 
   // ----------------- Load Models -----------------
   JModel DioBrando("Dio Brando/DioMansion.obj");
   JModel MedievalWindow("MedievalWindow/MedievalWindow.obj");
-  JModel Cube("Cube/Cube.obj");
 
   // ----------------- Skybox -----------------
   JSkybox SeaSkybox("Sea", "Skybox", "Skybox");
-
 
   // ----------------- Scene -----------------
   State.GetSceneActors().emplace_back(&DioBrando, "DioBrando Outline");
@@ -148,11 +127,10 @@ int main() {
   State.GetSceneActors().back().Config.bDrawOutline = true;
   State.GetSceneActors().back().Config.bBackCulling = false;
 
-  /*
   // Example of a second object
   State.GetSceneActors().emplace_back(&DioBrando, "DioBrando");
   State.GetSceneActors().back().Position = glm::vec3(-25.f, 0.0f, 0.f);
-  State.GetSceneActors().back().Config.bBackCulling = false; */
+  State.GetSceneActors().back().Config.bBackCulling = false;
 
   // Transparent windows
   State.GetSceneActors().emplace_back(&MedievalWindow, "Window 1");
@@ -178,12 +156,6 @@ int main() {
     DeltaTime = State.GetDeltaTime(); // TODO: Temporarily here
     ProcessInput(Window);
 
-    // --- Begin PostProcessing ---
-    GPostProcessor->Begin();
-
-    // Clear buffers
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     Setting->GetbWireFrame() ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
                              : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -191,9 +163,11 @@ int main() {
     Editor.BeginFrame();
 
     // ----------------- Camera & Projection -----------------
+    int fbWidth, fbHeight;
+    glfwGetFramebufferSize(Window, &fbWidth, &fbHeight);
     glm::mat4 projection = glm::perspective(
         glm::radians(Camera->Zoom),
-        (float)Setting->GetScreenWidth() / (float)Setting->GetScreenHeight(),
+        (float)fbWidth / fbHeight,
         0.1f, 100.0f
     );
     glm::mat4 view = Camera->GetViewMatrix();
@@ -201,15 +175,6 @@ int main() {
     glBindBuffer(GL_UNIFORM_BUFFER, uboCamera);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projection));
     glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(view));
-
-    ReflectShader.Use();
-    ReflectShader.SetVec3("cameraPos", Camera->Position);
-
-    RefractionShader.Use();
-    RefractionShader.SetVec3("cameraPos", Camera->Position);
-
-    ExplosionShader.Use();
-    ExplosionShader.SetFloat("u_Time", glfwGetTime());
 
     // --- Draw Editor ---
     if (viewMode == ViewMode::UI)
@@ -223,18 +188,15 @@ int main() {
       ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)",
                   Camera->Position.x, Camera->Position.y, Camera->Position.z);
 
-      // Example: switch postprocessor from UI
-      if (ImGui::Button("No Effect"))       GPostProcessor = &PostProcessorNoEffect;
-      if (ImGui::Button("Blur"))            GPostProcessor = &PostProcessorBlur;
-      if (ImGui::Button("Grayscale"))       GPostProcessor = &PostProcessorGrayscale;
-      // add others similarly...
-
       ImGui::End();
 
       Editor.RenderPanels();
     }
 
     // ----------------- Draw Scene -----------------
+    // Begin scene rendering
+    GRenderer->BeginScene();
+
     std::vector<std::pair<float, JActor>> sortedTransparent;
     for (auto& act : State.GetSceneActors())
     {
@@ -246,7 +208,7 @@ int main() {
       else
       {
         // Draw opaque immediately
-        act.DrawConfig(ExplosionShader, ExplosionShader);
+        act.DrawConfig(ShaderProgram, BlackColorShader);
       }
     }
 
@@ -257,19 +219,21 @@ int main() {
     // Draw transparent ones in back-to-front order
     for (auto& [distance, act] : sortedTransparent)
     {
-      act.DrawConfig(ShaderProgram, ShaderProgram);
+      act.DrawConfig(ShaderProgram, BlackColorShader);
     }
 
     // Reset wireframe so post-process quad is normal
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    if (Setting -> GetbWireFrame()) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // --- Draw skybox ---
     SeaSkybox.Draw(view, projection);
 
-    // --- End PostProcessing ---
-    int fbWidth, fbHeight;
-    glfwGetFramebufferSize(Window, &fbWidth, &fbHeight);
-    GPostProcessor->End(fbWidth, fbHeight);
+    // Finish scene rendering
+    GRenderer->EndScene();
+
+    // Apply post-processing
+    GPostProcessManager->ApplyChain(
+      GRenderer->GetSceneTargetTexture(), fbWidth, fbHeight);
 
     // --- Render Editor ---
     Editor.EndFrame();
@@ -308,7 +272,8 @@ void ProcessInput(GLFWwindow *Window)
 inline void FramebufferSizeCallback(GLFWwindow *Window, int Width, int Height)
 {
   glViewport(0, 0, Width, Height);
-  GPostProcessor->Resize(Width, Height);
+  if (GRenderer)
+    GRenderer->Resize(Width, Height);
 }
 
 void MouseCallback(GLFWwindow *Window, double xPosIn, double yPosIn)

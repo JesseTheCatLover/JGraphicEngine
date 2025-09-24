@@ -40,9 +40,9 @@ private:
 
 public:
     inline const unsigned int GetScreenWidth() const { return Window.ScreenWidth; }
-    inline void SetScreenWidth(bool Value) { Viewport.bWireframe = Value; }
+    inline void SetScreenWidth(bool Value) { Window.ScreenWidth = Value; }
     inline const unsigned int GetScreenHeight() const { return Window.ScreenHeight; }
-    inline void SetScreenHeight(bool Value) { Viewport.bWireframe = Value; }
+    inline void SetScreenHeight(bool Value) { Window.ScreenHeight = Value; }
     inline bool GetbWireFrame() const { return Viewport.bWireframe; }
     inline void SetbWireFrame(bool Value) { Viewport.bWireframe = Value; }
     inline const float GetCameraYaw() const { return Camera.Yaw; }
