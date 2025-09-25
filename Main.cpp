@@ -2,11 +2,10 @@
 
 #define GLFW_INCLUDE_NONE
 
-#include <Core/Core.h>
 #include <Rendering/Rendering.h>
 #include <Scene/Scene.h>
 #include <EditorApp.h>
-#include <JEngine.h>
+#include <Core/JEngine.h>
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

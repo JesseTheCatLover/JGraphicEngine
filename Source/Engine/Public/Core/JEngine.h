@@ -1,7 +1,8 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-#include "Core/EngineState.h"
+#include "EngineState.h"
+#include "ServiceContainer.h"
 
 class EditorContext;
 
@@ -19,10 +20,17 @@ public:
     JEngine& operator=(const JEngine&) = delete;
 
     EngineState& GetState() { return m_State; }
+    ServiceContainer& GetServices() { return m_Services; }
+
+    void Initialize();
+    void Run();
+    void Shutdown();
 
 private:
-    JEngine() : m_State() {}
+    JEngine() : m_State(), mServices() {}
     ~JEngine() = default;
 
     EngineState m_State;
+    ServiceContainer m_Services;
+
 };

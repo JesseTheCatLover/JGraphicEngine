@@ -11,8 +11,10 @@ class JModel;
 
 class JActor {
 public:
-    JModel *Model;
     std::string Name;
+    unsigned int ID;
+    size_t m_VectorIndex;
+    JModel *Model;
     glm::vec3 Position;
     glm::vec3 Rotation;
     glm::vec3 Scale;
