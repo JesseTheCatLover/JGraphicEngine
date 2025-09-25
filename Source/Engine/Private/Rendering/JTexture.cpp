@@ -2,6 +2,7 @@
 
 #include "JTexture.h"
 #include <iostream>
+#include <vector>
 #include <stb/stb_image.h>
 
 // Standard cubemap face names
