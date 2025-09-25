@@ -5,12 +5,6 @@
 class Settings
 {
 public:
-    struct S_Window
-    {
-        unsigned int ScreenWidth;
-        unsigned int ScreenHeight;
-    };
-
     struct S_Viewport
     {
         bool bWireframe = false;
@@ -28,23 +22,12 @@ public:
     };
 
     Settings();
-    Settings(unsigned int Width, unsigned int Height, bool bWireframe);
-    Settings(S_Window Win, S_Viewport View);
-    Settings(S_Window Win, S_Viewport View, S_Camera Camera);
 
 private:
     // Setting properties
-    S_Window Window;
-    S_Viewport Viewport;
     S_Camera Camera;
 
 public:
-    inline const unsigned int GetScreenWidth() const { return Window.ScreenWidth; }
-    inline void SetScreenWidth(bool Value) { Window.ScreenWidth = Value; }
-    inline const unsigned int GetScreenHeight() const { return Window.ScreenHeight; }
-    inline void SetScreenHeight(bool Value) { Window.ScreenHeight = Value; }
-    inline bool GetbWireFrame() const { return Viewport.bWireframe; }
-    inline void SetbWireFrame(bool Value) { Viewport.bWireframe = Value; }
     inline const float GetCameraYaw() const { return Camera.Yaw; }
     inline const float GetCameraPitch() const { return Camera.Pitch; }
     inline const float GetCameraSpeed() const { return Camera.Speed; }

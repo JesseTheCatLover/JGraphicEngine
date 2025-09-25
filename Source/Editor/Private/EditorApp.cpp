@@ -1,6 +1,6 @@
 #include "EditorApp.h"
 
-#include <JEngine.h>
+#include <../../Engine/Public/Core/JEngine.h>
 #include <GLFW/glfw3.h>
 #include <EditorContext.h>
 #include <ImGuiLayer.h>
