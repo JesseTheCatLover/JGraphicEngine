@@ -17,5 +17,5 @@ target_include_directories(Engine
 
 # Link dependencies
 target_link_libraries(Engine
-        PUBLIC glad stb glfw assimp glm
+        PUBLIC glad stb glfw assimp glm nlohmann_json::nlohmann_json
 )
