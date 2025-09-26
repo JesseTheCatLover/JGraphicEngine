@@ -29,6 +29,9 @@ public:
 
     S_JActorRenderConfig Config;
 
+    JActor() : ID(0), m_VectorIndex(0) {}
+    virtual ~JActor() = default;
+
     JActor(JModel *model, std::string name,glm::vec3 position, glm::vec3 rotation, glm::vec3 scale)
         : Model(model), Name(name), Position(position), Rotation(rotation), Scale(scale) {}
     JActor(JModel *model, std::string name, glm::vec3 position)
