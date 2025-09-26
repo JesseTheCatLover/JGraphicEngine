@@ -30,7 +30,13 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/Saman-Safaei-Dev/glm.git
 )
 
-FetchContent_MakeAvailable(glfw assimp glm)
+FetchContent_Declare(
+        json
+        GIT_TAG v3.11.3 # pick latest
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+)
+
+FetchContent_MakeAvailable(glfw assimp glm json)
 
 # Add submodules
 # --- ThirdParty libraries ---
