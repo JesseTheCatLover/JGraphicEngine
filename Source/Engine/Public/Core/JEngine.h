@@ -27,7 +27,7 @@ public:
     void Shutdown();
 
 private:
-    JEngine() : m_State(), mServices() {}
+    JEngine() : m_State(), m_Services() {}
     ~JEngine() = default;
 
     EngineState m_State;
