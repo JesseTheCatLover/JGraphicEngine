@@ -6,7 +6,6 @@
 #include "Rendering/JShader.h"
 #include "glm/ext/matrix_transform.hpp"
 
-
 glm::mat4 JActor::GetModelMatrix() const
 {
     glm::mat4 model = glm::mat4(1.0f);

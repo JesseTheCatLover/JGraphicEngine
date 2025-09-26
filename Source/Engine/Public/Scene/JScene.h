@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <nlohmann/json.hpp>
 
 class JActor;
 
@@ -19,7 +20,7 @@ class JActor;
  * Scenes also provide events for actor creation and removal, allowing
  * editor tools or gameplay systems to react dynamically.
  *
- * Note: It is encouraged to use SceneManager for scene manipulation.
+ * @note This class is read-only. To modify a scene, use SceneManager.h exclusively.
  */
 class JScene
 {
@@ -30,6 +31,32 @@ private:
     std::vector<std::unique_ptr<JActor>> m_Actors; ///< Storage of all actors in the scene.
     unsigned int m_NextActorID; ///< Auto-incremented ID counter for uniquely identifying actors.
     std::unordered_map<unsigned int, JActor*> m_ActorsByID; ///< Fast lookup map from ID → actor.
+
+    mutable nlohmann::json m_CachedJson; ///< Cached serialization of the scene.
+    mutable bool m_bIsDirty = true; ///< track if cache needs rebuilding
+
+    /**
+    * @brief Serializes the scene into a JSON object.
+    *
+    * Converts the entire scene, including all actors and their properties,
+    * into a `nlohmann::json` object suitable for saving to disk or transmitting.
+    * This includes the scene name, next actor ID, actor count, and all actor details.
+    *
+    * @return A JSON object representing the scene.
+    */
+    nlohmann::json Serialize() const; // TODO: Define a reboost serialization system later
+
+    /**
+    * @brief Deserializes a JSON object into the scene.
+    *
+    * Reconstructs the scene and all its actors from the given JSON data.
+     * Existing actors in the scene will be cleared, and actor lookup tables
+    * will be rebuilt. Actor properties such as ID, name, position, and rotation
+    * will be restored from the JSON.
+    *
+    * @param data JSON object containing serialized scene information.
+    */
+    void Deserialize(const nlohmann::json &data);
 
     /**
      * @brief Internal helper that registers an actor into the scene’s storage.
@@ -44,7 +71,7 @@ private:
     JScene(const std::string& name);
 
     /** @brief Rename the scene. */
-    inline void SetName(const std::string& name) { m_Name = name; }
+    void SetName(const std::string& name);
 
     /**
      * @brief Spawns a new actor of type T into the scene.
