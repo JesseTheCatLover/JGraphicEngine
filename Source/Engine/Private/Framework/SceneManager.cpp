@@ -44,10 +44,10 @@ bool SceneManager::CreateSceneFile(const std::string &name, const std::string &f
         filename + ".jscene") && !bOverwrite) return false;
 
     JScene scene(name); // Create a new empty scene object
-    return SaveScene(&scene, filename); // Save and serialize it
+    return SaveSceneFile(&scene, filename); // Save and serialize it
 }
 
-JScene* SceneManager::LoadScene(const std::string &filename)
+JScene* SceneManager::LoadSceneFile(const std::string &filename)
 {
     std::ifstream file(std::string(ENGINE_DIRECTORY) + "/Assets/Scenes/" + filename + ".jscene");
     if (!file.is_open()) return nullptr;
@@ -65,7 +65,7 @@ JScene* SceneManager::LoadScene(const std::string &filename)
     return m_ActiveScene.get();
 }
 
-bool SceneManager::SaveScene(const JScene *scene, const std::string &filename) const
+bool SceneManager::SaveSceneFile(const JScene *scene, const std::string &filename) const
 {
     if (!scene) return false;
     if (!scene->m_bIsDirty) return true; // nothing to do

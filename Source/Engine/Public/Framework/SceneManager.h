@@ -53,7 +53,8 @@ public:
     /** @brief Returns a pointer to the currently active scene. */
     JScene* GetActiveScene() const { return m_ActiveScene.get(); }
 
-    // -------------------- Runtime API --------------------
+    // -------------------- Actor Runtime API --------------------
+
     /**
      * @brief Spawn a new actor in the active scene.
      * @tparam T Actor type (must derive from JActor)
@@ -62,10 +63,10 @@ public:
      * @return Pointer to the newly spawned actor, or nullptr if no active scene
      */
     template<typename T, typename... Args>
-    T* SpawnActor(Args &&... args)
+    T *SpawnActor(Args &&... args)
     {
         if (!m_ActiveScene) return nullptr;
-        T* actor = m_ActiveScene->SpawnActor<T>(std::forward<Args>(args)...);
+        T *actor = m_ActiveScene->SpawnActor<T>(std::forward<Args>(args)...);
         if (actor && OnActorAdded) OnActorAdded(actor);
         return actor;
     }
@@ -75,7 +76,7 @@ public:
      * @param id Unique actor ID
      * @return Pointer to actor, or nullptr if not found or no active scene
      */
-    JActor* FindActorByID(unsigned int id) const;
+    JActor *FindActorByID(unsigned int id) const;
 
     /**
      * @brief Find an actor of type T by ID in the active scene.
@@ -84,7 +85,7 @@ public:
      * @return Pointer to actor of type T, or nullptr if not found or wrong type
      */
     template<typename T>
-    T* FindActorByID(unsigned int id)
+    T *FindActorByID(unsigned int id)
     {
         if (!m_ActiveScene) return nullptr;
         return m_ActiveScene->FindActorByID<T>(id);
@@ -134,7 +135,22 @@ public:
      */
     void Update(float deltaTime);
 
-    // -------------------- Editor / File API --------------------
+    // -------------------- Scene Runtime API --------------------
+
+    /**
+     * @brief Renames a scene in memory.
+     *
+     * Updates the internal name of the scene object and calls renaming event, but does not rename the
+     * corresponding file on disk. Writing to file must be handled separately.
+     *
+     * @param scene    Scene to rename.
+     * @param newName  New name to assign to the scene.
+     * @return true if renamed successfully, false otherwise.
+     */
+
+    bool RenameScene(JScene* scene, const std::string& newName);
+
+    // -------------------- File API --------------------
 
     /**
      * @brief Creates a new scene file on disk.
@@ -151,39 +167,26 @@ public:
     bool CreateSceneFile(const std::string& name, const std::string& filename, bool bOverwrite = false) const;
 
     /**
-     * @brief Loads a scene from disk and makes it the active scene.
-     *
-     * The function deserializes the scene data from JSON format, restores
-     * all actors and properties, and sets the loaded scene as the active scene.
-     *
-     * @param filename Scene file name (without extension, relative to scene directory).
-     * @return Pointer to the loaded scene, or nullptr if loading failed.
-     */
-    JScene* LoadScene(const std::string& filename);
+    * @brief Loads a scene from disk and makes it the active scene.
+    *
+    * The function deserializes the scene data from JSON format, restores
+    * all actors and properties, and sets the loaded scene as the active scene.
+    *
+    * @param filename Scene file name (without extension, relative to scene directory).
+    * @return Pointer to the loaded scene, or nullptr if loading failed.
+    */
+    JScene* LoadSceneFile(const std::string& filename);
 
     /**
      * @brief Saves a scene to disk in JSON format.
      *
-     * Serializes the provided scene object and writes it to the specified file.
-     * Metadata such as last modified timestamp will also be recorded.
+     * Serializes and writes MetaData on the provided scene object and writes it to the specified file.
      *
      * @param scene     Pointer to the scene to save.
      * @param filename  Scene file name (without extension, relative to scene directory).
      * @return true if the scene was successfully saved, false otherwise.
      */
-    bool SaveScene(const JScene* scene, const std::string& filename) const;
-
-    /**
-     * @brief Renames a scene in memory.
-     *
-     * Updates the internal name of the scene object and calls renaming event, but does not rename the
-     * corresponding file on disk. Writing to file must be handled separately.
-     *
-     * @param scene    Scene to rename.
-     * @param newName  New name to assign to the scene.
-     * @return true if renamed successfully, false otherwise.
-     */
-    bool RenameScene(JScene* scene, const std::string& newName);
+    bool SaveSceneFile(const JScene* scene, const std::string& filename) const;
 
     /**
      * @brief Reads metadata from a scene file without fully loading the scene.
