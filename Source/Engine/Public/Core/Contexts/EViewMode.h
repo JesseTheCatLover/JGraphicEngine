@@ -2,7 +2,4 @@
 
 #pragma once
 
-class ServiceContainer
-{
-
-};
+enum EViewMode { Scene, UI };

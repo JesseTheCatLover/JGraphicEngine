@@ -4,20 +4,20 @@
 #include "Scene/JScene.h"
 
 /**
- * @struct SceneMeta
+ * @struct FSceneMeta
  * @brief Metadata container for a scene file.
  *
  * SceneMeta stores lightweight information about a scene without
  * fully loading it into memory. Useful for editor lists, previews,
  * or file management systems.
  */
-struct SceneMeta
+struct FSceneMeta
 {
     /** @brief Name of the scene. */
     std::string name;
 
     /** @brief Number of actors currently in the scene. */
-    int actorCount = 0;
+    int actorCount;
 
     /** @brief Path or identifier for a thumbnail image representing the scene. */
     std::string thumbnail;
@@ -197,7 +197,7 @@ public:
      * @param filename Full path to the scene file (.jscene).
      * @return SceneMeta struct containing metadata. Fields may be empty if file could not be opened.
      */
-    static SceneMeta ReadSceneMeta(const std::string& filename);
+    static FSceneMeta ReadSceneMeta(const std::string& filename);
 
     /**
      * @brief Lists metadata for all scenes in a directory.
@@ -208,7 +208,7 @@ public:
      * @param directory Path to the directory containing scene files.
      * @return Vector of SceneMeta structures for each valid scene file.
      */
-    static std::vector<SceneMeta> ListScenesMeta(const std::string& directory);
+    static std::vector<FSceneMeta> ListScenesMeta(const std::string& directory);
 
     /**
      * @brief Lists all available scene files in a directory.
