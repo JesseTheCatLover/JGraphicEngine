@@ -1,3 +1,5 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Core/ServiceContainer.h"
+#pragma once
+
+#include "Core/EngineGlobals.h"

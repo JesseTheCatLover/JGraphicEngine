@@ -2,7 +2,6 @@
 
 #include <fstream>
 #include "nlohmann/json.hpp"
-
 #include "Scene/JActor.h"
 
 using json = nlohmann::json;
@@ -95,9 +94,9 @@ bool SceneManager::RenameScene(JScene *scene, const std::string &newName)
     return true;
 }
 
-SceneMeta SceneManager::ReadSceneMeta(const std::string &filename)
+FSceneMeta SceneManager::ReadSceneMeta(const std::string &filename)
 {
-    SceneMeta meta;
+    FSceneMeta meta;
     std::ifstream file(filename);
     if (!file.is_open()) return meta;
 
@@ -111,9 +110,9 @@ SceneMeta SceneManager::ReadSceneMeta(const std::string &filename)
     return meta;
 }
 
-std::vector<SceneMeta> SceneManager::ListScenesMeta(const std::string &directory)
+std::vector<FSceneMeta> SceneManager::ListScenesMeta(const std::string &directory)
 {
-    std::vector<SceneMeta> result;
+    std::vector<FSceneMeta> result;
     for (auto& entry : std::filesystem::directory_iterator(directory))
     {
         if (entry.path().extension() == ".jscene")
