@@ -5,7 +5,7 @@
 #include <string>
 
 // TODO: instead of an expensive RTTI we do this for now
-#define DECLARE_JCLASS(Type) \
+#define DECLARE_JOBJECT(Type) \
 public: \
 static const char* StaticTypeName() { return #Type; } \
 const char* GetClassTypeName() const override { return #Type; } \
