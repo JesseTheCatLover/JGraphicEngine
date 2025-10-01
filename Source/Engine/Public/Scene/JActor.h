@@ -33,7 +33,7 @@ struct FActorConfig
 
 class JActor : public JCoreObject
 {
-    DECLARE_JCLASS(JActor)
+    DECLARE_JOBJECT(JActor)
 
 public:
     // Actor metadata

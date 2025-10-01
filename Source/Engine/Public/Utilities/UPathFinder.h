@@ -12,8 +12,7 @@
  * Provides cross-platform helpers for:
  * - Resolving paths relative to the project root
  * - Listing files and directories (recursive and filtered)
- * - Checking file/directory existence
- * - Joining and normalizing paths
+ * - Path manipulations
  */
 class UPathFinder
 {
