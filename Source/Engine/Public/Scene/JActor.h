@@ -1,46 +1,70 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
 #include <string>
-
-#include "glm/fwd.hpp"
+#include "Core/JCoreObject.h"
+#include "Core/Serialization/JsonWritter.h"
+#include "Core/Serialization/JsonReader.h"
 #include "glm/vec3.hpp"
+#include "glm/mat4x4.hpp"
 
 class JShader;
 class JModel;
 
-class JActor {
+
+struct FActorConfig
+{
+    bool bDrawOutline = false;
+    bool bBackCulling = false;
+    float outlineThickness = 0.05f;
+
+    void Serialize(JsonWriter& writer) const {
+        writer.Write("draw_outline", bDrawOutline);
+        writer.Write("back_culling", bBackCulling);
+        writer.Write("outline_thickness", outlineThickness);
+    }
+
+    void Deserialize(JsonReader& reader) {
+        bDrawOutline = reader.Read("draw_outline", false);
+        bBackCulling = reader.Read("back_culling", false);
+        outlineThickness = reader.Read("outline_thickness", 0.05f);
+    }
+};
+
+class JActor : public JCoreObject
+{
+    DECLARE_JCLASS(JActor)
+
 public:
+    // Actor metadata
     std::string Name;
-    unsigned int ID;
-    size_t m_VectorIndex;
-    JModel *Model;
-    glm::vec3 Position;
-    glm::vec3 Rotation;
-    glm::vec3 Scale;
+    size_t m_VectorIndex = 0;
 
-    struct S_JActorRenderConfig {
-        bool bIsTransparent = false;     // Opaque or Transparent
-        bool bDrawOutline = false;       // whether to render an outline
-        float OutlineThickness = 0.03f;  // how thick the outline should be
-        bool bWireframe = false;         // optional: wireframe mode
-        bool bBackCulling = false;       // whether to cull back faces
-    };
+    // Transform
+    glm::vec3 Position {0.0f};
+    glm::vec3 Rotation {0.0f};
+    glm::vec3 Scale    {1.0f};
 
-    S_JActorRenderConfig Config;
+    // Renderable link
+    JModel* Model = nullptr;
 
-    JActor() : ID(0), m_VectorIndex(0) {}
-    virtual ~JActor() = default;
+    FActorConfig Config;
 
-    JActor(JModel *model, std::string name,glm::vec3 position, glm::vec3 rotation, glm::vec3 scale)
+    // Constructors
+    JActor() = default;
+    JActor(JModel* model, const std::string& name,
+           glm::vec3 position = {0,0,0},
+           glm::vec3 rotation = {0,0,0},
+           glm::vec3 scale    = {1,1,1})
         : Model(model), Name(name), Position(position), Rotation(rotation), Scale(scale) {}
-    JActor(JModel *model, std::string name, glm::vec3 position)
-        : Model(model), Name(name), Position(position), Scale(glm::vec3(1.f)) {}
-    JActor(JModel *model, std::string name)
-        : Model(model), Name(name), Scale(glm::vec3(1.f)) {}
 
+    // Engine interface
     glm::mat4 GetModelMatrix() const;
 
     void Draw(JShader& shader) const;
     void DrawConfig(JShader& shader, JShader& outlineShader) const;
+
+    // Serialization
+    void Serialize(class JsonWriter& writer) const override;
+    void Deserialize(const class JsonReader& reader) override;
 };

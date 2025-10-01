@@ -48,7 +48,7 @@ void JActor::DrawConfig(JShader& shader, JShader &outlineShader) const
         glEnable(GL_DEPTH_TEST);
 
         outlineShader.Use();
-        outlineShader.SetFloat("outlineThickness", Config.OutlineThickness); // adjust thickness
+        outlineShader.SetFloat("outlineThickness", Config.outlineThickness); // adjust thickness
         Draw(outlineShader);
 
         // Draw normal model again to cover inner faces
@@ -61,4 +61,25 @@ void JActor::DrawConfig(JShader& shader, JShader &outlineShader) const
         glStencilFunc(GL_ALWAYS, 0, 0xFF);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     }
+}
+
+void JActor::Serialize(class JsonWriter &writer) const
+{
+    writer.Write("id", GetID());
+    writer.Write("name", Name);
+    writer.WriteVec3("position", Position);
+    writer.WriteVec3("rotation", Rotation);
+    writer.WriteVec3("scale", Scale);
+
+    // Config
+    JsonWriter configWriter;
+    Config.Serialize(configWriter);
+    writer.Write("config", configWriter.GetData());
+
+    // Model reference (by name or path)
+    if (Model) writer.Write("model_name", Model->GetName());
+}
+
+void JActor::Deserialize(const class JsonReader &reader)
+{
 }
