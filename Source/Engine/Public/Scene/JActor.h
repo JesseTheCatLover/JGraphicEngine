@@ -3,7 +3,7 @@
 #pragma once
 #include <string>
 #include "Core/JCoreObject.h"
-#include "Core/Serialization/JsonWritter.h"
+#include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 #include "glm/vec3.hpp"
 #include "glm/mat4x4.hpp"
