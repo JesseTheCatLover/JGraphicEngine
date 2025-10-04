@@ -2,13 +2,19 @@
 
 #include "Scene/Components/JComponent.h"
 
+void JComponent::SetupAttachment(JActor *owner)
+{
+    SetOwner(owner);
+    OnAttachment();
+    Initialize();
+}
+
 void JComponent::Initialize()
 {
 }
 
 void JComponent::OnAttachment()
 {
-    Initialize();
 }
 
 void JComponent::Serialize(JsonWriter &Writer) const

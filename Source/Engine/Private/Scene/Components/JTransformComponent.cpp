@@ -6,6 +6,18 @@
 
 #include "Scene/Components/JTransformComponent.h"
 
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/gtx/euler_angles.hpp"
+
+glm::mat4 JTransformComponent::GetLocalTransform() const
+{
+    glm::mat4 T = glm::translate(glm::mat4(1.0f), Position);
+    glm::mat4 R = glm::yawPitchRoll(Rotation.y, Rotation.x, Rotation.z);
+    glm::mat4 S = glm::scale(glm::mat4(1.0f), Scale);
+
+    return T * R * S;
+}
+
 void JTransformComponent::SerializeProperties(JsonWriter& Writer) const
 {
     Writer.StartObject("transform");
