@@ -20,6 +20,20 @@
 class JResourceManager
 {
 public:
+    /// Singleton accessor
+    static JResourceManager& Get()
+    {
+        static JResourceManager instance;
+        return instance;
+    }
+
+    // Delete copy/move to prevent multiple instances
+    JResourceManager(const JResourceManager&) = delete;
+    JResourceManager& operator=(const JResourceManager&) = delete;
+    JResourceManager(JResourceManager&&) = delete;
+    JResourceManager& operator=(JResourceManager&&) = delete;
+
+
     /// Resource pointer type (shared ownership)
     using ResourcePtr = std::shared_ptr<JCoreObject>;
 
@@ -90,6 +104,9 @@ public:
     void UnloadAll();
 
 private:
+    JResourceManager() = default; // private constructor
+    ~JResourceManager() = default;
+
     std::unordered_map<std::string, ResourcePtr> m_ResourcesByKey;
     std::unordered_map<uint64_t, ResourcePtr> m_ResourcesByID;
 };

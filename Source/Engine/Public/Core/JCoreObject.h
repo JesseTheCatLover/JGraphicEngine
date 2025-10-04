@@ -2,7 +2,6 @@
 
 #pragma once
 #include <cstdint>
-#include <string>
 
 // TODO: instead of an expensive RTTI we do this for now
 // Helper macros to pick the first argument if given, otherwise default
