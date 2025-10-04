@@ -17,17 +17,24 @@ class JComponent : public JCoreObject
     DECLARE_JOBJECT(JComponent)
 
 private:
-    JActor* m_Owner = nullptr; ///< Actor this component is attached to
+    JActor* m_OwnerActor = nullptr; ///< Actor this component is attached to
+
+    /** @brief Set the owning actor for this component. */
+    void SetOwner (JActor* InActor) { m_OwnerActor = InActor; }
 
 public:
     JComponent() = default;
     virtual ~JComponent() = default;
 
-    /** @brief Called when the component is initialized or attached to an actor. */
-    virtual void Initialize();
-
-    /** @brief Called when the component is attached to a parent actor. */
-    virtual void OnAttachment();
+    /**
+     * @brief Public API to attach this component to an actor.
+     *
+     * Sets the owning actor and calls OnAttachment() and Initialize() internally.
+     * Subclasses should override OnAttachment()/Initialize() to handle custom initialization.
+     *
+     * @param owner Actor to attach to.
+     */
+    void SetupAttachment(JActor* owner);
 
     /**
      * @brief Serialize this component into JSON.
@@ -48,13 +55,16 @@ public:
      */
     virtual void Tick(float DeltaTime);
 
-    /** @brief Set the owning actor for this component. */
-    void SetOwner (JActor* InActor) { m_Owner = InActor; }
-
     /** @brief Get the owning actor. */
     JActor* GetOwner() const { return Owner; }
 
 protected:
+    /** @brief Called when the component is attached to a parent actor. */
+    virtual void OnAttachment();
+
+    /** @brief Called after OnAttachment() call. */
+    virtual void Initialize();
+
     /**
      * @brief Serialize subclass-specific properties into JSON.
      * Called by Serialize().
