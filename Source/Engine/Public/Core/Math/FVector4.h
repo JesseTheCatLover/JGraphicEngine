@@ -1,0 +1,158 @@
+// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+#pragma once
+
+#include <cmath>
+#include <sstream>
+#include <string>
+#include "FVector3.h"
+
+/**
+ * @struct FVector4
+ * @brief Represents a 4D vector with X, Y, Z, and W components.
+ *
+ * Provides basic arithmetic operations, normalization, interpolation,
+ * and geometric utilities such as dot products.
+ */
+struct FVector4
+{
+    float x, y, z, w;
+
+    /** Default constructor. Initializes all components to zero. */
+    constexpr FVector4() : x(0), y(0), z(0), w(0) {}
+
+    /** Constructs a vector with the given X, Y, Z, and W values. */
+    constexpr FVector4(float X, float Y, float Z, float W) : x(X), y(Y), z(Z), w(W) {}
+
+    /** Constructs a vector with all components equal to the given scalar. */
+    explicit constexpr FVector4(float Scalar) : x(Scalar), y(Scalar), z(Scalar), w(Scalar) {}
+
+    /** Constructs a vector from a FVector3 with an optional W component (default 1.0f). */
+    explicit constexpr FVector4(const FVector3& Vec3, float WVal = 1.0f) : x(Vec3.x), y(Vec3.y), z(Vec3.z), w(WVal) {}
+
+    /** @return The length (magnitude) of the vector. */
+    [[nodiscard]] float Length() const { return std::sqrt(x*x + y*y + z*z + w*w); }
+
+    /**
+     * @brief Returns a normalized copy of the vector.
+     * @return A unit-length vector pointing in the same direction.
+     */
+    [[nodiscard]] FVector4 Normalized() const
+    {
+        float len = Length();
+        if (len == 0.0f) return FVector4(0.0f);
+        float inv = 1.0f / len;
+        return { x * inv, y * inv, z * inv, w * inv };
+    }
+
+    /**
+     * @brief Computes the dot product with another vector.
+     * @param Other The vector to dot against.
+     * @return The scalar dot product value.
+     */
+    [[nodiscard]] float Dot(const FVector4& Other) const { return x*Other.x + y*Other.y + z*Other.z + w*Other.w; }
+
+    /**
+     * @brief Computes the distance between this vector and another.
+     * @param Other The target vector.
+     * @return The scalar distance between the two points.
+     */
+    [[nodiscard]] float Distance(const FVector4& Other) const
+    {
+        float dx = x - Other.x;
+        float dy = y - Other.y;
+        float dz = z - Other.z;
+        float dw = w - Other.w;
+        return std::sqrt(dx*dx + dy*dy + dz*dz + dw*dw);
+    }
+
+    /**
+     * @brief Linearly interpolates between this vector and another.
+     * @param B The target vector.
+     * @param Alpha Interpolation factor (0.0 to 1.0).
+     * @return The interpolated vector.
+     */
+    [[nodiscard]] FVector4 Lerp(const FVector4& B, float Alpha) const
+    {
+        return {
+            x * (1.0f - Alpha) + B.x * Alpha,
+            y * (1.0f - Alpha) + B.y * Alpha,
+            z * (1.0f - Alpha) + B.z * Alpha,
+            w * (1.0f - Alpha) + B.w * Alpha
+        };
+    }
+
+    /** @name Arithmetic Operators */
+    ///@{
+
+    constexpr FVector4 operator+(const FVector4& Other) const { return { x + Other.x, y + Other.y, z + Other.z, w + Other.w }; }
+    constexpr FVector4 operator-(const FVector4& Other) const { return { x - Other.x, y - Other.y, z - Other.z, w - Other.w }; }
+
+    FVector4& operator+=(const FVector4& Other)
+    {
+        x += Other.x; y += Other.y; z += Other.z; w += Other.w;
+        return *this;
+    }
+
+    FVector4& operator-=(const FVector4& Other)
+    {
+        x -= Other.x; y -= Other.y; z -= Other.z; w -= Other.w;
+        return *this;
+    }
+
+    constexpr FVector4 operator*(float Scalar) const { return { x * Scalar, y * Scalar, z * Scalar, w * Scalar }; }
+    constexpr FVector4 operator/(float Scalar) const { return { x / Scalar, y / Scalar, z / Scalar, w / Scalar }; }
+
+    FVector4& operator*=(float Scalar)
+    {
+        x *= Scalar; y *= Scalar; z *= Scalar; w *= Scalar;
+        return *this;
+    }
+
+    FVector4& operator/=(float Scalar)
+    {
+        x /= Scalar; y /= Scalar; z /= Scalar; w /= Scalar;
+        return *this;
+    }
+
+    constexpr FVector4 operator-() const { return { -x, -y, -z, -w }; }
+
+    ///@}
+
+    /** @name Comparison Operators */
+    ///@{
+
+    bool operator==(const FVector4& Other) const
+    {
+        const float Epsilon = 1e-6f;
+        return (std::fabs(x - Other.x) < Epsilon) &&
+               (std::fabs(y - Other.y) < Epsilon) &&
+               (std::fabs(z - Other.z) < Epsilon) &&
+               (std::fabs(w - Other.w) < Epsilon);
+    }
+
+    bool operator!=(const FVector4& Other) const { return !(*this == Other); }
+
+    ///@}
+
+    /**
+     * @brief Allows scalar multiplication from the left-hand side.
+     * @param Scalar The scalar value.
+     * @param Vec The vector to scale.
+     * @return The scaled vector.
+     */
+    friend constexpr FVector4 operator*(float Scalar, const FVector4& Vec)
+    {
+        return { Vec.x * Scalar, Vec.y * Scalar, Vec.z * Scalar, Vec.w * Scalar };
+    }
+
+    /**
+     * @brief Converts the vector to a string (formatted as "x y z w").
+     * @return The string representation of the vector.
+     */
+    [[nodiscard]] std::string ToString() const
+    {
+        std::ostringstream ss;
+        ss << x << " " << y << " " << z << " " << w;
+        return ss.str();
+    }
+};
