@@ -1,36 +1,24 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
-
-//
-// Created by JesseTheCatLover on 4/10/25.
-//
+// Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Scene/Components/JTransformComponent.h"
 
-#include "glm/ext/matrix_transform.hpp"
-#include "glm/gtx/euler_angles.hpp"
-
-glm::mat4 JTransformComponent::GetLocalTransform() const
-{
-    glm::mat4 T = glm::translate(glm::mat4(1.0f), Position);
-    glm::mat4 R = glm::yawPitchRoll(Rotation.y, Rotation.x, Rotation.z);
-    glm::mat4 S = glm::scale(glm::mat4(1.0f), Scale);
-
-    return T * R * S;
-}
+#include "Core/Serialization/JsonReader.h"
+#include "Core/Serialization/JsonWriter.h"
 
 void JTransformComponent::SerializeProperties(JsonWriter& Writer) const
 {
-    Writer.StartObject("transform");
-    Writer.Write("position", Position);
-    Writer.Write("rotation", Rotation);
-    Writer.Write("scale", Scale);
+    Writer.BeginObject("transform");
+    Writer.Write("position", LocalTransform.position());
+    Writer.Write("rotation", LocalTransform.rotation());
+    Writer.Write("scale", LocalTransform.scale());
     Writer.EndObject();
 }
 
 void JTransformComponent::DeserializeProperties(const JsonReader& Reader)
 {
-    auto transformReader = Reader.GetChild("transform");
-    Position = transformReader.Read("position", glm::vec3{0.0f});
-    Rotation = transformReader.Read("rotation", glm::vec3{0.0f});
-    Scale    = transformReader.Read("scale", glm::vec3{1.0f});
+    auto transformReader = Reader.GetObject("transform");
+
+    LocalTransform.position() = transformReader.Read("position", FVector3{0.0f});
+    LocalTransform.rotation() = transformReader.Read("rotation", FQuat{1.0f, 0.0f, 0.0f, 0.0f});
+    LocalTransform.scale() = transformReader.Read("scale", FVector3{1.0f});
 }

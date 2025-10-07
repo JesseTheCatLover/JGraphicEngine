@@ -3,8 +3,8 @@
 
 #include <sstream>
 #include <string>
-#include "FVector3.h"
-#include "FMatrix.h"
+
+#include "FMath.h"
 #include "glm/gtx/quaternion.hpp"
 
 /**
@@ -26,10 +26,10 @@ private:
     glm::quat Q{1, 0, 0, 0}; // Default identity quaternion (w, x, y, z)
 
 public:
-    float x() const { return Q.x; }
-    float y() const { return Q.y; }
-    float z() const { return Q.z; }
-    float w() const { return Q.w; }
+    [[nodiscard]] float x() const { return Q.x; }
+    [[nodiscard]] float y() const { return Q.y; }
+    [[nodiscard]] float z() const { return Q.z; }
+    [[nodiscard]] float w() const { return Q.w; }
 
     /** Default constructor. Identity quaternion. */
     FQuat() = default;
@@ -78,6 +78,48 @@ public:
     [[nodiscard]] FMatrix ToMatrix() const
     {
         return FMatrix(glm::toMat4(Q));
+    }
+
+    /**
+     * @brief Converts this quaternion to Euler angles (radians).
+     * @return Euler angles representing the same rotation.
+     */
+    [[nodiscard]] FEuler ToEuler() const
+    {
+        glm::vec3 eulerRad = glm::eulerAngles(Q); // GLM returns radians
+        return {eulerRad.x, eulerRad.y, eulerRad.z};
+    }
+
+    /**
+     * @brief Converts this quaternion to Euler angles in degrees.
+     * @return Euler angles in degrees.
+     */
+    [[nodiscard]] FEuler ToEulerDegrees() const
+    {
+        FEuler eulerRad = ToEuler();
+        FEuler eulerDeg;
+        eulerDeg.SetPitchDegrees(FMath::Degrees(eulerRad.Pitch));
+        eulerDeg.SetYawDegrees(FMath::Degrees(eulerRad.Yaw));
+        eulerDeg.SetRollDegrees(FMath::Degrees(eulerRad.Roll));
+        return eulerDeg;
+    }
+
+    /**
+     * @brief Sets this quaternion from Euler angles (radians).
+     */
+    void FromEuler(const FEuler& Euler)
+    {
+        Q = glm::quat(glm::vec3(Euler.Pitch, Euler.Yaw, Euler.Roll));
+    }
+
+    /**
+     * @brief Sets this quaternion from Euler angles in degrees.
+     */
+    void FromEulerDegrees(const FEuler& EulerDeg)
+    {
+        FromEuler(FEuler(FMath::Radians(EulerDeg.GetPitchDegrees()),
+                         FMath::Radians(EulerDeg.GetYawDegrees()),
+                         FMath::Radians(EulerDeg.GetRollDegrees())));
     }
 
     /** Converts to glm::quat for internal use */

@@ -45,7 +45,7 @@ public:
     [[nodiscard]] FMatrix ToMatrix() const
     {
         glm::mat4 T = glm::translate(glm::mat4(1.0f), glm::vec3(m_Position.x, m_Position.y, m_Position.z));
-        glm::mat4 R = static_cast<glm::mat4>(m_Rotation);
+        glm::mat4 R = glm::toMat4(m_Rotation.operator glm::quat());;
         glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(m_Scale.x, m_Scale.y, m_Scale.z));
         return FMatrix(T * R * S);
     }

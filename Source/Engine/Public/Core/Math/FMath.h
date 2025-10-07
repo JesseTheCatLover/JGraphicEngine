@@ -6,6 +6,8 @@
 #include "FVector3.h"
 #include "FVector4.h"
 #include "FMatrix.h"
+#include "FQuat.h"
+#include "FEuler.h"
 #include "FTransform.h"
 
 #include "glm/glm.hpp"
@@ -14,7 +16,7 @@
 /**
  * @namespace FMath
  * @brief A math utility namespace for the engine. Provides vector, matrix, transform,
- * scalar, and angle functions fully wrapped for FVector, FMatrix, and FTransform types.
+ * scalar, and angle functions fully wrapped for FMath utility types.
  */
 namespace FMath
 {
@@ -35,6 +37,62 @@ namespace FMath
      * @return Angle in degrees.
      */
     inline float Degrees(float Radians) { return glm::degrees(Radians); }
+
+    /**
+    * @brief Converts each component of a vector from degrees to radians.
+    * @tparam VecType Type of the vector (must have x, y, z members).
+    * @param DegreesVec Vector with angles in degrees.
+    * @return Vector with angles converted to radians.
+    */
+    template<typename VecType>
+    inline VecType Radians(const VecType& DegreesVec)
+    {
+        VecType out;
+        out.x = glm::radians(DegreesVec.x);
+        out.y = glm::radians(DegreesVec.y);
+        out.z = glm::radians(DegreesVec.z);
+        return out;
+    }
+
+    /**
+     * @brief Converts each component of a vector from radians to degrees.
+     * @tparam VecType Type of the vector (must have x, y, z members).
+     * @param RadiansVec Vector with angles in radians.
+     * @return Vector with angles converted to degrees.
+     */
+    template<typename VecType>
+    inline VecType Degrees(const VecType& RadiansVec)
+    {
+        VecType out;
+        out.x = glm::degrees(RadiansVec.x);
+        out.y = glm::degrees(RadiansVec.y);
+        out.z = glm::degrees(RadiansVec.z);
+        return out;
+    }
+
+    /**
+     * @brief Converts an FEuler rotation to radians..
+    * @param Euler Input rotation in FEuler.
+    * @return FEuler with all components in radians.
+    */
+    inline FEuler Radians(const FEuler& Euler)
+    {
+        return {FMath::Radians(Euler.Pitch),
+                      FMath::Radians(Euler.Yaw),
+                      FMath::Radians(Euler.Roll)};
+    }
+
+    /**
+     * @brief Converts an FEuler rotation to degrees.
+     * @param Euler Input rotation in FEuler.
+     * @return FEuler with all components in degrees.
+     */
+    inline FEuler Degrees(const FEuler& Euler)
+    {
+        return {FMath::Degrees(Euler.Pitch),
+                      FMath::Degrees(Euler.Yaw),
+                      FMath::Degrees(Euler.Roll)};
+    }
 
     /////////////////////
     // Scalar Utilities
@@ -245,6 +303,25 @@ namespace FMath
     {
         return FQuat(glm::slerp(static_cast<glm::quat>(A), static_cast<glm::quat>(B), Alpha));
     }
+
+    /////////////////////
+    // Euler Utilities
+    /////////////////////
+
+    /**
+    * @brief Linearly interpolates between two FEuler rotations.
+     * @param A Start rotation.
+    * @param B End rotation.
+    * @param Alpha Interpolation factor [0,1].
+    * @return Interpolated FEuler rotation.
+    */
+    inline FEuler Lerp(const FEuler& A, const FEuler& B, float Alpha)
+    {
+        return FEuler(FMath::Lerp(A.Pitch, B.Pitch, Alpha),
+                      FMath::Lerp(A.Yaw,   B.Yaw,   Alpha),
+                      FMath::Lerp(A.Roll,  B.Roll,  Alpha));
+    }
+
 
     /////////////////////
     // Transform Utilities
