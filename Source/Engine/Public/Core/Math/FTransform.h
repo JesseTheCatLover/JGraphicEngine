@@ -68,7 +68,41 @@ public:
                           FQuat(glmRotation), FVector3(glmScale.x, glmScale.y, glmScale.z)};
     }
 
-    // Operators
+    /**
+     * @brief Combines two transforms by applying the second transform (B) after the first (A).
+     *
+     * This operator computes the equivalent transform as if you first applied transform A,
+     * and then applied transform B in the local space of A. The combination respects
+     * position, rotation, and scale in 3D space:
+     *
+     * - The position of B is scaled by A's scale, rotated by A's rotation, and then
+     *   offset by A's position.
+     * - The rotations are combined using quaternion multiplication (A followed by B).
+     * - The scales are combined component-wise.
+     *
+     * Mathematically:
+     *   combined_position = A.position + A.rotation.RotateVector(B.position * A.scale)
+     *   combined_rotation = A.rotation * B.rotation
+     *   combined_scale    = A.scale * B.scale
+     *
+     * @param A The first transform to apply.
+     * @param B The second transform to apply after A.
+     * @return A new FTransform representing the combination of A and B.
+     *
+     * @note This does NOT modify either A or B. Use this to compute world transforms
+     *       from local transforms or to chain transformations hierarchically.
+     */
+    inline FTransform operator*(const FTransform& A, const FTransform& B)
+    {
+        FVector3 rotatedPos = A.rotation().RotateVector(B.position() * A.scale());
+        FVector3 combinedPos = A.position() + rotatedPos;
+
+        FQuat combinedRot = A.rotation() * B.rotation();
+        FVector3 combinedScale = A.scale() * B.scale();
+
+        return {combinedPos, combinedRot, combinedScale};
+    }
+
     bool operator==(const FTransform& Other) const
     {
         return m_Position == Other.m_Position && m_Rotation == Other.m_Rotation && m_Scale == Other.m_Scale;
@@ -76,7 +110,7 @@ public:
 
     bool operator!=(const FTransform& Other) const { return !(*this == Other); }
 
-    /** Returns a string representation for debugging */
+    /** Returns a string representation */
     [[nodiscard]] std::string ToString() const
     {
         std::ostringstream ss;

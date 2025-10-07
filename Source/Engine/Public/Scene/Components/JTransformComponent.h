@@ -1,16 +1,16 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-#include "JComponent.h"
+#include "JActorComponent.h"
 #include "Core/Math/FTransform.h"
 
 /**
  * @class JTransformComponent
  * @brief Local transform component for actors.
  */
-class JTransformComponent : public JComponent
+class JTransformComponent : public JActorComponent
 {
-    DECLARE_JOBJECT(JTransformComponent, JComponent);
+    DECLARE_JOBJECT(JTransformComponent, JActorComponent);
 
 public:
     /** Local transform storing position, rotation, and scale. */
@@ -24,13 +24,13 @@ public:
      * @brief Returns the local position of the component.
      * @return Reference to the local position vector.
      */
-    [[nodiscard]] const FVector3& GetPosition() const { return LocalTransform.position(); }
+    [[nodiscard]] const FVector3& GetLocalPosition() const { return LocalTransform.position(); }
 
     /**
      * @brief Sets the local position of the component.
      * @param Pos New local position vector.
      */
-    void SetPosition(const FVector3& Pos) { LocalTransform.position() = Pos; }
+    void SetLocalPosition(const FVector3& Pos) { LocalTransform.position() = Pos; }
 
     //==================================================
     // Rotation
@@ -40,37 +40,37 @@ public:
      * @brief Returns the local rotation as Euler angles in degrees.
      * @return Rotation vector (Pitch=X, Yaw=Y, Roll=Z) in degrees.
      */
-    [[nodiscard]] FVector3 GetRotation() const { return GetEulerRotation().ToVector3(); }
+    [[nodiscard]] FVector3 GetLocalRotation() const { return GetLocalEulerRotation().ToVector3(); }
 
     /**
      * @brief Returns the local rotation as Euler angles in radians.
      * @return Rotation vector (Pitch=X, Yaw=Y, Roll=Z) in radians.
      */
-    [[nodiscard]] FVector3 GetRotationRadian() const { return FMath::Radians(GetRotation()); }
+    [[nodiscard]] FVector3 GetLocalRotationRadian() const { return FMath::Radians(GetLocalRotation()); }
 
     /**
      * @brief Returns the local rotation as a quaternion.
      * @return Constant reference to the quaternion representing rotation.
      */
-    [[nodiscard]] const FQuat& GetQuatRotation() const { return LocalTransform.rotation(); }
+    [[nodiscard]] const FQuat& GetLocalQuatRotation() const { return LocalTransform.rotation(); }
 
     /**
      * @brief Sets the local rotation using a quaternion.
      * @param Rot New rotation quaternion.
      */
-    void SetQuatRotation(const FQuat& Rot) { LocalTransform.rotation() = Rot; }
+    void SetLocalQuatRotation(const FQuat& Rot) { LocalTransform.rotation() = Rot; }
 
     /**
      * @brief Returns the local rotation as an FEuler object.
      * @return FEuler containing rotation in radians internally.
      */
-    [[nodiscard]] FEuler GetEulerRotation() const { return LocalTransform.rotation().ToEuler(); }
+    [[nodiscard]] FEuler GetLocalEulerRotation() const { return LocalTransform.rotation().ToEuler(); }
 
     /**
      * @brief Sets the local rotation using an FEuler object.
      * @param Euler FEuler rotation to apply (internally converted to quaternion).
      */
-    void SetEulerRotation(const FEuler& Euler) { LocalTransform.rotation() = Euler.ToQuat(); }
+    void SetLocalEulerRotation(const FEuler& Euler) { LocalTransform.rotation() = Euler.ToQuat(); }
 
     //==================================================
     // Scale
@@ -80,13 +80,13 @@ public:
      * @brief Returns the local scale of the component.
      * @return Reference to the local scale vector.
      */
-    [[nodiscard]] const FVector3& GetScale() const { return LocalTransform.scale(); }
+    [[nodiscard]] const FVector3& GetLocalScale() const { return LocalTransform.scale(); }
 
     /**
      * @brief Sets the local scale of the component.
      * @param S New local scale vector.
      */
-    void SetScale(const FVector3& S) { LocalTransform.scale() = S; }
+    void SetLocalScale(const FVector3& S) { LocalTransform.scale() = S; }
 
     //==================================================
     // Transform

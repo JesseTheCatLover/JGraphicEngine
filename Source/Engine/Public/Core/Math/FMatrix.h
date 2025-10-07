@@ -26,6 +26,8 @@ public:
     /** Constructs from a glm::mat4. */
     explicit FMatrix(const glm::mat4& InMat) : M(InMat) {}
 
+    [[nodiscard]] glm::mat4 Get() const { return M; } // TODO: Maybe temp
+
     /** Matrix multiplication */
     FMatrix operator*(const FMatrix& Other) const { return FMatrix(M * Other.M); }
     FMatrix& operator*=(const FMatrix& Other) { M *= Other.M; return *this; }

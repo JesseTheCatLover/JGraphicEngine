@@ -162,6 +162,36 @@ struct FVector3
 
     ///@}
 
+    /** Component-wise multiplication with another vector */
+    constexpr FVector3 operator*(const FVector3& Other) const
+    {
+        return { x * Other.x, y * Other.y, z * Other.z };
+    }
+
+    /** Component-wise multiplication assignment */
+    FVector3& operator*=(const FVector3& Other)
+    {
+        x *= Other.x;
+        y *= Other.y;
+        z *= Other.z;
+        return *this;
+    }
+
+    /** Component-wise division with another vector */
+    constexpr FVector3 operator/(const FVector3& Other) const
+    {
+        return { x / Other.x, y / Other.y, z / Other.z };
+    }
+
+    /** Component-wise division assignment */
+    FVector3& operator/=(const FVector3& Other)
+    {
+        x /= Other.x;
+        y /= Other.y;
+        z /= Other.z;
+        return *this;
+    }
+
     /**
      * @brief Allows scalar multiplication from the left-hand side.
      * @param Scalar The scalar value.

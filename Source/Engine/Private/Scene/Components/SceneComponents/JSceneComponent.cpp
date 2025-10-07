@@ -4,6 +4,17 @@
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 #include <algorithm>
+#include "Scene/JActor.h"
+
+void JSceneComponent::MarkWorldDirty()
+{
+    if (!m_WorldDirty)
+    {
+        m_WorldDirty = true;
+        for (auto* child : m_Children)
+            child->MarkWorldDirty();
+    }
+}
 
 void JSceneComponent::AttachToComponent(JSceneComponent* parent)
 {
@@ -24,9 +35,9 @@ void JSceneComponent::Detach()
     }
 
     // Reparent to actor root if exists
-    if (GetOwner() && GetOwner()->GetRootComponent())
+    if (GetOwnerActor() && GetOwnerActor()->GetRootComponent())
     {
-        AttachToComponent(GetOwner()->GetRootComponent());
+        AttachToComponent(GetOwnerActor()->GetRootComponent());
     }
     else
     {
@@ -34,23 +45,38 @@ void JSceneComponent::Detach()
     }
 }
 
-glm::mat4 JSceneComponent::GetWorldTransform() const
+FTransform JSceneComponent::GetWorldTransform() const
 {
+    if (!m_WorldDirty) return m_WorldTransform;
+
     if (m_Parent)
-        return m_Parent->GetWorldTransform() * GetLocalTransform();
-    return GetLocalTransform();
+        m_WorldTransform = m_Parent->GetWorldTransform() * LocalTransform;
+    else
+        m_WorldTransform = LocalTransform;
+
+    m_WorldDirty = false; // mark self as clean
+
+    return m_WorldTransform;
+}
+
+FVector3 JSceneComponent::GetWorldPosition() const
+{
+    return GetWorldTransform().position();
+}
+
+FEuler JSceneComponent::GetWorldEulerRotation() const
+{
+    return GetWorldTransform().rotation().ToEuler();
+}
+
+FQuat JSceneComponent::GetWorldQuatRotation() const
+{
+    return GetWorldTransform().rotation();
 }
 
 void JSceneComponent::OnAttachment()
 {
     JTransformComponent::OnAttachment();
-
-    // Owner is guaranteed to be set here
-    if (GetOwner())
-    {
-        // e.g., add this component to the actor's scene graph
-        GetOwner()->AddSceneComponent(this);
-    }
 }
 
 void JSceneComponent::SerializeProperties(JsonWriter& Writer) const

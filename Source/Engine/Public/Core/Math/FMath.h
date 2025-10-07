@@ -328,16 +328,6 @@ namespace FMath
     /////////////////////
 
     /**
-     * @brief Converts an FTransform to an FMatrix.
-     */
-    inline FMatrix ToMatrix(const FTransform& T) { return T.ToMatrix(); }
-
-    /**
-     * @brief Converts an FMatrix to an FTransform.
-     */
-    inline FTransform FromMatrix(const FMatrix& M) { return FTransform::FromMatrix(M); }
-
-    /**
     * @brief Combines two transforms (applies B after A).
     * @param A First transform.
     * @param B Second transform.

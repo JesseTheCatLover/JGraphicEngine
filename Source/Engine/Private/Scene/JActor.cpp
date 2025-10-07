@@ -1,85 +1,119 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Scene/JActor.h"
+#include "Scene/Components/SceneComponents/JSceneComponent.h"
+#include "Core/Serialization/JsonWriter.h"
+#include "Core/Serialization/JsonReader.h"
+#include "glm/gtc/matrix_transform.hpp"
 
 #include "Rendering/JModel.h"
-#include "Rendering/JShader.h"
-#include "glm/ext/matrix_transform.hpp"
 
-glm::mat4 JActor::GetModelMatrix() const
+#include "Scene/Components/SceneComponents/JModelComponent.h"
+
+JActor::JActor()
 {
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, Position);
-    model = glm::rotate(model, glm::radians(Rotation.x), glm::vec3(1,0,0));
-    model = glm::rotate(model, glm::radians(Rotation.y), glm::vec3(0,1,0));
-    model = glm::rotate(model, glm::radians(Rotation.z), glm::vec3(0,0,1));
-    model = glm::scale(model, Scale);
-    return model;
+    // Ensure root component exists
+    SetupRootComponent();
+
+    // Add default components for this actor
+    ModelComponent = CreateDefaultComponent<JModelComponent>("Model");
+    ModelComponent->AttachToComponent(GetRootComponent());
 }
 
-void JActor::Draw(JShader &shader) const
+void JActor::SetupRootComponent()
 {
-    shader.Use();
-    shader.SetMat4("u_Model", GetModelMatrix());
-    Model->Draw(shader);
-}
-
-void JActor::DrawConfig(JShader& shader, JShader &outlineShader) const
-{
-    if (Config.bDrawOutline)
+    if (!m_RootComponent)
     {
-        glEnable(GL_DEPTH_TEST);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // set stencil to 1 where fragments are drawn
-        glStencilFunc(GL_ALWAYS, 1, 0xFF);
-        glStencilMask(0xFF);
-    }
-    if (Config.bBackCulling)
-    {
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-    }
-    Draw(shader);
-    glDisable(GL_CULL_FACE);
-
-    if (Config.bDrawOutline)
-    {
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_FRONT); // render only backfaces
-        glEnable(GL_DEPTH_TEST);
-
-        outlineShader.Use();
-        outlineShader.SetFloat("outlineThickness", Config.outlineThickness); // adjust thickness
-        Draw(outlineShader);
-
-        // Draw normal model again to cover inner faces
-        glCullFace(GL_BACK); // render frontfaces
-        Draw(shader);
-
-        // Reset
-        glDisable(GL_CULL_FACE);
-        glStencilMask(0xFF);
-        glStencilFunc(GL_ALWAYS, 0, 0xFF);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        m_RootComponent = std::make_shared<JSceneComponent>();
+        m_RootComponent->SetOwnerActor(this);
+        m_RootComponent->SetName("RootComponent");
+        m_SceneComponents.push_back(m_RootComponent);
     }
 }
 
-void JActor::Serialize(class JsonWriter &writer) const
+void JActor::Initialize()
 {
-    writer.Write("id", GetID());
-    writer.Write("name", Name);
-    writer.WriteVec3("position", Position);
-    writer.WriteVec3("rotation", Rotation);
-    writer.WriteVec3("scale", Scale);
-
-    // Config
-    JsonWriter configWriter;
-    Config.Serialize(configWriter);
-    writer.Write("config", configWriter.GetData());
-
-    // Model reference (by name or path)
-    if (Model) writer.Write("model_name", Model->GetName());
+    // Call Initialize on all components
+    for (auto& comp : m_ActorComponents)
+        comp->Initialize();
+    for (auto& comp : m_SceneComponents)
+        comp->Initialize();
 }
 
-void JActor::Deserialize(const class JsonReader &reader)
+void JActor::BeginPlay()
 {
+    // Call BeginPlay on all components
+    for (auto& comp : m_ActorComponents)
+        comp->BeginPlay();
+    for (auto& comp : m_SceneComponents)
+        comp->BeginPlay();
+}
+
+void JActor::Tick(float DeltaTime)
+{
+    // Tick all components
+    for (auto& comp : m_ActorComponents)
+        comp->Tick(DeltaTime);
+    for (auto& comp : m_SceneComponents)
+        comp->Tick(DeltaTime);
+}
+
+void JActor::EndPlay()
+{
+    // Call EndPlay on all components
+    for (auto& comp : m_ActorComponents)
+        comp->EndPlay();
+    for (auto& comp : m_SceneComponents)
+        comp->EndPlay();
+}
+
+void JActor::Destroy()
+{
+    m_ActorComponents.clear();
+    m_SceneComponents.clear();
+    m_RootComponent.reset();
+}
+
+void JActor::Draw(JShader& Shader) const
+{
+    for (auto& comp : m_SceneComponents)
+    {
+        // Assuming scene components have a Draw method
+        if (comp->GetClassTypeName() == "JModelComponent")
+        {
+            if (auto* modelComp = dynamic_cast<JModelComponent*>(comp.get()))
+                modelComp->Draw(Shader);
+        }
+    }
+}
+
+void JActor::Serialize(JsonWriter& Writer) const
+{
+    Writer.BeginObject();
+    Writer.Write("name", m_Name);
+
+    // Serialize components
+    Writer.BeginArray("components");
+    for (auto& comp : m_ActorComponents)
+    {
+        comp->Serialize(Writer);
+    }
+    Writer.EndArray();
+
+    // Serialize scene components
+    Writer.BeginArray("scene_components");
+    for (auto& comp : m_SceneComponents)
+    {
+        comp->Serialize(Writer);
+    }
+    Writer.EndArray();
+
+    Writer.EndObject();
+}
+
+void JActor::Deserialize(const JsonReader& Reader)
+{
+    m_Name = Reader.Read("name", "");
+
+    // TODO: Deserialize components and scene components via reflection/factory
 }

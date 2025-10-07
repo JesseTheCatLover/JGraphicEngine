@@ -92,6 +92,23 @@ struct FVector2
         return *this;
     }
 
+    constexpr FVector2 operator*(const FVector2 &Other) const { return {x * Other.x, y * Other.y}; }
+    constexpr FVector2 operator/(const FVector2 &Other) const { return {x / Other.x, y / Other.y}; }
+
+    FVector2& operator*=(const FVector2& Other)
+    {
+        x *= Other.x;
+        y *= Other.y;
+        return *this;
+    }
+
+    FVector2& operator/=(const FVector2& Other)
+    {
+        x /= Other.x;
+        y /= Other.y;
+        return *this;
+    }
+
     constexpr FVector2 operator*(float Scalar) const { return { x * Scalar, y * Scalar }; }
     constexpr FVector2 operator/(float Scalar) const { return { x / Scalar, y / Scalar }; }
 

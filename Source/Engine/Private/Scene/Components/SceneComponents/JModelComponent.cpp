@@ -22,11 +22,11 @@ void JModelComponent::Draw(JShader& Shader) const
         if (model)
         {
             // Get world transform from the scene graph
-            glm::mat4 worldTransform = GetWorldTransform();
+            FMatrix worldTransformMat4 = GetWorldTransform().ToMatrix();
 
             // Send it to the shader (as the "model matrix")
             Shader.Use();
-            Shader.SetMat4("u_Model", worldTransform);
+            Shader.SetMat4("u_Model", worldTransformMat4.Get());
 
             // Now draw the model
             model->Draw(Shader);

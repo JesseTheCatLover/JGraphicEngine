@@ -23,8 +23,13 @@ protected:
     JSceneComponent* m_Parent = nullptr; ///< Parent component in the hierarchy
     std::vector<JSceneComponent*> m_Children; ///< Child components
 
+    void MarkWorldDirty();;
+
+    mutable FTransform m_WorldTransform;
+    mutable bool m_WorldDirty;
+
 public:
-    JSceneComponent() = default;
+    JSceneComponent(): m_WorldDirty(true) {};
     virtual ~JSceneComponent() = default;
 
     /**
@@ -51,22 +56,36 @@ public:
      */
     const std::vector<JSceneComponent*>& GetChildren() const { return m_Children; }
 
-    /** @brief Set the owning actor for this component. */
-    void SetOwnerActor(JActor* actor) { m_OwnerActor = actor; }
-
-    /** @brief Get the owning actor. */
-    JActor* GetOwnerActor() const { return m_OwnerActor; }
+    /**
+    * @brief Compute the world transform of this component.
+    *
+    * Combines local transform with all parents recursively. This ensures
+    * the returned transform is in world space, respecting hierarchical attachments.
+    *
+    * @return World transform as an FTransform.
+    */
+    [[nodiscard]] FTransform GetWorldTransform() const;
 
     /**
-     * @brief Compute the world transform of this component.
-     *
-     * Combines local transform with all parents recursively.
-     *
-     * @return World transform matrix.
+     * @brief Compute the world position of this component.
+     * @return Position vector in world space.
      */
-    glm::mat4 GetWorldTransform() const;
+    [[nodiscard]] FVector3 GetWorldPosition() const;
+
+    /**
+     * @brief Compute the world rotation of this component as FEuler (radians internally).
+     * @return World rotation.
+     */
+    [[nodiscard]] FEuler GetWorldEulerRotation() const;
+
+    /**
+    * @brief Compute the world rotation of this component as quaternion.
+    * @return World rotation quaternion.
+    */
+    [[nodiscard]] FQuat GetWorldQuatRotation() const;
 
 protected:
+    /** @brief Called when the component is attached to a parent actor. */
     void OnAttachment() override;
 
     /** @brief Serialize component-specific properties, including transform and hierarchy. */

@@ -99,6 +99,33 @@ struct FVector4
         return *this;
     }
 
+    /** Component-wise multiplication with another vector */
+    constexpr FVector4 operator*(const FVector4& Other) const
+    {
+        return { x * Other.x, y * Other.y, z * Other.z, w * Other.w };
+    }
+
+    /** Component-wise multiplication assignment */
+    FVector4& operator*=(const FVector4& Other)
+    {
+        x *= Other.x; y *= Other.y; z *= Other.z; w *= Other.w;
+        return *this;
+    }
+
+    /** Component-wise division with another vector */
+    constexpr FVector4 operator/(const FVector4& Other) const
+    {
+        return { x / Other.x, y / Other.y, z / Other.z, w / Other.w };
+    }
+
+    /** Component-wise division assignment */
+    FVector4& operator/=(const FVector4& Other)
+    {
+        x /= Other.x; y /= Other.y; z /= Other.z; w /= Other.w;
+        return *this;
+    }
+
+
     constexpr FVector4 operator*(float Scalar) const { return { x * Scalar, y * Scalar, z * Scalar, w * Scalar }; }
     constexpr FVector4 operator/(float Scalar) const { return { x / Scalar, y / Scalar, z / Scalar, w / Scalar }; }
 
