@@ -3,83 +3,143 @@
 #include "Core/Serialization/JsonWriter.h"
 #include <fstream>
 
-void JsonWriter::BeginObject(const std::string& Key)
+void JsonWriter::BeginObject(const std::string& key)
 {
-    nlohmann::json* newObj = new nlohmann::json(nlohmann::json::object());
-
     if (m_Stack.empty())
     {
-        if (!Key.empty()) m_Data[Key] = *newObj;
-        else m_Data = *newObj;
+        if (key.empty())
+        {
+            m_Data = nlohmann::json::object();
+            m_Stack.push(&m_Data);
+        }
+        else
+        {
+            m_Data[key] = nlohmann::json::object();
+            m_Stack.push(&m_Data[key]);
+        }
     }
     else
     {
-        if (!Key.empty()) (*m_Stack.top())[Key] = *newObj;
-        else (*m_Stack.top()).push_back(*newObj); // anonymous object in array
+        nlohmann::json& parent = *m_Stack.top();
+        if (key.empty())
+        {
+            parent.push_back(nlohmann::json::object());
+            m_Stack.push(&parent.back());
+        }
+        else
+        {
+            parent[key] = nlohmann::json::object();
+            m_Stack.push(&parent[key]);
+        }
     }
-
-    m_Stack.push(newObj);
 }
 
 void JsonWriter::EndObject()
 {
-    if (m_Stack.empty()) return;
-    nlohmann::json* top = m_Stack.top();
-    m_Stack.pop();
-    delete top; // free temporary pointer
+    if (!m_Stack.empty())
+        m_Stack.pop();
 }
 
-void JsonWriter::BeginArray(const std::string& Key)
+void JsonWriter::BeginArray(const std::string& key)
 {
-    nlohmann::json* newArr = new nlohmann::json(nlohmann::json::array());
-    if (m_Stack.empty()) m_Data[Key] = *newArr;
-    else (*m_Stack.top())[Key] = *newArr;
-
-    m_Stack.push(newArr);
+    if (m_Stack.empty())
+    {
+        m_Data[key] = nlohmann::json::array();
+        m_Stack.push(&m_Data[key]);
+    }
+    else
+    {
+        nlohmann::json& parent = *m_Stack.top();
+        parent[key] = nlohmann::json::array();
+        m_Stack.push(&parent[key]);
+    }
 }
 
 void JsonWriter::EndArray()
 {
-    if (m_Stack.empty()) return;
-    nlohmann::json* top = m_Stack.top();
-    m_Stack.pop();
-    delete top;
+    if (!m_Stack.empty())
+        m_Stack.pop();
 }
 
-void JsonWriter::WriteVec2(const std::string& Key, const glm::vec2& Vec)
+void JsonWriter::WriteVec2(const std::string& key, const glm::vec2& vec)
 {
-    m_Data[Key] = { Vec.x, Vec.y };
+    (*m_Stack.top())[key] = { vec.x, vec.y };
 }
 
-void JsonWriter::WriteVec3(const std::string& Key, const glm::vec3& Vec)
+void JsonWriter::WriteVec3(const std::string& key, const glm::vec3& vec)
 {
-    m_Data[Key] = { Vec.x, Vec.y, Vec.z };
+    (*m_Stack.top())[key] = { vec.x, vec.y, vec.z };
 }
 
-void JsonWriter::WriteVec4(const std::string& Key, const glm::vec4& Vec)
+void JsonWriter::WriteVec4(const std::string& key, const glm::vec4& vec)
 {
-    m_Data[Key] = { Vec.x, Vec.y, Vec.z, Vec.w };
+    (*m_Stack.top())[key] = { vec.x, vec.y, vec.z, vec.w };
 }
 
-void JsonWriter::WriteObject(const std::string& Key, const nlohmann::json& Object)
+void JsonWriter::WriteVector2(const std::string& key, const FVector2& vec)
 {
-    if (m_Stack.empty()) m_Data[Key] = Object;
-    else (*m_Stack.top())[Key] = Object;
+    (*m_Stack.top())[key] = { vec.x, vec.y };
 }
 
-void JsonWriter::WriteObjectToArray(const std::string& Key, const nlohmann::json& Object)
+void JsonWriter::WriteVector3(const std::string& key, const FVector3& vec)
 {
-    if (m_Stack.empty() || !m_Stack.top()->contains(Key) || !(*m_Stack.top())[Key].is_array())
-        (*m_Stack.top())[Key] = nlohmann::json::array();
-
-    (*m_Stack.top())[Key].push_back(Object);
+    (*m_Stack.top())[key] = { vec.x, vec.y, vec.z };
 }
 
-bool JsonWriter::SaveToFile(const std::string& FilePath) const
+void JsonWriter::WriteVector4(const std::string& key, const FVector4& vec)
 {
-    std::ofstream out(FilePath);
+    (*m_Stack.top())[key] = { vec.x, vec.y, vec.z, vec.w };
+}
+
+void JsonWriter::WriteQuat(const std::string& key, const FQuat& quat)
+{
+    (*m_Stack.top())[key] = nlohmann::json::array({
+        quat.x(), quat.y(), quat.z(), quat.w()
+    });
+}
+
+void JsonWriter::WriteTransform(const std::string& key, const FTransform& transform)
+{
+    const FVector3 pos = transform.position();
+    const FQuat rot = transform.rotation();
+    const FVector3 scale = transform.scale();
+
+    nlohmann::json transformObj;
+    transformObj["position"] = { pos.x, pos.y, pos.z };
+    transformObj["rotation"] = { rot.x(), rot.y(), rot.z(), rot.w() };
+    transformObj["scale"]    = { scale.x, scale.y, scale.z };
+
+    (*m_Stack.top())[key] = transformObj;
+}
+
+// --------------------- Object and array helpers --------------------
+
+void JsonWriter::WriteObject(const std::string& key, const nlohmann::json& object)
+{
+    if (m_Stack.empty())
+        m_Data[key] = object;
+    else
+        (*m_Stack.top())[key] = object;
+}
+
+void JsonWriter::WriteObjectToArray(const std::string& key, const nlohmann::json& object)
+{
+    if (m_Stack.empty())
+        return;
+
+    nlohmann::json& current = *m_Stack.top();
+
+    if (!current.contains(key) || !current[key].is_array())
+        current[key] = nlohmann::json::array();
+
+    current[key].push_back(object);
+}
+
+bool JsonWriter::SaveToFile(const std::string& filePath) const
+{
+    std::ofstream out(filePath);
     if (!out.is_open()) return false;
 
-    out << m_Data.dump(4); // pretty print with 4 spaces
+    out << m_Data.dump(4);
     return true;
 }

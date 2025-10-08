@@ -6,6 +6,7 @@
 #include "glm/vec3.hpp"
 #include "glm/vec2.hpp"
 #include "glm/vec4.hpp"
+#include "Core/Math/FMath.h"
 #include <nlohmann/json.hpp>
 
 /**
@@ -21,10 +22,10 @@ public:
     JsonReader() = default;
 
     /** Construct from existing json node (for nested objects) */
-    JsonReader(const nlohmann::json& Node) : m_Data(Node) {}
+    JsonReader(const nlohmann::json& node) : m_Data(node) {}
 
     /** Load JSON from file */
-    bool LoadFromFile(const std::string& FilePath);
+    bool LoadFromFile(const std::string& filePath);
 
     /** Read a value by key with default fallback */
     template<typename T>
@@ -34,21 +35,35 @@ public:
         return DefaultValue;
     }
 
-
     /** @brief Read a glm::vec2 from JSON. */
-    glm::vec2 ReadVec2(const std::string& Key, const glm::vec2& Default = glm::vec2(0)) const;
+    [[nodiscard]] glm::vec2 ReadVec2(const std::string& key, const glm::vec2& defaultVal = glm::vec2(0)) const;
 
     /** @brief Read a glm::vec3 from JSON. */
-    glm::vec3 ReadVec3(const std::string& Key, const glm::vec3& Default = glm::vec3(0)) const;
+    [[nodiscard]] glm::vec3 ReadVec3(const std::string& key, const glm::vec3& defaultVal = glm::vec3(0)) const;
 
     /** @brief Read a glm::vec4 from JSON. */
-    glm::vec4 ReadVec4(const std::string& Key, const glm::vec4& Default = glm::vec4(0)) const;
+    [[nodiscard]] glm::vec4 ReadVec4(const std::string& key, const glm::vec4& defaultVal = glm::vec4(0)) const;
+
+    /** Read an FVector2 from JSON */
+    [[nodiscard]] FVector2 ReadVector2(const std::string& key, const FVector2& defaultVal) const;
+
+    /** Read an FVector3 from JSON */
+    [[nodiscard]] FVector3 ReadVector3(const std::string& key, const FVector3& defaultVal) const;
+
+    /** Read an FVector4 from JSON */
+    [[nodiscard]] FVector4 ReadVector4(const std::string& key, const FVector4& defaultVal) const;
+
+    /** Read an FQuat from JSON */
+    [[nodiscard]] FQuat ReadQuat(const std::string& key, const FQuat& defaultVal = FQuat(0, 0, 0, 1)) const;
+
+    /** Read an FTransform from JSON */
+    [[nodiscard]] FTransform ReadTransform(const std::string& key, const FTransform& defaultVal = FTransform()) const;
 
     /** Get a nested object by key */
-    JsonReader GetObject(const std::string& Key) const;
+    [[nodiscard]] JsonReader GetObject(const std::string& key) const;
 
     /** Get an array of nested objects by key */
-    std::vector<JsonReader> GetArray(const std::string& Key) const;
+    [[nodiscard]] std::vector<JsonReader> GetArray(const std::string& key) const;
 
     /** Access the underlying JSON node (advanced) */
     const nlohmann::json& GetData() const { return m_Data; }
