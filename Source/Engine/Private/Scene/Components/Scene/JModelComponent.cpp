@@ -1,20 +1,20 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Scene/Components/SceneComponents/JModelComponent.h"
+#include "Scene/Components/Scene/JModelComponent.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 #include "Rendering/JShader.h"
 #include "Resources/JResourceManager.h"
 #include "Resources/JModelResource.h"
 
-void JModelComponent::SetModel(const std::string& InPath)
+void JModelComponent::SetModel(const std::string& inPath)
 {
-    m_ModelPath = InPath;
+    m_ModelPath = inPath;
 
-    m_ModelResource = JResourceManager::Get().Load<JModelResource>(InPath, InPath);
+    m_ModelResource = JResourceManager::Get().Load<JModelResource>(inPath, inPath);
 }
 
-void JModelComponent::Draw(JShader& Shader) const
+void JModelComponent::Draw(JShader& shader) const
 {
     if (auto modelRes = m_ModelResource.lock())
     {
@@ -25,28 +25,28 @@ void JModelComponent::Draw(JShader& Shader) const
             FMatrix worldTransformMat4 = GetWorldTransform().ToMatrix();
 
             // Send it to the shader (as the "model matrix")
-            Shader.Use();
-            Shader.SetMat4("u_Model", worldTransformMat4.Get());
+            shader.Use();
+            shader.SetMat4("u_Model", worldTransformMat4.Get());
 
             // Now draw the model
-            model->Draw(Shader);
+            model->Draw(shader);
         }
     }
 }
 
-void JModelComponent::SerializeProperties(JsonWriter& Writer) const
+void JModelComponent::SerializeProperties(JsonWriter& writer) const
 {
-    Super::SerializeProperties(Writer);
+    Super::SerializeProperties(writer);
 
     // Save the path/key of the model
-    Writer.Write("model_path", m_ModelPath);
+    writer.Write("model_path", m_ModelPath);
 }
 
-void JModelComponent::DeserializeProperties(const JsonReader& Reader)
+void JModelComponent::DeserializeProperties(const JsonReader& reader)
 {
-    Super::DeserializeProperties(Reader);
+    Super::DeserializeProperties(reader);
 
-    m_ModelPath = Reader.Read("model_path", std::string{});
+    m_ModelPath = reader.Read("model_path", std::string{});
 
     // Lazy load: you can load the model now or defer it until Draw()
     if (!m_ModelPath.empty())

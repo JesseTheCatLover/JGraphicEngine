@@ -6,6 +6,7 @@
 #include "FVector3.h"
 #include "FVector4.h"
 #include "FMatrix.h"
+#include "FRotator.h"
 #include "FQuat.h"
 #include "FEuler.h"
 #include "FTransform.h"
@@ -336,7 +337,7 @@ namespace FMath
     inline FTransform Combine(const FTransform& A, const FTransform& B)
     {
         FMatrix Result = A.ToMatrix() * B.ToMatrix();
-        return FTransform::FromMatrix(FMatrix(static_cast<glm::mat4>(Result)));
+        return FTransform::MakeFromMatrix(FMatrix(static_cast<glm::mat4>(Result)));
     }
 
     /**
@@ -347,6 +348,6 @@ namespace FMath
     inline FTransform Inverse(const FTransform& T)
     {
         FMatrix Inv = T.ToMatrix().Inverse();
-        return FTransform::FromMatrix(FMatrix(static_cast<glm::mat4>(Inv)));
+        return FTransform::MakeFromMatrix(FMatrix(static_cast<glm::mat4>(Inv)));
     }
 }

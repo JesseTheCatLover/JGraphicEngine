@@ -4,6 +4,9 @@
 #include <sstream>
 #include <string>
 
+#include "FEuler.h"
+#include "FRotator.h"
+
 /**
  * @struct FVector3
  * @brief Represents a 3D vector with X, Y, and Z components.
@@ -19,194 +22,125 @@ struct FVector3
     constexpr FVector3() : x(0), y(0), z(0) {}
 
     /** Constructs a vector with the given X, Y, and Z values. */
-    constexpr FVector3(float X, float Y, float Z) : x(X), y(Y), z(Z) {}
+    constexpr FVector3(float x, float y, float z) : x(x), y(y), z(z) {}
 
     /** Constructs a vector with all components equal to the given scalar. */
-    explicit constexpr FVector3(float Scalar) : x(Scalar), y(Scalar), z(Scalar) {}
+    explicit constexpr FVector3(float scalar) : x(scalar), y(scalar), z(scalar) {}
 
     /** @return The length (magnitude) of the vector. */
     [[nodiscard]] float Length() const { return std::sqrt(x * x + y * y + z * z); }
 
-    /**
-     * @brief Returns a normalized copy of the vector.
-     * @return A unit-length vector pointing in the same direction.
-     */
+    /** @return A normalized copy of the vector. */
     [[nodiscard]] FVector3 Normalized() const
     {
         float len = Length();
-        if (len == 0.0f)
-            return FVector3(0.0f);
+        if (len == 0.0f) return FVector3(0.0f);
         float inv = 1.0f / len;
         return { x * inv, y * inv, z * inv };
     }
 
-    /**
-     * @brief Computes the dot product with another vector.
-     * @param Other The vector to dot against.
-     * @return The scalar dot product value.
-     */
-    [[nodiscard]] float Dot(const FVector3& Other) const { return x * Other.x + y * Other.y + z * Other.z; }
+    /** Dot product with another vector */
+    [[nodiscard]] float Dot(const FVector3& vec) const { return x * vec.x + y * vec.y + z * vec.z; }
 
-    /**
-     * @brief Computes the cross product with another vector.
-     * @param Other The vector to cross with.
-     * @return The cross product vector (perpendicular to both).
-     */
-    [[nodiscard]] FVector3 Cross(const FVector3& Other) const
+    /** Cross product with another vector */
+    [[nodiscard]] FVector3 Cross(const FVector3& vec) const
     {
         return {
-            y * Other.z - z * Other.y,
-            z * Other.x - x * Other.z,
-            x * Other.y - y * Other.x
+            y * vec.z - z * vec.y,
+            z * vec.x - x * vec.z,
+            x * vec.y - y * vec.x
         };
     }
 
-    /**
-     * @brief Computes the distance between this vector and another.
-     * @param Other The target vector.
-     * @return The scalar distance between the two points.
-     */
-    [[nodiscard]] float Distance(const FVector3& Other) const
+    /** Distance to another vector */
+    [[nodiscard]] float Distance(const FVector3& vec) const
     {
-        float dx = x - Other.x;
-        float dy = y - Other.y;
-        float dz = z - Other.z;
+        float dx = x - vec.x;
+        float dy = y - vec.y;
+        float dz = z - vec.z;
         return std::sqrt(dx * dx + dy * dy + dz * dz);
     }
 
-    /**
-     * @brief Linearly interpolates between this vector and another.
-     * @param B The target vector.
-     * @param Alpha Interpolation factor (0.0 to 1.0).
-     * @return The interpolated vector.
-     */
-    [[nodiscard]] FVector3 Lerp(const FVector3& B, float Alpha) const
+    /** Linearly interpolate toward another vector */
+    [[nodiscard]] FVector3 Lerp(const FVector3& vec, float alpha) const
     {
         return {
-            x * (1.0f - Alpha) + B.x * Alpha,
-            y * (1.0f - Alpha) + B.y * Alpha,
-            z * (1.0f - Alpha) + B.z * Alpha
+            x * (1.0f - alpha) + vec.x * alpha,
+            y * (1.0f - alpha) + vec.y * alpha,
+            z * (1.0f - alpha) + vec.z * alpha
         };
     }
 
     /** @name Arithmetic Operators */
     ///@{
+    constexpr FVector3 operator+(const FVector3& vec) const { return { x + vec.x, y + vec.y, z + vec.z }; }
+    constexpr FVector3 operator-(const FVector3& vec) const { return { x - vec.x, y - vec.y, z - vec.z }; }
 
-    /** Adds two vectors component-wise. */
-    constexpr FVector3 operator+(const FVector3& Other) const { return { x + Other.x, y + Other.y, z + Other.z }; }
-
-    /** Subtracts two vectors component-wise. */
-    constexpr FVector3 operator-(const FVector3& Other) const { return { x - Other.x, y - Other.y, z - Other.z }; }
-
-    /** Adds another vector to this one in place. */
-    FVector3& operator+=(const FVector3& Other)
+    FVector3& operator+=(const FVector3& vec)
     {
-        x += Other.x;
-        y += Other.y;
-        z += Other.z;
+        x += vec.x; y += vec.y; z += vec.z;
         return *this;
     }
 
-    /** Subtracts another vector from this one in place. */
-    FVector3& operator-=(const FVector3& Other)
+    FVector3& operator-=(const FVector3& vec)
     {
-        x -= Other.x;
-        y -= Other.y;
-        z -= Other.z;
+        x -= vec.x; y -= vec.y; z -= vec.z;
         return *this;
     }
 
-    /** Multiplies each component by a scalar. */
-    constexpr FVector3 operator*(float Scalar) const { return { x * Scalar, y * Scalar, z * Scalar }; }
+    constexpr FVector3 operator*(float scalar) const { return { x * scalar, y * scalar, z * scalar }; }
+    constexpr FVector3 operator/(float scalar) const { return { x / scalar, y / scalar, z / scalar }; }
 
-    /** Divides each component by a scalar. */
-    constexpr FVector3 operator/(float Scalar) const { return { x / Scalar, y / Scalar, z / Scalar }; }
-
-    /** Multiplies this vector by a scalar in place. */
-    FVector3& operator*=(float Scalar)
+    FVector3& operator*=(float scalar)
     {
-        x *= Scalar;
-        y *= Scalar;
-        z *= Scalar;
+        x *= scalar; y *= scalar; z *= scalar;
         return *this;
     }
 
-    /** Divides this vector by a scalar in place. */
-    FVector3& operator/=(float Scalar)
+    FVector3& operator/=(float scalar)
     {
-        x /= Scalar;
-        y /= Scalar;
-        z /= Scalar;
+        x /= scalar; y /= scalar; z /= scalar;
         return *this;
     }
 
-    /** Unary negation operator. Returns the inverse of the vector. */
     constexpr FVector3 operator-() const { return { -x, -y, -z }; }
 
-    ///@}
-
-    /** @name Comparison Operators */
-    ///@{
-
-    /** Checks if two vectors are approximately equal. */
-    bool operator==(const FVector3& Other) const
+    constexpr FVector3 operator*(const FVector3& vec) const { return { x * vec.x, y * vec.y, z * vec.z }; }
+    FVector3& operator*=(const FVector3& vec)
     {
-        const float Epsilon = 1e-6f;
-        return (std::fabs(x - Other.x) < Epsilon) &&
-               (std::fabs(y - Other.y) < Epsilon) &&
-               (std::fabs(z - Other.z) < Epsilon);
-    }
-
-    /** Checks if two vectors are not approximately equal. */
-    bool operator!=(const FVector3& Other) const { return !(*this == Other); }
-
-    ///@}
-
-    /** Component-wise multiplication with another vector */
-    constexpr FVector3 operator*(const FVector3& Other) const
-    {
-        return { x * Other.x, y * Other.y, z * Other.z };
-    }
-
-    /** Component-wise multiplication assignment */
-    FVector3& operator*=(const FVector3& Other)
-    {
-        x *= Other.x;
-        y *= Other.y;
-        z *= Other.z;
+        x *= vec.x; y *= vec.y; z *= vec.z;
         return *this;
     }
 
-    /** Component-wise division with another vector */
-    constexpr FVector3 operator/(const FVector3& Other) const
+    constexpr FVector3 operator/(const FVector3& vec) const { return { x / vec.x, y / vec.y, z / vec.z }; }
+    FVector3& operator/=(const FVector3& vec)
     {
-        return { x / Other.x, y / Other.y, z / Other.z };
-    }
-
-    /** Component-wise division assignment */
-    FVector3& operator/=(const FVector3& Other)
-    {
-        x /= Other.x;
-        y /= Other.y;
-        z /= Other.z;
+        x /= vec.x; y /= vec.y; z /= vec.z;
         return *this;
     }
 
-    /**
-     * @brief Allows scalar multiplication from the left-hand side.
-     * @param Scalar The scalar value.
-     * @param Vec The vector to scale.
-     * @return The scaled vector.
-     */
-    friend constexpr FVector3 operator*(float Scalar, const FVector3& Vec)
+    /** Comparison */
+    bool operator==(const FVector3& vec) const
     {
-        return { Vec.x * Scalar, Vec.y * Scalar, Vec.z * Scalar };
+        const float epsilon = 1e-6f;
+        return std::fabs(x - vec.x) < epsilon &&
+               std::fabs(y - vec.y) < epsilon &&
+               std::fabs(z - vec.z) < epsilon;
     }
 
-    /**
-     * @brief Converts the vector to a string (formatted as "x y z").
-     * @return The string representation of the vector.
-     */
+    bool operator!=(const FVector3& vec) const { return !(*this == vec); }
+
+    /** Left-hand scalar multiplication */
+    friend constexpr FVector3 operator*(float scalar, const FVector3& vec)
+    {
+        return { vec.x * scalar, vec.y * scalar, vec.z * scalar };
+    }
+
+    [[nodiscard]] FRotator FVector3::ToRotator() const { return {x, y, z};}
+
+    [[nodiscard]] FEuler ToEuler() const { return { x, y, z }; } // radians
+
+    /** String representation */
     [[nodiscard]] std::string ToString() const
     {
         std::ostringstream ss;

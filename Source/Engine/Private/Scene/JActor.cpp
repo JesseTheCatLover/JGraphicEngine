@@ -1,16 +1,16 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Scene/JActor.h"
-#include "Scene/Components/SceneComponents/JSceneComponent.h"
+#include "../../Public/Scene/Components/JSceneComponent.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 #include "glm/gtc/matrix_transform.hpp"
 
 #include "Rendering/JModel.h"
 
-#include "Scene/Components/SceneComponents/JModelComponent.h"
+#include "Scene/Components/Scene/JModelComponent.h"
 
-JActor::JActor()
+JActor::JActor() : m_VectorIndex(0)
 {
     // Ensure root component exists
     SetupRootComponent();
@@ -49,13 +49,13 @@ void JActor::BeginPlay()
         comp->BeginPlay();
 }
 
-void JActor::Tick(float DeltaTime)
+void JActor::Tick(float deltaTime)
 {
     // Tick all components
     for (auto& comp : m_ActorComponents)
-        comp->Tick(DeltaTime);
+        comp->Tick(deltaTime);
     for (auto& comp : m_SceneComponents)
-        comp->Tick(DeltaTime);
+        comp->Tick(deltaTime);
 }
 
 void JActor::EndPlay()
@@ -74,7 +74,7 @@ void JActor::Destroy()
     m_RootComponent.reset();
 }
 
-void JActor::Draw(JShader& Shader) const
+void JActor::Draw(JShader& shader) const
 {
     for (auto& comp : m_SceneComponents)
     {
@@ -82,38 +82,38 @@ void JActor::Draw(JShader& Shader) const
         if (comp->GetClassTypeName() == "JModelComponent")
         {
             if (auto* modelComp = dynamic_cast<JModelComponent*>(comp.get()))
-                modelComp->Draw(Shader);
+                modelComp->Draw(shader);
         }
     }
 }
 
-void JActor::Serialize(JsonWriter& Writer) const
+void JActor::Serialize(JsonWriter& writer) const
 {
-    Writer.BeginObject();
-    Writer.Write("name", m_Name);
+    writer.BeginObject();
+    writer.Write("name", m_Name);
 
     // Serialize components
-    Writer.BeginArray("components");
+    writer.BeginArray("components");
     for (auto& comp : m_ActorComponents)
     {
-        comp->Serialize(Writer);
+        comp->Serialize(writer);
     }
-    Writer.EndArray();
+    writer.EndArray();
 
     // Serialize scene components
-    Writer.BeginArray("scene_components");
+    writer.BeginArray("scene_components");
     for (auto& comp : m_SceneComponents)
     {
-        comp->Serialize(Writer);
+        comp->Serialize(writer);
     }
-    Writer.EndArray();
+    writer.EndArray();
 
-    Writer.EndObject();
+    writer.EndObject();
 }
 
-void JActor::Deserialize(const JsonReader& Reader)
+void JActor::Deserialize(const JsonReader& reader)
 {
-    m_Name = Reader.Read("name", "");
+    //m_Name = reader.Read("name", "");
 
     // TODO: Deserialize components and scene components via reflection/factory
 }

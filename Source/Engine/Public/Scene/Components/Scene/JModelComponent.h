@@ -1,7 +1,7 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-#include "Scene/Components/SceneComponents/JSceneComponent.h"
+#include "Scene/Components/JSceneComponent.h"
 #include <string>
 #include <memory>
 
@@ -27,7 +27,7 @@ class JModelResource;
  * modelComp->SetModel(ResourceManager.Load<JModelResource>("Models/Tree.fbx", "Models/Tree.fbx"));
  * @endcode
  */
-
+// TODO: Update the api doc for this class (code section)
 class JModelComponent : public JSceneComponent
 {
     DECLARE_JOBJECT(JModelComponent, JSceneComponent)
@@ -42,9 +42,9 @@ public:
 
     /**
      * @brief Set the model resource by path/key.
-     * @param InPath Path or key to the model resource.
+     * @param inPath Path or key to the model resource.
      */
-    void SetModel(const std::string& InPath);
+    void SetModel(const std::string& inPath);
 
     /**
      * @brief Get the model resource.
@@ -54,11 +54,11 @@ public:
 
     /**
      * @brief Draw the mesh using the provided shader.
-     * @param Shader Shader to use for rendering.
+     * @param shader Shader to use for rendering.
      */
-    void Draw(JShader& Shader) const;
+    void Draw(JShader& shader) const;
 
 protected:
-    void SerializeProperties(JsonWriter& Writer) const override;
-    void DeserializeProperties(const JsonReader& Reader) override;
+    void SerializeProperties(JsonWriter& writer) const override;
+    void DeserializeProperties(const JsonReader& reader) override;
 };

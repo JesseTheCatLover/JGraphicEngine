@@ -22,7 +22,7 @@ public:
     JsonReader() = default;
 
     /** Construct from existing json node (for nested objects) */
-    JsonReader(const nlohmann::json& node) : m_Data(node) {}
+    explicit JsonReader(const nlohmann::json& node) : m_Data(node) {}
 
     /** Load JSON from file */
     bool LoadFromFile(const std::string& filePath);
@@ -52,6 +52,9 @@ public:
 
     /** Read an FVector4 from JSON */
     [[nodiscard]] FVector4 ReadVector4(const std::string& key, const FVector4& defaultVal) const;
+
+    /** Read an FRotator from JSON */
+    [[nodiscard]] FRotator ReadRotator(const std::string& key, const FRotator& defaultVal) const
 
     /** Read an FQuat from JSON */
     [[nodiscard]] FQuat ReadQuat(const std::string& key, const FQuat& defaultVal = FQuat(0, 0, 0, 1)) const;

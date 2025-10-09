@@ -5,7 +5,9 @@
 #include "glm/gtc/quaternion.hpp"
 #include <sstream>
 #include <string>
+
 #include "FMath.h"
+#include "FRotator.h"
 
 struct FQuat;
 /**
@@ -13,7 +15,7 @@ struct FQuat;
  * @brief Represents rotation in Euler angles (pitch, yaw, roll), in radians.
  *
  * Provides conversions to and from FQuat and FVector3.
- * Internally uses radians for consistency with glm.
+ * Internally uses radians for consistency with internal calculations.
  *
  * Pitch (X) = rotation around X-axis
  * Yaw   (Y) = rotation around Y-axis
@@ -29,69 +31,40 @@ struct FEuler
     FEuler() = default;
 
     /** Constructs from individual components. */
-    constexpr FEuler(float InPitch, float InYaw, float InRoll)
-        : Pitch(InPitch), Yaw(InYaw), Roll(InRoll) {}
+    constexpr FEuler(float pitch, float yaw, float roll)
+        : Pitch(pitch), Yaw(yaw), Roll(roll) {}
 
     /** Constructs from a vector (X=Pitch, Y=Yaw, Z=Roll). */
-    explicit FEuler(const FVector3& Vec)
-        : Pitch(Vec.x), Yaw(Vec.y), Roll(Vec.z) {}
+    explicit FEuler(const FVector3& vector)
+        : Pitch(vector.x), Yaw(vector.y), Roll(vector.z) {}
 
-    /**
-    * @brief Gets Pitch in degrees.
-     */
-    [[nodiscard]] float GetPitchDegrees() const { return FMath::Degrees(Pitch); }
-
-    /**
-     * @brief Gets Yaw in degrees.
-     */
-    [[nodiscard]] float GetYawDegrees() const { return FMath::Degrees(Yaw); }
-
-    /**
-     * @brief Gets Roll in degrees.
-     */
-    [[nodiscard]] float GetRollDegrees() const { return FMath::Degrees(Roll); }
-
-    /**
-     * @brief Sets Pitch from degrees.
-     */
-    void SetPitchDegrees(float Degrees) { Pitch = FMath::Radians(Degrees); }
-
-    /**
-     * @brief Sets Yaw from degrees.
-     */
-    void SetYawDegrees(float Degrees) { Yaw = FMath::Radians(Degrees); }
-
-    /**
-     * @brief Sets Roll from degrees.
-     */
-    void SetRollDegrees(float Degrees) { Roll = FMath::Radians(Degrees); }
-
-    /**
-     * @brief Returns the Euler angles as a vector in degrees.
-     */
-    [[nodiscard]] FVector3 ToDegreesVector() const
-    {
-        return {GetPitchDegrees(), GetYawDegrees(), GetRollDegrees()};
-    }
-
-    /**
-     * @brief Creates FEuler from a vector in degrees.
-     */
-    static FEuler FromDegreesVector(const FVector3& DegreesVec)
-    {
-        return {FMath::Radians(DegreesVec.x), FMath::Radians(DegreesVec.y), FMath::Radians(DegreesVec.z)};
-    }
-
-    /** Converts to a FVector3 (X=Pitch, Y=Yaw, Z=Roll). */
+    /** Converts to a FVector3 in radians (X=Pitch, Y=Yaw, Z=Roll). */
     [[nodiscard]] FVector3 ToVector3() const
     {
         return {Pitch, Yaw, Roll};
     }
 
-    /** Creates FEuler from a vector (X=Pitch, Y=Yaw, Z=Roll). */
-    static FEuler FromVector3(const FVector3& Vec)
+    /** Creates FEuler from a vector in radians (X=Pitch, Y=Yaw, Z=Roll). */
+    static FEuler MakeFromVector3(const FVector3& vector)
     {
-        return {Vec.x, Vec.y, Vec.z};
+        return {vector.x, vector.y, vector.z};
+    }
+
+    /** Converts to FRotator in degrees. */
+    [[nodiscard]] FRotator ToRotator() const
+    {
+        return FRotator{
+            FMath::Degrees(Pitch),
+            FMath::Degrees(Yaw),
+            FMath::Degrees(Roll)
+        };
+    }
+
+    static FEuler MakeFromRotator(const FRotator& rotator)
+    {
+        return FEuler{ FMath::Radians(rotator.Pitch),
+                       FMath::Radians(rotator.Yaw),
+                       FMath::Radians(rotator.Roll) };
     }
 
     /** Converts to quaternion. */
@@ -102,9 +75,9 @@ struct FEuler
     }
 
     /** Creates FEuler from a quaternion. */
-    static FEuler FromQuat(const FQuat& Quat)
+    static FEuler MakeFromQuat(const FQuat& quat)
     {
-        glm::vec3 euler = glm::eulerAngles(Quat.operator glm::quat());
+        glm::vec3 euler = glm::eulerAngles(quat.operator glm::quat());
         return {euler.x, euler.y, euler.z};
     }
 
@@ -113,18 +86,6 @@ struct FEuler
     {
         std::ostringstream ss;
         ss << "Euler(Pitch=" << Pitch << ", Yaw=" << Yaw << ", Roll=" << Roll << ")";
-        return ss.str();
-    }
-
-    /**
-     * @brief Returns a string representation of the Euler angles in degrees.
-    */
-    [[nodiscard]] std::string ToDegreesString() const
-    {
-        std::ostringstream ss;
-        ss << "Euler(Pitch=" << GetPitchDegrees()
-           << "°, Yaw=" << GetYawDegrees()
-           << "°, Roll=" << GetRollDegrees() << "°)";
         return ss.str();
     }
 };

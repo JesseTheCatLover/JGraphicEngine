@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 
+#include "FEuler.h"
 #include "FMath.h"
 #include "glm/gtx/quaternion.hpp"
 
@@ -35,28 +36,28 @@ public:
     FQuat() = default;
 
     /** Constructs quaternion from components. */
-    constexpr FQuat(float InX, float InY, float InZ, float InW) : Q(InW, InX, InY, InZ) {}
+    constexpr FQuat(float x, float y, float z, float w) : Q(w, x, y, z) {}
 
     /** Constructs quaternion from axis-angle rotation. Angle in radians. */
-    explicit FQuat(const FVector3& Axis, float Angle)
+    explicit FQuat(const FVector3& axis, float angle)
     {
-        glm::vec3 glmAxis(Axis.x, Axis.y, Axis.z);
-        Q = glm::angleAxis(Angle, glmAxis);
+        glm::vec3 glmAxis(axis.x, axis.y, axis.z);
+        Q = glm::angleAxis(angle, glmAxis);
     }
 
     /** Constructs from glm::quat directly. */
-    explicit FQuat(const glm::quat& InQuat) : Q(InQuat) {}
+    explicit FQuat(const glm::quat& quat) : Q(quat) {}
 
     /** Quaternion multiplication */
-    FQuat operator*(const FQuat& Other) const { return FQuat(Q * Other.Q); }
-    FQuat& operator*=(const FQuat& Other) { Q *= Other.Q; return *this; }
+    FQuat operator*(const FQuat& other) const { return FQuat(Q * other.Q); }
+    FQuat& operator*=(const FQuat& other) { Q *= other.Q; return *this; }
 
     /** Checks if two quaternions are equal */
-    bool operator==(const FQuat& Other) const
-    { return Q == Other.Q; }
+    bool operator==(const FQuat& other) const
+    { return Q == other.Q; }
 
     /** Not equal operator */
-    bool operator!=(const FQuat& Other) const { return !(*this == Other); }
+    bool operator!=(const FQuat& other) const { return !(*this == other); }
 
     /** Returns the conjugate of the quaternion */
     [[nodiscard]] FQuat Conjugate() const { return FQuat(glm::conjugate(Q)); }
@@ -68,9 +69,9 @@ public:
     [[nodiscard]] FQuat Normalized() const { return FQuat(glm::normalize(Q)); }
 
     /** Rotates a vector by this quaternion */
-    [[nodiscard]] FVector3 RotateVector(const FVector3& Vec) const
+    [[nodiscard]] FVector3 RotateVector(const FVector3& vector) const
     {
-        glm::vec3 rotated = Q * glm::vec3(Vec.x, Vec.y, Vec.z);
+        glm::vec3 rotated = Q * glm::vec3(vector.x, vector.y, vector.z);
         return {rotated.x, rotated.y, rotated.z};
     }
 
@@ -78,6 +79,16 @@ public:
     [[nodiscard]] FMatrix ToMatrix() const
     {
         return FMatrix(glm::toMat4(Q));
+    }
+
+    [[nodiscard]] FRotator ToRotator() const
+    {
+        return FEuler::MakeFromQuat(*this).ToRotator();
+    }
+
+    static FQuat MakeFromRotator(const FRotator& rotator)
+    {
+        return FEuler::MakeFromRotator(rotator).ToQuat();
     }
 
     /**
@@ -91,35 +102,16 @@ public:
     }
 
     /**
-     * @brief Converts this quaternion to Euler angles in degrees.
-     * @return Euler angles in degrees.
-     */
-    [[nodiscard]] FEuler ToEulerDegrees() const
-    {
-        FEuler eulerRad = ToEuler();
-        FEuler eulerDeg;
-        eulerDeg.SetPitchDegrees(FMath::Degrees(eulerRad.Pitch));
-        eulerDeg.SetYawDegrees(FMath::Degrees(eulerRad.Yaw));
-        eulerDeg.SetRollDegrees(FMath::Degrees(eulerRad.Roll));
-        return eulerDeg;
-    }
-
-    /**
      * @brief Sets this quaternion from Euler angles (radians).
      */
-    void FromEuler(const FEuler& Euler)
+    void MakeFromEuler(const FEuler& euler)
     {
-        Q = glm::quat(glm::vec3(Euler.Pitch, Euler.Yaw, Euler.Roll));
+        Q = glm::quat(glm::vec3(euler.Pitch, euler.Yaw, euler.Roll));
     }
 
-    /**
-     * @brief Sets this quaternion from Euler angles in degrees.
-     */
-    void FromEulerDegrees(const FEuler& EulerDeg)
+    FQuat MakeFromVector3(const FVector3& vector)
     {
-        FromEuler(FEuler(FMath::Radians(EulerDeg.GetPitchDegrees()),
-                         FMath::Radians(EulerDeg.GetYawDegrees()),
-                         FMath::Radians(EulerDeg.GetRollDegrees())));
+        return MakeFromEuler(vector);
     }
 
     /** Converts to glm::quat for internal use */
