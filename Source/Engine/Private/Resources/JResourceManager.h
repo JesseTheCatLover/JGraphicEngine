@@ -19,6 +19,16 @@
  */
 class JResourceManager
 {
+private:
+    JResourceManager() = default; // private constructor
+    ~JResourceManager() = default;
+
+    /// Resource pointer type (shared ownership)
+    using ResourcePtr = std::shared_ptr<JCoreObject>;
+
+    std::unordered_map<std::string, ResourcePtr> m_ResourcesByKey;
+    std::unordered_map<uint64_t, ResourcePtr> m_ResourcesByID;
+
 public:
     /// Singleton accessor
     static JResourceManager& Get()
@@ -32,10 +42,6 @@ public:
     JResourceManager& operator=(const JResourceManager&) = delete;
     JResourceManager(JResourceManager&&) = delete;
     JResourceManager& operator=(JResourceManager&&) = delete;
-
-
-    /// Resource pointer type (shared ownership)
-    using ResourcePtr = std::shared_ptr<JCoreObject>;
 
     /**
      * @brief Load a resource by key if it doesn't exist, otherwise return existing.
@@ -102,11 +108,4 @@ public:
      * @brief Unload all resources from memory.
      */
     void UnloadAll();
-
-private:
-    JResourceManager() = default; // private constructor
-    ~JResourceManager() = default;
-
-    std::unordered_map<std::string, ResourcePtr> m_ResourcesByKey;
-    std::unordered_map<uint64_t, ResourcePtr> m_ResourcesByID;
 };

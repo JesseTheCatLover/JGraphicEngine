@@ -22,7 +22,7 @@ public:
     JsonReader() = default;
 
     /** Construct from existing json node (for nested objects) */
-    JsonReader(const nlohmann::json& node) : m_Data(node) {}
+    explicit JsonReader(const nlohmann::json& node) : m_Data(node) {}
 
     /** Load JSON from file */
     bool LoadFromFile(const std::string& filePath);
@@ -35,23 +35,62 @@ public:
         return DefaultValue;
     }
 
+    template<typename T>
+    T ReadNested(const std::string &Key, const T &DefaultValue = T()) const
+    {
+        const nlohmann::json *current = &m_Data;
+        size_t start = 0;
+        while (start < Key.size())
+        {
+            size_t dot = Key.find('.', start);
+            std::string part = Key.substr(start, dot - start);
+
+            if (!current->contains(part))
+                return DefaultValue;
+
+            current = &(*current)[part];
+
+            if (dot == std::string::npos)
+                break;
+
+            start = dot + 1;
+        }
+
+        try
+        {
+            return current->get<T>();
+        } catch (...)
+        {
+            return DefaultValue;
+        }
+    }
+
+    /** Check if the JSON contains a key at the current level */
+    bool Has(const std::string &key) const
+    {
+        return m_Data.contains(key);
+    }
+
     /** @brief Read a glm::vec2 from JSON. */
-    [[nodiscard]] glm::vec2 ReadVec2(const std::string& key, const glm::vec2& defaultVal = glm::vec2(0)) const;
+    [[nodiscard]] glm::vec2 ReadVec2(const std::string &key, const glm::vec2 &defaultVal = glm::vec2(0)) const;
 
     /** @brief Read a glm::vec3 from JSON. */
-    [[nodiscard]] glm::vec3 ReadVec3(const std::string& key, const glm::vec3& defaultVal = glm::vec3(0)) const;
+    [[nodiscard]] glm::vec3 ReadVec3(const std::string &key, const glm::vec3 &defaultVal = glm::vec3(0)) const;
 
     /** @brief Read a glm::vec4 from JSON. */
-    [[nodiscard]] glm::vec4 ReadVec4(const std::string& key, const glm::vec4& defaultVal = glm::vec4(0)) const;
+    [[nodiscard]] glm::vec4 ReadVec4(const std::string &key, const glm::vec4 &defaultVal = glm::vec4(0)) const;
 
     /** Read an FVector2 from JSON */
-    [[nodiscard]] FVector2 ReadVector2(const std::string& key, const FVector2& defaultVal) const;
+    [[nodiscard]] FVector2 ReadVector2(const std::string &key, const FVector2 &defaultVal) const;
 
     /** Read an FVector3 from JSON */
-    [[nodiscard]] FVector3 ReadVector3(const std::string& key, const FVector3& defaultVal) const;
+    [[nodiscard]] FVector3 ReadVector3(const std::string &key, const FVector3 &defaultVal) const;
 
     /** Read an FVector4 from JSON */
     [[nodiscard]] FVector4 ReadVector4(const std::string& key, const FVector4& defaultVal) const;
+
+    /** Read an FRotator from JSON */
+    [[nodiscard]] FRotator ReadRotator(const std::string& key, const FRotator& defaultVal) const;
 
     /** Read an FQuat from JSON */
     [[nodiscard]] FQuat ReadQuat(const std::string& key, const FQuat& defaultVal = FQuat(0, 0, 0, 1)) const;

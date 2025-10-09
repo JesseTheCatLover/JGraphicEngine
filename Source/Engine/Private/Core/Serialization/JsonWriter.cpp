@@ -76,19 +76,24 @@ void JsonWriter::WriteVec4(const std::string& key, const glm::vec4& vec)
     (*m_Stack.top())[key] = { vec.x, vec.y, vec.z, vec.w };
 }
 
-void JsonWriter::WriteVector2(const std::string& key, const FVector2& vec)
+void JsonWriter::WriteVect2(const std::string& key, const FVector2& vec)
 {
     (*m_Stack.top())[key] = { vec.x, vec.y };
 }
 
-void JsonWriter::WriteVector3(const std::string& key, const FVector3& vec)
+void JsonWriter::WriteVect3(const std::string& key, const FVector3& vec)
 {
     (*m_Stack.top())[key] = { vec.x, vec.y, vec.z };
 }
 
-void JsonWriter::WriteVector4(const std::string& key, const FVector4& vec)
+void JsonWriter::WriteVect4(const std::string& key, const FVector4& vec)
 {
     (*m_Stack.top())[key] = { vec.x, vec.y, vec.z, vec.w };
+}
+
+void JsonWriter::WriteRotator(const std::string& key, const FRotator& rotator)
+{
+    (*m_Stack.top())[key] = { rotator.Pitch, rotator.Yaw, rotator.Roll };
 }
 
 void JsonWriter::WriteQuat(const std::string& key, const FQuat& quat)
@@ -100,9 +105,9 @@ void JsonWriter::WriteQuat(const std::string& key, const FQuat& quat)
 
 void JsonWriter::WriteTransform(const std::string& key, const FTransform& transform)
 {
-    const FVector3 pos = transform.position();
-    const FQuat rot = transform.rotation();
-    const FVector3 scale = transform.scale();
+    const FVector3 pos = transform.GetPosition();
+    const FQuat rot = transform.GetRotation();
+    const FVector3 scale = transform.GetScale();
 
     nlohmann::json transformObj;
     transformObj["position"] = { pos.x, pos.y, pos.z };

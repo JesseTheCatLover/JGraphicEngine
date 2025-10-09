@@ -3,7 +3,7 @@
 #pragma once
 #include "Core/JCoreObject.h"
 #include "Core/Serialization/JsonReader.h"
-#include "Scene/Components/SceneComponents/JSceneComponent.h"
+#include "Components/JSceneComponent.h"
 #include <memory>
 #include <vector>
 #include <string>
@@ -27,6 +27,7 @@ class JActor : public JCoreObject
 
 private:
     std::string m_Name; ///< Actor name
+    size_t m_VectorIndex; ///< internal index for O(1) removal from scene
     std::shared_ptr<JSceneComponent> m_RootComponent; ///< Root of the scene component hierarchy
     std::vector<std::shared_ptr<JSceneComponent>> m_SceneComponents; ///< Scene components attached to this actor
     std::vector<std::shared_ptr<JActorComponent>> m_ActorComponents; ///< Actor components attached to this actor
@@ -71,9 +72,9 @@ public:
     /**
      * @brief Called every frame while the actor is active.
      * Override to implement per-frame logic.
-     * @param DeltaTime Time since last frame in seconds.
+     * @param deltaTime Time since last frame in seconds.
      */
-    virtual void Tick(float DeltaTime);
+    virtual void Tick(float deltaTime);
 
     /**
      * @brief Called when the actor is being removed from the scene.
@@ -85,6 +86,29 @@ public:
      * @brief Completely destroys the actor and its components.
      */
     virtual void Destroy();
+
+    // -------------------- Actor API --------------------
+
+    [[nodiscard]] FVector3 GetActorPosition() const
+    {
+        return m_RootComponent ? m_RootComponent->GetWorldPosition() : FVector3(0);
+    }
+
+    void SetActorPosition(const FVector3& pos)
+    {
+        if (m_RootComponent) m_RootComponent->SetWorldPosition(pos);
+    }
+
+    [[nodiscard]] FRotator JActor::GetActorRotation() const
+    {
+        return m_RootComponent ? m_RootComponent->GetWorldRotationAsRotator() : FRotator{};
+    }
+
+
+    void SetActorRotation(const FRotator& rotator)
+    {
+        if (m_RootComponent) m_RootComponent->SetWorldRotation(rotator.ToQuat());
+    }
 
     // -------------------- Component API --------------------
 
@@ -206,25 +230,27 @@ public:
 
     // -------------------- Root & Transform --------------------
 
-    JSceneComponent* GetRootComponent() const { return m_RootComponent.get(); }
+    [[nodiscard]] JSceneComponent* GetRootComponent() const { return m_RootComponent.get(); }
     void SetRootComponent(std::shared_ptr<JSceneComponent> root) { m_RootComponent = std::move(root); }
 
     // -------------------- Rendering --------------------
 
     /**
      * @brief Render the actor's scene components.
-     * @param Shader Shader to use for drawing
+     * @param shader Shader to use for drawing
      */
-    virtual void Draw(JShader& Shader) const;
+    virtual void Draw(JShader& shader) const;
 
     // -------------------- Serialization --------------------
 
-    void Serialize(JsonWriter& Writer) const override;
-    void Deserialize(const JsonReader& Reader) override;
+    void Serialize(JsonWriter& writer) const override;
+    void Deserialize(const JsonReader& reader) override;
 
     // -------------------- Getter/Setter --------------------
 
-    std::string GetName() const { return m_Name; }
+    [[nodiscard]] std::string GetName() const { return m_Name; }
     void SetName(const std::string& name) { m_Name = name; }
 
+    [[nodiscard]] size_t GetVectorIndex() const { return m_VectorIndex; }
+    void SetVectorIndex(size_t index) { m_VectorIndex = index; }
 };

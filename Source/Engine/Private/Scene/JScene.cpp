@@ -1,13 +1,93 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Scene/JScene.h"
+
+#include "Core/Serialization/JsonWriter.h"
+
 #include "Scene/JActor.h"
 
-using json = nlohmann::json;
-
 JScene::JScene(const std::string &name):
-m_Name(name), m_NextActorID(1)
+m_Name(name)
 {
+}
+
+void JScene::Initialize()
+{
+    // Scene setup logic before BeginPlay
+}
+
+void JScene::BeginPlay()
+{
+    for (auto& actor : m_Actors)
+        actor->BeginPlay();
+}
+
+void JScene::Tick(float deltaTime)
+{
+    for (auto& actor : m_Actors)
+        actor->Tick(deltaTime);
+}
+
+void JScene::EndPlay()
+{
+    for (auto& actor : m_Actors)
+        actor->EndPlay();
+}
+
+void JScene::Destroy()
+{
+    for (auto& actor : m_Actors)
+        actor->Destroy();
+}
+
+void JScene::Serialize(class JsonWriter &writer) const
+{
+    writer.BeginObject(); // root object
+
+    writer.Write("name", m_Name);
+    writer.Write("actor_count", static_cast<int>(m_Actors.size()));
+
+    writer.BeginArray("actors");
+    for (const auto& actor : m_Actors)
+    {
+        writer.BeginObject();
+        writer.Write("id", actor->GetID());
+        writer.Write("vector_index", actor->GetVectorIndex());
+        writer.Write("name", actor->GetName());
+        writer.WriteVect3("position", actor->GetActorPosition());
+        writer.WriteRotator("rotation", actor->GetActorRotation());
+        writer.EndObject();
+    }
+    writer.EndArray();
+
+    writer.EndObject();
+}
+
+void JScene::Deserialize(const class JsonReader &reader)
+{
+    m_Name = reader.Read("name", std::string("Unnamed"));
+
+    m_Actors.clear();
+    m_ActorsByID.clear();
+
+    auto actorsArray = reader.GetArray("actors");
+    for (const auto& actorReader : actorsArray)
+    {
+        auto actor = std::make_unique<JActor>();
+        actor->SetID(actorReader.Read("id", 0));
+        actor->SetVectorIndex(actorReader.Read("vector_index", 0));
+        actor->SetName(actorReader.Read("name", std::string("Actor")));
+
+        // Setup position & rotation from root component
+        FVector3 pos = actorReader.ReadVector3("position", FVector3{});
+        FRotator rot = actorReader.ReadRotator( "rotation", FRotator{});
+
+        actor->SetActorPosition(pos);
+        actor->SetActorRotation(rot);
+
+        // Add actor to the scene and ID map
+        AddActorToList(std::move(actor));
+    }
 }
 
 void JScene::SetName(const std::string &name)
@@ -16,13 +96,11 @@ void JScene::SetName(const std::string &name)
     m_bIsDirty = true; // mark cache stale
 }
 
-void JScene::UpdateActors(float deltaTime)
+void JScene::AddActorToList(std::unique_ptr<JActor> actor)
 {
-    for (auto& actor : m_Actors)
-    {
-        //if (actor)
-            //actor->Update(deltaTime); TODO: Implement Update for each JActor
-    }
+    actor->SetVectorIndex(m_Actors.size()); // track index
+    m_ActorsByID[actor->GetID()] = actor.get();
+    m_Actors.push_back(std::move(actor));
 }
 
 JActor* JScene::FindActorByID(unsigned int id)
@@ -34,7 +112,7 @@ JActor* JScene::FindActorByID(unsigned int id)
 bool JScene::RemoveActor(JActor *actorPtr)
 {
     if(!actorPtr) return false;
-    return RemoveActor(actorPtr->ID);
+    return RemoveActor(actorPtr->GetID());
 }
 
 bool JScene::RemoveActor(unsigned int id)
@@ -44,89 +122,17 @@ bool JScene::RemoveActor(unsigned int id)
         return false;
 
     JActor* actorPtr = it->second;
-    size_t idx = actorPtr->m_VectorIndex;
+    size_t idx = actorPtr->GetVectorIndex();
 
     // Swap with last element and pop back
     if(idx != m_Actors.size() - 1)
     {
         std::swap(m_Actors[idx], m_Actors.back());
-        m_Actors[idx]->m_VectorIndex = idx; // update swapped actor index
+        m_Actors[idx]->SetVectorIndex(idx); // update swapped actor index
     }
     m_Actors.pop_back();
     m_ActorsByID.erase(it);
 
     m_bIsDirty = true; // mark cache stale
     return true;
-}
-
-nlohmann::json JScene::Serialize() const
-{
-    if (m_bIsDirty)
-    {
-        json j;
-        j["name"] = m_Name;
-        j["next_actor_id"] = m_NextActorID;
-        j["actor_count"] = m_Actors.size();
-        j["actors"] = json::array();
-
-        for (const auto& actor : m_Actors)
-        {
-            json actorData;
-            actorData["id"] = actor->ID;
-            actorData["vector_index"] = actor->m_VectorIndex;
-            actorData["name"] = actor->Name;
-            actorData["position"] = {
-                {"x", actor->Position.x},
-                {"y", actor->Position.y},
-                {"z", actor->Position.z},
-            };
-            actorData["rotation"] = {
-                {"x", actor->Rotation.x},
-                {"y", actor->Rotation.y},
-                {"z", actor->Rotation.z},
-            };
-
-            j["actors"].push_back(actorData);
-        }
-
-        m_CachedJson = std::move(j);
-        m_bIsDirty = false;
-    }
-
-    return m_CachedJson;
-}
-
-void JScene::Deserialize(const nlohmann::json &data)
-{
-    m_Name = data.value("name", "Unnamed");
-    m_NextActorID = data.value("next_actor_id", 1);
-
-    m_Actors.clear();
-    m_ActorsByID.clear();
-
-    if (data.contains("actors")) // Loading it
-    {
-        for (const auto& actorData : data["actors"])
-        {
-            // TODO: For now: just spawn generic JActor
-            auto actor = std::make_unique<JActor>();
-            actor->ID = actorData.value("id", m_NextActorID);
-            actor->m_VectorIndex = actorData.value("vector_index", 0);
-            actor->Position.x = actorData["position"].value("x", 0.0f);
-            actor->Position.y = actorData["position"].value("y", 0.0f);
-            actor->Position.z = actorData["position"].value("z", 0.0f);
-            actor->Rotation.x = actorData["rotation"].value("x", 0.0f);
-            actor->Rotation.y = actorData["rotation"].value("y", 0.0f);
-            actor->Rotation.z = actorData["rotation"].value("z", 0.0f);
-
-            AddActorToList(std::move(actor));
-        }
-    }
-}
-
-void JScene::AddActorToList(std::unique_ptr<JActor> actor)
-{
-    actor->m_VectorIndex = m_Actors.size(); // track index
-    m_ActorsByID[actor->ID] = actor.get();
-    m_Actors.push_back(std::move(actor));
 }

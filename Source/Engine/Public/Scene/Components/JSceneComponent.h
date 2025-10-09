@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Scene/Components/JTransformComponent.h"
+#include "Actor/JTransformComponent.h"
 #include <vector>
 #include "glm/matrix.hpp"
 
@@ -70,28 +70,68 @@ public:
      * @brief Compute the world position of this component.
      * @return Position vector in world space.
      */
-    [[nodiscard]] FVector3 GetWorldPosition() const;
-
-    /**
-     * @brief Compute the world rotation of this component as FEuler (radians internally).
-     * @return World rotation.
-     */
-    [[nodiscard]] FEuler GetWorldEulerRotation() const;
+    [[nodiscard]] FVector3 GetWorldPosition() const { return GetWorldTransform().GetPosition(); }
 
     /**
     * @brief Compute the world rotation of this component as quaternion.
     * @return World rotation quaternion.
     */
-    [[nodiscard]] FQuat GetWorldQuatRotation() const;
+    [[nodiscard]] FQuat GetWorldRotationAsQuat() const { return GetWorldTransform().GetRotation(); }
+
+    /**
+    * @brief Compute the world rotation of this component as FRotator.
+    * @return World rotation in euler degrees.
+    */
+    [[nodiscard]] FRotator GetWorldRotationAsRotator() const { return GetWorldTransform().GetRotationAsRotator(); }
+
+    /**
+     * @brief Compute the world rotation of this component as FEuler (radians internally).
+     * @return World rotation.
+     */
+    [[nodiscard]] FEuler GetWorldRotationAsEuler() const { return GetWorldTransform().GetRotation().ToEuler(); }
+
+    /**
+ * @brief Set world position, adjusting local transform accordingly.
+ */
+    void SetWorldPosition(const FVector3& worldPosition);
+
+    /**
+     * @brief Set world rotation (as quaternion), adjusting local transform accordingly.
+     */
+    void SetWorldRotation(const FQuat& worldRotation);
+
+    /**
+     * @brief Set world rotation (using FRotator), adjusting local transform accordingly.
+     */
+    void SetWorldRotation(const FRotator& worldRotation);
+
+    /**
+     * @brief Set world scale, adjusting local transform accordingly.
+     */
+    void SetWorldScale(const FVector3& worldScale);
+
+    /**
+     * @brief Set full world transform, adjusting local transform accordingly.
+     */
+    void SetWorldTransform(const FTransform& worldTransform);
 
 protected:
     /** @brief Called when the component is attached to a parent actor. */
     void OnAttachment() override;
 
+    /**
+     * @brief Called whenever the local transform changes (position, rotation, scale).
+     * Propagates a world-dirty state through the hierarchy.
+     */
+    void OnLocalTransformChanged() override
+    {
+        MarkWorldDirty();
+    }
+
     /** @brief Serialize component-specific properties, including transform and hierarchy. */
-    void SerializeProperties(JsonWriter& Writer) const override;
+    void SerializeProperties(JsonWriter& writer) const override;
 
     /** @brief Deserialize component-specific properties, including transform and hierarchy. */
-    void DeserializeProperties(const JsonReader& Reader) override;
+    void DeserializeProperties(const JsonReader& reader) override;
 
 };

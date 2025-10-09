@@ -11,23 +11,23 @@ void JActorComponent::OnAttachment()
 {
 }
 
-void JActorComponent::Serialize(JsonWriter &Writer) const
+void JActorComponent::Serialize(JsonWriter &writer) const
 {
-    Writer.BeginObject();
-    Writer.Write("type", GetClassTypeName());
-    Writer.Write("id", GetID());
+    writer.BeginObject();
+    writer.Write("type", GetClassTypeName());
+    writer.Write("id", GetID());
 
-    SerializeProperties(Writer);
+    SerializeProperties(writer);
 
-    Writer.EndObject();
+    writer.EndObject();
 }
 
-void JActorComponent::Deserialize(const JsonReader &Reader)
+void JActorComponent::Deserialize(const JsonReader &reader)
 {
     // ID and type are handled by engine-level reflection/factory.
-    DeserializeProperties(Reader);
+    DeserializeProperties(reader);
 }
 
-void JActorComponent::Tick(float DeltaTime)
+void JActorComponent::Tick(float deltaTime)
 {
 }

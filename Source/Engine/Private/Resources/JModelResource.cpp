@@ -5,33 +5,33 @@
 #include "Core/Serialization/JsonReader.h"
 #include <iostream>
 
-JModelResource::JModelResource(const std::string& InPath)
-    : Path(InPath)
+JModelResource::JModelResource(const std::string& inPath)
+    : m_Path(inPath)
 {
-    LoadModelFromFile(Path);
+    LoadModelFromFile(m_Path);
 }
 
-void JModelResource::LoadModelFromFile(const std::string& InPath)
+void JModelResource::LoadModelFromFile(const std::string& inPath)
 {
-    Model = std::make_shared<JModel>(InPath);
+    m_Model = std::make_shared<JModel>(inPath);
 
-    if (!Model)
+    if (!m_Model)
     {
-        std::cerr << "[JModelResource]: Failed to load model: " << InPath << std::endl;
+        std::cerr << "[JModelResource]: Failed to load model: " << inPath << std::endl;
     }
 }
 
-void JModelResource::Serialize(JsonWriter& Writer) const
+void JModelResource::Serialize(JsonWriter& writer) const
 {
     // Only store metadata for now
-    Writer.Write("Type", GetClassTypeName());
-    Writer.Write("ID", GetID());
-    Writer.Write("Path", Path);
+    writer.Write("Type", GetClassTypeName());
+    writer.Write("ID", GetID());
+    writer.Write("Path", m_Path);
 }
 
-void JModelResource::Deserialize(const JsonReader& Reader)
+void JModelResource::Deserialize(const JsonReader& reader)
 {
-    Path = Reader.Read<std::string>("Path", "");
-    if (!Path.empty())
-        LoadModelFromFile(Path);
+    m_Path = reader.Read<std::string>("Path", "");
+    if (!m_Path.empty())
+        LoadModelFromFile(m_Path);
 }

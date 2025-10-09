@@ -6,8 +6,10 @@
 #include <memory>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
+#include "JActor.h"
 
-class JActor;
+#include "Core/JCoreObject.h"
+
 
 /**
  * @class JScene
@@ -22,53 +24,61 @@ class JActor;
  *
  * @note This class is read-only. To modify a scene, use SceneManager.h exclusively.
  */
-class JScene
+class JScene : public JCoreObject
 {
+    DECLARE_JOBJECT(JScene)
+
     friend class SceneManager;
 
 private:
     std::string m_Name;  ///< Name of the scene (e.g. "Lake", "Level1").
     std::vector<std::unique_ptr<JActor>> m_Actors; ///< Storage of all actors in the scene.
-    unsigned int m_NextActorID; ///< Auto-incremented ID counter for uniquely identifying actors.
-    std::unordered_map<unsigned int, JActor*> m_ActorsByID; ///< Fast lookup map from ID → actor.
+    std::unordered_map<uint64_t, JActor*> m_ActorsByID; ///< Fast lookup map from ID → actor.
 
     mutable nlohmann::json m_CachedJson; ///< Cached serialization of the scene.
     mutable bool m_bIsDirty = true; ///< track if cache needs rebuilding
 
     /**
-    * @brief Serializes the scene into a JSON object.
-    *
-    * Converts the entire scene, including all actors and their properties,
-    * into a `nlohmann::json` object suitable for saving to disk or transmitting.
-    * This includes the scene name, next actor ID, actor count, and all actor details.
-    *
-    * @return A JSON object representing the scene.
-    */
-    nlohmann::json Serialize() const; // TODO: Define a reboost serialization system later
+     * @brief Construct a new JScene with the given name.
+     * @param name The name of the scene.
+     */
+    explicit JScene(const std::string& name);
 
     /**
-    * @brief Deserializes a JSON object into the scene.
-    *
-    * Reconstructs the scene and all its actors from the given JSON data.
-     * Existing actors in the scene will be cleared, and actor lookup tables
-    * will be rebuilt. Actor properties such as ID, name, position, and rotation
-    * will be restored from the JSON.
-    *
-    * @param data JSON object containing serialized scene information.
-    */
-    void Deserialize(const nlohmann::json &data);
+     * @brief Called when the scene is first about to load.
+     * Override for setup logic that happens before BeginPlay().
+     */
+    virtual void Initialize();
+
+    /**
+     * @brief Called when the scene begins.
+     * Override to implement runtime behavior that happens when the scene begins.
+     */
+    virtual void BeginPlay();
+
+    /**
+     * @brief Called every frame while the actor is active.
+     * Override to implement per-frame logic.
+     * @param deltaTime Time since last frame in seconds.
+     */
+    virtual void Tick(float deltaTime);
+
+    /**
+     * @brief Called when the scene is being removed from the runtime memory.
+     * Override for cleanup or finalization logic.
+     */
+    virtual void EndPlay();
+
+    /**
+     * @brief Completely destroys the scene and its actors.
+     */
+    virtual void Destroy();
 
     /**
      * @brief Internal helper that registers an actor into the scene’s storage.
      * @param actor The actor instance to add (ownership is transferred).
      */
     void AddActorToList(std::unique_ptr<JActor> actor);
-
-    /**
-     * @brief Construct a new JScene with the given name.
-     * @param name The name of the scene.
-     */
-    JScene(const std::string& name);
 
     /** @brief Rename the scene. */
     void SetName(const std::string& name);
@@ -89,11 +99,10 @@ private:
     {
         static_assert(std::is_base_of<JActor, T>::value, "T must derive from JActor");
 
-        // Create actor of type T with forwarded constructor arguments
+        // Construct actor — ID is automatically assigned in JCoreObject
         auto actor = std::make_unique<T>(std::forward<Args>(args)...);
-        actor->id = m_NextActorID++; // assign unique ID
 
-        T *ptr = actor.get();
+        T* ptr = actor.get();
         AddActorToList(std::move(actor));
         return ptr;
     }
@@ -118,12 +127,6 @@ public:
     inline const std::string& GetName() const { return m_Name;}
 
     /**
-     * @brief Updates all actors in the scene.
-     * @param deltaTime The time (in seconds) since the last frame.
-     */
-    void UpdateActors(float deltaTime);
-
-    /**
      * @brief Finds an actor by its unique ID.
      * @param id The unique ID of the actor.
      * @return Pointer to the actor, or nullptr if not found.
@@ -140,11 +143,11 @@ public:
     T* FindActorByID(unsigned int id)
     {
         static_assert(std::is_base_of<JActor, T>::value, "T must derive from JActor");
-
         auto it = m_ActorsByID.find(id);
         if (it == m_ActorsByID.end()) return nullptr;
 
-        return static_cast<T *>(it->second); // assume you know the type
+        JActor* actor = it->second;
+        return (actor->IsA<T>()) ? static_cast<T*>(actor) : nullptr;
     }
 
     /**
@@ -159,8 +162,8 @@ public:
 
         for (auto &actor: m_Actors)
         {
-            if (T *casted = dynamic_cast<T *>(actor.get()))
-                return casted; // return first match
+            if (actor->IsA<T>())
+                return static_cast<T*>(actor.get()); // return first match
         }
         return nullptr; // no match found
     }
@@ -175,12 +178,50 @@ public:
     {
         static_assert(std::is_base_of<JActor, T>::value, "T must derive from JActor");
 
-        std::vector<T *> results;
-        for (auto &actor: m_Actors)
+        std::vector<T*> results;
+        for (auto& actor : m_Actors)
         {
-            if (T *casted = dynamic_cast<T *>(actor.get()))
-                results.push_back(casted);
+            if (actor->IsA<T>())
+                results.push_back(static_cast<T*>(actor.get()));
         }
         return results;
     }
+
+    /**
+     * @brief Serializes the scene and all contained actors to JSON.
+     *
+     * This method writes the scene's name, actor list, and any scene-level metadata
+     * into the provided JsonWriter. Each actor’s own Serialize() method is called
+     * recursively, ensuring full hierarchical serialization.
+     *
+     * The output JSON typically includes:
+     *  - Scene name
+     *  - List of actors (with class type, ID, and component data)
+     *  - Optional scene metadata
+     *
+     * @param writer Reference to the JsonWriter used for structured output.
+     * @note This function does not write to disk directly. The SceneManager or Resource system handles file I/O.
+     */
+    void Serialize(class JsonWriter& writer) const override;
+
+    /**
+     * @brief Deserializes the scene and reconstructs all actors from JSON.
+     *
+     * This method reads scene data produced by Serialize(), recreating actors
+     * and restoring their properties, IDs, and components. Any existing actors
+     * in the scene are cleared before loading new data.
+     *
+     * Expected JSON structure:
+     *  {
+     *      "Name": "ExampleScene",
+     *      "Actors": [
+     *          { "Type": "JActor", "ID": 1, "Components": [...] },
+     *          ...
+     *      ]
+     *  }
+     *
+     * @param reader Reference to the JsonReader providing parsed scene data.
+     * @note Called automatically by SceneManager during scene loading.
+     */
+    void Deserialize(const class JsonReader& reader) override;
 };

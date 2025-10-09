@@ -33,20 +33,20 @@ public:
      * @brief Serialize this component into JSON.
      * Calls SerializeProperties() to allow subclasses to write their own fields.
      */
-    void Serialize(JsonWriter& Writer) const override;
+    void Serialize(JsonWriter& writer) const override;
 
     /**
      * @brief Deserialize this component from JSON.
      * Calls DeserializeProperties() to allow subclasses to read their own fields.
      */
-    void Deserialize(const JsonReader& Reader) override;
+    void Deserialize(const JsonReader& reader) override;
 
     /**
      * @brief Optional per-frame update for the component.
      * Override to add runtime logic.
-     * @param DeltaTime Time since last tick in seconds.
+     * @param deltaTime Time since last tick in seconds.
      */
-    virtual void Tick(float DeltaTime);
+    virtual void Tick(float deltaTime);
 
     /** @brief Get the owning actor. */
     JActor* GetOwnerActor() const { return m_OwnerActor; }
@@ -55,11 +55,11 @@ public:
     std::string GetName() const { return m_Name; }
 
     /** @brief Set the name of the component */
-    void SetName(const std::string& InName) { m_Name = InName; }
+    void SetName(const std::string& inName) { m_Name = inName; }
 
 protected:
     /** @brief Set the owning actor for this component. */
-    void SetOwnerActor (JActor* InActor) { m_OwnerActor = InActor; }
+    void SetOwnerActor (JActor* inActor) { m_OwnerActor = inActor; }
 
     /** @brief Called when the component is attached to a parent actor. */
     virtual void OnAttachment();
@@ -89,11 +89,11 @@ protected:
      * @brief Serialize subclass-specific properties into JSON.
      * Called by Serialize().
      */
-    virtual void SerializeProperties(JsonWriter& Writer) const = 0;
+    virtual void SerializeProperties(JsonWriter& writer) const = 0;
 
     /**
      * @brief Deserialize subclass-specific properties from JSON.
      * Called by Deserialize().
      */
-    virtual void DeserializeProperties(const JsonReader& Reader) = 0;
+    virtual void DeserializeProperties(const JsonReader& reader) = 0;
 };

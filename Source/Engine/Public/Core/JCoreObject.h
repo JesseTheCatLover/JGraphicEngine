@@ -2,6 +2,7 @@
 
 #pragma once
 #include <cstdint>
+#include <cstring>
 
 // TODO: instead of an expensive RTTI we do this for now
 // Helper macros to pick the first argument if given, otherwise default
@@ -28,8 +29,16 @@ public:
     // Type info
     virtual const char* GetClassTypeName() const = 0;
 
+    template<typename T>
+    [[nodiscard]] bool IsA() const
+    {
+        return std::strcmp(GetClassTypeName(), T::StaticTypeName()) == 0;
+    }
+
     // Every core object has a unique ID
     uint64_t GetID() const { return m_ID; }
+
+    void SetID(const uint64_t id) { m_ID = id; }
 
     // Serialization hooks
     virtual void Serialize(class JsonWriter& writer) const = 0;
@@ -37,9 +46,9 @@ public:
 
 protected:
     JCoreObject()
-        : m_ID(++s_NextID) {} // assign unique ID at construction
+        : m_ID(++m_NextID) {} // assign unique ID at construction
 
 private:
     uint64_t m_ID; // engine-unique object ID
-    static uint64_t s_NextID; // global counter
+    static uint64_t m_NextID; // global counter
 };

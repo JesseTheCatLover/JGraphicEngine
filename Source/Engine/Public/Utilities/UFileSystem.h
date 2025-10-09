@@ -103,4 +103,50 @@ public:
      * @return True if successful, false otherwise.
      */
     static bool DeleteDirectory(const std::string& path, bool bRecursive = false);
+
+    // ----------------- Info & Listing -----------------
+
+    /**
+     * @brief Check if a file exists.
+     *
+     * @param path Path to the file (relative or absolute).
+     * @return True if file exists, false otherwise.
+     */
+    static bool FileExists(const std::string& path);
+
+    /**
+     * @brief Check if a directory exists.
+     *
+     * @param path Path to the directory (relative or absolute).
+     * @return True if directory exists, false otherwise.
+     */
+    static bool DirectoryExists(const std::string& path);
+
+    /**
+     * @brief List all files in a directory, optionally filtered by extension.
+     *
+     * @param directory Directory to search in.
+     * @param extension Optional file extension filter (without dot).
+     * @param bRecursive If true, list files recursively.
+     * @param bCaseInsensitive If true, match extension case-insensitively.
+     * @return Vector of absolute file paths.
+     */
+    static std::vector<std::string> ListFiles(
+        const std::string& directory,
+        const std::string& extension = "",
+        bool bRecursive = false,
+        bool bCaseInsensitive = false
+    );
+
+    /**
+     * @brief List all directories within a directory.
+     *
+     * @param directory Directory to search in.
+     * @param bRecursive If true, list recursively.
+     * @return Vector of absolute directory paths.
+     */
+    static std::vector<std::string> ListDirectories(
+        const std::string& directory,
+        bool bRecursive = false
+    );
 };

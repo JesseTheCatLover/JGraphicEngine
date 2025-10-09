@@ -51,7 +51,7 @@ public:
     SceneManager() = default;
 
     /** @brief Returns a pointer to the currently active scene. */
-    JScene* GetActiveScene() const { return m_ActiveScene.get(); }
+    [[nodiscard]] JScene* GetActiveScene() const { return m_ActiveScene.get(); }
 
     // -------------------- Actor Runtime API --------------------
 

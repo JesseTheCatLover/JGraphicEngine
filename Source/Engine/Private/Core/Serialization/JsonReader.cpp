@@ -72,6 +72,18 @@ FVector4 JsonReader::ReadVector4(const std::string& key, const FVector4& default
     );
 }
 
+FRotator JsonReader::ReadRotator(const std::string& key, const FRotator& defaultVal) const
+{
+    if (!m_Data.contains(key) || !m_Data[key].is_array() || m_Data[key].size() < 3)
+        return defaultVal;
+
+    return FRotator(
+        m_Data[key][0].get<float>(),
+        m_Data[key][1].get<float>(),
+        m_Data[key][2].get<float>()
+    );
+}
+
 FQuat JsonReader::ReadQuat(const std::string& key, const FQuat& defaultVal) const
 {
     if (!m_Data.contains(key) || !m_Data[key].is_array() || m_Data[key].size() < 4)
@@ -93,9 +105,9 @@ FTransform JsonReader::ReadTransform(const std::string& key, const FTransform& d
     const auto& obj = m_Data[key];
 
     FTransform result;
-    result.position() = ReadVector3(obj.contains("position") ? "position" : "", defaultVal.position());
-    result.rotation() = ReadQuat(obj.contains("rotation") ? "rotation" : "", defaultVal.rotation());
-    result.scale() = ReadVector3(obj.contains("scale") ? "scale" : "", defaultVal.scale());
+    result.GetPosition() = ReadVector3(obj.contains("position") ? "position" : "", defaultVal.GetPosition());
+    result.GetRotation() = ReadQuat(obj.contains("rotation") ? "rotation" : "", defaultVal.GetRotation());
+    result.GetScale() = ReadVector3(obj.contains("scale") ? "scale" : "", defaultVal.GetScale());
 
     return result;
 }

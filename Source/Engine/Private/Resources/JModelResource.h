@@ -20,34 +20,34 @@ class JModelResource : public JCoreObject
 {
     DECLARE_JOBJECT(JModelResource)
 
+private:
+    std::string m_Path;                  ///< Original file path to the model asset.
+    std::shared_ptr<JModel> m_Model;     ///< The actual rendering model.
+
+    void LoadModelFromFile(const std::string& inPath);
+
 public:
     /**
      * @brief Construct a new JModelResource.
-     * @param Path File path to the model asset.
+     * @param inPath File path to the model asset.
      */
-    explicit JModelResource(const std::string& InPath);
+    explicit JModelResource(const std::string& inPath);
 
     /**
      * @brief Get the wrapped JModel object.
      * @return Shared pointer to JModel.
      */
-    std::shared_ptr<JModel> GetModel() const { return Model; }
+    std::shared_ptr<JModel> GetModel() const { return m_Model; }
 
     /**
      * @brief Serialize resource metadata (not full model data).
      * Only stores path and ID for scene references.
      */
-    void Serialize(class JsonWriter& Writer) const override;
+    void Serialize(class JsonWriter& writer) const override;
 
     /**
      * @brief Deserialize resource metadata.
      * Reloads model if necessary.
      */
-    void Deserialize(const class JsonReader& Reader) override;
-
-private:
-    std::string Path;                  ///< Original file path to the model asset.
-    std::shared_ptr<JModel> Model;     ///< The actual rendering model.
-
-    void LoadModelFromFile(const std::string& InPath);
+    void Deserialize(const class JsonReader& reader) override;
 };

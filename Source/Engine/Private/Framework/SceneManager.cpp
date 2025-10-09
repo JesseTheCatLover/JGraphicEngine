@@ -4,7 +4,10 @@
 #include "nlohmann/json.hpp"
 #include "Scene/JActor.h"
 
-using json = nlohmann::json;
+#include "Utilities/UFileSystem.h"
+#include "Utilities/UPathFinder.h"
+#include "Core/Serialization/JsonReader.h"
+#include "Core/Serialization/JsonWriter.h"
 
 JActor* SceneManager::FindActorByID(unsigned int id) const
 {
@@ -17,7 +20,7 @@ bool SceneManager::RemoveActor(JActor *actorPtr)
     if (!m_ActiveScene || !actorPtr) return false;
 
     if (OnActorRemoving) OnActorRemoving(actorPtr);
-    unsigned int id = actorPtr->ID;
+    unsigned int id = actorPtr->GetID();
     bool removed = m_ActiveScene->RemoveActor(actorPtr);
     if (removed && OnActorRemoved) OnActorRemoved(id);
     return removed;
@@ -34,53 +37,79 @@ bool SceneManager::RemoveActor(unsigned int id)
 void SceneManager::Update(float deltaTime)
 {
     if(m_ActiveScene)
-        m_ActiveScene->UpdateActors(deltaTime);
+        m_ActiveScene->Tick(deltaTime);
 }
 
 bool SceneManager::CreateSceneFile(const std::string &name, const std::string &filename, bool bOverwrite) const
 {
-    if (std::filesystem::exists(std::string(ENGINE_DIRECTORY) + "/Assets/Scenes/" +
-        filename + ".jscene") && !bOverwrite) return false;
+    std::string scenePath = UPathFinder::Join(ENGINE_DIRECTORY, "Assets", "Scenes", filename + ".jscene");
 
-    JScene scene(name); // Create a new empty scene object
-    return SaveSceneFile(&scene, filename); // Save and serialize it
+    if (UFileSystem::FileExists(scenePath) && !bOverwrite)
+        return false;
+
+    JScene scene(name);
+    return SaveSceneFile(&scene, filename);
 }
 
 JScene* SceneManager::LoadSceneFile(const std::string &filename)
 {
-    std::ifstream file(std::string(ENGINE_DIRECTORY) + "/Assets/Scenes/" + filename + ".jscene");
-    if (!file.is_open()) return nullptr;
+    std::string scenePath = UPathFinder::Join(ENGINE_DIRECTORY, "Assets", "Scenes", filename + ".jscene");
 
-    json j;
-    file >> j;
+    if (!UFileSystem::FileExists(scenePath))
+        return nullptr;
 
-    std::string name = j.value("name", "UnnamedScene");
-    auto scene = std::make_unique<JScene>(name);
-    scene->Deserialize(j);
+    JsonReader reader;
+    if (!reader.LoadFromFile(scenePath))
+        return nullptr;
 
-    if (OnSceneLoaded) OnSceneLoaded(scene.get());
-    m_ActiveScene = std::move(scene);
-    // Ownership can be handled by smart pointer in manager or returned to caller
+    auto sceneName = reader.Read<std::string>("name", "UnnamedScene");
+
+    auto newScene = std::make_unique<JScene>(sceneName);
+    newScene->Deserialize(reader);
+
+    if (OnSceneLoaded)
+        OnSceneLoaded(newScene.get());
+
+    m_ActiveScene = std::move(newScene);
     return m_ActiveScene.get();
 }
 
 bool SceneManager::SaveSceneFile(const JScene *scene, const std::string &filename) const
 {
-    if (!scene) return false;
-    if (!scene->m_bIsDirty) return true; // nothing to do
+    if (!scene)
+        return false;
 
-    std::ofstream file(std::string(ENGINE_DIRECTORY) + "/Assets/Scenes/" + filename + ".jscene");
-    if (!file.is_open()) return false;
+    if (!scene->m_bIsDirty)
+        return true; // nothing to save
 
-    json j = scene->Serialize();
+    std::string scenePath = UPathFinder::Join(ENGINE_DIRECTORY, "Assets", "Scenes", filename + ".jscene");
 
-    // MetaData
+    JsonWriter writer;
+    scene->Serialize(writer);
+
+    // Meta data
     auto now = std::chrono::system_clock::now();
-    auto timestamp = std::chrono::system_clock::to_time_t(now);
-    j["meta"]["last_modified"] = std::string(std::ctime(&timestamp));
+    std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
 
-    file << j.dump(4);
-    if (OnSceneSaved) OnSceneSaved(scene);
+    std::tm timeInfo{};
+#ifdef _WIN32
+    localtime_s(&timeInfo, &timestamp);
+#else
+    localtime_r(&timestamp, &timeInfo);
+#endif
+
+    char buffer[32];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeInfo);
+    writer.BeginObject("meta");
+    writer.Write("last_modified", std::string(buffer));
+    writer.EndObject();
+
+    if (!writer.SaveToFile(scenePath))
+        return false;
+
+    if (OnSceneSaved)
+        OnSceneSaved(scene);
+
     return true;
 }
 
@@ -97,27 +126,38 @@ bool SceneManager::RenameScene(JScene *scene, const std::string &newName)
 FSceneMeta SceneManager::ReadSceneMeta(const std::string &filename)
 {
     FSceneMeta meta;
-    std::ifstream file(filename);
-    if (!file.is_open()) return meta;
 
-    json j;
-    file >> j;
+    JsonReader reader;
+    if (!reader.LoadFromFile(filename))
+        return meta;
 
-    meta.name = j.value("name", "Unnamed");
-    meta.actorCount = j.value("actor_count", 0);
-    meta.lastModified = j["meta"].value("last_modified", "");
-    meta.thumbnail = j["meta"].value("thumbnail", "");
+    meta.name = reader.Read<std::string>("name", "Unnamed");
+    meta.actorCount = reader.Read("actor_count", 0);
+
+    if (reader.Has("meta"))
+    {
+        auto metaReader = reader.GetObject("meta");
+        meta.lastModified = metaReader.Read<std::string>("last_modified", "");
+        meta.thumbnail = metaReader.Read<std::string>("thumbnail", "");
+    }
+
     return meta;
 }
 
 std::vector<FSceneMeta> SceneManager::ListScenesMeta(const std::string &directory)
 {
     std::vector<FSceneMeta> result;
-    for (auto& entry : std::filesystem::directory_iterator(directory))
+
+    for (const auto& entry : std::filesystem::directory_iterator(directory))
     {
         if (entry.path().extension() == ".jscene")
-            result.push_back(ReadSceneMeta(entry.path().string()));
+        {
+            auto meta = ReadSceneMeta(entry.path().string());
+            if (!meta.name.empty())
+                result.push_back(meta);
+        }
     }
+
     return result;
 }
 

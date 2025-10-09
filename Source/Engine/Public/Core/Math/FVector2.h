@@ -19,10 +19,10 @@ struct FVector2
     constexpr FVector2() : x(0), y(0) {}
 
     /** Constructs a vector with the given X and Y values. */
-    constexpr FVector2(float X, float Y) : x(X), y(Y) {}
+    constexpr FVector2(float x, float y) : x(x), y(y) {}
 
     /** Constructs a vector with both components equal to the given scalar. */
-    explicit constexpr FVector2(float Scalar) : x(Scalar), y(Scalar) {}
+    explicit constexpr FVector2(float scalar) : x(scalar), y(scalar) {}
 
     /** @return The length (magnitude) of the vector. */
     [[nodiscard]] float Length() const { return std::sqrt(x * x + y * y); }
@@ -41,88 +41,88 @@ struct FVector2
 
     /**
      * @brief Computes the dot product with another vector.
-     * @param Other The vector to dot against.
+     * @param vec The vector to dot against.
      * @return The scalar dot product value.
      */
-    [[nodiscard]] float Dot(const FVector2& Other) const { return x * Other.x + y * Other.y; }
+    [[nodiscard]] float Dot(const FVector2& vec) const { return x * vec.x + y * vec.y; }
 
     /**
      * @brief Computes the distance between this vector and another.
-     * @param Other The target vector.
+     * @param vec The target vector.
      * @return The scalar distance between the two points.
      */
-    [[nodiscard]] float Distance(const FVector2& Other) const
+    [[nodiscard]] float Distance(const FVector2& vec) const
     {
-        float dx = x - Other.x;
-        float dy = y - Other.y;
+        float dx = x - vec.x;
+        float dy = y - vec.y;
         return std::sqrt(dx * dx + dy * dy);
     }
 
     /**
      * @brief Linearly interpolates between this vector and another.
-     * @param B The target vector.
-     * @param Alpha Interpolation factor (0.0 to 1.0).
+     * @param vec The target vector.
+     * @param alpha Interpolation factor (0.0 to 1.0).
      * @return The interpolated vector.
      */
-    [[nodiscard]] FVector2 Lerp(const FVector2& B, float Alpha) const
+    [[nodiscard]] FVector2 Lerp(const FVector2& vec, float alpha) const
     {
         return {
-            x * (1.0f - Alpha) + B.x * Alpha,
-            y * (1.0f - Alpha) + B.y * Alpha
+            x * (1.0f - alpha) + vec.x * alpha,
+            y * (1.0f - alpha) + vec.y * alpha
         };
     }
 
     /** @name Arithmetic Operators */
     ///@{
 
-    constexpr FVector2 operator+(const FVector2& Other) const { return { x + Other.x, y + Other.y }; }
-    constexpr FVector2 operator-(const FVector2& Other) const { return { x - Other.x, y - Other.y }; }
+    constexpr FVector2 operator+(const FVector2& vec) const { return { x + vec.x, y + vec.y }; }
+    constexpr FVector2 operator-(const FVector2& vec) const { return { x - vec.x, y - vec.y }; }
 
-    FVector2& operator+=(const FVector2& Other)
+    FVector2& operator+=(const FVector2& vec)
     {
-        x += Other.x;
-        y += Other.y;
+        x += vec.x;
+        y += vec.y;
         return *this;
     }
 
-    FVector2& operator-=(const FVector2& Other)
+    FVector2& operator-=(const FVector2& vec)
     {
-        x -= Other.x;
-        y -= Other.y;
+        x -= vec.x;
+        y -= vec.y;
         return *this;
     }
 
-    constexpr FVector2 operator*(const FVector2 &Other) const { return {x * Other.x, y * Other.y}; }
-    constexpr FVector2 operator/(const FVector2 &Other) const { return {x / Other.x, y / Other.y}; }
+    constexpr FVector2 operator*(const FVector2& vec) const { return { x * vec.x, y * vec.y }; }
+    constexpr FVector2 operator/(const FVector2& vec) const { return { x / vec.x, y / vec.y }; }
 
-    FVector2& operator*=(const FVector2& Other)
+    FVector2& operator*=(const FVector2& vec)
     {
-        x *= Other.x;
-        y *= Other.y;
+        x *= vec.x;
+        y *= vec.y;
         return *this;
     }
 
-    FVector2& operator/=(const FVector2& Other)
+    FVector2& operator/=(const FVector2& vec)
     {
-        x /= Other.x;
-        y /= Other.y;
+        x /= vec.x;
+        y /= vec.y;
         return *this;
     }
 
-    constexpr FVector2 operator*(float Scalar) const { return { x * Scalar, y * Scalar }; }
-    constexpr FVector2 operator/(float Scalar) const { return { x / Scalar, y / Scalar }; }
+    constexpr FVector2 operator*(float scalar) const { return { x * scalar, y * scalar }; }
+    constexpr FVector2 operator/(float scalar) const { return { x / scalar, y / scalar }; }
 
-    FVector2& operator*=(float Scalar)
+    FVector2& operator*=(float scalar)
     {
-        x *= Scalar;
-        y *= Scalar;
+        x *= scalar;
+        y *= scalar;
         return *this;
     }
 
-    FVector2& operator/=(float Scalar)
+    FVector2& operator/=(float scalar)
     {
-        x /= Scalar;
-        y /= Scalar;
+        x /= scalar;
+        y /= scalar;
         return *this;
     }
 
@@ -133,26 +133,26 @@ struct FVector2
     /** @name Comparison Operators */
     ///@{
 
-    bool operator==(const FVector2& Other) const
+    bool operator==(const FVector2& vec) const
     {
-        const float Epsilon = 1e-6f;
-        return (std::fabs(x - Other.x) < Epsilon) &&
-               (std::fabs(y - Other.y) < Epsilon);
+        const float epsilon = 1e-6f;
+        return (std::fabs(x - vec.x) < epsilon) &&
+               (std::fabs(y - vec.y) < epsilon);
     }
 
-    bool operator!=(const FVector2& Other) const { return !(*this == Other); }
+    bool operator!=(const FVector2& vec) const { return !(*this == vec); }
 
     ///@}
 
     /**
      * @brief Allows scalar multiplication from the left-hand side.
-     * @param Scalar The scalar value.
-     * @param Vec The vector to scale.
+     * @param scalar The scalar value.
+     * @param vec The vector to scale.
      * @return The scaled vector.
      */
-    friend constexpr FVector2 operator*(float Scalar, const FVector2& Vec)
+    friend constexpr FVector2 operator*(float scalar, const FVector2& vec)
     {
-        return { Vec.x * Scalar, Vec.y * Scalar };
+        return { vec.x * scalar, vec.y * scalar };
     }
 
     /**

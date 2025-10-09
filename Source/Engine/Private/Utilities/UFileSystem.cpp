@@ -106,3 +106,112 @@ bool UFileSystem::DeleteDirectory(const std::string& path, bool bRecursive)
     else
         return fs::remove(fullPath, ec);
 }
+
+bool UFileSystem::FileExists(const std::string &path)
+{
+    try
+    {
+        return std::filesystem::exists(path) && std::filesystem::is_regular_file(path);
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+bool UFileSystem::DirectoryExists(const std::string &path)
+{
+    try
+    {
+        return std::filesystem::exists(path) && std::filesystem::is_directory(path);
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+std::vector<std::string> UFileSystem::ListFiles(
+    const std::string &directory,
+    const std::string &extension,
+    bool bRecursive,
+    bool bCaseInsensitive)
+{
+    std::vector<std::string> files;
+
+    try
+    {
+        if (!std::filesystem::exists(directory))
+            return files;
+
+        auto toLower = [](std::string s) {
+            std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+            return s;
+        };
+
+        std::string extFilter = extension;
+        if (bCaseInsensitive)
+            extFilter = toLower(extFilter);
+
+        auto iterType = bRecursive
+                            ? std::filesystem::recursive_directory_iterator(directory)
+                            : std::filesystem::directory_iterator(directory);
+
+        for (const auto &entry : iterType)
+        {
+            if (!entry.is_regular_file())
+                continue;
+
+            std::string filePath = entry.path().string();
+
+            if (!extension.empty())
+            {
+                std::string fileExt = entry.path().extension().string();
+                if (!fileExt.empty() && fileExt.front() == '.')
+                    fileExt.erase(fileExt.begin()); // remove leading '.'
+
+                if (bCaseInsensitive)
+                    fileExt = toLower(fileExt);
+
+                if (fileExt != extFilter)
+                    continue;
+            }
+
+            files.push_back(filePath);
+        }
+    }
+    catch (...)
+    {
+        // Fail silently, just return empty
+    }
+
+    return files;
+}
+
+std::vector<std::string> UFileSystem::ListDirectories(const std::string &directory, bool bRecursive)
+{
+    std::vector<std::string> dirs;
+
+    try
+    {
+        if (!std::filesystem::exists(directory))
+            return dirs;
+
+        auto iterType = bRecursive
+                            ? std::filesystem::recursive_directory_iterator(directory)
+                            : std::filesystem::directory_iterator(directory);
+
+        for (const auto &entry : iterType)
+        {
+            if (entry.is_directory())
+                dirs.push_back(entry.path().string());
+        }
+    }
+    catch (...)
+    {
+        // ignore
+    }
+
+    return dirs;
+}
+

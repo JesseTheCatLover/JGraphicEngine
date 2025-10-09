@@ -56,9 +56,10 @@ public:
     void WriteVec4(const std::string& key, const glm::vec4& vec);
 
     // ----------------- FMath types -----------------
-    void WriteVector2(const std::string& key, const FVector2& vec);
-    void WriteVector3(const std::string& key, const FVector3& vec);
-    void WriteVector4(const std::string& key, const FVector4& vec);
+    void WriteVect2(const std::string& key, const FVector2& vec);
+    void WriteVect3(const std::string& key, const FVector3& vec);
+    void WriteVect4(const std::string& key, const FVector4& vec);
+    void WriteRotator(const std::string& key, const FRotator& rotator);
     void WriteQuat(const std::string& key, const FQuat& quat);
     void WriteTransform(const std::string& key, const FTransform& transform);
 
