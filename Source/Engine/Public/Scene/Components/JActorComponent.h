@@ -49,10 +49,10 @@ public:
     virtual void Tick(float deltaTime);
 
     /** @brief Get the owning actor. */
-    JActor* GetOwnerActor() const { return m_OwnerActor; }
+    [[nodiscard]] JActor* GetOwnerActor() const { return m_OwnerActor; }
 
     /** @brief Get the name of the component */
-    std::string GetName() const { return m_Name; }
+    [[nodiscard]] std::string GetName() const { return m_Name; }
 
     /** @brief Set the name of the component */
     void SetName(const std::string& inName) { m_Name = inName; }

@@ -49,6 +49,7 @@ public:
      * Initializes internal ping-pong render targets.
      */
     PostProcessManager(int width, int height);
+    ~PostProcessManager();
 
     /**
      * @brief Add a post-processing effect to the chain.

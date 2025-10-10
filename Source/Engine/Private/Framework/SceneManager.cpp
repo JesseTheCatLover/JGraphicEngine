@@ -64,7 +64,7 @@ JScene* SceneManager::LoadSceneFile(const std::string &filename)
 
     auto sceneName = reader.Read<std::string>("name", "UnnamedScene");
 
-    auto newScene = std::make_unique<JScene>(sceneName);
+    auto newScene = std::unique_ptr<JScene>(new JScene(sceneName));
     newScene->Deserialize(reader);
 
     if (OnSceneLoaded)

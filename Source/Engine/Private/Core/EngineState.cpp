@@ -22,7 +22,11 @@ EngineState::EngineState()
 
     m_ViewportContext = std::make_unique<FViewportContext>();
 
+    m_InputContext = std::make_unique<FInputContext>();
+
 }
+
+EngineState::~EngineState() = default;
 
 float EngineState::GetDeltaTime() const
 {

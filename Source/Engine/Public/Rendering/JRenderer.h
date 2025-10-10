@@ -32,6 +32,7 @@ public:
      *        Use 1 for no multisampling.
      */
     JRenderer(int screenWidth, int screenHeight, int samples = 4);
+    ~JRenderer();
 
     /**
      * @brief Begin rendering a new frame/scene.

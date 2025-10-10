@@ -9,11 +9,12 @@
 
 void SceneHierarchyPanel::Draw(const EditorContext& context)
 {
+    /*
     const auto &actors = context.GetState().GetSceneActors();
     ImGui::Begin("Scene Hierarchy");
     for (const auto &actor : actors)
     {
         ImGui::Text("%s", actor.Name.c_str());
     }
-    ImGui::End();
+    ImGui::End(); */
 }

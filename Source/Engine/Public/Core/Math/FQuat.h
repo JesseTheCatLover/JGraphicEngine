@@ -4,11 +4,11 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <sstream>
 #include <string>
+#include "FEuler.h"
 #include "glm/gtx/quaternion.hpp"
 
 struct FVector3;
 struct FMatrix;
-struct FEuler;
 struct FRotator;
 
 /**

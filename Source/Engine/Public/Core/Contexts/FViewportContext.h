@@ -1,7 +1,3 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
-
-#pragma once
-#include "Core/Contexts/EViewMode.h"
 #include "Scene/JCamera.h"
 
 struct FViewportContext
@@ -22,31 +18,24 @@ private:
     float Zoom = 45.f;
 
 public:
-    // --- Yaw ---
-    float GetYaw() const;
-    void SetYaw(float yaw);
+    float GetYaw() const { return Yaw; }
+    void SetYaw(float yaw) { Yaw = yaw; }
 
-    // --- Pitch ---
-    float GetPitch() const;
-    void SetPitch(float pitch);
+    float GetPitch() const { return Pitch; }
+    void SetPitch(float pitch) { Pitch = pitch; }
 
-    // --- Speed ---
-    float GetSpeed() const;
-    void SetSpeed(float speed);
+    float GetSpeed() const { return Speed; }
+    void SetSpeed(float speed) { Speed = speed; }
 
-    // --- X Sensitivity ---
-    float GetXSensitivity() const;
-    void SetXSensitivity(float sens);
+    float GetXSensitivity() const { return xSensitivity; }
+    void SetXSensitivity(float sens) { xSensitivity = sens; }
 
-    // --- Y Sensitivity ---
-    float GetYSensitivity() const;
-    void SetYSensitivity(float sens);
+    float GetYSensitivity() const { return ySensitivity; }
+    void SetYSensitivity(float sens) { ySensitivity = sens; }
 
-    // --- Max FOV ---
-    float GetMaxFOV() const;
-    void SetMaxFOV(float fov);
+    float GetMaxFOV() const { return MaxFOV; }
+    void SetMaxFOV(float fov) { MaxFOV = fov; }
 
-    // --- Zoom ---
-    float GetZoom() const;
-    void SetZoom(float zoom);
+    float GetZoom() const { return Zoom; }
+    void SetZoom(float zoom) { Zoom = zoom; }
 };

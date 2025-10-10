@@ -79,7 +79,7 @@ void JActor::Draw(JShader& shader) const
     for (auto& comp : m_SceneComponents)
     {
         // Assuming scene components have a Draw method
-        if (comp->GetClassTypeName() == "JModelComponent")
+        if (comp->IsA<JModelComponent>())
         {
             if (auto* modelComp = dynamic_cast<JModelComponent*>(comp.get()))
                 modelComp->Draw(shader);

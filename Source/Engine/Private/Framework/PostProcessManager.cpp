@@ -14,6 +14,10 @@ PostProcessManager::PostProcessManager(int width, int height)
     Pong = std::make_unique<JFramebufferTarget>(width, height, 1);
 }
 
+PostProcessManager::~PostProcessManager()
+{
+}
+
 void PostProcessManager::AddProcessor(std::unique_ptr<JPostProcessor> processor) {
     Processors.push_back(std::move(processor));
 }

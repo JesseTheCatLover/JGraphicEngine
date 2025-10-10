@@ -57,6 +57,9 @@ public:
     template<typename T, typename... Args>
     std::shared_ptr<T> Load(const std::string& key, Args&&... args)
     {
+        // Ensure type is complete before using
+        static_assert(sizeof(T) > 0, "T must be a complete type before calling Load().");
+
         static_assert(std::is_base_of<JCoreObject, T>::value, "T must derive from JCoreObject");
 
         // Check if already loaded

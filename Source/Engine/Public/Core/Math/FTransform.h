@@ -27,10 +27,10 @@ private:
 public:
     /// Accessors
 
-    [[nodiscard]] const FVector3 GetPosition() const { return m_Position; }
-    [[nodiscard]] const FQuat GetRotation() const { return m_Rotation; }
-    [[nodiscard]] const FRotator GetRotationAsRotator() const { return GetRotation().ToRotator();}
-    [[nodiscard]] const FVector3 GetScale() const { return m_Scale; }
+    [[nodiscard]] FVector3 GetPosition() const { return m_Position; }
+    [[nodiscard]] FQuat GetRotation() const { return m_Rotation; }
+    [[nodiscard]] FRotator GetRotationAsRotator() const { return GetRotation().ToRotator();}
+    [[nodiscard]] FVector3 GetScale() const { return m_Scale; }
 
     void SetPosition(const FVector3& position) { m_Position = position; }
     void SetRotation(const FQuat& rotation) { m_Rotation = rotation; }

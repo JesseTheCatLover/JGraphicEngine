@@ -2,10 +2,11 @@
 
 #pragma once
 #include "EngineState.h"
-#include "Core/TServiceContainer.h"
+#include "TServiceContainer.h"
+
+#include "Framework/PostProcessManager.h"
 #include "Framework/SceneManager.h"
 
-class PostProcessManager;
 class EditorContext;
 
 class JEngine
@@ -44,7 +45,7 @@ public:
     void OnKeyboardAction(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 private:
-    JEngine() {}
+    JEngine();
     ~JEngine() = default;
 
     EngineState m_State;

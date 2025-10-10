@@ -23,8 +23,8 @@ private:
     /** Default marker file for automatic project root detection */
     inline static const std::string DefaultMarkerFile = "JProject.config";
 
-    static std::string GProjectRootFolderCached;
-    static std::string GProjectRootFileCached;
+    inline static std::string GProjectRootFileCached{};
+    inline static std::string GProjectRootFolderCached{};
 
 public:
     // ----------------- Root Handling -----------------

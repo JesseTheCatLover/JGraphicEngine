@@ -50,5 +50,5 @@ protected:
 
 private:
     uint64_t m_ID; // engine-unique object ID
-    static uint64_t m_NextID; // global counter
+    inline static uint64_t m_NextID = 0; // global counter
 };

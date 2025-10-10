@@ -10,7 +10,6 @@
 
 #include "Core/JCoreObject.h"
 
-
 /**
  * @class JScene
  * @brief A container and manager for all actors in a scene.

@@ -7,6 +7,14 @@ void JActorComponent::Initialize()
 {
 }
 
+void JActorComponent::BeginPlay()
+{
+}
+
+void JActorComponent::EndPlay()
+{
+}
+
 void JActorComponent::OnAttachment()
 {
 }

@@ -1,5 +1,7 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
+#include "glad/gl.h"
+
 #include "Core/JEngine.h"
 
 #include "Framework/SceneManager.h"
@@ -9,14 +11,15 @@
 #include "Framework/PostProcessManager.h"
 #include "Scene/JCamera.h"
 #include <iostream>
-
-#include "glad/gl.h"
-
 #include "Resources/JResourceManager.h"
-
+#include "Resources/JModelResource.h"
 #include "Scene/Components/Scene/JModelComponent.h"
 
 class JModelResource;
+
+JEngine::JEngine()
+{
+}
 
 bool JEngine::Initialize()
 {
@@ -41,18 +44,33 @@ void JEngine::Tick()
 
 bool JEngine::Run()
 {
-    if (!Initialize()) return false;
-    while (m_State.GetIsRunning())
+    if (!Initialize())
+        return false;
+
+    GLFWwindow* window = m_State.GetGLFWWindow();
+    if (!window)
+        return false;
+
+    while (!glfwWindowShouldClose(window) && m_State.GetIsRunning())
     {
         float currentFrame = static_cast<float>(glfwGetTime());
         m_State.SetDeltaTime(currentFrame - m_State.GetLastFrameTime());
         m_State.SetLastFrameTime(currentFrame);
 
+        ProcessInputs(window, m_State.GetDeltaTime());
         Tick();
+
+        // Swap front/back buffers (show rendered frame)
+        glfwSwapBuffers(window);
+
+        // Poll window + input events
+        glfwPollEvents();
     }
+
     Shutdown();
     return true;
 }
+
 
 void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
 {
@@ -147,7 +165,11 @@ void JEngine::RegisterServices()
 bool JEngine::GLFWInitialize()
 {
     // ----------------- GLFW Init -----------------
-    glfwInit();
+    if (!glfwInit()) {
+        std::cout << "Failed to initialize GLFW" << std::endl;
+        return false;
+    }
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -161,6 +183,9 @@ bool JEngine::GLFWInitialize()
         glfwTerminate();
         return false;
     }
+
+    // Make context current *before* loading GLAD
+    glfwMakeContextCurrent(Window);
 
     m_State.SetGLFWWindow(Window);
 
@@ -205,16 +230,14 @@ void JEngine::BootstrapScene()
     // --- 3. Populate scene actors (temporary hardcoded setup) ---
 
     // Example: create a Dio Mansion actor
-    auto dioActor = std::make_unique<JActor>();
-    auto dioComp = dioActor->CreateDefaultComponent<JModelComponent>("DioMansion");
+    auto* dioActor = SceneManager().SpawnActor<JActor>();
+    auto* dioComp = dioActor->CreateDefaultComponent<JModelComponent>("DioMansion");
     dioComp->SetModel("Dio Brando/DioMansion.obj");
-    SceneManager().SpawnActor<JActor>(std::move(dioActor));
 
     // Example: create a Medieval Window actor
-    auto windowActor = std::make_unique<JActor>();
-    auto windowComp = windowActor->CreateDefaultComponent<JModelComponent>("MedievalWindow");
+    auto* windowActor = SceneManager().SpawnActor<JActor>();
+    auto* windowComp = windowActor->CreateDefaultComponent<JModelComponent>("MedievalWindow");
     windowComp->SetModel("MedievalWindow/MedievalWindow.obj");
-    SceneManager().SpawnActor<JActor>(std::move(windowActor));
 
     // Save the scene for next launch
     sceneManager->SaveSceneFile(startupScene, "StartupScene");

@@ -4,7 +4,7 @@
 #include <string>
 #include <stack>
 #include <nlohmann/json.hpp>
-
+#include "Core/Serialization/JsonOverloads.h"
 #include "glm/vec2.hpp"
 #include "glm/vec3.hpp"
 #include "glm/vec4.hpp"
@@ -45,6 +45,7 @@ public:
             (*m_Stack.top())[key] = value;
     }
 
+
     // ----------------- glm types -----------------
     /** @brief Write a glm::vec2 to JSON. */
     void WriteVec2(const std::string& key, const glm::vec2& vec);
@@ -54,6 +55,14 @@ public:
 
     /** @brief Write a glm::vec4 to JSON. */
     void WriteVec4(const std::string& key, const glm::vec4& vec);
+
+    // ----------------- FMath types -----------------
+    //
+    // NOTE: These exist for backward compatibility.
+    // Prefer using `Write("key", value)` directly with JsonOverloads.h support.
+    //
+    // These wrappers simply call the new generic Write() under the hood.
+    //
 
     // ----------------- FMath types -----------------
     void WriteVect2(const std::string& key, const FVector2& vec);

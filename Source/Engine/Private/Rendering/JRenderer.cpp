@@ -1,15 +1,18 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Rendering/JRenderer.h"
-
-#include <glad/gl.h>
 #include "JFramebufferTarget.h"
+#include <glad/gl.h>
 
 JRenderer::JRenderer(int screenWidth, int screenHeight, int samples)
     : ScreenWidth(screenWidth), ScreenHeight(screenHeight), Samples(samples)
 {
     SceneTarget = std::make_unique<JFramebufferTarget>(screenWidth, screenHeight, samples);
     ResolveTarget = std::make_unique<JFramebufferTarget>(screenWidth, screenHeight, 1); // always single-sample
+}
+
+JRenderer::~JRenderer()
+{
 }
 
 void JRenderer::BeginScene() {

@@ -1,12 +1,17 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+
 #include "Scene/Components/JActorComponent.h"
 #include "Core/Math/FTransform.h"
 
 /**
  * @class JTransformComponent
- * @brief Local transform component for actors.
+ * @brief Provides position, rotation, and scale functionality for actors.
+ *
+ * This component defines a local-space transform for its owning actor,
+ * storing translation, rotation, and scale. It is the foundation for all
+ * scene-related components (e.g., mesh, camera, light) that need spatial data.
  */
 class JTransformComponent : public JActorComponent
 {
@@ -22,14 +27,14 @@ public:
     //==================================================
 
     /**
-     * @brief Returns the local position of the component.
-     * @return Reference to the local position vector.
+     * @brief Returns the current local-space position of the component.
+     * @return A copy of the local position vector.
      */
-    [[nodiscard]] const FVector3& GetLocalPosition() const { return m_LocalTransform.GetPosition(); }
+    [[nodiscard]] FVector3 GetLocalPosition() const { return m_LocalTransform.GetPosition(); }
 
     /**
-     * @brief Sets the local position of the component.
-     * @param position New local position vector.
+     * @brief Updates the local-space position of the component.
+     * @param position The new local position.
      */
     void SetLocalPosition(const FVector3& position)
     {
@@ -42,22 +47,26 @@ public:
     //==================================================
 
     /**
-     * @brief Returns the local rotation as a quaternion.
-     * @return Constant reference to the quaternion representing rotation.
+     * @brief Returns the local rotation represented as a quaternion.
+     * @return The local-space rotation quaternion.
      */
-    [[nodiscard]] const FQuat& GetLocalRotationAsQuat() const { return m_LocalTransform.GetRotation(); }
+    [[nodiscard]] FQuat GetLocalRotationAsQuat() const { return m_LocalTransform.GetRotation(); }
 
+    /**
+     * @brief Returns the local rotation represented as an FRotator (in degrees).
+     * @return The local-space rotation as an FRotator.
+     */
     [[nodiscard]] FRotator GetLocalRotationAsRotator() const { return m_LocalTransform.GetRotation().ToRotator(); }
 
     /**
-     * @brief Returns the local rotation as an FEuler object.
-     * @return FEuler containing rotation in radians internally.
+     * @brief Returns the local rotation represented as an FEuler (in radians).
+     * @return The local-space rotation as an FEuler.
      */
-    [[nodiscard]] const FEuler& GetLocalRotationAsEuler() const { return m_LocalTransform.GetRotation().ToEuler(); }
+    [[nodiscard]] FEuler GetLocalRotationAsEuler() const { return m_LocalTransform.GetRotation().ToEuler(); }
 
     /**
-     * @brief Sets the local rotation using a FRotator.
-     * @param rotator New rotation represented as FRotator.
+     * @brief Sets the local rotation using an FRotator (degrees).
+     * @param rotator The new rotation.
      */
     void SetLocalRotation(const FRotator& rotator)
     {
@@ -66,7 +75,7 @@ public:
 
     /**
      * @brief Sets the local rotation using a quaternion.
-     * @param rotation New rotation quaternion.
+     * @param rotation The new rotation quaternion.
      */
     void SetLocalRotation(const FQuat& rotation)
     {
@@ -75,8 +84,8 @@ public:
     }
 
     /**
-     * @brief Sets the local rotation using an FEuler object.
-     * @param euler FEuler rotation to apply.
+     * @brief Sets the local rotation using Euler angles.
+     * @param euler The new rotation in radians.
      */
     void SetLocalRotation(const FEuler& euler)
     {
@@ -90,13 +99,13 @@ public:
 
     /**
      * @brief Returns the local scale of the component.
-     * @return Reference to the local scale vector.
+     * @return A copy of the local scale vector.
      */
-    [[nodiscard]] const FVector3& GetLocalScale() const { return m_LocalTransform.GetScale(); }
+    [[nodiscard]] FVector3 GetLocalScale() const { return m_LocalTransform.GetScale(); }
 
     /**
-     * @brief Sets the local scale of the component.
-     * @param scale New local scale vector.
+     * @brief Updates the local scale of the component.
+     * @param scale The new local scale.
      */
     void SetLocalScale(const FVector3& scale)
     {
@@ -109,12 +118,14 @@ public:
     //==================================================
 
     /**
-     * @brief Returns the full local transform of the component.
+     * @brief Returns the complete local transform (position, rotation, scale).
+     * @return A constant reference to the transform data.
      */
     [[nodiscard]] const FTransform& GetLocalTransform() const { return m_LocalTransform; }
 
     /**
-     * @brief Sets the entire local transform at once.
+     * @brief Updates the entire local transform at once.
+     * @param transform The new transform.
      */
     void SetLocalTransform(const FTransform& transform)
     {
@@ -126,10 +137,14 @@ protected:
     /**
      * @brief Called whenever the local transform changes (position, rotation, or scale).
      *
-     * Subclasses such as JSceneComponent should override this to react to local transform updates.
+     * Override this in subclasses (e.g., JSceneComponent) to respond
+     * to local-space updates such as matrix recalculation or hierarchy propagation.
      */
     virtual void OnLocalTransformChanged() {}
 
+    /** @brief Serializes this component’s properties into JSON. */
     void SerializeProperties(JsonWriter& writer) const override;
+
+    /** @brief Deserializes this component’s properties from JSON. */
     void DeserializeProperties(const JsonReader& reader) override;
 };
