@@ -12,6 +12,12 @@
 
 #include "glad/gl.h"
 
+#include "Resources/JResourceManager.h"
+
+#include "Scene/Components/Scene/JModelComponent.h"
+
+class JModelResource;
+
 bool JEngine::Initialize()
 {
     if (!GLFWInitialize()) return false;
@@ -20,36 +26,8 @@ bool JEngine::Initialize()
 
     RegisterServices();
 
-    // TODO: Make all scene object JActor driven in the future.
-    // Try loading default
-    auto* scene = GetSceneManager()->LoadSceneFile("DefaultScene");
-    if (!scene)
-    {
-        // Create new scene object (not actor-driven yet)
-        auto newScene = std::make_unique<JScene>("DefaultScene");
-
-        // TEMPORARY hardcoded setup (direct system-level stuff)
-        {
-            // Add skybox
-            auto skybox = std::make_unique<JSkybox>("Sea", "Skybox", "Skybox");
-            newScene->AttachSkybox(std::move(skybox));
-
-            // Add a model
-            auto dio = std::make_unique<JModel>("Dio Brando/DioMansion.obj");
-            newScene->AddModel(std::move(dio));
-
-            auto window = std::make_unique<JModel>("MedievalWindow/MedievalWindow.obj");
-            newScene->AddModel(std::move(window));
-
-            // etc.
-        }
-
-        // Save it
-        GetSceneManager()->SaveSceneFile(newScene.get(), "DefaultScene");
-
-        // Activate it
-        scene = GetSceneManager()->LoadSceneFile("DefaultScene");
-    }
+    // Bootstrap default scene
+    BootstrapScene();
 
     return true;
 }
@@ -202,6 +180,49 @@ bool JEngine::GLFWInitialize()
 
     return true;
 }
+
+void JEngine::BootstrapScene()
+{
+    auto& rm = JResourceManager::Get();
+    auto* sceneManager = GetSceneManager();
+
+    // --- 1. Preload commonly used models (optional, speeds up first draw) ---
+    rm.Load<JModelResource>("DioMansion", "Dio Brando/DioMansion.obj");
+    rm.Load<JModelResource>("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
+
+    // --- 2. Load startup scene ---
+    auto* startupScene = sceneManager->LoadSceneFile("StartupScene");
+    if (!startupScene)
+    {
+        // Scene doesn't exist, create a default one
+        bool bCreated = sceneManager->CreateSceneFile("StartupScene", "StartupScene", true);
+        if (!bCreated) return; // could not create
+        startupScene = sceneManager->LoadSceneFile("StartupScene");
+    }
+
+    if (!startupScene) return; // failed to load or create
+
+    // --- 3. Populate scene actors (temporary hardcoded setup) ---
+
+    // Example: create a Dio Mansion actor
+    auto dioActor = std::make_unique<JActor>();
+    auto dioComp = dioActor->CreateDefaultComponent<JModelComponent>("DioMansion");
+    dioComp->SetModel("Dio Brando/DioMansion.obj");
+    SceneManager().SpawnActor<JActor>(std::move(dioActor));
+
+    // Example: create a Medieval Window actor
+    auto windowActor = std::make_unique<JActor>();
+    auto windowComp = windowActor->CreateDefaultComponent<JModelComponent>("MedievalWindow");
+    windowComp->SetModel("MedievalWindow/MedievalWindow.obj");
+    SceneManager().SpawnActor<JActor>(std::move(windowActor));
+
+    // Save the scene for next launch
+    sceneManager->SaveSceneFile(startupScene, "StartupScene");
+
+    // At this point, every actor's JModelComponent already knows its model via the path
+    // No need to manually fetch from ResourceManager or assign
+}
+
 
 // --- Static Callbacks ---
 void JEngine::FramebufferSizeCallback(GLFWwindow* window, int width, int height)

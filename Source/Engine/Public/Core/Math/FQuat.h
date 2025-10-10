@@ -1,12 +1,15 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <sstream>
 #include <string>
-
-#include "FEuler.h"
-#include "FMath.h"
 #include "glm/gtx/quaternion.hpp"
+
+struct FVector3;
+struct FMatrix;
+struct FEuler;
+struct FRotator;
 
 /**
 * @struct FQuat
@@ -39,11 +42,7 @@ public:
     constexpr FQuat(float x, float y, float z, float w) : Q(w, x, y, z) {}
 
     /** Constructs quaternion from axis-angle rotation. Angle in radians. */
-    explicit FQuat(const FVector3& axis, float angle)
-    {
-        glm::vec3 glmAxis(axis.x, axis.y, axis.z);
-        Q = glm::angleAxis(angle, glmAxis);
-    }
+    explicit FQuat(const FVector3& axis, float angle);
 
     /** Constructs from glm::quat directly. */
     explicit FQuat(const glm::quat& quat) : Q(quat) {}
@@ -69,50 +68,27 @@ public:
     [[nodiscard]] FQuat Normalized() const { return FQuat(glm::normalize(Q)); }
 
     /** Rotates a vector by this quaternion */
-    [[nodiscard]] FVector3 RotateVector(const FVector3& vector) const
-    {
-        glm::vec3 rotated = Q * glm::vec3(vector.x, vector.y, vector.z);
-        return {rotated.x, rotated.y, rotated.z};
-    }
+    [[nodiscard]] FVector3 RotateVector(const FVector3& vector) const;
 
     /** Converts quaternion to rotation matrix */
-    [[nodiscard]] FMatrix ToMatrix() const
-    {
-        return FMatrix(glm::toMat4(Q));
-    }
+    [[nodiscard]] FMatrix ToMatrix() const;
 
-    [[nodiscard]] FRotator ToRotator() const
-    {
-        return FEuler::MakeFromQuat(*this).ToRotator();
-    }
+    [[nodiscard]] FRotator ToRotator() const;
 
-    static FQuat MakeFromRotator(const FRotator& rotator)
-    {
-        return FEuler::MakeFromRotator(rotator).ToQuat();
-    }
+    static FQuat MakeFromRotator(const FRotator& rotator);
 
     /**
      * @brief Converts this quaternion to Euler angles (radians).
      * @return Euler angles representing the same rotation.
      */
-    [[nodiscard]] FEuler ToEuler() const
-    {
-        glm::vec3 eulerRad = glm::eulerAngles(Q); // GLM returns radians
-        return {eulerRad.x, eulerRad.y, eulerRad.z};
-    }
+    [[nodiscard]] FEuler ToEuler() const;
 
     /**
      * @brief Sets this quaternion from Euler angles (radians).
      */
-    void MakeFromEuler(const FEuler& euler)
-    {
-        Q = glm::quat(glm::vec3(euler.Pitch, euler.Yaw, euler.Roll));
-    }
+    static FQuat MakeFromEuler(const FEuler &euler);
 
-    FQuat MakeFromVector3(const FVector3& vector)
-    {
-        return MakeFromEuler(vector);
-    }
+    static FQuat MakeFromVector3(const FVector3& vector);
 
     /** Converts to glm::quat for internal use */
     explicit operator glm::quat() const { return Q; }

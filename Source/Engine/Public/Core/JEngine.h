@@ -3,8 +3,8 @@
 #pragma once
 #include "EngineState.h"
 #include "Core/TServiceContainer.h"
+#include "Framework/SceneManager.h"
 
-class SceneManager;
 class PostProcessManager;
 class EditorContext;
 
@@ -56,6 +56,8 @@ private:
 
     void RegisterServices();
     bool GLFWInitialize();
+
+    void BootstrapScene();
 
     // --- Static callbacks for GLFW ---
     static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);

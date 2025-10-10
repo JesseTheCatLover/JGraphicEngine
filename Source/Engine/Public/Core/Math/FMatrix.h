@@ -1,13 +1,16 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <sstream>
 #include <string>
 #include "FVector3.h"
-#include "FQuat.h"
 #include "glm/matrix.hpp"
-#include "glm/gtx/euler_angles.hpp"
 #include "glm/gtx/quaternion.hpp"
+
+struct FQuat;
+struct FEuler;
+struct FRotator;
 
 /**
  * @struct FMatrix
@@ -47,7 +50,7 @@ public:
     static FMatrix Scale(const FVector3& s) { return FMatrix(glm::scale(glm::mat4(1.0f), glm::vec3(s.x, s.y, s.z))); }
 
     /** Creates a rotation matrix from an FQuat */
-    static FMatrix Rotate(const FQuat& q) { return FMatrix(glm::toMat4(static_cast<glm::quat>(q))); }
+    static FMatrix Rotate(const FQuat & q);
 
     /** Determinant of the matrix */
     [[nodiscard]] float Determinant() const { return glm::determinant(M); }
@@ -90,37 +93,17 @@ public:
         return {rx, ry, rz};
     }
 
-    [[nodiscard]] FEuler ToEuler() const
-    {
-        glm::vec3 euler = glm::eulerAngles(glm::quat_cast(M));
-        return FEuler(euler.x, euler.y, euler.z);
-    }
+    [[nodiscard]] FEuler ToEuler() const;
 
-    static FMatrix MakeFromEuler(const FEuler& euler)
-    {
-        glm::mat4 m = glm::yawPitchRoll(euler.Yaw, euler.Pitch, euler.Roll);
-        return FMatrix(m);
-    }
+    static FMatrix MakeFromEuler(const FEuler& euler);
 
-    [[nodiscard]] FRotator ToRotator() const
-    {
-        return ToEuler().ToRotator();
-    }
+    [[nodiscard]] FRotator ToRotator() const;
 
-    static FMatrix MakeFromRotator(const FRotator& rotator)
-    {
-        return MakeFromEuler(FEuler::MakeFromRotator(rotator));
-    }
+    static FMatrix MakeFromRotator(const FRotator& rotator);
 
-    [[nodiscard]] FQuat ToQuat() const
-    {
-        return FQuat(glm::quat_cast(M));
-    }
+    [[nodiscard]] FQuat ToQuat() const;
 
-    static FMatrix MakeFromQuat(const FQuat& quat)
-    {
-        return FMatrix(glm::toMat4(quat.operator glm::quat()));
-    }
+    static FMatrix MakeFromQuat(const FQuat& quat);
 
     /** Converts to glm::mat4 for internal use */
     explicit operator glm::mat4() const { return M; }

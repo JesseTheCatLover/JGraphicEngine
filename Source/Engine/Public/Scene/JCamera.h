@@ -20,8 +20,6 @@ enum ECameraMovement
 class JCamera
 {
 public:
-    JCamera();
-    JCamera(class Settings* Setting);
     JCamera(vec3 Position = vec3(0.f, 0.f, 0.f), vec3 Up = vec3(0.f , 1.f, 0.f),
             float Yaw = -90.f, float Pitch = 0.f);
     JCamera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch);

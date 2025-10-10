@@ -105,9 +105,9 @@ FTransform JsonReader::ReadTransform(const std::string& key, const FTransform& d
     const auto& obj = m_Data[key];
 
     FTransform result;
-    result.GetPosition() = ReadVector3(obj.contains("position") ? "position" : "", defaultVal.GetPosition());
-    result.GetRotation() = ReadQuat(obj.contains("rotation") ? "rotation" : "", defaultVal.GetRotation());
-    result.GetScale() = ReadVector3(obj.contains("scale") ? "scale" : "", defaultVal.GetScale());
+    result.SetPosition(ReadVector3(obj.contains("position") ? "position" : "", defaultVal.GetPosition()));
+    result.SetRotation(ReadQuat(obj.contains("rotation") ? "rotation" : "", defaultVal.GetRotation()));
+    result.SetScale(ReadVector3(obj.contains("scale") ? "scale" : "", defaultVal.GetScale()));
 
     return result;
 }

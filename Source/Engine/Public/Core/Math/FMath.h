@@ -1,7 +1,7 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-
+#define GLM_ENABLE_EXPERIMENTAL
 #include "FVector2.h"
 #include "FVector3.h"
 #include "FVector4.h"
@@ -232,49 +232,42 @@ namespace FMath
     /**
      * @brief Returns the identity matrix.
      */
-    inline FMatrix Identity() { return FMatrix::Identity(); }
+    inline FMatrix Identity();
 
     /**
      * @brief Returns the inverse of a matrix.
      */
-    inline FMatrix Inverse(const FMatrix &M) { return M.Inverse(); }
+    inline FMatrix Inverse(const FMatrix &M);
 
     /**
      * @brief Returns the transpose of a matrix.
      */
-    inline FMatrix Transpose(const FMatrix &M) { return M.Transpose(); }
+    inline FMatrix Transpose(const FMatrix &M);
 
     /**
      * @brief Returns a translation matrix.
      */
-    inline FMatrix Translate(const FVector3 &T) { return FMatrix::Translate(T); }
+    inline FMatrix Translate(const FVector3 &T);
 
     /**
      * @brief Returns a scaling matrix.
      */
-    inline FMatrix Scale(const FVector3 &S) { return FMatrix::Scale(S); }
+    inline FMatrix Scale(const FVector3 &S);
 
     /**
      * @brief Returns a rotation matrix from a quaternion.
      */
-    inline FMatrix Rotate(const glm::quat& Q) { return FMatrix::Rotate(Q); }
+    inline FMatrix Rotate(const FQuat& Q);
 
     /**
      * @brief Returns an orthographic projection matrix.
      */
-    inline FMatrix Ortho(float Left, float Right, float Bottom, float Top, float Near, float Far)
-    {
-        return FMatrix(glm::ortho(Left, Right, Bottom, Top, Near, Far));
-    }
+    inline FMatrix Ortho(float Left, float Right, float Bottom, float Top, float Near, float Far);
 
     /**
      * @brief Returns a perspective projection matrix.
      */
-    inline FMatrix Perspective(float FOV, float Aspect, float Near, float Far)
-    {
-        return FMatrix(glm::perspective(glm::radians(FOV), Aspect, Near, Far));
-    }
-
+    inline FMatrix Perspective(float FOV, float Aspect, float Near, float Far);
     /**
     * @brief Creates a look-at matrix.
     * @param Eye Position of the camera.
@@ -282,12 +275,7 @@ namespace FMath
     * @param Up Up direction vector.
     * @return Look-at matrix.
     */
-    inline FMatrix LookAt(const FVector3& Eye, const FVector3& Target, const FVector3& Up)
-    {
-        return FMatrix(glm::lookAt(glm::vec3(Eye.x, Eye.y, Eye.z),
-                                   glm::vec3(Target.x, Target.y, Target.z),
-                                   glm::vec3(Up.x, Up.y, Up.z)));
-    }
+    inline FMatrix LookAt(const FVector3& Eye, const FVector3& Target, const FVector3& Up);
 
     /////////////////////
     // Quaternion Utilities

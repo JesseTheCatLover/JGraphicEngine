@@ -1,13 +1,14 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 #pragma once
 
-#include "FVector3.h"
 #include "glm/gtc/quaternion.hpp"
 #include <sstream>
 #include <string>
 
-#include "FMath.h"
-#include "FRotator.h"
+#include "FVector3.h"
+
+struct FQuat;
+struct FRotator;
 
 struct FQuat;
 /**
@@ -51,35 +52,15 @@ struct FEuler
     }
 
     /** Converts to FRotator in degrees. */
-    [[nodiscard]] FRotator ToRotator() const
-    {
-        return FRotator{
-            FMath::Degrees(Pitch),
-            FMath::Degrees(Yaw),
-            FMath::Degrees(Roll)
-        };
-    }
+    [[nodiscard]] FRotator ToRotator() const;
 
-    static FEuler MakeFromRotator(const FRotator& rotator)
-    {
-        return FEuler{ FMath::Radians(rotator.Pitch),
-                       FMath::Radians(rotator.Yaw),
-                       FMath::Radians(rotator.Roll) };
-    }
+    static FEuler MakeFromRotator(const FRotator& rotator);
 
     /** Converts to quaternion. */
-    [[nodiscard]] FQuat ToQuat() const
-    {
-        glm::quat q = glm::quat(glm::vec3(Pitch, Yaw, Roll));
-        return FQuat(q);
-    }
+    [[nodiscard]] FQuat ToQuat() const;
 
     /** Creates FEuler from a quaternion. */
-    static FEuler MakeFromQuat(const FQuat& quat)
-    {
-        glm::vec3 euler = glm::eulerAngles(quat.operator glm::quat());
-        return {euler.x, euler.y, euler.z};
-    }
+    static FEuler MakeFromQuat(const FQuat& quat);
 
     /** String representation in radians. */
     [[nodiscard]] std::string ToString() const

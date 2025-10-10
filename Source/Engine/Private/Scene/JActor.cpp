@@ -113,7 +113,29 @@ void JActor::Serialize(JsonWriter& writer) const
 
 void JActor::Deserialize(const JsonReader& reader)
 {
-    //m_Name = reader.Read("name", "");
+    m_Name = reader.Read<std::string>("name", "");
 
-    // TODO: Deserialize components and scene components via reflection/factory
+    // --- Scene Components ---
+    if (reader.Has("scene_components"))
+    {
+        auto sceneCompsReader = reader.GetArray("scene_components");
+        for (const auto& compJson : sceneCompsReader)
+        {
+            std::string type = compJson.Read<std::string>("type", "");
+
+            // Only handle JModelComponent for now
+            if (type == "JModelComponent")
+            {
+                auto* comp = new JModelComponent();
+                comp->SetOwnerActor(this);
+                comp->Deserialize(compJson);
+                m_SceneComponents.push_back(std::shared_ptr<JSceneComponent>(comp));
+
+                // Also assign to ModelComponent pointer for convenience
+                ModelComponent = comp;
+            }
+        }
+    }
+
+    //  skip actor components for now cause not needed
 }

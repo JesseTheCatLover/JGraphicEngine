@@ -75,69 +75,59 @@ std::vector<std::string> UPathFinder::ListFiles(
     const std::string& directory,
     const std::string& extension,
     bool bRecursive,
-    bool bCaseInsensitive
-)
+    bool bCaseInsensitive)
 {
     std::vector<std::string> result;
     std::filesystem::path dirPath = ResolvePath(directory);
+
     if (!std::filesystem::exists(dirPath) || !std::filesystem::is_directory(dirPath))
         return result;
 
     std::filesystem::directory_options options = std::filesystem::directory_options::skip_permission_denied;
-    auto iterator = bRecursive ?
-        std::filesystem::recursive_directory_iterator(dirPath, options) :
-        std::filesystem::directory_iterator(dirPath, options);
 
-    for (const auto& entry : iterator)
+    auto matchesExtension = [&](const std::string& fileExt) -> bool
     {
-        if (!entry.is_regular_file())
-            continue;
+        if (extension.empty())
+            return true;
 
-        std::string ext = entry.path().extension().string();
-        if (!ext.empty() && ext[0] == '.') ext.erase(0, 1);
+        std::string ext = fileExt;
+        if (!ext.empty() && ext[0] == '.')
+            ext.erase(0, 1);
 
-        bool match = extension.empty();
-        if (!match)
+        if (bCaseInsensitive)
         {
-            if (bCaseInsensitive)
-            {
-                std::string extLower = ext, filterLower = extension;
-                std::transform(extLower.begin(), extLower.end(), extLower.begin(), ::tolower);
-                std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(), ::tolower);
-                match = (extLower == filterLower);
-            }
-            else
-            {
-                match = (ext == extension);
-            }
+            std::string extLower = ext;
+            std::string filterLower = extension;
+            std::transform(extLower.begin(), extLower.end(), extLower.begin(), ::tolower);
+            std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(), ::tolower);
+            return extLower == filterLower;
         }
 
-        if (match)
-            result.push_back(entry.path().string());
-    }
+        return ext == extension;
+    };
 
-    return result;
-}
-
-std::vector<std::string> UPathFinder::ListDirectories(
-    const std::string& directory,
-    bool bRecursive
-)
-{
-    std::vector<std::string> result;
-    std::filesystem::path dirPath = ResolvePath(directory);
-    if (!std::filesystem::exists(dirPath) || !std::filesystem::is_directory(dirPath))
-        return result;
-
-    std::filesystem::directory_options options = std::filesystem::directory_options::skip_permission_denied;
-    auto iterator = bRecursive ?
-        std::filesystem::recursive_directory_iterator(dirPath, options) :
-        std::filesystem::directory_iterator(dirPath, options);
-
-    for (const auto& entry : iterator)
+    try
     {
-        if (entry.is_directory())
-            result.push_back(entry.path().string());
+        if (bRecursive)
+        {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(dirPath, options))
+            {
+                if (entry.is_regular_file() && matchesExtension(entry.path().extension().string()))
+                    result.push_back(entry.path().string());
+            }
+        }
+        else
+        {
+            for (const auto& entry : std::filesystem::directory_iterator(dirPath, options))
+            {
+                if (entry.is_regular_file() && matchesExtension(entry.path().extension().string()))
+                    result.push_back(entry.path().string());
+            }
+        }
+    }
+    catch (...)
+    {
+        // Ignore exceptions silently
     }
 
     return result;

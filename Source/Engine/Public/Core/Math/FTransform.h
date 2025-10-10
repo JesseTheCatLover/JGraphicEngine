@@ -3,10 +3,12 @@
 #pragma once
 
 #include "FVector3.h"
-#include "FMatrix.h"
+#include "FRotator.h"
 #include "FQuat.h"
 #include <glm/gtx/matrix_decompose.hpp>
 #include <sstream>
+
+struct FMatrix;
 
 /**
  * @struct FTransform
@@ -32,9 +34,9 @@ public:
 
     void SetPosition(const FVector3& position) { m_Position = position; }
     void SetRotation(const FQuat& rotation) { m_Rotation = rotation; }
-    void SetRotation(const FEuler& euler) { m_Rotation = euler.ToQuat(); }
+    void SetRotation(const FEuler& euler);
     void SetRotation(const FRotator& rotator) { SetRotation(FQuat::MakeFromRotator(rotator)); }
-    void SetRotation(const FVector3& eulerVec) { m_Rotation = FEuler::MakeFromVector3(eulerVec).ToQuat(); }
+    void SetRotation(const FVector3& eulerVec);
     void SetScale(const FVector3& scale) { m_Scale = scale; }
 
     // Constructors
@@ -47,84 +49,32 @@ public:
      * @brief Converts this transform into a 4x4 matrix (TRS order)
      * @return FMatrix representing the transform
      */
-    [[nodiscard]] FMatrix ToMatrix() const
-    {
-        glm::mat4 T = glm::translate(glm::mat4(1.0f), glm::vec3(m_Position.x, m_Position.y, m_Position.z));
-        glm::mat4 R = glm::toMat4(m_Rotation.operator glm::quat());
-        glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(m_Scale.x, m_Scale.y, m_Scale.z));
-        return FMatrix(T * R * S);
-    }
+    [[nodiscard]] FMatrix ToMatrix() const;
 
     /**
      * @brief Decomposes a matrix into a transform
      * @param matrix The matrix to decompose
      * @return FTransform containing position, rotation, and scale
      */
-    static FTransform MakeFromMatrix(const FMatrix& matrix)
-    {
-        glm::vec3 glmScale, glmTranslation, skew;
-        glm::quat glmRotation;
-        glm::vec4 perspective;
-
-        const glm::mat4& glmMat = static_cast<const glm::mat4>(matrix); // internal GLM
-        glm::decompose(glmMat, glmScale, glmRotation, glmTranslation, skew, perspective);
-
-        return {FVector3(glmTranslation.x, glmTranslation.y, glmTranslation.z),
-                FQuat(glmRotation),
-                FVector3(glmScale.x, glmScale.y, glmScale.z)};
-    }
+    static FTransform MakeFromMatrix(const FMatrix& matrix);
 
     /**
     * @brief Returns the inverse of this transform.
     * @return Inverted transform.
     */
-    [[nodiscard]] FTransform Inverse() const
-    {
-        FMatrix invMatrix = ToMatrix().Inverse();
-        return FTransform::MakeFromMatrix(invMatrix);
-    }
+    [[nodiscard]] FTransform Inverse() const;
 
-    [[nodiscard]] FVector3 TransformPosition(const FVector3& point) const
-    {
-        return ToMatrix().TransformPoint(point);
-    }
+    [[nodiscard]] FVector3 TransformPosition(const FVector3& point) const;
 
-    [[nodiscard]] FVector3 TransformVector(const FVector3& vector) const
-    {
-        return ToMatrix().TransformVector(vector);
-    }
+    [[nodiscard]] FVector3 TransformVector(const FVector3& vector) const;
 
-    /**
-     * @brief Combines two transforms by applying the second transform (B) after the first (A).
-     *
-     * This operator computes the equivalent transform as if you first applied transform A,
-     * and then applied transform B in the local space of A. The combination respects
-     * position, rotation, and scale in 3D space:
-     *
-     * - The position of B is scaled by A's scale, rotated by A's rotation, and then
-     *   offset by A's position.
-     * - The rotations are combined using quaternion multiplication (A followed by B).
-     * - The scales are combined component-wise.
-     *
-     * Mathematically:
-     *   combined_position = A.position + A.rotation.RotateVector(B.position * A.scale)
-     *   combined_rotation = A.rotation * B.rotation
-     *   combined_scale    = A.scale * B.scale
-     *
-     * @param A The first transform to apply.
-     * @param B The second transform to apply after A.
-     * @return A new FTransform representing the combination of A and B.
-     *
-     * @note This does NOT modify either A or B. Use this to compute world transforms
-     *       from local transforms or to chain transformations hierarchically.
-     */
-    inline FTransform operator*(const FTransform& a, const FTransform& b)
+    inline FTransform operator*(const FTransform& other) const
     {
-        FVector3 rotatedPos = a.GetRotation().RotateVector(b.GetPosition() * a.GetScale());
-        FVector3 combinedPos = a.GetPosition() + rotatedPos;
+        FVector3 rotatedPos = m_Rotation.RotateVector(other.m_Position * m_Scale);
+        FVector3 combinedPos = m_Position + rotatedPos;
 
-        FQuat combinedRot = a.GetRotation() * b.GetRotation();
-        FVector3 combinedScale = a.GetScale() * b.GetScale();
+        FQuat combinedRot = m_Rotation * other.m_Rotation;
+        FVector3 combinedScale = m_Scale * other.m_Scale;
 
         return {combinedPos, combinedRot, combinedScale};
     }

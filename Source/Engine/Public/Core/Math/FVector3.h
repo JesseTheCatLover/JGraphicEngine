@@ -4,8 +4,8 @@
 #include <sstream>
 #include <string>
 
-#include "FEuler.h"
-#include "FRotator.h"
+struct FRotator;
+struct FEuler;
 
 /**
  * @struct FVector3
@@ -136,9 +136,9 @@ struct FVector3
         return { vec.x * scalar, vec.y * scalar, vec.z * scalar };
     }
 
-    [[nodiscard]] FRotator FVector3::ToRotator() const { return {x, y, z};}
+    [[nodiscard]] FRotator ToRotator() const;
 
-    [[nodiscard]] FEuler ToEuler() const { return { x, y, z }; } // radians
+    [[nodiscard]] FEuler ToEuler() const;
 
     /** String representation */
     [[nodiscard]] std::string ToString() const

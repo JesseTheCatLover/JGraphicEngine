@@ -1,34 +1,6 @@
 // Copyright (c) 2024. JesseTheCatLover. All Rights Reserved.
 
-#include "../../Public/Scene/JCamera.h"
-#include "../../Public/Core/Settings.h"
-
-JCamera::JCamera():
-Yaw(-90.f),
-Pitch(0.f),
-Speed(8.5f),
-xSensitivity(0.1f),
-ySensitivity(0.1f),
-Zoom(45.f),
-Front(vec3(0.f, 0.f, -1.f)),
-WorldUp(vec3(0.f, 1.f, 0.f))
-{
-    UpdateCameraVectors();
-}
-
-JCamera::JCamera(Settings* Setting)
-{
-    Yaw = Setting -> GetCameraYaw();
-    Pitch = Setting -> GetCameraPitch();
-    Speed = Setting -> GetCameraSpeed();
-    xSensitivity = Setting -> GetCameraXSensitivity();
-    ySensitivity = Setting -> GetCameraYSensitivity();
-    Zoom = Setting -> GetCameraZoom();
-    Front = vec3(0.f, 0.f, -1.f);
-    WorldUp = vec3(0.0f, 1.0f, 0.0f);
-
-    UpdateCameraVectors();
-}
+#include "Scene/JCamera.h"
 
 JCamera::JCamera(vec3 Position, vec3 Up, float Yaw, float Pitch):
 Speed(8.5f),

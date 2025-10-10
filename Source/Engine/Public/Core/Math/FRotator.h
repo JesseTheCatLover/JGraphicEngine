@@ -2,11 +2,10 @@
 #pragma once
 
 #include "FVector3.h"
-#include "FMath.h"
 #include <sstream>
 #include <string>
 
-#include "FQuat.h"
+struct FQuat;
 
 /**
  * @struct FRotator
@@ -36,21 +35,11 @@ struct FRotator
     /** Convert to FVector3 (degrees) */
     [[nodiscard]] FVector3 ToVector3() const { return {Pitch, Yaw, Roll}; }
 
-    /** Convert to FEuler (radians) */
-    [[nodiscard]] FEuler ToEuler() const
-    {
-        return {
-            FMath::Radians(Pitch),
-            FMath::Radians(Yaw),
-            FMath::Radians(Roll)
-        };
-    }
+    /** Convert to FEuler (radians). */
+    [[nodiscard]] FEuler ToEuler() const;
 
-    /** Convert to quaternion (radians) */
-    [[nodiscard]] FQuat ToQuat() const
-    {
-        return FQuat::MakeFromEuler(ToEuler());
-    }
+    /** Convert to quaternion (radians). */
+    [[nodiscard]] FQuat ToQuat() const;
 
     /** String representation */
     [[nodiscard]] std::string ToString() const

@@ -99,7 +99,7 @@ public:
         if (m_RootComponent) m_RootComponent->SetWorldPosition(pos);
     }
 
-    [[nodiscard]] FRotator JActor::GetActorRotation() const
+    [[nodiscard]] FRotator GetActorRotation() const
     {
         return m_RootComponent ? m_RootComponent->GetWorldRotationAsRotator() : FRotator{};
     }
