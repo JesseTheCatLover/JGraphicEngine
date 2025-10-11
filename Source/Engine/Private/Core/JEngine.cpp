@@ -7,7 +7,7 @@
 #include "Framework/SceneManager.h"
 #include "Core/EngineGlobals.h"
 #include "Core/Contexts/FViewportContext.h"
-#include "Rendering/JRenderer.h"
+#include "../Rendering/JRenderer.h"
 #include "Framework/PostProcessManager.h"
 #include "Scene/JCamera.h"
 #include <iostream>

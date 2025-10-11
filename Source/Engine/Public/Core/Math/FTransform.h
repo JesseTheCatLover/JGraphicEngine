@@ -8,7 +8,7 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <sstream>
 
-struct FMatrix;
+struct FMatrix4;
 
 /**
  * @struct FTransform
@@ -49,14 +49,14 @@ public:
      * @brief Converts this transform into a 4x4 matrix (TRS order)
      * @return FMatrix representing the transform
      */
-    [[nodiscard]] FMatrix ToMatrix() const;
+    [[nodiscard]] FMatrix4 ToMatrix() const;
 
     /**
      * @brief Decomposes a matrix into a transform
      * @param matrix The matrix to decompose
      * @return FTransform containing position, rotation, and scale
      */
-    static FTransform MakeFromMatrix(const FMatrix& matrix);
+    static FTransform MakeFromMatrix(const FMatrix4& matrix);
 
     /**
     * @brief Returns the inverse of this transform.

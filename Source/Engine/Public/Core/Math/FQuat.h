@@ -8,7 +8,7 @@
 #include "glm/gtx/quaternion.hpp"
 
 struct FVector3;
-struct FMatrix;
+struct FMatrix4;
 struct FRotator;
 
 /**
@@ -71,7 +71,7 @@ public:
     [[nodiscard]] FVector3 RotateVector(const FVector3& vector) const;
 
     /** Converts quaternion to rotation matrix */
-    [[nodiscard]] FMatrix ToMatrix() const;
+    [[nodiscard]] FMatrix4 ToMatrix() const;
 
     [[nodiscard]] FRotator ToRotator() const;
 

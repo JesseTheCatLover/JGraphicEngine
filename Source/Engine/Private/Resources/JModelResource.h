@@ -2,7 +2,7 @@
 
 #pragma once
 #include "Core/JCoreObject.h"
-#include "Rendering/JModel.h"
+#include "../Rendering/Legacy/JModel.h"
 #include <memory>
 #include <string>
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2025. JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "JModel.h"
 

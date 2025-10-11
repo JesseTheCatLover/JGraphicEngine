@@ -13,59 +13,59 @@ struct FEuler;
 struct FRotator;
 
 /**
- * @struct FMatrix
+ * @struct FMatrix4
  * @brief Represents a 4x4 matrix for 3D transformations.
  *
  * Wraps glm::mat4 internally and exposes an API for the Engine.
  */
-struct FMatrix
+struct FMatrix4
 {
 private:
     glm::mat4 M{ 1.0f };
 
 public:
     /** Default constructor. Initializes to identity. */
-    FMatrix() = default;
+    FMatrix4() = default;
 
     /** Constructs from a glm::mat4. */
-    explicit FMatrix(const glm::mat4& mat) : M(mat) {}
+    explicit FMatrix4(const glm::mat4& mat) : M(mat) {}
 
     [[nodiscard]] glm::mat4 Get() const { return M; } // TODO: Maybe temp
 
     /** Matrix multiplication */
-    FMatrix operator*(const FMatrix& other) const { return FMatrix(M * other.M); }
-    FMatrix& operator*=(const FMatrix& other) { M *= other.M; return *this; }
+    FMatrix4 operator*(const FMatrix4& other) const { return FMatrix4(M * other.M); }
+    FMatrix4& operator*=(const FMatrix4& other) { M *= other.M; return *this; }
 
     /** Comparison operators */
-    bool operator==(const FMatrix& other) const { return M == other.M; }
-    bool operator!=(const FMatrix& other) const { return M != other.M; }
+    bool operator==(const FMatrix4& other) const { return M == other.M; }
+    bool operator!=(const FMatrix4& other) const { return M != other.M; }
 
     /** Returns the identity matrix */
-    static FMatrix Identity() { return FMatrix(glm::mat4(1.0f)); }
+    static FMatrix4 Identity() { return FMatrix4(glm::mat4(1.0f)); }
 
     /** Creates a translation matrix from a vector */
-    static FMatrix Translate(const FVector3& t) { return FMatrix(glm::translate(glm::mat4(1.0f), glm::vec3(t.x, t.y, t.z))); }
+    static FMatrix4 Translate(const FVector3& t) { return FMatrix4(glm::translate(glm::mat4(1.0f), glm::vec3(t.x, t.y, t.z))); }
 
     /** Creates a scaling matrix from a vector */
-    static FMatrix Scale(const FVector3& s) { return FMatrix(glm::scale(glm::mat4(1.0f), glm::vec3(s.x, s.y, s.z))); }
+    static FMatrix4 Scale(const FVector3& s) { return FMatrix4(glm::scale(glm::mat4(1.0f), glm::vec3(s.x, s.y, s.z))); }
 
     /** Creates a rotation matrix from an FQuat */
-    static FMatrix Rotate(const FQuat & q);
+    static FMatrix4 Rotate(const FQuat & q);
 
     /** Determinant of the matrix */
     [[nodiscard]] float Determinant() const { return glm::determinant(M); }
 
     /** Returns a new inverse matrix */
-    [[nodiscard]] FMatrix Inverse() const { return FMatrix(glm::inverse(M)); }
+    [[nodiscard]] FMatrix4 Inverse() const { return FMatrix4(glm::inverse(M)); }
 
     /** Returns a new transposed matrix */
-    [[nodiscard]] FMatrix Transpose() const { return FMatrix(glm::transpose(M)); }
+    [[nodiscard]] FMatrix4 Transpose() const { return FMatrix4(glm::transpose(M)); }
 
     /** Inverts the matrix in-place */
-    FMatrix& InvertSelf() { M = glm::inverse(M); return *this; }
+    FMatrix4& InvertSelf() { M = glm::inverse(M); return *this; }
 
     /** Transposes the matrix in-place */
-    FMatrix& TransposeSelf() { M = glm::transpose(M); return *this; }
+    FMatrix4& TransposeSelf() { M = glm::transpose(M); return *this; }
 
     /**
      * @brief Transforms a 3D point (applies translation)
@@ -95,15 +95,15 @@ public:
 
     [[nodiscard]] FEuler ToEuler() const;
 
-    static FMatrix MakeFromEuler(const FEuler& euler);
+    static FMatrix4 MakeFromEuler(const FEuler& euler);
 
     [[nodiscard]] FRotator ToRotator() const;
 
-    static FMatrix MakeFromRotator(const FRotator& rotator);
+    static FMatrix4 MakeFromRotator(const FRotator& rotator);
 
     [[nodiscard]] FQuat ToQuat() const;
 
-    static FMatrix MakeFromQuat(const FQuat& quat);
+    static FMatrix4 MakeFromQuat(const FQuat& quat);
 
     /** Converts to glm::mat4 for internal use */
     explicit operator glm::mat4() const { return M; }

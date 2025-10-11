@@ -5,7 +5,7 @@
 #include "FVector2.h"
 #include "FVector3.h"
 #include "FVector4.h"
-#include "FMatrix.h"
+#include "FMatrix4.h"
 #include "FRotator.h"
 #include "FQuat.h"
 #include "FEuler.h"
@@ -232,42 +232,42 @@ namespace FMath
     /**
      * @brief Returns the identity matrix.
      */
-    inline FMatrix Identity();
+    inline FMatrix4 Identity();
 
     /**
      * @brief Returns the inverse of a matrix.
      */
-    inline FMatrix Inverse(const FMatrix &M);
+    inline FMatrix4 Inverse(const FMatrix4 &M);
 
     /**
      * @brief Returns the transpose of a matrix.
      */
-    inline FMatrix Transpose(const FMatrix &M);
+    inline FMatrix4 Transpose(const FMatrix4 &M);
 
     /**
      * @brief Returns a translation matrix.
      */
-    inline FMatrix Translate(const FVector3 &T);
+    inline FMatrix4 Translate(const FVector3 &T);
 
     /**
      * @brief Returns a scaling matrix.
      */
-    inline FMatrix Scale(const FVector3 &S);
+    inline FMatrix4 Scale(const FVector3 &S);
 
     /**
      * @brief Returns a rotation matrix from a quaternion.
      */
-    inline FMatrix Rotate(const FQuat& Q);
+    inline FMatrix4 Rotate(const FQuat& Q);
 
     /**
      * @brief Returns an orthographic projection matrix.
      */
-    inline FMatrix Ortho(float Left, float Right, float Bottom, float Top, float Near, float Far);
+    inline FMatrix4 Ortho(float Left, float Right, float Bottom, float Top, float Near, float Far);
 
     /**
      * @brief Returns a perspective projection matrix.
      */
-    inline FMatrix Perspective(float FOV, float Aspect, float Near, float Far);
+    inline FMatrix4 Perspective(float FOV, float Aspect, float Near, float Far);
     /**
     * @brief Creates a look-at matrix.
     * @param Eye Position of the camera.
@@ -275,7 +275,7 @@ namespace FMath
     * @param Up Up direction vector.
     * @return Look-at matrix.
     */
-    inline FMatrix LookAt(const FVector3& Eye, const FVector3& Target, const FVector3& Up);
+    inline FMatrix4 LookAt(const FVector3& Eye, const FVector3& Target, const FVector3& Up);
 
     /////////////////////
     // Quaternion Utilities
@@ -324,8 +324,8 @@ namespace FMath
     */
     inline FTransform Combine(const FTransform& A, const FTransform& B)
     {
-        FMatrix Result = A.ToMatrix() * B.ToMatrix();
-        return FTransform::MakeFromMatrix(FMatrix(static_cast<glm::mat4>(Result)));
+        FMatrix4 Result = A.ToMatrix() * B.ToMatrix();
+        return FTransform::MakeFromMatrix(FMatrix4(static_cast<glm::mat4>(Result)));
     }
 
     /**
@@ -335,7 +335,7 @@ namespace FMath
      */
     inline FTransform Inverse(const FTransform& T)
     {
-        FMatrix Inv = T.ToMatrix().Inverse();
-        return FTransform::MakeFromMatrix(FMatrix(static_cast<glm::mat4>(Inv)));
+        FMatrix4 Inv = T.ToMatrix().Inverse();
+        return FTransform::MakeFromMatrix(FMatrix4(static_cast<glm::mat4>(Inv)));
     }
 }

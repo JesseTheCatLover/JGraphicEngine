@@ -1,4 +1,4 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "JFramebufferTarget.h"
 #include <iostream>

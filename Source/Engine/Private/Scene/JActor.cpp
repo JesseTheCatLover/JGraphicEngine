@@ -8,7 +8,7 @@
 #include "Core/Serialization/JsonReader.h"
 #include "glm/gtc/matrix_transform.hpp"
 
-#include "Rendering/JModel.h"
+#include "../Rendering/Legacy/JModel.h"
 
 #include "Scene/Components/Scene/JModelComponent.h"
 

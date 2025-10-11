@@ -3,7 +3,7 @@
 #include "Core/Math/FQuat.h"
 
 #include "Core/Math/FEuler.h"
-#include "Core/Math/FMatrix.h"
+#include "Core/Math/FMatrix4.h"
 #include "Core/Math/FRotator.h"
 
 /** Constructs quaternion from axis-angle rotation. Angle in radians. */
@@ -19,9 +19,9 @@ FVector3 FQuat::RotateVector(const FVector3& vector) const
     return {rotated.x, rotated.y, rotated.z};
 }
 
-FMatrix FQuat::ToMatrix() const
+FMatrix4 FQuat::ToMatrix() const
 {
-    return FMatrix(glm::toMat4(Q));
+    return FMatrix4(glm::toMat4(Q));
 }
 
 [[nodiscard]] FRotator FQuat::ToRotator() const

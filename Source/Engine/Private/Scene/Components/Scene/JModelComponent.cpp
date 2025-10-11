@@ -3,7 +3,7 @@
 #include "Scene/Components/Scene/JModelComponent.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
-#include "Rendering/JShader.h"
+#include "../../../Rendering/Legacy/JShader.h"
 #include "Resources/JResourceManager.h"
 #include "Resources/JModelResource.h"
 
@@ -22,7 +22,7 @@ void JModelComponent::Draw(JShader& shader) const
         if (model)
         {
             // Get world transform from the scene graph
-            FMatrix worldTransformMat4 = GetWorldTransform().ToMatrix();
+            FMatrix4 worldTransformMat4 = GetWorldTransform().ToMatrix();
 
             // Send it to the shader (as the "model matrix")
             shader.Use();

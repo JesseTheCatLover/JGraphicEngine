@@ -2,10 +2,10 @@
 
 #include "Framework/PostProcessManager.h"
 
-#include "Rendering/JFramebufferTarget.h"
+#include "../Rendering/Legacy/JFramebufferTarget.h"
 #include <glad/gl.h>
 #include <iostream>
-#include "Rendering/JPostProcessor.h"
+#include "../Rendering/Legacy/JPostProcessor.h"
 
 PostProcessManager::PostProcessManager(int width, int height)
     : Width(width), Height(height)
