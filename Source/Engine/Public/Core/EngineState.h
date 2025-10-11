@@ -31,13 +31,14 @@ private:
     std::unique_ptr<FInputContext> m_InputContext;
 
 public:
-    float GetDeltaTime() const;
+    [[nodiscard]] const float& GetDeltaTime() const;
     void SetDeltaTime(float dt);
 
     int GetWindowWidth() const;
     void SetWindowWidth(int w);
     int GetWindowHeight() const;
     void SetWindowHeight(int h);
+    bool GetIsWindowFullscreen();
 
     bool GetWireframeMode();
     void SetWireframeMode(bool bWireMode);
@@ -47,6 +48,8 @@ public:
     void SetCamera(JCamera* camera);
     FViewportContext* GetCameraSettings() const;
 
+    GLFWwindow* GetGLFWWindow() const;
+
 private:
     void SetRunning(bool bIsRunning) { m_bRunning = bIsRunning; }
     bool GetIsRunning() const { return m_bRunning; }
@@ -54,7 +57,6 @@ private:
     float GetLastFrameTime() const;
     void SetLastFrameTime(float lft);
 
-    GLFWwindow* GetGLFWWindow() const;
     void SetGLFWWindow(GLFWwindow* window);
 
     bool GetIsFirstMouse();

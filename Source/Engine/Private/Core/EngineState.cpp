@@ -28,7 +28,7 @@ EngineState::EngineState()
 
 EngineState::~EngineState() = default;
 
-float EngineState::GetDeltaTime() const
+const float& EngineState::GetDeltaTime() const
 {
     return m_FrameContext->DeltaTime;
 }
@@ -56,6 +56,11 @@ int EngineState::GetWindowHeight() const
 void EngineState::SetWindowHeight(int h)
 {
     m_WindowContext->height = h;
+}
+
+bool EngineState::GetIsWindowFullscreen()
+{
+    return m_WindowContext->bFullscreen;
 }
 
 bool EngineState::GetWireframeMode()
@@ -88,7 +93,7 @@ void EngineState::SetLastFrameTime(float lft)
     m_FrameContext->LastFrameTime = lft;
 }
 
-GLFWwindow * EngineState::GetGLFWWindow() const
+GLFWwindow* EngineState::GetGLFWWindow() const
 {
     return m_WindowContext->window;
 }

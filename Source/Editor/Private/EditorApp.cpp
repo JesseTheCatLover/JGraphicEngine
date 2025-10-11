@@ -6,11 +6,8 @@
 #include <ImGuiLayer.h>
 #include <Panels/SceneHierarchyPanel.h>
 
-EditorApp::EditorApp(GLFWwindow* window)
+EditorApp::EditorApp()
 {
-    m_Context = std::make_unique<EditorContext>(GEngine->GetState());
-    m_ImGuiLayer = std::make_unique<ImGuiLayer>(window);
-    m_SceneHierarchyPanel = std::make_unique<SceneHierarchyPanel>();
 }
 
 EditorApp::~EditorApp() = default;
@@ -22,6 +19,7 @@ void EditorApp::BeginFrame()
 
 void EditorApp::RenderPanels()
 {
+    if (JEngine::Get().GetState().GetViewMode() != EViewMode::UI) return;
     m_SceneHierarchyPanel->Draw(*m_Context);
 }
 
@@ -33,4 +31,28 @@ void EditorApp::EndFrame()
 void EditorApp::Shutdown()
 {
     m_ImGuiLayer->Shutdown();
+}
+
+void EditorApp::OnEngineInitialized(GLFWwindow* window)
+{
+    m_Window = window;
+
+    m_ImGuiLayer = std::make_unique<ImGuiLayer>(window);
+    m_Context = std::make_unique<EditorContext>(GEngine->GetState());
+    m_SceneHierarchyPanel = std::make_unique<SceneHierarchyPanel>();
+}
+
+void EditorApp::OnSceneLoaded(const std::string &sceneName)
+{
+}
+
+void EditorApp::OnRenderOverlay()
+{
+    EndFrame();
+}
+
+void EditorApp::OnTick(float deltaTime)
+{
+    BeginFrame();
+    RenderPanels();
 }

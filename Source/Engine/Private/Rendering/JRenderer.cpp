@@ -3,6 +3,7 @@
 #include "Rendering/JRenderer.h"
 #include "JFramebufferTarget.h"
 #include <glad/gl.h>
+#include <memory>
 
 JRenderer::JRenderer(int screenWidth, int screenHeight, int samples)
     : ScreenWidth(screenWidth), ScreenHeight(screenHeight), Samples(samples)

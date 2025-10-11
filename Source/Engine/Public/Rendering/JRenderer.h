@@ -22,7 +22,16 @@ class JFramebufferTarget;
  * 4. Retrieve the final scene texture via GetSceneTargetTexture() for post-processing or presentation.
  */
 class JRenderer {
-public:
+    friend class JEngine;
+
+private:
+    int ScreenWidth;  ///< Current width of the framebuffer in pixels
+    int ScreenHeight; ///< Current height of the framebuffer in pixels
+    int Samples;      ///< Number of samples per pixel for multisampling
+
+    std::unique_ptr<JFramebufferTarget> SceneTarget;   ///< Main render target (may be multi-sampled)
+    std::unique_ptr<JFramebufferTarget> ResolveTarget; ///< Single-sample resolved target for post-processing
+
     /**
      * @brief Construct a new scene renderer.
      *
@@ -32,7 +41,6 @@ public:
      *        Use 1 for no multisampling.
      */
     JRenderer(int screenWidth, int screenHeight, int samples = 4);
-    ~JRenderer();
 
     /**
      * @brief Begin rendering a new frame/scene.
@@ -62,6 +70,9 @@ public:
      */
     void Resize(int newWidth, int newHeight);
 
+public:
+    ~JRenderer();
+
     /**
      * @brief Get the final scene texture ID.
      *
@@ -71,13 +82,5 @@ public:
      * @return OpenGL texture ID of the resolved scene. If multisampling is enabled,
      *         the resolved single-sample texture is returned. Otherwise, the scene texture itself.
      */
-    unsigned int GetSceneTargetTexture() const;
-
-private:
-    int ScreenWidth;  ///< Current width of the framebuffer in pixels
-    int ScreenHeight; ///< Current height of the framebuffer in pixels
-    int Samples;      ///< Number of samples per pixel for multisampling
-
-    std::unique_ptr<JFramebufferTarget> SceneTarget;   ///< Main render target (may be multi-sampled)
-    std::unique_ptr<JFramebufferTarget> ResolveTarget; ///< Single-sample resolved target for post-processing
+    [[nodiscard]] unsigned int GetSceneTargetTexture() const;
 };

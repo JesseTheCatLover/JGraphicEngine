@@ -11,6 +11,7 @@
 #include "Framework/PostProcessManager.h"
 #include "Scene/JCamera.h"
 #include <iostream>
+#include "Core/TServiceContainer.h"
 #include "Resources/JResourceManager.h"
 #include "Resources/JModelResource.h"
 #include "Scene/Components/Scene/JModelComponent.h"
@@ -18,7 +19,33 @@
 class JModelResource;
 
 JEngine::JEngine()
+    : m_Services(std::make_unique<TServiceContainer>())
 {
+}
+
+JEngine::~JEngine()
+{
+}
+
+bool JEngine::Run()
+{
+    if (!Initialize())
+    {
+        std::cerr << "[JEngine]: Initialization of the engine has failed" << std::endl;
+        return false;
+    }
+
+    // Bootstrap default scene
+    if (!BootstrapScene())
+    {
+        std::cerr << "[JEngine]: Bootstrapping the default scene has failed" << std::endl;
+        return false;
+    }
+
+    RunMainLoop();
+    Shutdown();
+
+    return true;
 }
 
 bool JEngine::Initialize()
@@ -27,50 +54,177 @@ bool JEngine::Initialize()
 
     GEngine = this;
 
-    RegisterServices();
+    if (!InitializeSubsystems())
+    {
+        std::cerr << "[JEngine]: Failed to initialize subsystems" << std::endl;
+        return false;
+    }
 
-    // Bootstrap default scene
-    BootstrapScene();
+    if (!InitializeManagers()) return false;
+
+    if (m_EditorBridge)
+        m_EditorBridge->OnEngineInitialized(m_State.GetGLFWWindow());
 
     return true;
 }
 
-void JEngine::Tick()
+bool JEngine::GLFWInitialize()
 {
-    auto* sceneMgr = GetSceneManager();
-    if (sceneMgr)
-        sceneMgr->Update(m_State.GetDeltaTime());
+    // ----------------- GLFW Init -----------------
+    if (!glfwInit()) {
+        std::cerr << "[JEngine]: Failed to initialize GLFW" << std::endl;
+        return false;
+    }
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+    // Get fullscreen settings from state/context
+    bool bFullscreen = m_State.GetIsWindowFullscreen();
+    GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+
+    GLFWwindow* Window = nullptr;
+
+    if (bFullscreen && primaryMonitor && mode)
+    {
+        // --- Set hints for a borderless fullscreen window ---
+        glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);  // title bar
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+        glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE);
+        glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
+        glfwWindowHint(GLFW_FLOATING, GLFW_FALSE);   // stays behind other floating windows
+
+        m_State.SetWindowWidth(mode->width);
+        m_State.SetWindowHeight(mode->height);
+
+        Window = glfwCreateWindow(
+            mode->width,
+            mode->height,
+            "Jesse's Magical Workshop",
+            nullptr,  // Attach to monitor for fullscreen
+            nullptr
+        );
+    }
+    else
+    {
+        // --- Windowed fallback ---
+        Window = glfwCreateWindow(
+            m_State.GetWindowWidth(),
+            m_State.GetWindowHeight(),
+            "Jesse's Magical Workshop",
+            nullptr,
+            nullptr
+        );
+    }
+
+    if (!Window) {
+        std::cout << "Failed to create GLFW window." << std::endl;
+        glfwTerminate();
+        return false;
+    }
+
+    // Make context current *before* loading GLAD
+    glfwMakeContextCurrent(Window);
+
+    m_State.SetGLFWWindow(Window);
+
+    glfwSetFramebufferSizeCallback(Window, FramebufferSizeCallback);
+    glfwSetCursorPosCallback(Window, MouseCallback);
+    glfwSetScrollCallback(Window, ScrollCallback);
+    glfwSetKeyCallback(Window, KeyCallback);
+
+    // Capture and hide the cursor
+    glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPos(Window, m_State.GetLastMouseX(), m_State.GetLastMouseY());
+
+    if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
-bool JEngine::Run()
+bool JEngine::InitializeSubsystems()
 {
-    if (!Initialize())
-        return false;
-
-    GLFWwindow* window = m_State.GetGLFWWindow();
-    if (!window)
-        return false;
-
-    while (!glfwWindowShouldClose(window) && m_State.GetIsRunning())
+    m_Renderer = std::unique_ptr<JRenderer>(new JRenderer(m_State.GetWindowWidth(), m_State.GetWindowHeight(), 4));
+    if (!m_Renderer)
     {
-        float currentFrame = static_cast<float>(glfwGetTime());
+        std::cerr << "[JEngine]: Failed to initialize renderer" << std::endl;
+        return false;
+    }
+
+    return true;
+
+}
+
+bool JEngine::InitializeManagers()
+{
+    RegisterServices();
+
+    return true;
+}
+
+void JEngine::RunMainLoop()
+{
+    if (!m_State.GetGLFWWindow())
+    {
+        std::cerr << "[JEngine]: No glfw window was found to run the main loop" << std::endl;
+        return;
+    }
+
+    while (!glfwWindowShouldClose(m_State.GetGLFWWindow()) && m_State.GetIsRunning())
+    {
+        auto currentFrame = static_cast<float>(glfwGetTime());
         m_State.SetDeltaTime(currentFrame - m_State.GetLastFrameTime());
         m_State.SetLastFrameTime(currentFrame);
 
-        ProcessInputs(window, m_State.GetDeltaTime());
+        ProcessInputs(m_State.GetGLFWWindow(), m_State.GetDeltaTime());
+
         Tick();
+        GetRenderer()->BeginScene();
+        GetRenderer()->EndScene();
+
+        int fbW, fbH;
+        glfwGetFramebufferSize(m_State.GetGLFWWindow(), &fbW, &fbH);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, fbW, fbH);
+
+        if (auto* ppm = GetPostProcessManager())
+            ppm->ApplyChain(GetRenderer()->GetSceneTargetTexture(), fbW, fbH);
+
+        if (m_EditorBridge)
+            m_EditorBridge->OnRenderOverlay();
 
         // Swap front/back buffers (show rendered frame)
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(m_State.GetGLFWWindow());
 
         // Poll window + input events
         glfwPollEvents();
     }
-
-    Shutdown();
-    return true;
 }
 
+void JEngine::Shutdown()
+{
+    GEngine = nullptr;
+}
+
+void JEngine::Tick()
+{
+    auto& deltaTime = m_State.GetDeltaTime();
+
+    auto* sceneMgr = GetSceneManager();
+    if (sceneMgr)
+        sceneMgr->Tick(deltaTime);
+
+    if (m_EditorBridge)
+        m_EditorBridge->OnTick(deltaTime);
+}
 
 void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
 {
@@ -91,7 +245,7 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
 void JEngine::OnFramebufferResize(int width, int height)
 {
     glViewport(0, 0, width, height);
-    if (auto Renderer = GetService<JRenderer>())
+    if (auto Renderer = GetRenderer())
         Renderer->Resize(width, height);
 }
 
@@ -140,73 +294,49 @@ void JEngine::OnKeyboardAction(GLFWwindow *window, int key, int scancode, int ac
         m_State.SetWireframeMode(!m_State.GetWireframeMode()); // Toggling the wireframe mode
 }
 
+JRenderer* JEngine::GetRenderer()
+{
+    return m_Renderer.get();
+}
+
 SceneManager* JEngine::GetSceneManager()
 {
-    return m_Services.GetService<SceneManager>();
+    return m_Services->GetService<SceneManager>().get();
 }
 
 PostProcessManager * JEngine::GetPostProcessManager()
 {
-    return m_Services.GetService<PostProcessManager>();
-}
-
-void JEngine::Shutdown()
-{
-    GEngine = nullptr;
+    return m_Services->GetService<PostProcessManager>().get();
 }
 
 void JEngine::RegisterServices()
 {
-    m_Services.RegisterService<JRenderer>(m_State.GetWindowWidth(), m_State.GetWindowHeight(), 4);
-    m_Services.RegisterService<PostProcessManager>(m_State.GetWindowWidth(), m_State.GetWindowHeight());
-    m_Services.RegisterService<SceneManager>();
+    m_Services->RegisterFactory<PostProcessManager>([this]() -> std::shared_ptr<PostProcessManager>
+    {
+        return std::make_shared<PostProcessManager>(m_State.GetWindowWidth(), m_State.GetWindowHeight());
+    });
+
+    m_Services->RegisterFactory<SceneManager>([]() -> std::shared_ptr<SceneManager>
+    {
+        return std::make_shared<SceneManager>();
+    });
+
+    // Optionally: eager creation for deterministic startup
+    m_Services->GetService<PostProcessManager>();
+    m_Services->GetService<SceneManager>();
 }
 
-bool JEngine::GLFWInitialize()
+bool JEngine::BootstrapScene()
 {
-    // ----------------- GLFW Init -----------------
-    if (!glfwInit()) {
-        std::cout << "Failed to initialize GLFW" << std::endl;
-        return false;
+    auto* defaultScene = GetSceneManager()->LoadSceneFile("DefaultScene");
+    if (!defaultScene)
+    {
+        CreateDefaultScene();
     }
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-    GLFWwindow* Window = glfwCreateWindow(m_State.GetWindowWidth(), m_State.GetWindowHeight(),
-                         "Jesse's Magical Workshop", NULL, NULL);
-    if (!Window) {
-        std::cout << "Failed to create GLFW window." << std::endl;
-        glfwTerminate();
-        return false;
-    }
-
-    // Make context current *before* loading GLAD
-    glfwMakeContextCurrent(Window);
-
-    m_State.SetGLFWWindow(Window);
-
-    glfwSetFramebufferSizeCallback(Window, FramebufferSizeCallback);
-    glfwSetCursorPosCallback(Window, MouseCallback);
-    glfwSetScrollCallback(Window, ScrollCallback);
-    glfwSetKeyCallback(Window, KeyCallback);
-
-    // Capture and hide the cursor
-    glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSetCursorPos(Window, m_State.GetLastMouseX(), m_State.GetLastMouseY());
-
-    if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return false;
-    }
-
     return true;
 }
 
-void JEngine::BootstrapScene()
+void JEngine::CreateDefaultScene()
 {
     auto& rm = JResourceManager::Get();
     auto* sceneManager = GetSceneManager();

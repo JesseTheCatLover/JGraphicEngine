@@ -44,10 +44,7 @@ add_subdirectory(ThirdParty)
 # --- Engine modules
 add_subdirectory(Source/Engine)
 add_subdirectory(Source/Editor)
-
-# Create executable and link
-add_executable(JGraphicEngine Main.cpp)
-target_link_libraries(JGraphicEngine PRIVATE Engine Editor)
+add_subdirectory(Source/Launch) # Executable is defined in this module
 
 # --- Engine directory macro ---
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

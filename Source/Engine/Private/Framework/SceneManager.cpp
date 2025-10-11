@@ -34,7 +34,7 @@ bool SceneManager::RemoveActor(unsigned int id)
     return RemoveActor(actor);
 }
 
-void SceneManager::Update(float deltaTime)
+void SceneManager::Tick(float deltaTime)
 {
     if(m_ActiveScene)
         m_ActiveScene->Tick(deltaTime);

@@ -2,6 +2,8 @@
 
 #include "Scene/JActor.h"
 #include "../../Public/Scene/Components/JSceneComponent.h"
+
+#include "Core/JEngine.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 #include "glm/gtc/matrix_transform.hpp"

@@ -43,8 +43,15 @@ struct FSceneMeta
 
 class SceneManager
 {
+    friend class JEngine;
 private:
     std::unique_ptr<JScene> m_ActiveScene; ///< Currently active scene
+
+    /**
+     * @brief Passes Tick to all actors in the active scene.
+     * @param deltaTime Time since last frame
+     */
+    void Tick(float deltaTime);
 
 public:
     /** @brief Default constructor. */
@@ -128,12 +135,6 @@ public:
      * @return true if removed successfully, false otherwise
      */
     bool RemoveActor(unsigned int id);
-
-    /**
-     * @brief Update all actors in the active scene.
-     * @param deltaTime Time since last frame
-     */
-    void Update(float deltaTime);
 
     // -------------------- Scene Runtime API --------------------
 
