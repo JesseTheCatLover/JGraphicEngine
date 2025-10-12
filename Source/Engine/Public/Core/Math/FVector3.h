@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <string>
+#include <cmath>
 
 struct FRotator;
 struct FEuler;

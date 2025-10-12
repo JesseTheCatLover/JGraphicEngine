@@ -4,6 +4,7 @@
 #include "Utilities/UPathFinder.h"
 #include <fstream>
 #include <filesystem>
+#include <algorithm>
 
 namespace fs = std::filesystem;
 
