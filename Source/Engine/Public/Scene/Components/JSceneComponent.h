@@ -23,7 +23,7 @@ protected:
     JSceneComponent* m_Parent = nullptr; ///< Parent component in the hierarchy
     std::vector<JSceneComponent*> m_Children; ///< Child components
 
-    void MarkWorldDirty();;
+    void MarkWorldDirty();
 
     mutable FTransform m_WorldTransform;
     mutable bool m_WorldDirty;

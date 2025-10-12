@@ -15,7 +15,7 @@
  */
 class JTransformComponent : public JActorComponent
 {
-    DECLARE_JOBJECT(JTransformComponent, JActorComponent);
+    DECLARE_JOBJECT(JTransformComponent, JActorComponent)
 
 private:
     /** Local transform storing position, rotation, and scale. */

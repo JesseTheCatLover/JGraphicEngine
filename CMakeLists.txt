@@ -6,8 +6,6 @@ include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
-set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Treat warnings as errors" FORCE)
-
 # Fetch Dependencies
 FetchContent_Declare(
         glfw
@@ -53,3 +51,19 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_definitions(Engine PUBLIC ENGINE_DIRECTORY="${CMAKE_SOURCE_DIR}")
 endif()
 
+# Compiler warnings for best portability across compilers
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU")
+    target_compile_options(Engine PRIVATE
+            -Wextra            # Enable extra warnings not included in -Wall
+            -Wpedantic         # Enforce strict ISO C++ compliance
+            -Werror=implicit-function-declaration  # Catch missing includes / transitive includes
+    )
+elseif (MSVC)
+    # MSVC equivalent flags (to enforce similar checks on Windows)
+    target_compile_options(Engine PRIVATE
+        /permissive-  # Enforce standard-compliant C++
+        /EHsc         # Standard exception handling
+        )
+endif()
+
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Treat warnings as errors" FORCE)

@@ -1,7 +1,7 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "../JRenderer.h"
-#include "JFramebufferTarget.h"
+#include "JRenderer.h"
+#include "Legacy/JFramebufferTarget.h"
 #include <glad/gl.h>
 #include <memory>
 
