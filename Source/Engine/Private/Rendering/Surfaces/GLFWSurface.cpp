@@ -100,6 +100,11 @@ void GLFWSurface::Resize(uint32_t width, uint32_t height)
     glfwSetWindowSize(m_Window, width, height);
 }
 
+void GLFWSurface::PollSurfaceEvents()
+{
+    glfwPollEvents();
+}
+
 void * GLFWSurface::GetNativeHandle() const
 {
     return reinterpret_cast<void*>(m_Window);
@@ -157,6 +162,8 @@ FSurfaceState GLFWSurface::GetState() const
 void GLFWSurface::SetTitle(const std::string &title)
 {
     m_State.title = title;
+    if (m_Window)
+        glfwSetWindowTitle(m_Window, title.c_str());
 }
 
 void GLFWSurface::SetVSync(bool vSync)
@@ -167,13 +174,14 @@ void GLFWSurface::SetVSync(bool vSync)
 
 void GLFWSurface::UpdateCursor()
 {
+    if (!m_Window) return;
     switch (m_CursorMode)
     {
         case ECursorMode::Visible:
             glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             break;
         case ECursorMode::Hidden:
-            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             break;
         case ECursorMode::Disabled:
             // Capture and hide the cursor

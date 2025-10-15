@@ -26,6 +26,8 @@ public:
 
     void Resize(uint32_t width, uint32_t height) override;
 
+    void PollSurfaceEvents() override;
+
     void* GetNativeHandle() const override;
 
     bool IsFullscreen() const override;
