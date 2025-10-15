@@ -1,16 +1,18 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+
 #include <cstdint>
+#include <vector>
 
 using Rint = uint32_t;
 
 struct RMesh
 {
-    Rint vertexBuffer = 0;
-    Rint indexBuffer = 0;
-    Rint vertexCount = 0;
-    Rint indexCount = 0;
+    std::vector<float> vertices;
+    std::vector<uint32_t> indices;
+    Rint gpuVertexBuffer = 0;
+    Rint gpuIndexBuffer = 0;
 };
 
 struct RTexture
