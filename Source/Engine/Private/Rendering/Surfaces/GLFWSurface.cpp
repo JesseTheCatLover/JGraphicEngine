@@ -4,6 +4,11 @@
 #include "GLFW/glfw3.h"
 #include <iostream>
 
+GLFWSurface::~GLFWSurface()
+{
+    GLFWSurface::Shutdown();
+}
+
 bool GLFWSurface::Initialize(const FSurfaceState &state)
 {
     if (!glfwInit())
@@ -12,8 +17,8 @@ bool GLFWSurface::Initialize(const FSurfaceState &state)
         return false;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #if defined(__APPLE__)

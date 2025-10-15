@@ -1,22 +1,22 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "JRenderer.h"
+#include "JRendererLegacy.h"
 #include "JFramebufferTarget.h"
 #include <glad/gl.h>
 #include <memory>
 
-JRenderer::JRenderer(int screenWidth, int screenHeight, int samples)
+JRendererLegacy::JRendererLegacy(int screenWidth, int screenHeight, int samples)
     : ScreenWidth(screenWidth), ScreenHeight(screenHeight), Samples(samples)
 {
     SceneTarget = std::make_unique<JFramebufferTarget>(screenWidth, screenHeight, samples);
     ResolveTarget = std::make_unique<JFramebufferTarget>(screenWidth, screenHeight, 1); // always single-sample
 }
 
-JRenderer::~JRenderer()
+JRendererLegacy::~JRendererLegacy()
 {
 }
 
-void JRenderer::BeginScene() {
+void JRendererLegacy::BeginScene() {
     SceneTarget->Bind();
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -26,7 +26,7 @@ void JRenderer::BeginScene() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void JRenderer::EndScene() {
+void JRendererLegacy::EndScene() {
     SceneTarget->Unbind(ScreenWidth, ScreenHeight);
 
     // Resolve multi-sampled scene to single-sample texture
@@ -34,14 +34,14 @@ void JRenderer::EndScene() {
         SceneTarget->ResolveTo(*ResolveTarget);
 }
 
-void JRenderer::Resize(int newWidth, int newHeight) {
+void JRendererLegacy::Resize(int newWidth, int newHeight) {
     ScreenWidth = newWidth;
     ScreenHeight = newHeight;
     SceneTarget->Resize(newWidth, newHeight);
     ResolveTarget->Resize(newWidth, newHeight);
 }
 
-unsigned int JRenderer::GetSceneTargetTexture() const {
+unsigned int JRendererLegacy::GetSceneTargetTexture() const {
     // If multi-sampled, return resolved texture; otherwise, return scene texture
     return SceneTarget->GetSamples() > 1 ? ResolveTarget->GetTexture() : SceneTarget->GetTexture();
 }

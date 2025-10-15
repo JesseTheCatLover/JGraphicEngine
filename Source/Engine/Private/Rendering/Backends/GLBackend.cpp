@@ -12,7 +12,7 @@ GLBackend::GLMesh * GLBackend::FindMesh(RShaderHandle handle)
 
 bool GLBackend::Initialize()
 {
-    if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)))
+    //if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)))
 }
 
 void GLBackend::Shutdown()

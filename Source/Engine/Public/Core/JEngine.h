@@ -2,11 +2,13 @@
 
 #pragma once
 #include "EngineState.h"
+#include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 #include "Framework/PostProcessManager.h"
 #include "Framework/SceneManager.h"
 
-class JRenderer;
+class IPlatformSurface;
+class JRendererLegacy;
 class TServiceContainer;
 class EditorContext;
 
@@ -33,7 +35,7 @@ public:
     void RegisterFactory(std::function<std::shared_ptr<T>()> factory);
 
     // Syntactic sugar manager accessors
-    JRenderer* GetRenderer();
+    JRendererLegacy* GetRenderer();
     SceneManager* GetSceneManager();
     PostProcessManager* GetPostProcessManager();
 
@@ -47,10 +49,13 @@ private:
 
     EngineState m_State;
     IEditorBridge* m_EditorBridge = nullptr;
-    std::unique_ptr<JRenderer> m_Renderer;
-    std::unique_ptr<TServiceContainer> m_Services;
+    TUniquePtr<IPlatformSurface> m_PlatformSurface;
+    TUniquePtr<JRendererLegacy> m_Renderer;
+    TUniquePtr<TServiceContainer> m_Services;
 
     bool Initialize();
+    bool GLFWInitialize();
+    bool SurfaceInitialize();
     bool InitializeSubsystems();
     bool InitializeManagers();
     void RunMainLoop();
@@ -59,7 +64,6 @@ private:
     void Tick();
 
     void RegisterServices();
-    bool GLFWInitialize();
 
     bool BootstrapScene();
     void CreateDefaultScene();

@@ -6,7 +6,7 @@
 class JFramebufferTarget;
 
 /**
- * @class JRenderer
+ * @class JRendererLegacy
  * @brief High-level scene renderer for offscreen rendering.
  *
  * JRenderer is responsible for rendering the 3D scene into an offscreen framebuffer.
@@ -21,7 +21,7 @@ class JFramebufferTarget;
  * 3. Call EndScene() to finalize the framebuffer and resolve multisampling.
  * 4. Retrieve the final scene texture via GetSceneTargetTexture() for post-processing or presentation.
  */
-class JRenderer {
+class JRendererLegacy {
     friend class JEngine;
 
 private:
@@ -40,7 +40,7 @@ private:
      * @param samples Number of samples per pixel for multisampling (default: 4).
      *        Use 1 for no multisampling.
      */
-    JRenderer(int screenWidth, int screenHeight, int samples = 4);
+    JRendererLegacy(int screenWidth, int screenHeight, int samples = 4);
 
     /**
      * @brief Begin rendering a new frame/scene.
@@ -71,7 +71,7 @@ private:
     void Resize(int newWidth, int newHeight);
 
 public:
-    ~JRenderer();
+    ~JRendererLegacy();
 
     /**
      * @brief Get the final scene texture ID.

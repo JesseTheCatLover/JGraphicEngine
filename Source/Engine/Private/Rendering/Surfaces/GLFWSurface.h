@@ -14,7 +14,7 @@ private:
 
 public:
     GLFWSurface() = default;
-    ~GLFWSurface() override { GLFWSurface::Shutdown(); }
+    ~GLFWSurface() override;
 
     bool Initialize(const FSurfaceState &state) override;
 

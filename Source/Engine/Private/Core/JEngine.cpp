@@ -7,11 +7,13 @@
 #include "Framework/SceneManager.h"
 #include "Core/EngineGlobals.h"
 #include "Core/Contexts/FViewportContext.h"
-#include "../Rendering/Legacy/JRenderer.h"
+#include "../Rendering/Legacy/JRendererLegacy.h"
 #include "Framework/PostProcessManager.h"
 #include "Scene/JCamera.h"
 #include <iostream>
 #include "Core/TServiceContainer.h"
+#include "Rendering/IPlatformSurface.h"
+#include "Rendering/Surfaces/GLFWSurface.h"
 #include "Resources/JResourceManager.h"
 #include "Resources/JModelResource.h"
 #include "Scene/Components/Scene/JModelComponent.h"
@@ -19,7 +21,7 @@
 class JModelResource;
 
 JEngine::JEngine()
-    : m_Services(std::make_unique<TServiceContainer>())
+    : m_Services(MakeUnique<TServiceContainer>())
 {
 }
 
@@ -50,7 +52,11 @@ bool JEngine::Run()
 
 bool JEngine::Initialize()
 {
-    if (!GLFWInitialize()) return false;
+    if (!GLFWInitialize())
+    {
+        std::cerr << "[JEngine]: Failed to initialize platform surface" << std::endl;
+        return false;
+    }
 
     GEngine = this;
 
@@ -150,9 +156,26 @@ bool JEngine::GLFWInitialize()
     return true;
 }
 
+bool JEngine::SurfaceInitialize()
+{
+    FSurfaceState surfaceState;
+    surfaceState.width = m_State.GetWindowWidth();
+    surfaceState.height = m_State.GetWindowHeight();
+    surfaceState.windowState = EWindowState::Maximized;
+    surfaceState.title = "JGraphicEngine";
+
+    // TODO: Hardcoded backend selector for now, should select the backend for future.
+    m_PlatformSurface = MakeUnique<GLFWSurface>();
+
+    if (!m_PlatformSurface->Initialize(surfaceState))
+        return false;
+
+    return true;
+}
+
 bool JEngine::InitializeSubsystems()
 {
-    m_Renderer = std::unique_ptr<JRenderer>(new JRenderer(m_State.GetWindowWidth(), m_State.GetWindowHeight(), 4));
+    m_Renderer = TUniquePtr<JRendererLegacy>(new JRendererLegacy(m_State.GetWindowWidth(), m_State.GetWindowHeight(), 4));
     if (!m_Renderer)
     {
         std::cerr << "[JEngine]: Failed to initialize renderer" << std::endl;
@@ -294,7 +317,7 @@ void JEngine::OnKeyboardAction(GLFWwindow *window, int key, int scancode, int ac
         m_State.SetWireframeMode(!m_State.GetWireframeMode()); // Toggling the wireframe mode
 }
 
-JRenderer* JEngine::GetRenderer()
+JRendererLegacy* JEngine::GetRenderer()
 {
     return m_Renderer.get();
 }

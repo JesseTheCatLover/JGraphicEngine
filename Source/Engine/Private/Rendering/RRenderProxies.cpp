@@ -13,6 +13,6 @@ void RMeshProxy::Submit(IRenderBackend *backend)
 void RLightProxy::Submit(IRenderBackend *backend)
 {
     {
-        backend->SubmitLight(position, color, intensity);
+        //backend->SubmitLight(position, color, intensity);
     }
 }
