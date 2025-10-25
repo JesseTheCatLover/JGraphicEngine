@@ -149,7 +149,7 @@ bool JEngine::GLFWInitialize()
 
     m_State.SetGLFWWindow(Window);
 
-    glfwSetFramebufferSizeCallback(Window, FramebufferSizeCallback);
+    glfwSetFramebufferSizeCallback(Window, FramebufferSizeCallback); // TODO: Make an input system to handle these callbacks
     glfwSetCursorPosCallback(Window, MouseCallback);
     glfwSetScrollCallback(Window, ScrollCallback);
     glfwSetKeyCallback(Window, KeyCallback);
@@ -179,6 +179,19 @@ bool JEngine::SurfaceInitialize()
 
     if (!m_PlatformSurface->Initialize(surfaceState))
         return false;
+
+    auto* win = static_cast<GLFWwindow*>(m_PlatformSurface
+                                             ? m_PlatformSurface->GetNativeHandle()
+                                             : nullptr);
+    if (!win)
+    {
+        std::cerr << "Win is null. (temp)" << std::endl;
+        return false;
+    }
+    glfwSetFramebufferSizeCallback(win, FramebufferSizeCallback); // TODO: Make an input system to handle these callbacks
+    glfwSetCursorPosCallback(win, MouseCallback);
+    glfwSetScrollCallback(win, ScrollCallback);
+    glfwSetKeyCallback(win, KeyCallback);
 
     return true;
 }
@@ -239,7 +252,7 @@ void JEngine::RunMainLoop()
         //
         // if (auto* ppm = GetPostProcessManager())
         //     ppm->ApplyChain(GetRenderer()->GetSceneTargetTexture(), fbW, fbH);
-        m_State.SetViewMode(EViewMode::UI);
+        
         if (m_EditorBridge)
             m_EditorBridge->OnRenderOverlay();
 
