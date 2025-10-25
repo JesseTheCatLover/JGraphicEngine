@@ -16,6 +16,11 @@ void JRenderer::EndScene()
     m_Backend->EndFrame();
 }
 
+void JRenderer::Shutdown()
+{
+    m_Backend->Shutdown();
+}
+
 void JRenderer::SubmitProxy(RRenderProxy *proxy)
 {
     if (proxy)

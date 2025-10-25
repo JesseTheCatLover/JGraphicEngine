@@ -87,6 +87,12 @@ void GLFWSurface::Shutdown()
     std::cout << "[GLFWSurface]: Shutdown completed" << std::endl;
 }
 
+IPlatformSurface::GetProcAddressFunc GLFWSurface::GetProcAddressFunction() const
+{
+    // Explicitly cast the GLFW function to our expected signature.
+    return reinterpret_cast<GetProcAddressFunc>(glfwGetProcAddress);
+}
+
 void GLFWSurface::Present()
 {
     SwapBuffers();

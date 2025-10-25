@@ -4,6 +4,8 @@
 #include <GLFW/glfw3.h>
 #include <EditorContext.h>
 #include <ImGuiLayer.h>
+#include <iostream>
+
 #include <Panels/SceneHierarchyPanel.h>
 
 EditorApp::EditorApp()
@@ -35,6 +37,11 @@ void EditorApp::Shutdown()
 
 void EditorApp::OnEngineInitialized(GLFWwindow* window)
 {
+    if (!window)
+    {
+        std::cerr << "[EditorApp]: Failed to initialize, Given window is null" << std::endl;
+        return;
+    }
     m_Window = window;
 
     m_ImGuiLayer = std::make_unique<ImGuiLayer>(window);

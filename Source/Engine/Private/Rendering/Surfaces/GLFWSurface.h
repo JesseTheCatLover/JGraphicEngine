@@ -20,6 +20,8 @@ public:
 
     void Shutdown() override;
 
+    GetProcAddressFunc GetProcAddressFunction() const override;
+
     void Present() override;
 
     void SwapBuffers() override;

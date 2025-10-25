@@ -26,7 +26,7 @@ void JModelComponent::Draw(JShader& shader) const
 
             // Send it to the shader (as the "model matrix")
             shader.Use();
-            shader.SetMat4("u_Model", worldTransformMat4.Get());
+            shader.SetMat4("u_Model", worldTransformMat4.GetMat4());
 
             // Now draw the model
             model->Draw(shader);

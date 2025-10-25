@@ -6,6 +6,7 @@
 #include <string>
 #include "FVector3.h"
 #include "glm/matrix.hpp"
+#include "glm/gtc/type_ptr.inl"
 #include "glm/gtx/quaternion.hpp"
 
 struct FQuat;
@@ -30,7 +31,8 @@ public:
     /** Constructs from a glm::mat4. */
     explicit FMatrix4(const glm::mat4& mat) : M(mat) {}
 
-    [[nodiscard]] glm::mat4 Get() const { return M; } // TODO: Maybe temp
+    [[nodiscard]] const float* GetValue() const { return glm::value_ptr(M); }
+    [[nodiscard]] glm::mat4 GetMat4() const { return M; }
 
     /** Matrix multiplication */
     FMatrix4 operator*(const FMatrix4& other) const { return FMatrix4(M * other.M); }

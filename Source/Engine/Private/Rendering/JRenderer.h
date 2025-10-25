@@ -16,9 +16,9 @@ private:
     IRenderBackend* m_Backend = nullptr;
     std::vector<RRenderProxy*> m_Proxies; // gathered each frame
 
-
     void BeginScene();
     void EndScene();
+    void Shutdown();
 
 public:
     ~JRenderer() = default;

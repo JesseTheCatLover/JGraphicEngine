@@ -62,4 +62,8 @@ public:
     virtual void SetCursorDisabled() {}
 
     virtual void* GetPlatformSpecificHandle() const { return nullptr; } // optional override
+
+    using GetProcAddressFunc = void* (*)(const char*);
+    // Optional: for OpenGL-style loaders
+    virtual GetProcAddressFunc GetProcAddressFunction() const { return nullptr; }
 };

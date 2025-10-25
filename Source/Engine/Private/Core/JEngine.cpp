@@ -13,6 +13,8 @@
 #include <iostream>
 #include "Core/TServiceContainer.h"
 #include "Rendering/IPlatformSurface.h"
+#include "Rendering/JRenderer.h"
+#include "Rendering/Backends/GLBackend.h"
 #include "Rendering/Surfaces/GLFWSurface.h"
 #include "Resources/JResourceManager.h"
 #include "Resources/JModelResource.h"
@@ -52,7 +54,7 @@ bool JEngine::Run()
 
 bool JEngine::Initialize()
 {
-    if (!GLFWInitialize())
+    if (!SurfaceInitialize()) // TODO: Should be replaced by the SurfaceInitialize() and the new JRenderer should own a IRenderBackend and feed the surface to it.
     {
         std::cerr << "[JEngine]: Failed to initialize platform surface" << std::endl;
         return false;
@@ -69,7 +71,15 @@ bool JEngine::Initialize()
     if (!InitializeManagers()) return false;
 
     if (m_EditorBridge)
-        m_EditorBridge->OnEngineInitialized(m_State.GetGLFWWindow());
+    {
+        // Get the SAME window created by GLFWSurface TODO: Temp test here
+        auto* win = static_cast<GLFWwindow*>(m_PlatformSurface->GetNativeHandle());
+        if (!win) {
+            std::cerr << "[JEngine]: Native GLFWwindow* is null!\n";
+            return false;
+        }
+        m_EditorBridge->OnEngineInitialized(win);
+    }
 
     return true;
 }
@@ -175,7 +185,14 @@ bool JEngine::SurfaceInitialize()
 
 bool JEngine::InitializeSubsystems()
 {
-    m_Renderer = TUniquePtr<JRendererLegacy>(new JRendererLegacy(m_State.GetWindowWidth(), m_State.GetWindowHeight(), 4));
+    m_RenderBackend = MakeUnique<GLBackend>(); // TODO : TEMPORARY HERE
+    if (!m_RenderBackend)
+    {
+        std::cerr << "[JEngine]: Failed to initialize backend renderer" << std::endl;
+        return false;
+    }
+    m_RenderBackend->Initialize(m_PlatformSurface.get());
+    m_Renderer = TUniquePtr<JRenderer>(new JRenderer(m_RenderBackend.get()));
     if (!m_Renderer)
     {
         std::cerr << "[JEngine]: Failed to initialize renderer" << std::endl;
@@ -195,46 +212,49 @@ bool JEngine::InitializeManagers()
 
 void JEngine::RunMainLoop()
 {
-    if (!m_State.GetGLFWWindow())
-    {
+    auto* win = static_cast<GLFWwindow*>(m_PlatformSurface
+                                             ? m_PlatformSurface->GetNativeHandle()
+                                             : nullptr);
+    if (!win) {
         std::cerr << "[JEngine]: No glfw window was found to run the main loop" << std::endl;
         return;
     }
 
-    while (!glfwWindowShouldClose(m_State.GetGLFWWindow()) && m_State.GetIsRunning())
+    while (!glfwWindowShouldClose(win) && m_State.GetIsRunning())
     {
         auto currentFrame = static_cast<float>(glfwGetTime());
         m_State.SetDeltaTime(currentFrame - m_State.GetLastFrameTime());
         m_State.SetLastFrameTime(currentFrame);
 
-        ProcessInputs(m_State.GetGLFWWindow(), m_State.GetDeltaTime());
+        ProcessInputs(win, m_State.GetDeltaTime());
 
         Tick();
         GetRenderer()->BeginScene();
         GetRenderer()->EndScene();
 
-        int fbW, fbH;
-        glfwGetFramebufferSize(m_State.GetGLFWWindow(), &fbW, &fbH);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, fbW, fbH);
-
-        if (auto* ppm = GetPostProcessManager())
-            ppm->ApplyChain(GetRenderer()->GetSceneTargetTexture(), fbW, fbH);
-
+        // int fbW, fbH;
+        // glfwGetFramebufferSize(m_State.GetGLFWWindow(), &fbW, &fbH);
+        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // glViewport(0, 0, fbW, fbH);
+        //
+        // if (auto* ppm = GetPostProcessManager())
+        //     ppm->ApplyChain(GetRenderer()->GetSceneTargetTexture(), fbW, fbH);
+        m_State.SetViewMode(EViewMode::UI);
         if (m_EditorBridge)
             m_EditorBridge->OnRenderOverlay();
 
         // Swap front/back buffers (show rendered frame)
-        glfwSwapBuffers(m_State.GetGLFWWindow());
+        m_PlatformSurface->SwapBuffers();
 
         // Poll window + input events
-        glfwPollEvents();
+        m_PlatformSurface->PollSurfaceEvents();
     }
 }
 
 void JEngine::Shutdown()
 {
     GEngine = nullptr;
+    m_Renderer->Shutdown();
 }
 
 void JEngine::Tick()
@@ -268,8 +288,8 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
 void JEngine::OnFramebufferResize(int width, int height)
 {
     glViewport(0, 0, width, height);
-    if (auto Renderer = GetRenderer())
-        Renderer->Resize(width, height);
+    // if (auto Renderer = GetRenderer())
+    //     Renderer->Resize(width, height);
 }
 
 void JEngine::OnMouseMove(double xPosIn, double yPosIn)
@@ -317,7 +337,7 @@ void JEngine::OnKeyboardAction(GLFWwindow *window, int key, int scancode, int ac
         m_State.SetWireframeMode(!m_State.GetWireframeMode()); // Toggling the wireframe mode
 }
 
-JRendererLegacy* JEngine::GetRenderer()
+JRenderer* JEngine::GetRenderer()
 {
     return m_Renderer.get();
 }

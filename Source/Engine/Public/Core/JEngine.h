@@ -7,6 +7,8 @@
 #include "Framework/PostProcessManager.h"
 #include "Framework/SceneManager.h"
 
+class JRenderer;
+class IRenderBackend;
 class IPlatformSurface;
 class JRendererLegacy;
 class TServiceContainer;
@@ -35,7 +37,7 @@ public:
     void RegisterFactory(std::function<std::shared_ptr<T>()> factory);
 
     // Syntactic sugar manager accessors
-    JRendererLegacy* GetRenderer();
+    JRenderer* GetRenderer();
     SceneManager* GetSceneManager();
     PostProcessManager* GetPostProcessManager();
 
@@ -50,7 +52,8 @@ private:
     EngineState m_State;
     IEditorBridge* m_EditorBridge = nullptr;
     TUniquePtr<IPlatformSurface> m_PlatformSurface;
-    TUniquePtr<JRendererLegacy> m_Renderer;
+    TUniquePtr<IRenderBackend> m_RenderBackend; // TODO: TEMPORARY HERE
+    TUniquePtr<JRenderer> m_Renderer;
     TUniquePtr<TServiceContainer> m_Services;
 
     bool Initialize();

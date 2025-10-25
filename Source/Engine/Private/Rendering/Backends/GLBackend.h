@@ -6,12 +6,26 @@
 #include "../IRenderBackend.h"
 #include <glad/gl.h>
 
-using jint = uint32_t;
+#include "Core/Math/FVector2.h"
+#include "Core/Math/FVector3.h"
+
+#define MAX_BONE_INFLUENCE 4
 
 class GLBackend : public IRenderBackend
 {
-private:
-    struct GLMesh
+public:
+    struct FVertex
+    {
+        FVector3 position;
+        FVector3 normal;
+        FVector2 texCoords;
+        FVector3 tangent;
+        FVector3 bitangent;
+        int boneIDs[MAX_BONE_INFLUENCE]{};
+        float weights[MAX_BONE_INFLUENCE]{};
+    };
+
+    struct FGLMesh
     {
         GLuint vao = 0;
         GLuint vbo = 0;
@@ -19,43 +33,78 @@ private:
         uint32_t indexCount = 0;
     };
 
-    struct GLShader
+    struct FGLShader
     {
-        GLuint id = 0;
+        GLuint program = 0;
     };
 
-    std::unordered_map<jint, GLMesh> m_Meshes;
-    std::unordered_map<jint, GLShader> m_Shaders;
-    jint m_NextID = 1;
+    struct FGLTexture
+    {
+        GLuint handle = 0;
+        GLenum target = GL_TEXTURE_2D;
+    };
 
-    GLMesh* FindMesh(RMeshHandle handle);
-    GLMesh* FindMesh(RShaderHandle handle);
+    struct FGLFramebuffer
+    {
+        GLuint fbo = 0;
+
+        // color
+        GLuint colorAttachment = 0;          // if single-sample texture
+        GLuint colorAttachmentMS = 0;        // if multisample (texture or renderbuffer)
+        bool   bColorIsTexture = true;        // true: texture, false: renderbuffer
+
+        // depth-stencil
+        GLuint depthStencil = 0;             // renderbuffer for best perf, or texture if sampling
+        bool   bDepthIsTexture = false;
+
+        int width = 0, height = 0, samples = 1;
+    };
+
+private:
+    static std::unordered_map<RMeshHandle, FGLMesh> m_Meshes;
+    static std::unordered_map<RShaderHandle, FGLShader> m_Shaders;
+    static std::unordered_map<RTextureHandle, FGLTexture> m_Textures;
+    static std::unordered_map<RFramebufferHandle, FGLFramebuffer> m_Framebuffers;
+    Rint m_NextID = 1;
+
+    IPlatformSurface* m_Surface = nullptr;
 
 public:
-    bool Initialize() override;
+    bool Initialize(IPlatformSurface* surface) override;
     void Shutdown() override;
 
     void BeginFrame() override;
     void EndFrame() override;
 
-    // Resource creation / destruction
+    // Resources
     RMeshHandle CreateMesh(const RMesh& meshData) override;
     void DestroyMesh(RMeshHandle handle) override;
+    FGLMesh* FindMesh(RMeshHandle handle);
 
     RTextureHandle CreateTexture(const RTexture& textureData) override;
     void DestroyTexture(RTextureHandle handle) override;
+    void BindTexture(RTextureHandle texture, uint32_t slot) override;
 
     RShaderHandle CreateShader(const RShader& shaderData) override;
     void DestroyShader(RShaderHandle handle) override;
+    void BindShader(RShaderHandle shader) override;
 
     RFramebufferHandle CreateFramebuffer(const RFramebuffer& framebufferData) override;
     void DestroyFramebuffer(RFramebufferHandle handle) override;
-
-    // Binding
-    void BindShader(RShaderHandle shader) override;
-    void BindTexture(RTextureHandle texture, uint32_t slot) override;
     void BindFramebuffer(RFramebufferHandle handle) override;
     void UnbindFramebuffer() override;
+    void ResolveFramebuffer(RFramebufferHandle src, RFramebufferHandle dst,
+                            EResolveMask mask = EResolveMask::Color,
+                            EResolveFilter filter = EResolveFilter::Nearest) override;
+
+    void SetUniformInt   (RShaderHandle sh, const char* name, int v) override;
+    void SetUniformFloat (RShaderHandle sh, const char* name, float v) override;
+    void SetUniformVec2  (RShaderHandle sh, const char* name, const float* v2) override;
+    void SetUniformVec3  (RShaderHandle sh, const char* name, const float* v3) override;
+    void SetUniformVec4  (RShaderHandle sh, const char* name, const float* v4) override;
+    void SetUniformMat4  (RShaderHandle sh, const char* name, const float* mat4) override;
+
+    void LinkUniformBlock(RShaderHandle sh, const char* blockName, uint32_t bindingPoint) override;
 
     // Rendering
     void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) override;
