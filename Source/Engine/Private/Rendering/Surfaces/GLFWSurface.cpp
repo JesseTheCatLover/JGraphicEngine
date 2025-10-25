@@ -31,7 +31,7 @@ bool GLFWSurface::Initialize(const FSurfaceState &state)
     if (!monitor)
         monitor = glfwGetPrimaryMonitor(); // default fallback if not specified
 
-    if (IsFullscreen())
+    if (IsFullscreen() || m_State.windowState == EWindowState::Maximized)
     {
         const GLFWvidmode* mode = glfwGetVideoMode(monitor);
         glfwWindowHint(GLFW_RED_BITS, mode->redBits);
@@ -41,7 +41,7 @@ bool GLFWSurface::Initialize(const FSurfaceState &state)
         m_State.width = mode->width;
         m_State.height = mode->height;
     }
-    else // Windowed (with borders)
+    else // Windowed (with borders) in saved width/height
     {
         glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);  // title bar
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
