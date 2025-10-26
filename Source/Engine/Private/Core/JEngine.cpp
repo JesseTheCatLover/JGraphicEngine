@@ -12,6 +12,9 @@
 #include "Scene/JCamera.h"
 #include <iostream>
 #include "Core/TServiceContainer.h"
+
+#include "Rendering/BackendFactory.h"
+#include "Rendering/EGraphicsAPI.h"
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/JRenderer.h"
 #include "Rendering/Backends/GLBackend.h"
@@ -198,13 +201,15 @@ bool JEngine::SurfaceInitialize()
 
 bool JEngine::InitializeSubsystems()
 {
-    m_RenderBackend = MakeUnique<GLBackend>(); // TODO : TEMPORARY HERE
+    EGraphicsAPI renderingAPI = EGraphicsAPI::OpenGL;
+    m_RenderBackend = MakeBackend(renderingAPI);
     if (!m_RenderBackend)
     {
-        std::cerr << "[JEngine]: Failed to initialize backend renderer" << std::endl;
+        std::cerr << "[JEngine]: Failed to initialize backend renderer; No render backend available for requested API" << std::endl;
         return false;
     }
     m_RenderBackend->Initialize(m_PlatformSurface.get());
+
     m_Renderer = TUniquePtr<JRenderer>(new JRenderer(m_RenderBackend.get()));
     if (!m_Renderer)
     {
@@ -213,7 +218,6 @@ bool JEngine::InitializeSubsystems()
     }
 
     return true;
-
 }
 
 bool JEngine::InitializeManagers()

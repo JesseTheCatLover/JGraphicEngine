@@ -52,7 +52,7 @@ private:
     EngineState m_State;
     IEditorBridge* m_EditorBridge = nullptr;
     TUniquePtr<IPlatformSurface> m_PlatformSurface;
-    TUniquePtr<IRenderBackend> m_RenderBackend; // TODO: TEMPORARY HERE
+    TUniquePtr<IRenderBackend> m_RenderBackend;
     TUniquePtr<JRenderer> m_Renderer;
     TUniquePtr<TServiceContainer> m_Services;
 
