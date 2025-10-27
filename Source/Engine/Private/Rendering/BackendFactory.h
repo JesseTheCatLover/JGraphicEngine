@@ -4,7 +4,13 @@
 #include <memory>
 
 #include "EGraphicsAPI.h"
+#include "ESurfaceAPI.h"
 #include "IRenderBackend.h"
 #include "Core/Memory/SmartPointers.h"
 
-TUniquePtr<IRenderBackend> MakeBackend(EGraphicsAPI api);
+class BackendFactory
+{
+public:
+    static TUniquePtr<IPlatformSurface> MakeSurfaceBackend(ESurfaceAPI api);
+    static TUniquePtr<IRenderBackend> MakeRenderBackend(EGraphicsAPI api);
+};

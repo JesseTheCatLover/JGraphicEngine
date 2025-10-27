@@ -57,9 +57,14 @@ bool JEngine::Run()
 
 bool JEngine::Initialize()
 {
-    if (!SurfaceInitialize()) // TODO: Should be replaced by the SurfaceInitialize() and the new JRenderer should own a IRenderBackend and feed the surface to it.
+    if (!SurfaceInitialize())
     {
         std::cerr << "[JEngine]: Failed to initialize platform surface" << std::endl;
+        return false;
+    }
+    if (!RenderBackendInitialize())
+    {
+        std::cerr << "[JEngine]: Failed to initialize rendering backend" << std::endl;
         return false;
     }
 
@@ -71,7 +76,11 @@ bool JEngine::Initialize()
         return false;
     }
 
-    if (!InitializeManagers()) return false;
+    if (!InitializeManagers())
+    {
+        std::cerr << "[JEngine]: Failed to initialize managers" << std::endl;
+        return false;
+    }
 
     if (m_EditorBridge)
     {
@@ -87,7 +96,7 @@ bool JEngine::Initialize()
     return true;
 }
 
-bool JEngine::GLFWInitialize()
+bool JEngine::GLFWInitialize() // TODO: Deprecated
 {
     // ----------------- GLFW Init -----------------
     if (!glfwInit()) {
@@ -177,11 +186,18 @@ bool JEngine::SurfaceInitialize()
     surfaceState.windowState = EWindowState::Maximized;
     surfaceState.title = "JGraphicEngine";
 
-    // TODO: Hardcoded backend selector for now, should select the backend for future.
-    m_PlatformSurface = MakeUnique<GLFWSurface>();
-
-    if (!m_PlatformSurface->Initialize(surfaceState))
+    ESurfaceAPI surfaceAPI = ESurfaceAPI::GLFW;
+    m_PlatformSurface = BackendFactory::MakeSurfaceBackend(surfaceAPI);
+    if (!m_PlatformSurface)
+    {
+        std::cerr << "[JEngine]: No surface backend available for requested API" << std::endl;
         return false;
+    }
+    if (!m_PlatformSurface->Initialize(surfaceState))
+    {
+        std::cerr << "[JEngine]: Failed to initialize the platform surface" << std::endl;
+        return false;
+    }
 
     auto* win = static_cast<GLFWwindow*>(m_PlatformSurface
                                              ? m_PlatformSurface->GetNativeHandle()
@@ -199,17 +215,26 @@ bool JEngine::SurfaceInitialize()
     return true;
 }
 
-bool JEngine::InitializeSubsystems()
+bool JEngine::RenderBackendInitialize()
 {
     EGraphicsAPI renderingAPI = EGraphicsAPI::OpenGL;
-    m_RenderBackend = MakeBackend(renderingAPI);
+    m_RenderBackend = BackendFactory::MakeRenderBackend(renderingAPI);
     if (!m_RenderBackend)
     {
-        std::cerr << "[JEngine]: Failed to initialize backend renderer; No render backend available for requested API" << std::endl;
+        std::cerr << "[JEngine]: No render backend available for requested API" << std::endl;
         return false;
     }
-    m_RenderBackend->Initialize(m_PlatformSurface.get());
+    if (!m_RenderBackend->Initialize(m_PlatformSurface.get()))
+    {
+        std::cerr << "[JEngine]: Failed to initialize rendering backend" << std::endl;
+        return false;
+    }
 
+    return true;
+}
+
+bool JEngine::InitializeSubsystems()
+{
     m_Renderer = TUniquePtr<JRenderer>(new JRenderer(m_RenderBackend.get()));
     if (!m_Renderer)
     {

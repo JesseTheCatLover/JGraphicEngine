@@ -7,6 +7,35 @@
 #include "EGraphicsAPI.h"
 
 // Build flags set by CMake based on availability
+// add_compile_definitions(HAVE_GLFW) etc.
+#if defined(HAVE_GLFW)
+  #include "Rendering/Surfaces/GLFWSurface.h"
+#endif
+
+TUniquePtr<IPlatformSurface> BackendFactory::MakeSurfaceBackend(ESurfaceAPI api)
+{
+    switch (api) {
+
+#if defined(HAVE_GLFW)
+        case ESurfaceAPI::GLFW:
+            return MakeUnique<GLFWSurface>();
+#else
+        case ESurfaceAPI::GLFW:
+            std::cerr << "[BackendFactory] GLFW requested but not compiled; falling back" << std::endl;
+            break;
+#endif
+
+        default:
+#if defined(HAVE_GLFW)
+            std::cerr << "[BackendFactory] Using GLFW as default fallback" << std::endl;
+            return MakeUnique<GLFWSurface>();
+#endif
+            std::cerr << "[BackendFactory] No available backend to return" << std::endl;
+            return nullptr;
+    }
+}
+
+// Build flags set by CMake based on availability
 // add_compile_definitions(HAVE_OPENGL) etc.
 #if defined(HAVE_OPENGL)
   #include "Rendering/Backends/GLBackend.h"
@@ -22,7 +51,7 @@
 #endif
 //#include "Rendering/Backends/NullBackend.h" // trivial no-op backend
 
-TUniquePtr<IRenderBackend> MakeBackend(EGraphicsAPI api)
+TUniquePtr<IRenderBackend> BackendFactory::MakeRenderBackend(EGraphicsAPI api)
 {
     switch (api) {
 
