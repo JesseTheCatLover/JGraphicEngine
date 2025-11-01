@@ -3,6 +3,7 @@
 #pragma once
 #include <string>
 #include <cmath>
+#include <cstdint>
 
 enum class EWindowState
 {

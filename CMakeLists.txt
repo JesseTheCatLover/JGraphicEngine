@@ -65,5 +65,3 @@ elseif (MSVC)
         /EHsc         # Standard exception handling
         )
 endif()
-
-set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Treat warnings as errors" FORCE)
