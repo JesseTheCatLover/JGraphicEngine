@@ -57,7 +57,8 @@ static GLuint CompileShaderChecked(GLenum type, const std::string& source, const
     return s;
 }
 
-static inline void GLFormatFrom(ETexFormat fmt, GLint& internal, GLenum& external) {
+static inline void GLFormatFrom(ETexFormat fmt, GLint& internal, GLenum& external)
+{
     switch (fmt) {
         case ETexFormat::RGBA8:    internal = GL_RGBA8;      external = GL_RGBA; break;
         case ETexFormat::RGB8:     internal = GL_RGB8;       external = GL_RGB;  break;
@@ -71,16 +72,19 @@ static inline void GLFormatFrom(ETexFormat fmt, GLint& internal, GLenum& externa
 }
 
 static inline GLuint GetProgramFromHandle(const std::unordered_map<RShaderHandle, GLBackend::FGLShader>& map,
-                                          RShaderHandle h) {
+                                          RShaderHandle h)
+{
     auto it = map.find(h);
     return (it != map.end()) ? it->second.program : 0u;
 }
 
-static inline GLint GetUniformLoc(GLuint prog, const char* name) {
+static inline GLint GetUniformLoc(GLuint prog, const char* name)
+{
     return (prog && name) ? glGetUniformLocation(prog, name) : -1;
 }
 
-static inline GLbitfield ToGLMask(IRenderBackend::EResolveMask m) {
+static inline GLbitfield ToGLMask(IRenderBackend::EResolveMask m)
+{
     using M = IRenderBackend::EResolveMask;
     GLbitfield bits = 0;
     if ((static_cast<uint8_t>(m) & static_cast<uint8_t>(M::Color))   != 0) bits |= GL_COLOR_BUFFER_BIT;
@@ -88,9 +92,49 @@ static inline GLbitfield ToGLMask(IRenderBackend::EResolveMask m) {
     if ((static_cast<uint8_t>(m) & static_cast<uint8_t>(M::Stencil)) != 0) bits |= GL_STENCIL_BUFFER_BIT;
     return bits;
 }
-static inline GLenum ToGLFilter(IRenderBackend::EResolveFilter f) {
+static inline GLenum ToGLFilter(IRenderBackend::EResolveFilter f)
+{
     using F = IRenderBackend::EResolveFilter;
     return (f == F::Linear) ? GL_LINEAR : GL_NEAREST;
+}
+
+struct GLColorDesc { GLint internal; GLenum external; GLenum type; };
+struct GLDepthDesc { GLint internal; GLenum external; GLenum type; bool hasStencil; };
+
+static GLColorDesc ToGL(const RFramebuffer& req)
+{
+    switch (req.colorMode) {
+        case EColorMode::LDR8:     return { GL_RGBA8,          GL_RGBA, GL_UNSIGNED_BYTE };
+        case EColorMode::HDR16F:   return { GL_RGBA16F,        GL_RGBA, GL_HALF_FLOAT    };
+        case EColorMode::sRGB8_A8: return { GL_SRGB8_ALPHA8,   GL_RGBA, GL_UNSIGNED_BYTE };
+    }
+    return { GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE };
+}
+
+static GLDepthDesc ToGLDepth(const RFramebuffer& req)
+{
+    switch (req.depthMode) {
+        case EDepthMode::None:        return { 0, 0, 0, false };
+        case EDepthMode::D24S8:       return { GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, true  };
+        case EDepthMode::D32F:        return { GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT, false };
+        case EDepthMode::DepthOnly16: return { GL_DEPTH_COMPONENT16,  GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, false };
+    }
+    return { 0, 0, 0, false };
+}
+
+static GLenum ToGL(ETexWrap w)
+{
+    return (w == ETexWrap::ClampEdge) ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+}
+
+static GLenum ToGL(ETexFilter f)
+{
+    switch (f) {
+        case ETexFilter::Nearest:            return GL_NEAREST;
+        case ETexFilter::Linear:             return GL_LINEAR;
+        case ETexFilter::LinearMipmapLinear: return GL_LINEAR_MIPMAP_LINEAR;
+    }
+    return GL_LINEAR;
 }
 
 bool GLBackend::Initialize(IPlatformSurface* surface)
@@ -144,47 +188,61 @@ void GLBackend::Shutdown()
         glDeleteProgram(shader.program);
     m_Shaders.clear();
 
-    // Clean up ...
-    for (auto &[_, tex] : m_Textures)
-        glDeleteTextures(1, &tex.handle);
-    m_Textures.clear();
-
-    for (auto &[_, fb] : m_Framebuffers)
-    {
+    // Clean up Framebuffers first (this also erases any registered engine handles)
+    for (auto &[_, fb] : m_Framebuffers) {
+        if (fb.fbo) glDeleteFramebuffers(1, &fb.fbo);
         if (fb.colorAttachment) {
-            if (fb.samples == 1 && !fb.bColorIsTexture) {
-                glDeleteRenderbuffers(1, &fb.colorAttachment);
-            } else {
-                glDeleteTextures(1, &fb.colorAttachment);
-            }
+            if (fb.samples == 1 && fb.bColorIsTexture) glDeleteTextures(1, &fb.colorAttachment);
+            else glDeleteRenderbuffers(1, &fb.colorAttachment);
         }
-
         if (fb.colorAttachmentMS) {
             if (fb.samples > 1 && fb.bColorIsTexture) glDeleteTextures(1, &fb.colorAttachmentMS);
             else glDeleteRenderbuffers(1, &fb.colorAttachmentMS);
         }
-
         if (fb.depthStencil) {
             if (fb.bDepthIsTexture && fb.samples == 1) glDeleteTextures(1, &fb.depthStencil);
             else glDeleteRenderbuffers(1, &fb.depthStencil);
         }
-
-        if (fb.fbo) glDeleteFramebuffers(1, &fb.fbo);
     }
     m_Framebuffers.clear();
+
+    // Now delete standalone textures only
+    for (auto it = m_Textures.begin(); it != m_Textures.end(); ) {
+        if (!it->second.ownedByFBO && it->second.handle)
+            glDeleteTextures(1, &it->second.handle);
+        it = m_Textures.erase(it);
+    }
 
     std::cout << "[GLBackend]: Shutdown completed" << std::endl;
 }
 
 void GLBackend::BeginFrame()
 {
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    //ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
 }
 
 void GLBackend::EndFrame()
 {
     //glFlush();
+    glDisable(GL_DEPTH_TEST);
+    //glDisable(GL_CULL_FACE);
+    //glDisable(GL_SCISSOR_TEST);
+    //glDisable(GL_FRAMEBUFFER_SRGB);
+    glEnable(GL_BLEND);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+void GLBackend::SetViewport(int x, int y, int width, int height)
+{
+    glViewport(x, y, width, height);
+}
+
+void GLBackend::ClearColorDepth(float r, float g, float b, float a, bool clearDepth)
+{
+    glClearColor(r, g, b, a);
+    GLbitfield mask = GL_COLOR_BUFFER_BIT;
+    if (clearDepth) mask |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+    glClear(mask);
 }
 
 RMeshHandle GLBackend::CreateMesh(const RMesh& meshData)
@@ -290,13 +348,37 @@ RTextureHandle GLBackend::CreateTexture(const RTexture &textureData)
     const GLenum target = (textureData.type == ETexType::Tex2D) ? GL_TEXTURE_2D : GL_TEXTURE_CUBE_MAP;
     glBindTexture(target, tex);
 
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, ToGL(textureData.wrapS));
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, ToGL(textureData.wrapT));
+    if (target == GL_TEXTURE_CUBE_MAP)
+    {
+        glTexParameteri(target, GL_TEXTURE_WRAP_R, ToGL(textureData.wrapR));
+    }
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, ToGL(textureData.minFilter));
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, ToGL(textureData.magFilter));
+    if (textureData.bMaxLevel > 0)
+    {
+        glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, textureData.bMaxLevel);
+    }
+
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     GLint internal = 0; GLenum external = 0;
-    if (textureData.bSRGB && (textureData.format == ETexFormat::RGBA8 || textureData.format == ETexFormat::RGB8)) {
+    if (textureData.bSRGB && (textureData.format == ETexFormat::RGBA8 || textureData.format == ETexFormat::RGB8))
+    {
         GLFormatFrom(textureData.channels == 4 ? ETexFormat::SRGB8_A8 : ETexFormat::SRGB8, internal, external);
-    } else {
+    }
+    else
+    {
         GLFormatFrom(textureData.format, internal, external);
+    }
+
+    if (textureData.bUseAnisotropy)
+    {
+        GLfloat maxAniso = 0.0f;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
+        if (maxAniso >= 1.0f)
+            glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAniso);
     }
 
     if (textureData.type == ETexType::Tex2D)
@@ -305,38 +387,20 @@ RTextureHandle GLBackend::CreateTexture(const RTexture &textureData)
                      textureData.width, textureData.height, 0,
                      external, GL_UNSIGNED_BYTE, textureData.data);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, textureData.bGenerateMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, textureData.bClampToEdge ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, textureData.bClampToEdge ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-
-        if (textureData.bGenerateMipmaps) glGenerateMipmap(GL_TEXTURE_2D);
+        if (textureData.bGenerateMipmaps)
+            glGenerateMipmap(GL_TEXTURE_2D);
     }
     else // CubeMap
     {
-        for (int i = 0; i < 6; ++i) {
+        for (int i = 0; i < 6; ++i)
+        {
             const void* face = textureData.faces[i];
-            if (face) {
-                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internal,
-                             textureData.width, textureData.height, 0,
-                             external, GL_UNSIGNED_BYTE, face);
-            }
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internal,
+                         textureData.width, textureData.height, 0,
+                         external, GL_UNSIGNED_BYTE, face);
         }
-
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, textureData.bGenerateMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-        if (textureData.bGenerateMipmaps) glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-    }
-
-    if (textureData.bUseAnisotropy) {
-        GLfloat maxAniso = 0.0f;
-        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
-        if (maxAniso >= 1.0f)
-            glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAniso);
+        if (textureData.bGenerateMipmaps)
+            glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
     }
 
     glBindTexture(target, 0);
@@ -348,10 +412,13 @@ RTextureHandle GLBackend::CreateTexture(const RTexture &textureData)
 
 void GLBackend::DestroyTexture(RTextureHandle handle)
 {
-    if (auto it = m_Textures.find(handle); it != m_Textures.end()) {
+    auto it = m_Textures.find(handle);
+    if (it == m_Textures.end()) return;
+    if (!it->second.ownedByFBO)
+    {
         if (it->second.handle) glDeleteTextures(1, &it->second.handle);
-        m_Textures.erase(it);
     }
+    m_Textures.erase(it);
 }
 
 void GLBackend::BindTexture(RTextureHandle texture, uint32_t slot)
@@ -361,6 +428,21 @@ void GLBackend::BindTexture(RTextureHandle texture, uint32_t slot)
 
     glActiveTexture(GL_TEXTURE0 + slot);
     glBindTexture(it->second.target, it->second.handle);
+}
+
+RTextureHandle GLBackend::RegisterTextureFromGL(GLuint gltex, GLenum target, bool ownedByFBO)
+{
+    if (gltex == 0) return RTextureHandle::Invalid();
+
+    RTextureHandle handle{ NextId(m_NextID) };
+
+    FGLTexture rec{};
+    rec.handle = gltex;
+    rec.target = target;
+    rec.ownedByFBO = ownedByFBO;
+
+    m_Textures[handle] = rec;
+    return handle;
 }
 
 RShaderHandle GLBackend::CreateShader(const RShader &shaderData)
@@ -407,69 +489,132 @@ void GLBackend::BindShader(RShaderHandle shader)
 RFramebufferHandle GLBackend::CreateFramebuffer(const RFramebuffer &framebufferData)
 {
    FGLFramebuffer fb{};
-    fb.width = framebufferData.width; fb.height = framebufferData.height; fb.samples = std::max(1, framebufferData.samples);
+    fb.width  = framebufferData.width;
+    fb.height = framebufferData.height;
+    fb.samples = std::max(1, framebufferData.samples);
     fb.bColorIsTexture = framebufferData.colorAsTexture;
     fb.bDepthIsTexture = framebufferData.depthAsTexture;
+    const GLColorDesc col = ToGL(framebufferData);
+    const GLDepthDesc dep = ToGLDepth(framebufferData);
+    fb.colorInternalFormat = col.internal;
+    fb.depthInternalFormat = dep.internal;
 
     glGenFramebuffers(1, &fb.fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fb.fbo);
 
     // Color
-    if (fb.samples > 1) {
-        // MSAA path
-        if (fb.bColorIsTexture) {
+    if (fb.samples > 1)
+    {
+        // MSAA path (no engine handle, cannot sample MSAA directly)
+        if (fb.bColorIsTexture)
+        {
             glGenTextures(1, &fb.colorAttachmentMS);
             glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fb.colorAttachmentMS);
-            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fb.samples, GL_RGBA8, fb.width, fb.height, GL_TRUE);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, fb.colorAttachmentMS, 0);
-        } else {
-            GLuint rbo = 0; glGenRenderbuffers(1, &rbo);
+            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fb.samples,
+                                    col.internal, fb.width, fb.height, GL_TRUE);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                   GL_TEXTURE_2D_MULTISAMPLE, fb.colorAttachmentMS, 0);
+            fb.colorTarget = GL_TEXTURE_2D_MULTISAMPLE;
+        }
+        else
+        {
+            GLuint rbo=0; glGenRenderbuffers(1, &rbo);
             fb.colorAttachmentMS = rbo;
             glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, fb.samples, GL_RGBA8, fb.width, fb.height);
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rbo);
+            glRenderbufferStorageMultisample(GL_RENDERBUFFER, fb.samples,
+                                             col.internal, fb.width, fb.height);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                      GL_RENDERBUFFER, rbo);
         }
-    } else {
-        // single-sample
-        if (fb.bColorIsTexture) {
+    }
+    else
+    {
+        // Single-sample
+        if (fb.bColorIsTexture)
+        {
             glGenTextures(1, &fb.colorAttachment);
             glBindTexture(GL_TEXTURE_2D, fb.colorAttachment);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fb.width, fb.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, col.internal, fb.width, fb.height, 0,
+                         col.external, col.type, nullptr);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb.colorAttachment, 0);
-        } else {
-            GLuint rbo = 0; glGenRenderbuffers(1, &rbo);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                   GL_TEXTURE_2D, fb.colorAttachment, 0);
+
+            fb.colorTarget = GL_TEXTURE_2D;
+            // Register engine-visible handle so post can sample it
+            fb.colorTexHandle = RegisterTextureFromGL(fb.colorAttachment, GL_TEXTURE_2D, true);
+        }
+        else
+        {
+            GLuint rbo = 0;
+            glGenRenderbuffers(1, &rbo);
             fb.colorAttachment = rbo;
             glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, fb.width, fb.height);
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rbo);
+            glRenderbufferStorage(GL_RENDERBUFFER, col.internal, fb.width, fb.height);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                      GL_RENDERBUFFER, rbo);
         }
     }
 
     // Depth-stencil
-    if (fb.bDepthIsTexture && fb.samples == 1) {
-        glGenTextures(1, &fb.depthStencil);
-        glBindTexture(GL_TEXTURE_2D, fb.depthStencil);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, fb.width, fb.height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fb.depthStencil, 0);
-    } else {
-        glGenRenderbuffers(1, &fb.depthStencil);
-        glBindRenderbuffer(GL_RENDERBUFFER, fb.depthStencil);
-        if (fb.samples > 1) {
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, fb.samples, GL_DEPTH24_STENCIL8, fb.width, fb.height);
-        } else {
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, fb.width, fb.height);
+    if (framebufferData.depthMode != EDepthMode::None)
+    {
+        if (fb.bDepthIsTexture && fb.samples == 1)
+        {
+            glGenTextures(1, &fb.depthStencil);
+            glBindTexture(GL_TEXTURE_2D, fb.depthStencil);
+
+            //    Allocate storage using the GL enums derived from your request
+            //    dep.internal: GL_DEPTH24_STENCIL8 / GL_DEPTH_COMPONENT32F / GL_DEPTH_COMPONENT16
+            //    dep.external: GL_DEPTH_STENCIL or GL_DEPTH_COMPONENT
+            //    dep.type    : GL_UNSIGNED_INT_24_8 / GL_FLOAT / GL_UNSIGNED_SHORT
+            glTexImage2D(GL_TEXTURE_2D, 0, dep.internal, fb.width, fb.height, 0,
+                         dep.external, dep.type, nullptr);
+
+            //  Safe sampler defaults for depth sampling in post/shadows
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            const GLenum attach = dep.hasStencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, attach, GL_TEXTURE_2D, fb.depthStencil, 0);
+
+            // Register engine-visible handle if you plan to sample depth in post
+            fb.depthTexHandle = RegisterTextureFromGL(fb.depthStencil, GL_TEXTURE_2D, true);
+
+            glBindTexture(GL_TEXTURE_2D, 0);
         }
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, fb.depthStencil);
+        else
+        {
+            // Renderbuffer path (recommended for MSAA or when we won’t sample depth)
+            glGenRenderbuffers(1, &fb.depthStencil);
+            glBindRenderbuffer(GL_RENDERBUFFER, fb.depthStencil);
+            if (fb.samples > 1)
+                glRenderbufferStorageMultisample(GL_RENDERBUFFER, fb.samples, dep.internal, fb.width, fb.height);
+            else
+                glRenderbufferStorage(GL_RENDERBUFFER, dep.internal, fb.width, fb.height);
+            const GLenum attach = dep.hasStencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT;
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, attach, GL_RENDERBUFFER, fb.depthStencil);
+        }
     }
 
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
-        std::cerr << "[GLBackend] FBO incomplete: 0x" << std::hex << status << std::dec << "\n";
+        std::cerr << "[GLBackend]: FBO incomplete: 0x" << std::hex << status << std::dec << "\n";
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // cleanup
-        if (fb.colorAttachment) glDeleteTextures(1, &fb.colorAttachment);
+
+        // Clean up (and drop any registered handles)
+        if (fb.colorTexHandle.IsValid()) m_Textures.erase(fb.colorTexHandle);
+        if (fb.depthTexHandle.IsValid()) m_Textures.erase(fb.depthTexHandle);
+
+        if (fb.colorAttachment) {
+            if (fb.samples == 1 && fb.bColorIsTexture) glDeleteTextures(1, &fb.colorAttachment);
+            else if (!fb.bColorIsTexture) glDeleteRenderbuffers(1, &fb.colorAttachment);
+        }
         if (fb.colorAttachmentMS) {
             if (fb.samples>1 && fb.bColorIsTexture) glDeleteTextures(1, &fb.colorAttachmentMS);
             else glDeleteRenderbuffers(1, &fb.colorAttachmentMS);
@@ -481,6 +626,7 @@ RFramebufferHandle GLBackend::CreateFramebuffer(const RFramebuffer &framebufferD
         if (fb.fbo) glDeleteFramebuffers(1, &fb.fbo);
         return {};
     }
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     RFramebufferHandle h{ NextId(m_NextID) };
@@ -490,40 +636,57 @@ RFramebufferHandle GLBackend::CreateFramebuffer(const RFramebuffer &framebufferD
 
 void GLBackend::DestroyFramebuffer(RFramebufferHandle handle)
 {
-    if (auto it = m_Framebuffers.find(handle); it != m_Framebuffers.end()) {
-        auto &fb = it->second;
+    auto it = m_Framebuffers.find(handle);
+    if (it == m_Framebuffers.end()) return;
 
-        if (fb.colorAttachment) {
-            if (fb.samples == 1 && !fb.bColorIsTexture) {
-                glDeleteRenderbuffers(1, &fb.colorAttachment);
-            } else {
-                glDeleteTextures(1, &fb.colorAttachment);
-            }
-        }
+    FGLFramebuffer &fb = it->second;
 
-        if (fb.colorAttachmentMS) {
-            if (fb.samples > 1 && fb.bColorIsTexture) glDeleteTextures(1, &fb.colorAttachmentMS);
-            else glDeleteRenderbuffers(1, &fb.colorAttachmentMS);
-        }
+    // Drop engine-visible handles from the registry
+    if (fb.colorTexHandle.IsValid()) m_Textures.erase(fb.colorTexHandle);
+    if (fb.depthTexHandle.IsValid()) m_Textures.erase(fb.depthTexHandle);
 
-        if (fb.depthStencil) {
-            if (fb.bDepthIsTexture && fb.samples == 1) glDeleteTextures(1, &fb.depthStencil);
-            else glDeleteRenderbuffers(1, &fb.depthStencil);
-        }
-
-        if (fb.fbo) glDeleteFramebuffers(1, &fb.fbo);
-        m_Framebuffers.erase(it);
+    // Now delete the underlying GL objects
+    if (fb.colorAttachment)
+    {
+        if (fb.samples == 1 && fb.bColorIsTexture) glDeleteTextures(1, &fb.colorAttachment);
+        else if (!fb.bColorIsTexture) glDeleteRenderbuffers(1, &fb.colorAttachment);
     }
+    if (fb.colorAttachmentMS)
+    {
+        if (fb.samples > 1 && fb.bColorIsTexture) glDeleteTextures(1, &fb.colorAttachmentMS);
+        else glDeleteRenderbuffers(1, &fb.colorAttachmentMS);
+    }
+    if (fb.depthStencil)
+    {
+        if (fb.bDepthIsTexture && fb.samples == 1) glDeleteTextures(1, &fb.depthStencil);
+        else glDeleteRenderbuffers(1, &fb.depthStencil);
+    }
+    if (fb.fbo) glDeleteFramebuffers(1, &fb.fbo);
+
+    m_Framebuffers.erase(it);
 }
 
 void GLBackend::BindFramebuffer(RFramebufferHandle handle)
 {
     auto it = m_Framebuffers.find(handle);
-    glBindFramebuffer(GL_FRAMEBUFFER, it != m_Framebuffers.end() ? it->second.fbo : 0);
+    if (it == m_Framebuffers.end()) {
+        // binding default/backbuffer
+        glDisable(GL_FRAMEBUFFER_SRGB);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        return;
+    }
+
+    const FGLFramebuffer& fb = it->second;
+    if (fb.IsSRGBColor()) glEnable(GL_FRAMEBUFFER_SRGB);
+    else glDisable(GL_FRAMEBUFFER_SRGB);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.fbo);
+    glViewport(0, 0, fb.width, fb.height);
 }
 
 void GLBackend::UnbindFramebuffer()
 {
+    glDisable(GL_FRAMEBUFFER_SRGB);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -540,14 +703,32 @@ void GLBackend::ResolveFramebuffer(RFramebufferHandle src, RFramebufferHandle ds
     glBindFramebuffer(GL_READ_FRAMEBUFFER, A.fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, B.fbo);
 
+    const bool hasDepth = (static_cast<uint8_t>(mask) & static_cast<uint8_t>(EResolveMask::Depth)) != 0
+                       || (static_cast<uint8_t>(mask) & static_cast<uint8_t>(EResolveMask::Stencil)) != 0;
+    const GLenum glFilter = hasDepth ? GL_NEAREST : ToGLFilter(filter);
+
     glBlitFramebuffer(
         0, 0, A.width, A.height,
         0, 0, B.width, B.height,
         ToGLMask(mask),
-        ToGLFilter(filter)
+        glFilter
     );
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+RTextureHandle GLBackend::GetFramebufferColorTexture(RFramebufferHandle h)
+{
+    auto it = m_Framebuffers.find(h);
+    if (it == m_Framebuffers.end()) return RTextureHandle::Invalid();
+    return it->second.colorTexHandle;
+}
+
+RTextureHandle GLBackend::GetFramebufferDepthTexture(RFramebufferHandle h)
+{
+    auto it = m_Framebuffers.find(h);
+    if (it == m_Framebuffers.end()) return RTextureHandle::Invalid();
+    return it->second.depthTexHandle;
 }
 
 void GLBackend::SetUniformInt(RShaderHandle sh, const char* name, int v) {

@@ -2,8 +2,6 @@
 
 #pragma once
 #include <string>
-#include <cmath>
-#include <cstdint>
 
 enum class EWindowState
 {
@@ -17,8 +15,8 @@ enum class EWindowState
 
 struct FSurfaceState
 {
-    uint32_t width = 1280;
-    uint32_t height = 720;
+    int width = 1280;
+    int height = 720;
     bool bvSync = true;
     EWindowState windowState = EWindowState::Maximized;
     std::string title = "JGraphicEngine";
@@ -43,13 +41,14 @@ public:
 
     virtual void Present() = 0;
     virtual void SwapBuffers() {} // Optional override, for GL/EGL backends that use implicit swap-chains
-    virtual void Resize(uint32_t width, uint32_t height) = 0;
+    virtual void Resize(int width, int height) = 0;
 
     virtual void PollSurfaceEvents() = 0;
 
     virtual void* GetNativeHandle() const = 0;
-    virtual uint32_t GetWidth() const = 0;
-    virtual uint32_t GetHeight() const = 0;
+    virtual int GetWidth() const = 0;
+    virtual int GetHeight() const = 0;
+    virtual void GetFramebufferSize(int& w, int& h) const = 0;
     virtual bool IsVSyncEnabled() const = 0;
     virtual bool IsFullscreen() const = 0;
     virtual FSurfaceState GetState() const = 0;

@@ -26,7 +26,7 @@ public:
 
     void SwapBuffers() override;
 
-    void Resize(uint32_t width, uint32_t height) override;
+    void Resize(int width, int height) override;
 
     void PollSurfaceEvents() override;
 
@@ -34,11 +34,13 @@ public:
 
     bool IsFullscreen() const override;
 
-    uint32_t GetWidth() const override;
+    int GetWidth() const override;
 
-    uint32_t GetHeight() const override;
+    int GetHeight() const override;
 
     void SetCursorMode(ECursorMode mode) override;
+
+    void GetFramebufferSize(int &w, int &h) const override;
 
     void SetCursorVisible() override;
 

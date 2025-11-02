@@ -23,28 +23,31 @@ public:
     // Frame control
     virtual void BeginFrame() = 0;
     virtual void EndFrame() = 0;
+    virtual void SetViewport(int x, int y, int w, int h) = 0;
+    virtual void ClearColorDepth(float r, float g, float b, float a, bool clearDepth=true) = 0;
 
-    // Resource creation / destruction
+    // Resources
     virtual RMeshHandle CreateMesh(const RMesh& meshData) = 0;
     virtual void DestroyMesh(RMeshHandle handle) = 0;
 
     virtual RTextureHandle CreateTexture(const RTexture& textureData) = 0;
     virtual void DestroyTexture(RTextureHandle handle) = 0;
+    virtual void BindTexture(RTextureHandle texture, uint32_t slot) = 0;
 
     virtual RShaderHandle CreateShader(const RShader& shaderData) = 0;
     virtual void DestroyShader(RShaderHandle handle) = 0;
+    virtual void BindShader(RShaderHandle shader) = 0;
 
     virtual RFramebufferHandle CreateFramebuffer(const RFramebuffer& framebufferData) = 0;
     virtual void DestroyFramebuffer(RFramebufferHandle handle) = 0;
-
-    // Binding
-    virtual void BindShader(RShaderHandle shader) = 0;
-    virtual void BindTexture(RTextureHandle texture, uint32_t slot) = 0;
     virtual void BindFramebuffer(RFramebufferHandle handle) = 0;
     virtual void UnbindFramebuffer() = 0;
     virtual void ResolveFramebuffer(RFramebufferHandle src, RFramebufferHandle dst,
                                 EResolveMask mask = EResolveMask::Color,
                                 EResolveFilter filter = EResolveFilter::Nearest) = 0;
+
+    virtual RTextureHandle GetFramebufferColorTexture(RFramebufferHandle) = 0;
+    virtual RTextureHandle GetFramebufferDepthTexture(RFramebufferHandle) = 0;
 
     // Rendering
     virtual void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) = 0;

@@ -13,6 +13,19 @@ enum class ETexFormat { RGBA8, RGB8, SRGB8_A8, SRGB8, R8, RG16F, RGBA16F /* etc.
 
 enum class ETexWrap { Repeat, ClampEdge };
 enum class ETexFilter { Linear, LinearMipmapLinear, Nearest };
+enum class EColorMode {
+    LDR8,      // 8-bit UNORM (linear)
+    HDR16F,    // 16-bit float (linear)
+    sRGB8_A8,  // 8-bit UNORM, sRGB sampling/writes (if enabled)
+};
+
+// Depth-stencil intent
+enum class EDepthMode {
+    None,        // no depth attachment
+    D24S8,       // typical packed depth24+stencil8
+    D32F,        // depth32 float, no stencil
+    DepthOnly16, // small depth-only (if you just need depth testing)
+};
 
 struct FVertexAttribute
 {
@@ -70,6 +83,9 @@ struct RFramebuffer
     int samples = 1;                 // >1 => MSAA
     bool colorAsTexture = true;      // false => renderbuffer for color (MSAA recommended)
     bool depthAsTexture = false;     // true if you need to sample depth
+
+    EColorMode colorMode = EColorMode::HDR16F; // default HDR pipeline
+    EDepthMode depthMode = EDepthMode::D24S8;  // default depth
 };
 
 struct RMaterial

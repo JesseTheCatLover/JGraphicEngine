@@ -104,7 +104,7 @@ void GLFWSurface::SwapBuffers()
         glfwSwapBuffers(m_Window);
 }
 
-void GLFWSurface::Resize(uint32_t width, uint32_t height)
+void GLFWSurface::Resize(int width, int height)
 {
     m_State.width = width;
     m_State.height = height;
@@ -126,12 +126,12 @@ bool GLFWSurface::IsFullscreen() const
     return m_State.windowState == EWindowState::Fullscreen ? true : false;
 }
 
-uint32_t GLFWSurface::GetWidth() const
+int GLFWSurface::GetWidth() const
 {
     return m_State.width;
 }
 
-uint32_t GLFWSurface::GetHeight() const
+int GLFWSurface::GetHeight() const
 {
     return m_State.height;
 }
@@ -140,6 +140,12 @@ void GLFWSurface::SetCursorMode(ECursorMode mode)
 {
     m_CursorMode = mode;
     UpdateCursor();
+}
+
+void GLFWSurface::GetFramebufferSize(int &w, int &h) const
+{
+    if (m_Window) glfwGetFramebufferSize(m_Window, &w, &h);
+    else { w = h = 0; }
 }
 
 void GLFWSurface::SetCursorVisible()

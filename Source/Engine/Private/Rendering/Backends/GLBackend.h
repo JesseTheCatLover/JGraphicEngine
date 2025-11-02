@@ -42,22 +42,37 @@ public:
     {
         GLuint handle = 0;
         GLenum target = GL_TEXTURE_2D;
+        bool ownedByFBO = false; // True when created/owned by an FBO
     };
 
     struct FGLFramebuffer
     {
         GLuint fbo = 0;
+        int width = 0, height = 0, samples = 1;
 
-        // color
+        // Color
         GLuint colorAttachment = 0;          // if single-sample texture
         GLuint colorAttachmentMS = 0;        // if multisample (texture or renderbuffer)
-        bool   bColorIsTexture = true;        // true: texture, false: renderbuffer
+        bool bColorIsTexture = true;        // true: texture, false: renderbuffer
+        GLenum colorTarget = GL_TEXTURE_2D; // or GL_TEXTURE_2D_MULTISAMPLE when MSAA texture
+        GLint colorInternalFormat = GL_RGBA8;
 
-        // depth-stencil
+        // Depth-stencil
         GLuint depthStencil = 0;             // renderbuffer for best perf, or texture if sampling
-        bool   bDepthIsTexture = false;
+        bool bDepthIsTexture = false;
+        GLenum depthInternalFormat = GL_DEPTH24_STENCIL8; // or GL_DEPTH_COMPONENT24, etc.
 
-        int width = 0, height = 0, samples = 1;
+        // Engine-visible handles (valid only when texture && !MSAA)
+        RTextureHandle colorTexHandle{};
+        RTextureHandle depthTexHandle{};
+
+        [[nodiscard]] bool IsMSAA() const { return samples > 1; }
+        [[nodiscard]] bool IsSRGBColor() const { return colorInternalFormat == GL_SRGB8_ALPHA8; }
+        [[nodiscard]] bool HasColorTex() const { return bColorIsTexture && !IsMSAA(); }
+        [[nodiscard]] bool HasDepthTex() const { return bDepthIsTexture && !IsMSAA(); }
+
+        void BindAndSetViewport() const { glBindFramebuffer(GL_FRAMEBUFFER, fbo); glViewport(0,0,width,height); }
+        void Reset() { *this = FGLFramebuffer{}; }
     };
 
 private:
@@ -69,12 +84,17 @@ private:
 
     IPlatformSurface* m_Surface = nullptr;
 
+    RTextureHandle RegisterTextureFromGL(GLuint gltex, GLenum target, bool ownedByFBO);
+
 public:
     bool Initialize(IPlatformSurface* surface) override;
     void Shutdown() override;
 
     void BeginFrame() override;
     void EndFrame() override;
+
+    void SetViewport(int x, int y, int width, int height) override;
+    void ClearColorDepth(float r, float g, float b, float a, bool clearDepth) override;
 
     // Resources
     RMeshHandle CreateMesh(const RMesh& meshData) override;
@@ -96,6 +116,9 @@ public:
     void ResolveFramebuffer(RFramebufferHandle src, RFramebufferHandle dst,
                             EResolveMask mask = EResolveMask::Color,
                             EResolveFilter filter = EResolveFilter::Nearest) override;
+
+    RTextureHandle GetFramebufferColorTexture(RFramebufferHandle) override;
+    RTextureHandle GetFramebufferDepthTexture(RFramebufferHandle) override;
 
     void SetUniformInt   (RShaderHandle sh, const char* name, int v) override;
     void SetUniformFloat (RShaderHandle sh, const char* name, float v) override;

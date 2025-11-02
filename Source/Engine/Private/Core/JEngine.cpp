@@ -7,8 +7,6 @@
 #include "Framework/SceneManager.h"
 #include "Core/EngineGlobals.h"
 #include "Core/Contexts/FViewportContext.h"
-#include "../Rendering/Legacy/JRendererLegacy.h"
-#include "Framework/PostProcessManager.h"
 #include "Scene/JCamera.h"
 #include <iostream>
 #include "Core/TServiceContainer.h"
@@ -17,8 +15,6 @@
 #include "Rendering/EGraphicsAPI.h"
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/JRenderer.h"
-#include "Rendering/Backends/GLBackend.h"
-#include "Rendering/Surfaces/GLFWSurface.h"
 #include "Resources/JResourceManager.h"
 #include "Resources/JModelResource.h"
 #include "Scene/Components/Scene/JModelComponent.h"
@@ -48,7 +44,8 @@ bool JEngine::Run()
         std::cerr << "[JEngine]: Bootstrapping the default scene has failed" << std::endl;
         return false;
     }
-
+    GetPostProcessManager()->AddPass(FPostPassDesc{"Invert"}); //TODO: Test
+    GetPostProcessManager()->AddPass(FPostPassDesc{"ToneVignette"});
     RunMainLoop();
     Shutdown();
 
@@ -69,6 +66,7 @@ bool JEngine::Initialize()
     }
 
     GEngine = this;
+    RegisterServices();
 
     if (!InitializeSubsystems())
     {
@@ -159,10 +157,7 @@ bool JEngine::GLFWInitialize() // TODO: Deprecated
     // Make context current *before* loading GLAD
     glfwMakeContextCurrent(Window);
 
-    m_State.SetGLFWWindow(Window);
-
-    glfwSetFramebufferSizeCallback(Window, FramebufferSizeCallback); // TODO: Make an input system to handle these callbacks
-    glfwSetCursorPosCallback(Window, MouseCallback);
+    glfwSetCursorPosCallback(Window, MouseCallback); // TODO: Make an input system to handle these callbacks
     glfwSetScrollCallback(Window, ScrollCallback);
     glfwSetKeyCallback(Window, KeyCallback);
 
@@ -199,6 +194,9 @@ bool JEngine::SurfaceInitialize()
         return false;
     }
 
+    m_State.SetWindowWidth(m_PlatformSurface->GetWidth());
+    m_State.SetWindowHeight(m_PlatformSurface->GetHeight());
+
     auto* win = static_cast<GLFWwindow*>(m_PlatformSurface
                                              ? m_PlatformSurface->GetNativeHandle()
                                              : nullptr);
@@ -207,8 +205,7 @@ bool JEngine::SurfaceInitialize()
         std::cerr << "Win is null. (temp)" << std::endl;
         return false;
     }
-    glfwSetFramebufferSizeCallback(win, FramebufferSizeCallback); // TODO: Make an input system to handle these callbacks
-    glfwSetCursorPosCallback(win, MouseCallback);
+    glfwSetCursorPosCallback(win, MouseCallback); // TODO: Make an input system to handle these callbacks
     glfwSetScrollCallback(win, ScrollCallback);
     glfwSetKeyCallback(win, KeyCallback);
 
@@ -241,13 +238,13 @@ bool JEngine::InitializeSubsystems()
         std::cerr << "[JEngine]: Failed to initialize renderer" << std::endl;
         return false;
     }
+    m_Renderer->SetPostProcessManager(GetPostProcessManager());
 
     return true;
 }
 
 bool JEngine::InitializeManagers()
 {
-    RegisterServices();
 
     return true;
 }
@@ -271,16 +268,8 @@ void JEngine::RunMainLoop()
         ProcessInputs(win, m_State.GetDeltaTime());
 
         Tick();
-        GetRenderer()->BeginScene();
-        GetRenderer()->EndScene();
-
-        // int fbW, fbH;
-        // glfwGetFramebufferSize(m_State.GetGLFWWindow(), &fbW, &fbH);
-        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // glViewport(0, 0, fbW, fbH);
-        //
-        // if (auto* ppm = GetPostProcessManager())
-        //     ppm->ApplyChain(GetRenderer()->GetSceneTargetTexture(), fbW, fbH);
+        m_Renderer->BeginScene();
+        m_Renderer->EndScene();
         
         if (m_EditorBridge)
             m_EditorBridge->OnRenderOverlay();
@@ -297,6 +286,7 @@ void JEngine::Shutdown()
 {
     GEngine = nullptr;
     m_Renderer->Shutdown();
+    m_PlatformSurface->Shutdown();
 }
 
 void JEngine::Tick()
@@ -325,13 +315,6 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) m_State.GetCamera()->ProcessKeyboard(ECM_Right, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) m_State.GetCamera()->ProcessKeyboard(ECM_Up, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) m_State.GetCamera()->ProcessKeyboard((ECM_Down), deltaTime);
-}
-
-void JEngine::OnFramebufferResize(int width, int height)
-{
-    glViewport(0, 0, width, height);
-    // if (auto Renderer = GetRenderer())
-    //     Renderer->Resize(width, height);
 }
 
 void JEngine::OnMouseMove(double xPosIn, double yPosIn)
@@ -379,6 +362,11 @@ void JEngine::OnKeyboardAction(GLFWwindow *window, int key, int scancode, int ac
         m_State.SetWireframeMode(!m_State.GetWireframeMode()); // Toggling the wireframe mode
 }
 
+IPlatformSurface * JEngine::GetPlatformSurface()
+{
+    return m_PlatformSurface.get();
+}
+
 JRenderer* JEngine::GetRenderer()
 {
     return m_Renderer.get();
@@ -389,7 +377,7 @@ SceneManager* JEngine::GetSceneManager()
     return m_Services->GetService<SceneManager>().get();
 }
 
-PostProcessManager * JEngine::GetPostProcessManager()
+PostProcessManager* JEngine::GetPostProcessManager()
 {
     return m_Services->GetService<PostProcessManager>().get();
 }
@@ -398,7 +386,7 @@ void JEngine::RegisterServices()
 {
     m_Services->RegisterFactory<PostProcessManager>([this]() -> std::shared_ptr<PostProcessManager>
     {
-        return std::make_shared<PostProcessManager>(m_State.GetWindowWidth(), m_State.GetWindowHeight());
+        return std::make_shared<PostProcessManager>();
     });
 
     m_Services->RegisterFactory<SceneManager>([]() -> std::shared_ptr<SceneManager>
@@ -463,11 +451,6 @@ void JEngine::CreateDefaultScene()
 
 
 // --- Static Callbacks ---
-void JEngine::FramebufferSizeCallback(GLFWwindow* window, int width, int height)
-{
-    Get().OnFramebufferResize(width, height);
-}
-
 void JEngine::MouseCallback(GLFWwindow* window, double xpos, double ypos)
 {
     Get().OnMouseMove(xpos, ypos);

@@ -48,16 +48,12 @@ public:
     void SetCamera(JCamera* camera);
     FViewportContext* GetCameraSettings() const;
 
-    GLFWwindow* GetGLFWWindow() const;
-
 private:
     void SetRunning(bool bIsRunning) { m_bRunning = bIsRunning; }
     bool GetIsRunning() const { return m_bRunning; }
 
     float GetLastFrameTime() const;
     void SetLastFrameTime(float lft);
-
-    void SetGLFWWindow(GLFWwindow* window);
 
     bool GetIsFirstMouse();
     void SetIsFirstMouse(bool bIsFirst);

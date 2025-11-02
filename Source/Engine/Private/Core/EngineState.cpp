@@ -15,10 +15,6 @@ EngineState::EngineState()
     m_FrameContext->LastFrameTime = static_cast<float>(glfwGetTime());
 
     m_WindowContext = std::make_unique<FWindowContext>();
-    if (m_WindowContext->bFullscreen)
-    {
-        m_WindowContext->SetFullscreenSize();
-    }
 
     m_ViewportContext = std::make_unique<FViewportContext>();
 
@@ -91,16 +87,6 @@ float EngineState::GetLastFrameTime() const
 void EngineState::SetLastFrameTime(float lft)
 {
     m_FrameContext->LastFrameTime = lft;
-}
-
-GLFWwindow* EngineState::GetGLFWWindow() const
-{
-    return m_WindowContext->window;
-}
-
-void EngineState::SetGLFWWindow(GLFWwindow *window)
-{
-    m_WindowContext->window = window;
 }
 
 bool EngineState::GetIsFirstMouse()

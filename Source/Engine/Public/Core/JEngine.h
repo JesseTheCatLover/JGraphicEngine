@@ -4,6 +4,7 @@
 #include "EngineState.h"
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
+
 #include "Framework/PostProcessManager.h"
 #include "Framework/SceneManager.h"
 
@@ -37,6 +38,7 @@ public:
     void RegisterFactory(std::function<std::shared_ptr<T>()> factory);
 
     // Syntactic sugar manager accessors
+    IPlatformSurface* GetPlatformSurface();
     JRenderer* GetRenderer();
     SceneManager* GetSceneManager();
     PostProcessManager* GetPostProcessManager();
@@ -72,9 +74,8 @@ private:
     bool BootstrapScene();
     void CreateDefaultScene();
 
-    // GLFW input forwarders
+    // GLFW input forwarders | TODO: These all should be moved into a dedicated InputSystem for future
     void ProcessInputs(GLFWwindow* window, float deltaTime);
-    void OnFramebufferResize(int width, int height);
     void OnMouseMove(double xPosIn, double yPosIn);
     void OnScroll(double xOffset, double yOffset);
     void OnKeyboardAction(GLFWwindow* window, int key, int scancode, int action, int mods);
