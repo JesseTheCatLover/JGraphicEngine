@@ -59,7 +59,6 @@ private:
     TUniquePtr<TServiceContainer> m_Services;
 
     bool Initialize();
-    bool GLFWInitialize(); // TODO: Deprecated
     bool SurfaceInitialize();
     bool RenderBackendInitialize();
     bool InitializeSubsystems();
