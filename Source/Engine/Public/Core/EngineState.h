@@ -5,11 +5,13 @@
 
 #include "GLFW/glfw3.h"
 
+#include "Memory/SmartPointers.h"
+
 class JCamera;
 struct FInputContext;
 struct FViewportContext;
 struct FFrameContext;
-struct FWindowContext;
+struct FSurfaceContext;
 
 class EngineState
 {
@@ -25,20 +27,20 @@ private:
     bool m_bRunning = true;
 
     // TODO: Temporarily make context structs until each part has dedicated managers and subsystems
-    std::unique_ptr<FFrameContext> m_FrameContext;
-    std::unique_ptr<FWindowContext> m_WindowContext;
-    std::unique_ptr<FViewportContext> m_ViewportContext;
-    std::unique_ptr<FInputContext> m_InputContext;
+    TUniquePtr<FFrameContext> m_FrameContext;
+    TUniquePtr<FSurfaceContext> m_SurfaceContext;
+    TUniquePtr<FViewportContext> m_ViewportContext;
+    TUniquePtr<FInputContext> m_InputContext;
 
 public:
     [[nodiscard]] const float& GetDeltaTime() const;
     void SetDeltaTime(float dt);
 
-    int GetWindowWidth() const;
-    void SetWindowWidth(int w);
-    int GetWindowHeight() const;
-    void SetWindowHeight(int h);
-    bool GetIsWindowFullscreen();
+    int GetFramebufferWidth() const;
+    void SetFramebufferWidth(int w);
+    int GetFramebufferHeight() const;
+    void SetFramebufferHeight(int h);
+    bool GetIsSurfaceFullscreen();
 
     bool GetWireframeMode();
     void SetWireframeMode(bool bWireMode);

@@ -2,9 +2,9 @@
 
 #pragma once
 
-struct FWindowContext
+struct FSurfaceContext
 {
-    int width = 1080;
-    int height = 1920;
+    int fWidth = 1080;
+    int fHeight = 1920;
     bool bFullscreen = true;
 };

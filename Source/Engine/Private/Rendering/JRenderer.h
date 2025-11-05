@@ -61,8 +61,6 @@ private:
     void EnsureFullscreenResources();
     void DrawFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
     void RebuildKernelsIfDirty();
-    FPassKernel MakeInvertKernel(IRenderBackend* rb);
-    FPassKernel MakeToneVignetteKernel(IRenderBackend* rb);
     
 public:
     ~JRenderer() = default;

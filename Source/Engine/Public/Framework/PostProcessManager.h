@@ -24,7 +24,6 @@ public:
     std::vector<FPostPassDesc>& EditChain() { Dirty = true; return Chain; }
     bool IsDirtyAndClear() { bool d = Dirty; Dirty = false; return d; }
 
-    // sugar for UI/gameplay:
     void AddPass(FPostPassDesc pass) { Chain.push_back(std::move(pass)); Dirty = true; }
     void RemovePass(size_t i) { if (i<Chain.size()) { Chain.erase(Chain.begin()+i); Dirty = true; } }
     void MovePass(size_t from, size_t to) { if (from<Chain.size() && to<Chain.size()) { auto p=Chain[from]; Chain.erase(Chain.begin()+from); Chain.insert(Chain.begin()+to,p); Dirty=true; } }

@@ -26,17 +26,23 @@ public:
 
     void SwapBuffers() override;
 
-    void Resize(int width, int height) override;
+    void SetSurfaceSize(int width, int height) override;
 
     void PollSurfaceEvents() override;
 
+    [[nodiscard]] bool ShouldClose() const override;
+
+    void SetShouldClose(bool bShould) override;
+
+    void GetWindowSize(int &w, int &h) const override;
+
     void* GetNativeHandle() const override;
 
-    bool IsFullscreen() const override;
+    [[nodiscard]] bool IsFullscreen() const override;
 
-    int GetWidth() const override;
+    [[nodiscard]] int GetWidth() const override;
 
-    int GetHeight() const override;
+    [[nodiscard]] int GetHeight() const override;
 
     void SetCursorMode(ECursorMode mode) override;
 
@@ -48,7 +54,7 @@ public:
 
     void SetCursorDisabled() override;
 
-    bool IsVSyncEnabled() const override;
+    [[nodiscard]] bool IsVSyncEnabled() const override;
 
     FSurfaceState GetState() const override;
 

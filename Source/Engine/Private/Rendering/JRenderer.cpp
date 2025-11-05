@@ -9,21 +9,6 @@
 #include <algorithm>
 #include <iostream>
 
-#include "IPlatformSurface.h"
-
-static RShaderHandle CompileFullscreenShader(IRenderBackend* rb, const char* fragSrc)
-{
-    RShader s{};
-    s.vertexSource = R"(#version 330 core
-        layout(location=0) in vec3 aPos;
-        layout(location=2) in vec2 aUV;
-        out vec2 vUV;
-        void main(){ vUV = aUV; gl_Position = vec4(aPos, 1.0); }
-    )";
-    s.fragmentSource = fragSrc;
-    return rb->CreateShader(s);
-}
-
 void JRenderer::BeginScene()
 {
     if (!m_PPM)
@@ -33,9 +18,9 @@ void JRenderer::BeginScene()
     }
 
     // Determine desired size from surface/window
-    int fbW=0, fbH=0;
-    JEngine::Get().GetPlatformSurface()->GetFramebufferSize(fbW, fbH);
-    int samples = 4; // TODO: Hardcoded for now
+    int fbW = JEngine::Get().GetState().GetFramebufferWidth(), fbH = JEngine::Get().GetState().GetFramebufferHeight();
+
+    int samples = 4; // TODO: Hardcoded for now; Expose a setting for samples
     EnsureTargets(fbW, fbH, samples);
 
     // Bind scene target for world rendering (MSAA if >1)
@@ -58,11 +43,10 @@ void JRenderer::EndScene()
         m_Backend->ResolveFramebuffer(
             m_SceneMSAA.fbo, m_Scene.fbo,
             IRenderBackend::EResolveMask::Color,
-            IRenderBackend::EResolveFilter::Nearest);
+            IRenderBackend::EResolveFilter::Nearest); // TODO: for future: when scaling during blit, use Linear for color masks; keep Nearest when depth is involved.
     }
 
-    int fbW=0, fbH=0;
-    JEngine::Get().GetPlatformSurface()->GetFramebufferSize(fbW, fbH);
+    int fbW = JEngine::Get().GetState().GetFramebufferWidth(), fbH = JEngine::Get().GetState().GetFramebufferHeight();
 
     m_Backend->UnbindFramebuffer();
     m_Backend->SetViewport(0, 0, fbW, fbH);
@@ -86,7 +70,7 @@ void JRenderer::EnsureTargets(int w, int h, int samples)
     if (need(m_Scene))
     {
         DestroyTarget(m_Scene);
-        BuildTarget(m_Scene, w, h, 1, /*withDepth*/false, /*hdr*/true, /*srgb*/false); // keep post chain in HDR
+        BuildTarget(m_Scene, w, h, 1, /*withDepth*/true, /*hdr*/true, /*srgb*/false); // keep post chain in HDR
     }
     if (samples > 1 && need(m_SceneMSAA))
     {
@@ -205,7 +189,7 @@ void JRenderer::EnsureFullscreenResources()
         m_FSQuad = m_Backend->CreateMesh(m);
     }
 
-    if (!m_CopyShader.IsValid())
+    if (!m_CopyShader.IsValid()) //TODO: Future work: Tone/Gamma policty: either do it in the final shader (keep sRGB off) or enable sRGB and keep shader linear
     {
         RShader s{};
         s.vertexSource = R"(#version 330 core
@@ -249,13 +233,6 @@ void JRenderer::RebuildKernelsIfDirty()
         {
             newKernels.emplace(pass.name, it->second); // Keep compiled kernel
         }
-        // quick test passes:
-        if (pass.name == "Invert") { // TODO: Test (Remove the static helper in the future as well + MakeKernelFunctions)
-            newKernels.emplace(pass.name, MakeInvertKernel(m_Backend));
-        }
-        else if (pass.name == "ToneVignette") {
-            newKernels.emplace(pass.name, MakeToneVignetteKernel(m_Backend));
-        }
         else
         {
             // Minimal bootstrap: unknown names fall back to copy shader
@@ -268,77 +245,6 @@ void JRenderer::RebuildKernelsIfDirty()
     }
 
     m_Kernels.swap(newKernels);
-}
-
-JRenderer::FPassKernel JRenderer::MakeInvertKernel(IRenderBackend *rb)
-{
-    static const char* kInvertFS = R"(#version 330 core
-        in vec2 vUV;
-        out vec4 FragColor;
-        uniform sampler2D u_Input;
-        void main(){
-            vec3 c = texture(u_Input, vUV).rgb;
-            FragColor = vec4(1.0 - c, 1.0);
-        }
-    )";
-
-    FPassKernel k{};
-    k.shader = CompileFullscreenShader(rb, kInvertFS);
-    k.BindParams = nullptr; // no params
-    return k;
-}
-
-JRenderer::FPassKernel JRenderer::MakeToneVignetteKernel(IRenderBackend *rb)
-{
-    static const char* kFS = R"(#version 330 core
-        in vec2 vUV;
-        out vec4 FragColor;
-        uniform sampler2D u_Input;
-        uniform float u_Exposure;        // default ~1.0–1.5
-        uniform float u_InvGamma;        // 1.0/2.2 for sRGB
-        uniform float u_Vignette;        // 0..2 (strength)
-        uniform float u_VignetteRound;   // 0.0 (circle) .. 1.0 (square-ish)
-
-        void main(){
-            vec3 c = texture(u_Input, vUV).rgb;
-
-            // simple filmic-ish: 1 - exp(-x * exposure)
-            c = 1.0 - exp(-c * max(u_Exposure, 0.0001));
-
-            // gamma to sRGB
-            c = pow(c, vec3(u_InvGamma));
-
-            // vignette
-            vec2 p = vUV * 2.0 - 1.0;                   // [-1..1]
-            float d = dot(p, p);                        // radial
-            // roundness morph: mix circle vs. diamond-ish falloff
-            float m = mix(d, max(abs(p.x), abs(p.y)), clamp(u_VignetteRound, 0.0, 1.0));
-            float v = 1.0 - clamp(u_Vignette * m, 0.0, 1.0);
-            c *= v;
-
-            FragColor = vec4(c, 1.0);
-        }
-    )";
-
-    FPassKernel k{};
-    k.shader = CompileFullscreenShader(rb, kFS);
-    k.BindParams = [](IRenderBackend* rb, RShaderHandle sh, const FPassParam& params){
-        auto getF = [&](const char* key, float def)->float{
-            auto it = params.floats.find(key);
-            return (it!=params.floats.end()) ? it->second : def;
-        };
-        const float exposure   = getF("Exposure", 1.25f);
-        const float invGamma   = getF("InvGamma", 1.0f/2.2f);
-        const float vignette   = getF("Vignette", 0.35f);
-        const float vignRound  = getF("VignetteRound", 0.0f);
-
-        rb->SetUniformInt  (sh, "u_Input", 0);
-        rb->SetUniformFloat(sh, "u_Exposure", exposure);
-        rb->SetUniformFloat(sh, "u_InvGamma", invGamma);
-        rb->SetUniformFloat(sh, "u_Vignette", vignette);
-        rb->SetUniformFloat(sh, "u_VignetteRound", vignRound);
-    };
-    return k;
 }
 
 void JRenderer::SubmitProxy(RRenderProxy *proxy)

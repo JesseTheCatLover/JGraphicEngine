@@ -38,20 +38,23 @@ public:
 
     virtual bool Initialize(const FSurfaceState& state) = 0;
     virtual void Shutdown() = 0;
+    [[nodiscard]] virtual bool ShouldClose() const = 0;
+    virtual void SetShouldClose(bool bShould) = 0;
 
     virtual void Present() = 0;
     virtual void SwapBuffers() {} // Optional override, for GL/EGL backends that use implicit swap-chains
-    virtual void Resize(int width, int height) = 0;
+    virtual void SetSurfaceSize(int width, int height) = 0;
 
     virtual void PollSurfaceEvents() = 0;
 
     virtual void* GetNativeHandle() const = 0;
-    virtual int GetWidth() const = 0;
-    virtual int GetHeight() const = 0;
+    [[nodiscard]] virtual int GetWidth() const = 0;
+    [[nodiscard]] virtual int GetHeight() const = 0;
     virtual void GetFramebufferSize(int& w, int& h) const = 0;
-    virtual bool IsVSyncEnabled() const = 0;
-    virtual bool IsFullscreen() const = 0;
-    virtual FSurfaceState GetState() const = 0;
+    virtual void GetWindowSize(int& w, int& h) const = 0;
+    [[nodiscard]] virtual bool IsVSyncEnabled() const = 0;
+    [[nodiscard]] virtual bool IsFullscreen() const = 0;
+    [[nodiscard]] virtual FSurfaceState GetState() const = 0;
 
     virtual void SetTitle(const std::string& title) = 0;
     virtual void SetVSync(bool vSync) = 0;

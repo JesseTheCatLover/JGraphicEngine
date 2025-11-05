@@ -165,10 +165,6 @@ bool GLBackend::Initialize(IPlatformSurface* surface)
     std::cout << "[GLBackend]: OpenGL version" << glGetString(GL_VERSION) << " with renderer "
     << glGetString(GL_RENDERER) << " loaded successfully" << std::endl;
 
-    glEnable(GL_DEPTH_TEST); // TODO: check
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
     return true;
 }
 
@@ -218,7 +214,9 @@ void GLBackend::Shutdown()
 
 void GLBackend::BeginFrame()
 {
-    //ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
+    //glEnable(GL_DEPTH_TEST);
+    //glEnable(GL_BLEND);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void GLBackend::EndFrame()
@@ -381,11 +379,21 @@ RTextureHandle GLBackend::CreateTexture(const RTexture &textureData)
             glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAniso);
     }
 
+    // Choose pixel type based on format
+    GLenum pixelType = GL_UNSIGNED_BYTE;
+    switch (textureData.format)
+    {
+        case ETexFormat::RG16F:
+        case ETexFormat::RGBA16F: pixelType = GL_HALF_FLOAT; break;
+        default: ;
+            // add others as needed (R16F, R32F, etc.)
+    }
+
     if (textureData.type == ETexType::Tex2D)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, internal,
                      textureData.width, textureData.height, 0,
-                     external, GL_UNSIGNED_BYTE, textureData.data);
+                     external, pixelType, textureData.data);
 
         if (textureData.bGenerateMipmaps)
             glGenerateMipmap(GL_TEXTURE_2D);
@@ -397,7 +405,7 @@ RTextureHandle GLBackend::CreateTexture(const RTexture &textureData)
             const void* face = textureData.faces[i];
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internal,
                          textureData.width, textureData.height, 0,
-                         external, GL_UNSIGNED_BYTE, face);
+                         external, pixelType, face);
         }
         if (textureData.bGenerateMipmaps)
             glGenerateMipmap(GL_TEXTURE_CUBE_MAP);

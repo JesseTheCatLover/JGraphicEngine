@@ -5,20 +5,20 @@
 #include "Core/Contexts/FInputContext.h"
 #include "Core/Contexts/FViewportContext.h"
 #include "Core/Contexts/FFrameContext.h"
-#include "Core/Contexts/FWindowContext.h"
+#include "Core/Contexts/FSurfaceContext.h"
 #include "GLFW/glfw3.h"
 
 EngineState::EngineState()
 {
-    m_FrameContext = std::make_unique<FFrameContext>();
+    m_FrameContext = MakeUnique<FFrameContext>();
     // Initialize LastFrameTime
     m_FrameContext->LastFrameTime = static_cast<float>(glfwGetTime());
 
-    m_WindowContext = std::make_unique<FWindowContext>();
+    m_SurfaceContext = MakeUnique<FSurfaceContext>();
 
-    m_ViewportContext = std::make_unique<FViewportContext>();
+    m_ViewportContext = MakeUnique<FViewportContext>();
 
-    m_InputContext = std::make_unique<FInputContext>();
+    m_InputContext = MakeUnique<FInputContext>();
 
 }
 
@@ -34,29 +34,29 @@ void EngineState::SetDeltaTime(float dt)
     m_FrameContext->DeltaTime = dt;
 }
 
-int EngineState::GetWindowWidth() const
+int EngineState::GetFramebufferWidth() const
 {
-    return m_WindowContext->width;
+    return m_SurfaceContext->fWidth;
 }
 
-void EngineState::SetWindowWidth(int w)
+void EngineState::SetFramebufferWidth(int w)
 {
-    m_WindowContext->width = w;
+    m_SurfaceContext->fWidth = w;
 }
 
-int EngineState::GetWindowHeight() const
+int EngineState::GetFramebufferHeight() const
 {
-    return m_WindowContext->height;
+    return m_SurfaceContext->fHeight;
 }
 
-void EngineState::SetWindowHeight(int h)
+void EngineState::SetFramebufferHeight(int h)
 {
-    m_WindowContext->height = h;
+    m_SurfaceContext->fHeight = h;
 }
 
-bool EngineState::GetIsWindowFullscreen()
+bool EngineState::GetIsSurfaceFullscreen()
 {
-    return m_WindowContext->bFullscreen;
+    return m_SurfaceContext->bFullscreen;
 }
 
 bool EngineState::GetWireframeMode()

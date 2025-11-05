@@ -44,8 +44,6 @@ bool JEngine::Run()
         std::cerr << "[JEngine]: Bootstrapping the default scene has failed" << std::endl;
         return false;
     }
-    GetPostProcessManager()->AddPass(FPostPassDesc{"Invert"}); //TODO: Test
-    GetPostProcessManager()->AddPass(FPostPassDesc{"ToneVignette"});
     RunMainLoop();
     Shutdown();
 
@@ -110,7 +108,7 @@ bool JEngine::GLFWInitialize() // TODO: Deprecated
 #endif
 
     // Get fullscreen settings from state/context
-    bool bFullscreen = m_State.GetIsWindowFullscreen();
+    bool bFullscreen = m_State.GetIsSurfaceFullscreen();
     GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
 
@@ -125,8 +123,8 @@ bool JEngine::GLFWInitialize() // TODO: Deprecated
         glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
         glfwWindowHint(GLFW_FLOATING, GLFW_FALSE);   // stays behind other floating windows
 
-        m_State.SetWindowWidth(mode->width);
-        m_State.SetWindowHeight(mode->height);
+        m_State.SetFramebufferWidth(mode->width);
+        m_State.SetFramebufferHeight(mode->height);
 
         Window = glfwCreateWindow(
             mode->width,
@@ -140,8 +138,8 @@ bool JEngine::GLFWInitialize() // TODO: Deprecated
     {
         // --- Windowed fallback ---
         Window = glfwCreateWindow(
-            m_State.GetWindowWidth(),
-            m_State.GetWindowHeight(),
+            m_State.GetFramebufferWidth(),
+            m_State.GetFramebufferHeight(),
             "Jesse's Magical Workshop",
             nullptr,
             nullptr
@@ -176,8 +174,8 @@ bool JEngine::GLFWInitialize() // TODO: Deprecated
 bool JEngine::SurfaceInitialize()
 {
     FSurfaceState surfaceState;
-    surfaceState.width = m_State.GetWindowWidth();
-    surfaceState.height = m_State.GetWindowHeight();
+    surfaceState.width = m_State.GetFramebufferWidth();
+    surfaceState.height = m_State.GetFramebufferHeight();
     surfaceState.windowState = EWindowState::Maximized;
     surfaceState.title = "JGraphicEngine";
 
@@ -194,8 +192,8 @@ bool JEngine::SurfaceInitialize()
         return false;
     }
 
-    m_State.SetWindowWidth(m_PlatformSurface->GetWidth());
-    m_State.SetWindowHeight(m_PlatformSurface->GetHeight());
+    m_State.SetFramebufferWidth(m_PlatformSurface->GetWidth());
+    m_State.SetFramebufferHeight(m_PlatformSurface->GetHeight());
 
     auto* win = static_cast<GLFWwindow*>(m_PlatformSurface
                                              ? m_PlatformSurface->GetNativeHandle()
@@ -251,7 +249,7 @@ bool JEngine::InitializeManagers()
 
 void JEngine::RunMainLoop()
 {
-    auto* win = static_cast<GLFWwindow*>(m_PlatformSurface
+    auto* win = static_cast<GLFWwindow*>(m_PlatformSurface // TODO: Temporarily here until InputSystem is defined
                                              ? m_PlatformSurface->GetNativeHandle()
                                              : nullptr);
     if (!win) {
@@ -259,11 +257,10 @@ void JEngine::RunMainLoop()
         return;
     }
 
-    while (!glfwWindowShouldClose(win) && m_State.GetIsRunning())
+    while (!m_PlatformSurface->ShouldClose() && m_State.GetIsRunning())
     {
-        auto currentFrame = static_cast<float>(glfwGetTime());
-        m_State.SetDeltaTime(currentFrame - m_State.GetLastFrameTime());
-        m_State.SetLastFrameTime(currentFrame);
+        CalculateDeltaTime();
+        UpdateFramebufferSizeContext();
 
         ProcessInputs(win, m_State.GetDeltaTime());
 
@@ -342,7 +339,7 @@ void JEngine::OnScroll(double xOffset, double yOffset)
 void JEngine::OnKeyboardAction(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+        m_PlatformSurface->SetShouldClose(true);
 
     if (key == GLFW_KEY_J && action == GLFW_PRESS)
     {
@@ -449,6 +446,20 @@ void JEngine::CreateDefaultScene()
     // No need to manually fetch from ResourceManager or assign
 }
 
+void JEngine::CalculateDeltaTime()
+{
+    auto currentFrame = static_cast<float>(glfwGetTime());
+    m_State.SetDeltaTime(currentFrame - m_State.GetLastFrameTime());
+    m_State.SetLastFrameTime(currentFrame);
+}
+
+void JEngine::UpdateFramebufferSizeContext()
+{
+    int fbW = 0, fbH = 0;
+    m_PlatformSurface->GetFramebufferSize(fbW, fbH);
+    m_State.SetFramebufferWidth(fbW);
+    m_State.SetFramebufferHeight(fbH);
+}
 
 // --- Static Callbacks ---
 void JEngine::MouseCallback(GLFWwindow* window, double xpos, double ypos)

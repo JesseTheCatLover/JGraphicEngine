@@ -104,7 +104,7 @@ void GLFWSurface::SwapBuffers()
         glfwSwapBuffers(m_Window);
 }
 
-void GLFWSurface::Resize(int width, int height)
+void GLFWSurface::SetSurfaceSize(int width, int height)
 {
     m_State.width = width;
     m_State.height = height;
@@ -114,6 +114,20 @@ void GLFWSurface::Resize(int width, int height)
 void GLFWSurface::PollSurfaceEvents()
 {
     glfwPollEvents();
+}
+
+bool GLFWSurface::ShouldClose() const
+{
+    return glfwWindowShouldClose(m_Window);
+}
+
+void GLFWSurface::SetShouldClose(bool bShould)
+{
+    glfwSetWindowShouldClose(m_Window, bShould);
+}
+
+void GLFWSurface::GetWindowSize(int &w, int &h) const
+{
 }
 
 void * GLFWSurface::GetNativeHandle() const
