@@ -860,7 +860,7 @@ void GLBackend::UploadLights(const RLightData *lights, uint32_t count)
 {
     if (!m_LightUBO) {
         glGenBuffers(1, &m_LightUBO);
-        m_LightUBOSize = GLsizeiptr(kMaxLights) * GLsizeiptr(sizeof(FGLLight))
+        m_LightUBOSize = GLsizeiptr(kMaxLights) * GLsizeiptr(sizeof(FGLLight));
         glBindBuffer(GL_UNIFORM_BUFFER, m_LightUBO);
         glBufferData(GL_UNIFORM_BUFFER, m_LightUBOSize, nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_UNIFORM_BUFFER, LIGHTS_BINDING, m_LightUBO);

@@ -322,12 +322,12 @@ bool JEngine::BootstrapScene()
     auto* defaultScene = GetSceneManager()->LoadSceneFile("DefaultScene");
     if (!defaultScene)
     {
-        CreateDefaultScene();
+        //CreateDefaultScene();
     }
     return true;
 }
 
-void JEngine::CreateDefaultScene()
+void JEngine::CreateDefaultScene() // TODO: Temporarily and deprecated
 {
     auto& rm = JResourceManager::Get();
     auto* sceneManager = GetSceneManager();
