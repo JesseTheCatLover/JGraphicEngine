@@ -33,6 +33,10 @@ public:
 
     [[nodiscard]] const float* GetValue() const { return glm::value_ptr(M); }
     [[nodiscard]] glm::mat4 GetMat4() const { return M; }
+    [[nodiscard]] FVector3 GetTranslation() const
+    {
+        return FVector3(M[3][0], M[3][1], M[3][2]);
+    }
 
     /** Matrix multiplication */
     FMatrix4 operator*(const FMatrix4& other) const { return FMatrix4(M * other.M); }

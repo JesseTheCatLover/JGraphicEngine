@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include "RHandles.h"
+#include "RRenderRoute.h"
 
 struct FPassParam;
 class PostProcessManager;
@@ -17,13 +18,17 @@ class JRenderer
 private:
     explicit JRenderer(IRenderBackend* backend) { m_Backend = backend; }
 
-    IRenderBackend* m_Backend = nullptr;
-    PostProcessManager* m_PPM = nullptr;
-    std::vector<RRenderProxy*> m_Proxies; // gathered each frame
-
     void BeginScene();
     void EndScene();
     void Shutdown();
+
+    IRenderBackend* m_Backend = nullptr;
+    PostProcessManager* m_PPM = nullptr;
+
+    std::vector<RRenderProxy*> m_Proxies; // Gathered each frame
+    RRenderRoute m_Route;
+    FGPUStateCache m_GPUStateCache;
+    void DrawRenderQueues();
 
     struct FTarget
     {

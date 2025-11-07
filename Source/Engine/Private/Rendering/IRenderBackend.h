@@ -1,4 +1,4 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
 
@@ -7,12 +7,20 @@
 
 class IPlatformSurface;
 struct FMatrix4;
+struct RLightData;
 
 class IRenderBackend
 {
 public:
     enum class EResolveMask   : uint8_t { Color = 1, Depth = 2, Stencil = 4, ColorDepth = 3, All = 7 };
     enum class EResolveFilter : uint8_t { Nearest, Linear };
+
+    enum class ECompareFunc   : uint8_t { Never, Less, LessEqual, Equal, Greater, GreaterEqual, NotEqual, Always };
+    enum class EBlendFactor   : uint8_t { Zero, One, SrcColor, OneMinusSrcColor, DstColor, OneMinusDstColor,
+                                          SrcAlpha, OneMinusSrcAlpha, DstAlpha, OneMinusDstAlpha };
+    enum class ECullMode      : uint8_t { None, Back, Front };
+
+    static constexpr uint32_t kMaxLights = 128;
 
     virtual ~IRenderBackend() = default;
 
@@ -25,6 +33,11 @@ public:
     virtual void EndFrame() = 0;
     virtual void SetViewport(int x, int y, int w, int h) = 0;
     virtual void ClearColorDepth(float r, float g, float b, float a, bool clearDepth=true) = 0;
+
+    // State control
+    virtual void SetDepthState(bool bTestEnable, bool bWriteEnable, ECompareFunc func) = 0;
+    virtual void SetBlendState(bool bEnable, EBlendFactor src, EBlendFactor dst) = 0;
+    virtual void SetCullMode(ECullMode mode) = 0;
 
     // Resources
     virtual RMeshHandle CreateMesh(const RMesh& meshData) = 0;
@@ -51,6 +64,9 @@ public:
 
     // Rendering
     virtual void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) = 0;
+
+    virtual void UploadLights(const RLightData* lights, uint32_t count) = 0;
+    virtual void BindMaterial(RMaterialHandle material) = 0;
 
     // --- Uniforms (scalars/vectors/matrices) ---
     virtual void SetUniformInt  (RShaderHandle sh, const char* name, int v) = 0;

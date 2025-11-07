@@ -25,6 +25,13 @@ struct RShaderHandle
     static RShaderHandle Invalid() { return {0}; }
 };
 
+struct RMaterialHandle
+{
+    Rint id = 0;
+    bool IsValid() const { return id != 0; }
+    static RMaterialHandle Invalid() { return {0}; }
+};
+
 struct RFramebufferHandle
 {
     Rint id = 0;

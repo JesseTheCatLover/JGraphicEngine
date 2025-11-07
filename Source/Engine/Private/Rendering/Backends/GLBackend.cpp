@@ -9,6 +9,8 @@
 #include <vector>
 #include <algorithm>
 
+#include "Rendering/RRenderQueue.h"
+
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
 #endif
@@ -241,6 +243,60 @@ void GLBackend::ClearColorDepth(float r, float g, float b, float a, bool clearDe
     GLbitfield mask = GL_COLOR_BUFFER_BIT;
     if (clearDepth) mask |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
     glClear(mask);
+}
+
+void GLBackend::SetDepthState(bool bTestEnable, bool bWriteEnable, ECompareFunc func)
+{
+    if (bTestEnable) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    glDepthMask(bWriteEnable ? GL_TRUE : GL_FALSE);
+
+    GLenum f = GL_LESS;
+    switch (func)
+    {
+        case ECompareFunc::Never:        f = GL_NEVER; break;
+        case ECompareFunc::Less:         f = GL_LESS; break;
+        case ECompareFunc::LessEqual:    f = GL_LEQUAL; break;
+        case ECompareFunc::Equal:        f = GL_EQUAL; break;
+        case ECompareFunc::Greater:      f = GL_GREATER; break;
+        case ECompareFunc::GreaterEqual: f = GL_GEQUAL; break;
+        case ECompareFunc::NotEqual:     f = GL_NOTEQUAL; break;
+        case ECompareFunc::Always:       f = GL_ALWAYS; break;
+    }
+    glDepthFunc(f);
+}
+
+void GLBackend::SetBlendState(bool bEnable, EBlendFactor src, EBlendFactor dst)
+{
+    if (bEnable) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+
+    auto toGL = [](EBlendFactor b)->GLenum {
+        switch (b)
+        {
+            case EBlendFactor::Zero:             return GL_ZERO;
+            case EBlendFactor::One:              return GL_ONE;
+            case EBlendFactor::SrcColor:         return GL_SRC_COLOR;
+            case EBlendFactor::OneMinusSrcColor: return GL_ONE_MINUS_SRC_COLOR;
+            case EBlendFactor::DstColor:         return GL_DST_COLOR;
+            case EBlendFactor::OneMinusDstColor: return GL_ONE_MINUS_DST_COLOR;
+            case EBlendFactor::SrcAlpha:         return GL_SRC_ALPHA;
+            case EBlendFactor::OneMinusSrcAlpha: return GL_ONE_MINUS_SRC_ALPHA;
+            case EBlendFactor::DstAlpha:         return GL_DST_ALPHA;
+            case EBlendFactor::OneMinusDstAlpha: return GL_ONE_MINUS_DST_ALPHA;
+        }
+        return GL_ONE;
+    };
+    glBlendFunc(toGL(src), toGL(dst));
+}
+
+void GLBackend::SetCullMode(ECullMode mode)
+{
+    if (mode == ECullMode::None)
+        {
+        glDisable(GL_CULL_FACE);
+        return;
+    }
+    glEnable(GL_CULL_FACE);
+    glCullFace(mode == ECullMode::Back ? GL_BACK : GL_FRONT);
 }
 
 RMeshHandle GLBackend::CreateMesh(const RMesh& meshData)
@@ -739,21 +795,24 @@ RTextureHandle GLBackend::GetFramebufferDepthTexture(RFramebufferHandle h)
     return it->second.depthTexHandle;
 }
 
-void GLBackend::SetUniformInt(RShaderHandle sh, const char* name, int v) {
+void GLBackend::SetUniformInt(RShaderHandle sh, const char* name, int v)
+{
     GLuint p = GetProgramFromHandle(m_Shaders, sh); if (!p) return;
     glUseProgram(p);
     GLint loc = GetUniformLoc(p, name); if (loc < 0) return;
     glUniform1i(loc, v);
 }
 
-void GLBackend::SetUniformFloat(RShaderHandle sh, const char* name, float v) {
+void GLBackend::SetUniformFloat(RShaderHandle sh, const char* name, float v)
+{
     GLuint p = GetProgramFromHandle(m_Shaders, sh); if (!p) return;
     glUseProgram(p);
     GLint loc = GetUniformLoc(p, name); if (loc < 0) return;
     glUniform1f(loc, v);
 }
 
-void GLBackend::SetUniformVec2(RShaderHandle sh, const char* name, const float* v2) {
+void GLBackend::SetUniformVec2(RShaderHandle sh, const char* name, const float* v2)
+{
     if (!v2) return;
     GLuint p = GetProgramFromHandle(m_Shaders, sh); if (!p) return;
     glUseProgram(p);
@@ -761,7 +820,8 @@ void GLBackend::SetUniformVec2(RShaderHandle sh, const char* name, const float* 
     glUniform2fv(loc, 1, v2);
 }
 
-void GLBackend::SetUniformVec3(RShaderHandle sh, const char* name, const float* v3) {
+void GLBackend::SetUniformVec3(RShaderHandle sh, const char* name, const float* v3)
+{
     if (!v3) return;
     GLuint p = GetProgramFromHandle(m_Shaders, sh); if (!p) return;
     glUseProgram(p);
@@ -769,7 +829,8 @@ void GLBackend::SetUniformVec3(RShaderHandle sh, const char* name, const float* 
     glUniform3fv(loc, 1, v3);
 }
 
-void GLBackend::SetUniformVec4(RShaderHandle sh, const char* name, const float* v4) {
+void GLBackend::SetUniformVec4(RShaderHandle sh, const char* name, const float* v4)
+{
     if (!v4) return;
     GLuint p = GetProgramFromHandle(m_Shaders, sh); if (!p) return;
     glUseProgram(p);
@@ -777,7 +838,8 @@ void GLBackend::SetUniformVec4(RShaderHandle sh, const char* name, const float* 
     glUniform4fv(loc, 1, v4);
 }
 
-void GLBackend::SetUniformMat4(RShaderHandle sh, const char* name, const float* mat4) {
+void GLBackend::SetUniformMat4(RShaderHandle sh, const char* name, const float* mat4)
+{
     if (!mat4) return;
     GLuint p = GetProgramFromHandle(m_Shaders, sh); if (!p) return;
     glUseProgram(p);
@@ -785,12 +847,72 @@ void GLBackend::SetUniformMat4(RShaderHandle sh, const char* name, const float* 
     glUniformMatrix4fv(loc, 1, GL_FALSE, mat4);
 }
 
-void GLBackend::LinkUniformBlock(RShaderHandle sh, const char* blockName, uint32_t bindingPoint) {
+void GLBackend::LinkUniformBlock(RShaderHandle sh, const char* blockName, uint32_t bindingPoint)
+{
     GLuint p = GetProgramFromHandle(m_Shaders, sh); if (!p || !blockName) return;
     GLuint idx = glGetUniformBlockIndex(p, blockName);
     if (idx != GL_INVALID_INDEX) {
         glUniformBlockBinding(p, idx, bindingPoint);
     }
+}
+
+void GLBackend::UploadLights(const RLightData *lights, uint32_t count)
+{
+    if (!m_LightUBO) {
+        glGenBuffers(1, &m_LightUBO);
+        m_LightUBOSize = GLsizeiptr(kMaxLights) * GLsizeiptr(sizeof(FGLLight))
+        glBindBuffer(GL_UNIFORM_BUFFER, m_LightUBO);
+        glBufferData(GL_UNIFORM_BUFFER, m_LightUBOSize, nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_UNIFORM_BUFFER, LIGHTS_BINDING, m_LightUBO);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+        m_LightStaging.resize(kMaxLights);
+    }
+
+    const uint32_t n = std::min<uint32_t>(count, kMaxLights);
+    for (uint32_t i = 0; i < n; ++i) {
+        m_LightStaging[i].pos_intensity[0] = lights[i].position.x;
+        m_LightStaging[i].pos_intensity[1] = lights[i].position.y;
+        m_LightStaging[i].pos_intensity[2] = lights[i].position.z;
+        m_LightStaging[i].pos_intensity[3] = lights[i].intensity;
+        m_LightStaging[i].color_pad[0] = lights[i].color.x;
+        m_LightStaging[i].color_pad[1] = lights[i].color.y;
+        m_LightStaging[i].color_pad[2] = lights[i].color.z;
+        m_LightStaging[i].color_pad[3] = 0.0f;
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, m_LightUBO);
+    if (n > 0) {
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, n * sizeof(FGLLight), m_LightStaging.data());
+    }
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    m_LastLightCount = (int)n;
+}
+
+void GLBackend::BindMaterial(RMaterialHandle material)
+{
+    if (!material.IsValid()) return;
+
+    auto it = m_Textures.find(RTextureHandle{material.id});
+    if (it == m_Textures.end()) return;
+
+    // Bind to slot 0 and set sampler uniform (your shaders should sample u_BaseColor)
+    //BindTexture(RTextureHandle{material.id}, 0);
+
+    // If we want: SetUniformInt(currentShader, "u_BaseColor", 0);
+    // but we need to know the currently bound shader (we can pass it in from DrawRenderQueues).. hmmmm sus
+
+    /*
+    Later, when RMaterial has fields (albedo/metal/rough/normal etc.), implement a lookup table in GLBackend for RMaterialHandle → MaterialGPU and bind textures to fixed slots:
+
+    slot 0: albedo (u_BaseColor)
+
+    slot 1: normal (u_Normal)
+
+    slot 2: metallic-roughness (u_MetalRough)
+    ...
+    */
 }
 
 void GLBackend::SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4 &transform)

@@ -29,10 +29,10 @@ enum class EDepthMode {
 
 struct FVertexAttribute
 {
-    Rint location;
-    Rint offset; // in bytes
-    Rint size;   // components (e.g., 3 for vec3)
-    Rint type;
+    Rint location{};
+    Rint offset{}; // in bytes
+    Rint size{};   // components (e.g., 3 for vec3)
+    Rint type{};
     bool normalized = false;
 };
 

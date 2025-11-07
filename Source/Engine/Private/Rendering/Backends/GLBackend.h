@@ -11,6 +11,8 @@
 
 #define MAX_BONE_INFLUENCE 4
 
+struct RLightData;
+
 class GLBackend : public IRenderBackend
 {
 public:
@@ -75,6 +77,12 @@ public:
         void Reset() { *this = FGLFramebuffer{}; }
     };
 
+    struct FGLLight {
+        // std140-friendly: pack intensity into w of position
+        GLfloat pos_intensity[4]; // x,y,z,intensity
+        GLfloat color_pad[4];  // r,g,b, pad
+    };
+
 private:
     static std::unordered_map<RMeshHandle, FGLMesh> m_Meshes;
     static std::unordered_map<RShaderHandle, FGLShader> m_Shaders;
@@ -86,6 +94,12 @@ private:
 
     RTextureHandle RegisterTextureFromGL(GLuint gltex, GLenum target, bool ownedByFBO);
 
+    GLuint m_LightUBO = 0;
+    GLsizeiptr m_LightUBOSize = 0;
+    static constexpr GLuint LIGHTS_BINDING = 2;
+    std::vector<FGLLight> m_LightStaging;
+    int m_LastLightCount = 0;
+
 public:
     bool Initialize(IPlatformSurface* surface) override;
     void Shutdown() override;
@@ -95,6 +109,12 @@ public:
 
     void SetViewport(int x, int y, int width, int height) override;
     void ClearColorDepth(float r, float g, float b, float a, bool clearDepth) override;
+
+    void SetDepthState(bool bTestEnable, bool bWriteEnable, ECompareFunc func) override;
+
+    void SetBlendState(bool bEnable, EBlendFactor src, EBlendFactor dst) override;
+
+    void SetCullMode(ECullMode mode) override;
 
     // Resources
     RMeshHandle CreateMesh(const RMesh& meshData) override;
@@ -128,6 +148,9 @@ public:
     void SetUniformMat4  (RShaderHandle sh, const char* name, const float* mat4) override;
 
     void LinkUniformBlock(RShaderHandle sh, const char* blockName, uint32_t bindingPoint) override;
+
+    void UploadLights(const RLightData* lights, uint32_t count) override;
+    void BindMaterial(RMaterialHandle material) override;
 
     // Rendering
     void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) override;

@@ -9,6 +9,38 @@
 #include <algorithm>
 #include <iostream>
 
+// Helpers to read/replace the 16-bit depth inside 'packet'
+static inline uint16_t ExtractDepth(uint64_t p) { return uint16_t((p >> 40) & 0xFFFF); }
+static inline uint64_t ReplaceDepth(uint64_t p, uint16_t d)
+{
+    const uint64_t clear = ~(0xFFFFULL << 40);
+    return (p & clear) | (uint64_t(d) << 40);
+}
+
+// Map view-space Z to a 16-bit bucket (tweak sign to your view convention)
+static inline uint16_t DepthToBucket(float viewZ, float nearZ, float farZ)
+{
+    float z = (viewZ - nearZ) / (farZ - nearZ);   // normalize 0..1
+    z = std::clamp(z, 0.0f, 1.0f);
+    return uint16_t(z * 65535.0f + 0.5f);
+}
+
+// Compute buckets for any queue that needs depth ordering
+static void ComputeDepthBucketsFor(RRenderQueue& q, const FMatrix4& view, float nearZ, float farZ)
+{
+    auto& commands = q.GetDrawCommands();
+    for (auto& c : commands)
+    {
+        if (ExtractDepth(c.packet) != 0) continue; // respect pre-filled depth
+
+        const FVector3 worldP = c.transform.GetTranslation();
+        const FVector3 viewP  = view.TransformPoint(worldP); // (View * Model) * [0,0,0,1]
+        const float zVS = viewP.z; // If -Z is forward, use -viewP.z
+
+        c.packet = ReplaceDepth(c.packet, DepthToBucket(zVS, nearZ, farZ));
+    }
+}
+
 void JRenderer::BeginScene()
 {
     if (!m_PPM)
@@ -16,6 +48,9 @@ void JRenderer::BeginScene()
         std::cerr << "[JRenderer] PostProcessManager is null, cannot render" << std::endl;
         return;
     }
+
+    m_Route.Clear();
+    m_GPUStateCache = {};
 
     // Determine desired size from surface/window
     int fbW = JEngine::Get().GetState().GetFramebufferWidth(), fbH = JEngine::Get().GetState().GetFramebufferHeight();
@@ -38,6 +73,23 @@ void JRenderer::BeginScene()
 
 void JRenderer::EndScene()
 {
+    // Record proxies to the route
+    RRenderContext ctx{};
+    for (RRenderProxy* proxy : m_Proxies)
+        if (proxy) proxy->RecordToRoute(m_Route, ctx);
+    m_Proxies.clear();
+
+    const FMatrix4 view = /* TODO: active camera view */ FMatrix4::Identity();
+    const float nearZ = 0.1f, farZ = 1000.0f;
+
+    ComputeDepthBucketsFor(m_Route.opaque, view, nearZ, farZ);
+    ComputeDepthBucketsFor(m_Route.alpha,  view, nearZ, farZ);
+
+    m_Route.SortAllQueues();
+
+    // DRAW recorded commands into the scene FBO (already bound in BeginScene)
+    DrawRenderQueues();
+
     // Resolve MSAA to m_Scene if needed
     if (m_SceneMSAA.fbo.IsValid()) {
         m_Backend->ResolveFramebuffer(
@@ -60,6 +112,63 @@ void JRenderer::EndScene()
 void JRenderer::Shutdown()
 {
     m_Backend->Shutdown();
+}
+
+void JRenderer::DrawRenderQueues()
+{
+    if (!m_Route.GetLights().empty())
+        m_Backend->UploadLights(m_Route.GetLights().data(), static_cast<uint32_t>(m_Route.GetLights().size()));
+
+    // Local lambda for state changes
+    auto setLayerState = [&](ERenderLayer layer){
+        switch (layer)
+        {
+            case ERenderLayer::Opaque:
+                m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
+                m_Backend->SetDepthState(/*test*/true, /*write*/true, IRenderBackend::ECompareFunc::LessEqual);
+                m_Backend->SetBlendState(false, IRenderBackend::EBlendFactor::One, IRenderBackend::EBlendFactor::Zero);
+                break;
+
+            case ERenderLayer::Alpha:
+                m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
+                m_Backend->SetDepthState(true, /*write*/false, IRenderBackend::ECompareFunc::LessEqual);
+                m_Backend->SetBlendState(true, IRenderBackend::EBlendFactor::SrcAlpha, IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+                break;
+
+            case ERenderLayer::Overlay:
+                m_Backend->SetCullMode(IRenderBackend::ECullMode::None);
+                m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
+                m_Backend->SetBlendState(true, IRenderBackend::EBlendFactor::SrcAlpha, IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+                break;
+        }
+    };
+
+    auto drawList = [&](const std::vector<RDrawCommand>& cmds, ERenderLayer L)
+    {
+        if (cmds.empty()) return;
+        setLayerState(L);
+
+        for (const auto& c : cmds)
+        {
+            if (c.state.shader.id != m_GPUStateCache.shader.id)
+            {
+                m_GPUStateCache.shader = c.state.shader;
+                m_Backend->BindShader(m_GPUStateCache.shader);
+
+                // Set light count once per shader bind (clamp to backend max)
+                const int lightCount = (int)std::min<size_t>(m_Route.GetLights().size(), IRenderBackend::kMaxLights);
+                m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_LightCount", lightCount);
+            }
+
+            if (c.state.material.id) m_Backend->BindMaterial(c.state.material);
+
+            m_Backend->SubmitMesh(c.state.mesh, m_GPUStateCache.shader, c.transform);
+        }
+    };
+
+    drawList(m_Route.opaque.GetDrawCommands(), ERenderLayer::Opaque);
+    drawList(m_Route.alpha.GetDrawCommands(), ERenderLayer::Alpha);
+    drawList(m_Route.overlay.GetDrawCommands(), ERenderLayer::Overlay);
 }
 
 void JRenderer::EnsureTargets(int w, int h, int samples)
@@ -251,6 +360,6 @@ void JRenderer::SubmitProxy(RRenderProxy *proxy)
 {
     if (proxy)
     {
-        proxy->Submit(m_Backend);
+        m_Proxies.push_back(proxy);
     }
 }
