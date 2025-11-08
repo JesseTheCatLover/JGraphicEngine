@@ -2,119 +2,303 @@
 
 #pragma once
 #include <unordered_map>
+#include <shared_mutex>
 #include <memory>
 #include <string>
-#include <optional>
+#include <typeindex>
+#include <type_traits>
+#include <cstdint>
+#include <vector>
+
 #include "Core/JCoreObject.h"
 
 class IRenderDevice;
+
+/**
+ * @struct FGpuLifecycle
+ * @brief Optional GPU lifecycle hooks that a resource class may implement.
+ *
+ * Allows resources to react to GPU initialization and teardown events.
+ * The manager automatically detects and invokes these methods if they exist:
+ *   - void CreateGpuResources(IRenderDevice* device)
+ *   - void DestroyGpuResources(IRenderDevice* device)
+ *
+ * These methods are optional. If not defined on a type, no call is made.
+ * This mechanism ensures GPU-backed resources (e.g., textures, meshes, shaders)
+ * can manage their GPU memory automatically.
+ */
+struct FGpuLifecycle
+{
+    /** @brief Attempt to call CreateGpuResources() if defined on the resource. */
+    template <class T>
+    static auto TryOnCreateGpuResources(T& obj, IRenderDevice* dev, int)
+        -> decltype(obj.CreateGpuResources(dev), void())
+    {
+        if (dev) obj.CreateGpuResources(dev);
+    }
+
+    /** @brief No-op fallback if CreateGpuResources() does not exist. */
+    template <class T>
+    static void TryOnCreateGpuResources(T&, IRenderDevice*, ...) {}
+
+    /** @brief Attempt to call DestroyGpuResources() if defined on the resource. */
+    template <class T>
+    static auto TryOnDestroyGpuResources(T& obj, IRenderDevice* dev, int)
+        -> decltype(obj.DestroyGpuResources(dev), void())
+    {
+        if (dev) obj.DestroyGpuResources(dev);
+    }
+
+    /** @brief No-op fallback if DestroyGpuResources() does not exist. */
+    template <class T>
+    static void TryOnDestroyGpuResources(T&, IRenderDevice*, ...) {}
+};
+
 /**
  * @class JResourceManager
- * @brief Centralized manager for loading, storing, and retrieving resources derived from JCoreObject.
+ * @brief Centralized manager for loading, caching, and managing resource lifetimes.
  *
- * Supports both string-based keys (e.g., file paths, resource names) and unique IDs.
- * Provides safe access and lifetime management through smart pointers.
+ * This manager handles both CPU and GPU-backed resources derived from JCoreObject.
+ * It supports:
+ *   - Safe shared ownership via std::shared_ptr.
+ *   - Fast lookup by key (e.g., file path or name) or unique object ID.
+ *   - Automatic GPU resource setup/teardown using IRenderDevice.
  *
- * Designed for ECS systems to reference resources by ID while tools/editor
- * code may reference them by string identifiers.
+ * ### Usage
+ * Typical engine usage pattern:
+ * @code
+ * auto& rm = JResourceManager::Get();
+ * rm.SetRenderDevice(&Renderer);
+ * auto model = rm.Load<JModelResource>("Models/Tree.fbx");
+ * @endcode
+ *
+ * ### Design Notes
+ * - Thread-safe: uses std::shared_mutex for concurrent read/write access.
+ * - Automatic GPU integration:
+ *     * Prefers constructor with (IRenderDevice*, Args...).
+ *     * Falls back to (Args...) + optional SetRenderDevice(IRenderDevice*).
+ *     * Calls CreateGpuResources() after construction.
+ * - Normalized keys ensure cross-platform consistent lookups.
  */
 class JResourceManager
 {
-private:
-    JResourceManager() = default; // private constructor
-    ~JResourceManager() = default;
-
-    IRenderDevice* m_Render = nullptr;
-
-    /// Resource pointer type (shared ownership)
-    using ResourcePtr = std::shared_ptr<JCoreObject>;
-
-    std::unordered_map<std::string, ResourcePtr> m_ResourcesByKey;
-    std::unordered_map<uint64_t, ResourcePtr> m_ResourcesByID;
-
 public:
-    /// Singleton accessor
+    /** @brief Shared pointer to the base resource type. */
+    using BasePtr = std::shared_ptr<JCoreObject>;
+
+    /** @brief Global singleton accessor. */
     static JResourceManager& Get()
     {
         static JResourceManager instance;
         return instance;
     }
 
-    // Delete copy/move to prevent multiple instances
+    // Disable copy/move
     JResourceManager(const JResourceManager&) = delete;
     JResourceManager& operator=(const JResourceManager&) = delete;
     JResourceManager(JResourceManager&&) = delete;
     JResourceManager& operator=(JResourceManager&&) = delete;
 
-    void SetRenderRuntime(IRenderDevice* rt) { m_Render = rt; }
-    IRenderDevice* GetRenderRuntime() const { return m_Render; }
+    //======================================================================
+    // Render Device
+    //======================================================================
 
     /**
-     * @brief Load a resource by key if it doesn't exist, otherwise return existing.
-     *
-     * @tparam T Type of the resource to load (must derive from JCoreObject).
-     * @param key Unique string identifier (e.g., file path, guid, resource name).
-     * @param args Constructor arguments for the resource if it needs to be created.
-     * @return Shared pointer to the resource.
-     *
-     * Example usage:
-     * @code auto tree = ResourceManager.Load<JModelResource>(treeGuid, "Models/Tree.fbx");
+     * @brief Assigns the active render device.
+     * This device is passed to resources during creation.
      */
-    template<typename T, typename... Args>
+    void SetRenderDevice(IRenderDevice* device) { m_Device = device; }
+
+    /**
+     * @brief Returns the currently assigned render device.
+     * @return Pointer to IRenderDevice (may be nullptr).
+     */
+    [[nodiscard]] IRenderDevice* GetRenderDevice() const { return m_Device; }
+
+    //======================================================================
+    // Load / Creation
+    //======================================================================
+
+    /**
+     * @brief Loads a resource by key or creates it if not already cached.
+     *
+     * Construction order:
+     *  1. If available, prefers constructor: T(IRenderDevice*, Args...).
+     *  2. Otherwise constructs T(Args...) and calls SetRenderDevice(IRenderDevice*) if defined.
+     *  3. Calls CreateGpuResources(IRenderDevice*) if defined.
+     *
+     * @tparam T Resource type (must derive from JCoreObject).
+     * @tparam Args Constructor argument types.
+     * @param key Unique string key (e.g., path, asset name).
+     * @param args Forwarded constructor arguments.
+     * @return Shared pointer to the cached or newly created resource.
+     */
+    template<class T, class... Args>
     std::shared_ptr<T> Load(const std::string& key, Args&&... args)
     {
-        // Ensure type is complete before using
-        static_assert(sizeof(T) > 0, "T must be a complete type before calling Load().");
-
         static_assert(std::is_base_of<JCoreObject, T>::value, "T must derive from JCoreObject");
+        const std::string norm = NormalizeKey(key);
 
-        // Check if already loaded
-        auto existingIt = m_ResourcesByKey.find(key);
-        if (existingIt != m_ResourcesByKey.end())
-            return std::dynamic_pointer_cast<T>(existingIt->second);
+        // Fast path read
+        {
+            std::shared_lock rlock(m_Mutex);
+            if (auto it = m_ByKey.find(norm); it != m_ByKey.end())
+                return std::dynamic_pointer_cast<T>(it->second.ptr);
+        }
 
-        // Construct new resource
-        auto resource = std::make_shared<T>(std::forward<Args>(args)...);
-        uint64_t id = resource->GetID();
+        // Create new instance
+        auto created = CreateInstance<T>(
+            std::integral_constant<bool,
+                std::is_constructible<T, IRenderDevice*, Args...>::value>{},
+            std::forward<Args>(args)...
+        );
 
-        m_ResourcesByKey[key] = resource;
-        m_ResourcesByID[id] = resource;
+        const uint64_t id = created->GetID();
 
-        return resource;
+        // Post-create GPU hook
+        FGpuLifecycle::TryOnCreateGpuResources(*created, m_Device, 0);
+
+        // Add to cache
+        {
+            std::unique_lock wlock(m_Mutex);
+            m_ByID[id] = created;
+            m_ByKey[norm] = Entry{ created, std::type_index(typeid(T)) };
+        }
+
+        return created;
+    }
+
+    //======================================================================
+    // Get / Query
+    //======================================================================
+
+    /**
+     * @brief Retrieves an untyped resource by string key.
+     * @param key Identifier key.
+     * @return Shared pointer or nullptr if not found.
+     */
+    [[nodiscard]] std::shared_ptr<JCoreObject> Get(const std::string& key) const;
+
+    /**
+     * @brief Retrieves an untyped resource by unique object ID.
+     * @param id Unique identifier.
+     * @return Shared pointer or nullptr if not found.
+     */
+    [[nodiscard]] std::shared_ptr<JCoreObject> GetByID(uint64_t id) const;
+
+    /**
+     * @brief Retrieves a typed resource by key.
+     * @tparam T Desired type.
+     * @param key Identifier key.
+     * @return Shared pointer of type T or nullptr if not found or type mismatch.
+     */
+    template<class T>
+    [[nodiscard]] std::shared_ptr<T> GetAs(const std::string& key) const
+    {
+        return std::dynamic_pointer_cast<T>(Get(key));
     }
 
     /**
-     * @brief Get a resource by its string key.
-     * @param key Resource identifier.
-     * @return Optional shared pointer. Empty if not found.
+     * @brief Retrieves a typed resource by unique object ID.
+     * @tparam T Desired type.
+     * @param id Object ID.
+     * @return Shared pointer of type T or nullptr if not found or type mismatch.
      */
-    std::optional<ResourcePtr> Get(const std::string& key) const;
+    template<class T>
+    [[nodiscard]] std::shared_ptr<T> GetByIDAs(uint64_t id) const
+    {
+        return std::dynamic_pointer_cast<T>(GetByID(id));
+    }
 
     /**
-     * @brief Get a resource by its unique ID.
-     * @param id JCoreObject ID.
-     * @return Optional shared pointer. Empty if not found.
+     * @brief Checks if a resource exists in the cache.
+     * @param key Identifier key.
+     * @return True if present.
      */
-    std::optional<ResourcePtr> GetByID(uint64_t id) const;
+    [[nodiscard]] bool Has(const std::string& key) const;
+
+    //======================================================================
+    // Unload / Garbage Collection
+    //======================================================================
 
     /**
-     * @brief Check if a resource exists by key.
-     * @param key Resource identifier.
-     * @return True if resource exists.
-     */
-    bool Has(const std::string& key) const;
-
-    /**
-     * @brief Unload a resource by its string key.
-     * Removes it from both key and ID maps.
+     * @brief Removes a specific resource from the cache.
      *
-     * @param key Resource identifier.
-     * @return True if resource was found and removed, false otherwise.
+     * If the cache holds the last reference, DestroyGpuResources() will be called.
+     * @param key Resource key.
+     * @return True if removed.
      */
     bool Unload(const std::string& key);
 
     /**
-     * @brief Unload all resources from memory.
+     * @brief Unloads all resources with only the cache reference remaining.
+     * Calls DestroyGpuResources() before freeing.
+     * @return Number of resources removed.
+     */
+    size_t UnloadUnused();
+
+    /**
+     * @brief Clears all cached resources from memory.
+     * Calls DestroyGpuResources() on each before releasing.
      */
     void UnloadAll();
+
+private:
+    JResourceManager() = default;
+    ~JResourceManager() = default;
+
+    //======================================================================
+    // Internal Structures
+    //======================================================================
+
+    /** @brief Internal cache entry. */
+    struct Entry
+    {
+        BasePtr ptr;
+        std::type_index type{ typeid(void) };
+    };
+
+    mutable std::shared_mutex m_Mutex;              ///< Thread-safe read/write access.
+    std::unordered_map<std::string, Entry> m_ByKey; ///< Cache by normalized key.
+    std::unordered_map<uint64_t, BasePtr> m_ByID;   ///< Cache by object ID.
+    IRenderDevice* m_Device = nullptr;              ///< GPU device pointer.
+
+    //======================================================================
+    // Helpers
+    //======================================================================
+
+    /**
+     * @brief Preferred path: construct with IRenderDevice* if supported.
+     */
+    template<class T, class... Args>
+    std::shared_ptr<T> CreateInstance(std::true_type /* has (IRenderDevice*, Args...) */, Args&&... args)
+    {
+        return std::make_shared<T>(m_Device, std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Fallback: construct normally, then set render device if supported.
+     */
+    template<class T, class... Args>
+    std::shared_ptr<T> CreateInstance(std::false_type /* fallback */, Args&&... args)
+    {
+        auto ptr = std::make_shared<T>(std::forward<Args>(args)...);
+
+        if constexpr (requires(T& t, IRenderDevice* d) { t.SetRenderDevice(d); })
+            ptr->SetRenderDevice(m_Device);
+
+        return ptr;
+    }
+
+    /**
+     * @brief Normalizes a resource key for consistent lookups.
+     *
+     * Converts all backslashes to forward slashes and lowercases all letters.
+     * Example:
+     *   "Assets\\Models\\Tree.FBX" → "assets/models/tree.fbx"
+     *
+     * @param s Input key string.
+     * @return Normalized key string.
+     */
+    static std::string NormalizeKey(std::string s);
 };
