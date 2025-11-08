@@ -9,7 +9,7 @@ class JShader;
 class JModelResource;
 
 /**
- * @class JModelComponent
+ * @class JModelComponent TODO: This is a temporarily class
  * @brief Component responsible for rendering a model within the scene.
  *
  * Inherits from JSceneComponent, so it has full transform, hierarchy, and attachment support.

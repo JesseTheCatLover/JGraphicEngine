@@ -3,6 +3,8 @@
 #pragma once
 #include <unordered_map>
 #include <vector>
+
+#include "IRenderDevice.h"
 #include "RHandles.h"
 #include "RRenderRoute.h"
 
@@ -11,7 +13,7 @@ class PostProcessManager;
 struct RRenderProxy;
 class IRenderBackend;
 
-class JRenderer
+class JRenderer : public IRenderDevice
 {
     friend class JEngine;
 
@@ -30,6 +32,7 @@ private:
     FGPUStateCache m_GPUStateCache;
     void DrawRenderQueues();
 
+private:
     struct FTarget
     {
         RFramebufferHandle fbo{};
@@ -71,6 +74,17 @@ public:
     ~JRenderer() = default;
 
     void SetPostProcessManager(PostProcessManager* ppm) { m_PPM = ppm;}
+
+    RMeshHandle CreateMesh(const RMesh &data) override;
+    void DestroyMesh(RMeshHandle h) override;
+
+    RTextureHandle CreateTexture(const RTexture &data) override;
+    void DestroyTexture(RTextureHandle h) override;
+
+    RShaderHandle CreateShader(const RShader &data) override;
+    void DestroyShader(RShaderHandle h) override;
+
+    void Enqueue(std::function<void()> fn) override;
 
     void SubmitProxy(RRenderProxy* proxy);
 };

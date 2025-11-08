@@ -18,11 +18,6 @@ private:
     RShaderHandle m_Shader{};
     RMaterialHandle m_Material{};
 
-    /**
-     * @brief Entry point called by the scene traversal / renderer pass.
-     * @note Default implementation emits exactly one draw. */
-    virtual void EmitToRoute(RRenderRoute& route) const;
-
 public:
     JRenderableComponent() = default;
     ~JRenderableComponent() override = default;
@@ -39,6 +34,11 @@ protected:
     void SetMaterialHandle(RMaterialHandle handle) { m_Material = handle; }
 
     virtual bool CanRender() const { return m_Visible && m_Mesh.IsValid() && m_Shader.IsValid(); }
+
+    /**
+     * @brief Entry point called by the scene traversal / renderer pass.
+     * @note Default implementation emits exactly one draw. */
+    virtual void EmitToRoute(RRenderRoute& route) const;
 
     void SerializeProperties(JsonWriter &writer) const override;
     void DeserializeProperties(const JsonReader &reader) override;

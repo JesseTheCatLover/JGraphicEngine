@@ -356,6 +356,42 @@ void JRenderer::RebuildKernelsIfDirty()
     m_Kernels.swap(newKernels);
 }
 
+RMeshHandle JRenderer::CreateMesh(const RMesh &data)
+{
+    return m_Backend->CreateMesh(data);
+}
+
+void JRenderer::DestroyMesh(RMeshHandle h)
+{
+    m_Backend->DestroyMesh(h);
+}
+
+RTextureHandle JRenderer::CreateTexture(const RTexture &data)
+{
+    return m_Backend->CreateTexture(data);
+}
+
+void JRenderer::DestroyTexture(RTextureHandle h)
+{
+    m_Backend->DestroyTexture(h);
+}
+
+RShaderHandle JRenderer::CreateShader(const RShader &data)
+{
+    m_Backend->CreateShader(data);
+}
+
+void JRenderer::DestroyShader(RShaderHandle h)
+{
+    m_Backend->DestroyShader(h);
+}
+
+void JRenderer::Enqueue(std::function<void()> fn)
+{
+    // TODO: later, push into a lock-free queue drained in BeginFrame/EndFrame
+    fn();
+}
+
 void JRenderer::SubmitProxy(RRenderProxy *proxy)
 {
     if (proxy)

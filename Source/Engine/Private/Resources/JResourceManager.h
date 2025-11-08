@@ -7,6 +7,7 @@
 #include <optional>
 #include "Core/JCoreObject.h"
 
+class IRenderDevice;
 /**
  * @class JResourceManager
  * @brief Centralized manager for loading, storing, and retrieving resources derived from JCoreObject.
@@ -22,6 +23,8 @@ class JResourceManager
 private:
     JResourceManager() = default; // private constructor
     ~JResourceManager() = default;
+
+    IRenderDevice* m_Render = nullptr;
 
     /// Resource pointer type (shared ownership)
     using ResourcePtr = std::shared_ptr<JCoreObject>;
@@ -42,6 +45,9 @@ public:
     JResourceManager& operator=(const JResourceManager&) = delete;
     JResourceManager(JResourceManager&&) = delete;
     JResourceManager& operator=(JResourceManager&&) = delete;
+
+    void SetRenderRuntime(IRenderDevice* rt) { m_Render = rt; }
+    IRenderDevice* GetRenderRuntime() const { return m_Render; }
 
     /**
      * @brief Load a resource by key if it doesn't exist, otherwise return existing.
