@@ -103,7 +103,7 @@ void JRenderer::EndScene()
     m_Backend->UnbindFramebuffer();
     m_Backend->SetViewport(0, 0, fbW, fbH);
 
-    RunPostChain(m_Scene.color, fbW, fbH);
+    RunPostProcessChain(m_Scene.color, fbW, fbH);
 
     // DO NOT swap buffers here; Engine loop does it after UI
     m_Backend->EndFrame();
@@ -225,7 +225,7 @@ void JRenderer::BuildTarget(FTarget &t, int w, int h, int samples, bool withDept
     t.w = w; t.h = h; t.samples = fb.samples;
 }
 
-void JRenderer::RunPostChain(RTextureHandle sceneColor, int w, int h)
+void JRenderer::RunPostProcessChain(RTextureHandle sceneColor, int w, int h)
 {
     // Sync shaders with UI/gameplay changes
     RebuildKernelsIfDirty();
@@ -233,7 +233,7 @@ void JRenderer::RunPostChain(RTextureHandle sceneColor, int w, int h)
     // If no PPM or no enabled passes: copy to backbuffer w/ tonemap gamma (or straight copy if LDR)
     auto copyToBackbuffer = [&](){
         m_Backend->UnbindFramebuffer(); // Default FBO
-        DrawFullscreen(m_CopyShader, sceneColor, w, h);
+        BlitFullscreen(m_CopyShader, sceneColor, w, h);
     };
 
     if (!m_PPM) { copyToBackbuffer(); return; }
@@ -264,7 +264,7 @@ void JRenderer::RunPostChain(RTextureHandle sceneColor, int w, int h)
         m_Backend->BindShader(it->second.shader);
         if (it->second.BindParams) it->second.BindParams(m_Backend, it->second.shader, pass.params);
         m_Backend->BindTexture(current, 0);
-        DrawFullscreen(it->second.shader, current, dst.w, dst.h);
+        BlitFullscreen(it->second.shader, current, dst.w, dst.h);
 
         m_Backend->UnbindFramebuffer();
         current = dst.color;
@@ -273,10 +273,10 @@ void JRenderer::RunPostChain(RTextureHandle sceneColor, int w, int h)
 
     // Present last
     m_Backend->UnbindFramebuffer();
-    DrawFullscreen(m_CopyShader, current, w, h);
+    BlitFullscreen(m_CopyShader, current, w, h);
 }
 
-void JRenderer::EnsureFullscreenResources()
+void JRenderer::EnsureFullscreenQuad()
 {
     if (!m_FSQuad.IsValid())
     {
@@ -317,9 +317,9 @@ void JRenderer::EnsureFullscreenResources()
     }
 }
 
-void JRenderer::DrawFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h)
+void JRenderer::BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h)
 {
-    EnsureFullscreenResources();
+    EnsureFullscreenQuad();
 
     RShaderHandle shaderToUse = sh.IsValid() ? sh : m_CopyShader;
     m_Backend->SetViewport(0, 0, w, h);
@@ -345,7 +345,7 @@ void JRenderer::RebuildKernelsIfDirty()
         else
         {
             // Minimal bootstrap: unknown names fall back to copy shader
-            EnsureFullscreenResources();
+            EnsureFullscreenQuad();
             FPassKernel k{};
             k.shader = m_CopyShader;
             k.BindParams = nullptr;
@@ -358,7 +358,7 @@ void JRenderer::RebuildKernelsIfDirty()
 
 RMeshHandle JRenderer::CreateMesh(const RMesh &data)
 {
-    return m_Backend->CreateMesh(data);
+
 }
 
 void JRenderer::DestroyMesh(RMeshHandle h)
@@ -386,7 +386,7 @@ void JRenderer::DestroyShader(RShaderHandle h)
     m_Backend->DestroyShader(h);
 }
 
-void JRenderer::Enqueue(std::function<void()> fn)
+void JRenderer::EnqueueRenderTask(std::function<void()> fn)
 {
     // TODO: later, push into a lock-free queue drained in BeginFrame/EndFrame
     fn();

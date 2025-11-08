@@ -65,9 +65,9 @@ private:
     void EnsureTargets(int w, int h, int samples);
     void DestroyTarget(FTarget& t);
     void BuildTarget(FTarget& t, int w, int h, int samples, bool withDepth = false, bool hdr = false, bool srgb = false);
-    void RunPostChain(RTextureHandle sceneColor, int w, int h);
-    void EnsureFullscreenResources();
-    void DrawFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
+    void RunPostProcessChain(RTextureHandle sceneColor, int w, int h);
+    void EnsureFullscreenQuad();
+    void BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
     void RebuildKernelsIfDirty();
     
 public:
@@ -84,7 +84,7 @@ public:
     RShaderHandle CreateShader(const RShader &data) override;
     void DestroyShader(RShaderHandle h) override;
 
-    void Enqueue(std::function<void()> fn) override;
+    void EnqueueRenderTask(std::function<void()> fn) override;
 
     void SubmitProxy(RRenderProxy* proxy);
 };
