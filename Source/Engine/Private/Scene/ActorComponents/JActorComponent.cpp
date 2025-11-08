@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Scene/Components/JActorComponent.h"
+#include "Scene/ActorComponents/JActorComponent.h"
 #include "Core/Serialization/JsonWriter.h"
 
 void JActorComponent::Initialize()

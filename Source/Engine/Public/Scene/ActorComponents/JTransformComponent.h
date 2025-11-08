@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Scene/Components/JActorComponent.h"
+#include "Scene/ActorComponents/JActorComponent.h"
 #include "Core/Math/FTransform.h"
 
 /**

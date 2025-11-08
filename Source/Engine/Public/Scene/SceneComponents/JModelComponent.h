@@ -1,7 +1,7 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-#include "Scene/Components/JSceneComponent.h"
+#include "Scene/SceneComponents/JSceneComponent.h"
 #include <string>
 #include <memory>
 

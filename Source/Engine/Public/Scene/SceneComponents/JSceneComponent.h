@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Actor/JTransformComponent.h"
+#include "Scene/ActorComponents/JTransformComponent.h"
 #include <vector>
 #include "glm/matrix.hpp"
 

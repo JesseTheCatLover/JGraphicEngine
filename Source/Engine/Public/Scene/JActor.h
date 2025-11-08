@@ -3,7 +3,7 @@
 #pragma once
 #include "Core/JCoreObject.h"
 #include "Core/Serialization/JsonReader.h"
-#include "Components/JSceneComponent.h"
+#include "SceneComponents/JSceneComponent.h"
 #include <memory>
 #include <vector>
 #include <string>

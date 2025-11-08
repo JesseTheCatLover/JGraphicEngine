@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Scene/Components/Actor/JTransformComponent.h"
+#include "Scene/ActorComponents/JTransformComponent.h"
 
 #include "Core/Serialization/JsonReader.h"
 #include "Core/Serialization/JsonWriter.h"

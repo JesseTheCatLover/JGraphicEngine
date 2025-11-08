@@ -17,7 +17,7 @@
 #include "Rendering/JRenderer.h"
 #include "Resources/JResourceManager.h"
 #include "../Resources/GpuResources/JModelResource.h"
-#include "Scene/Components/Scene/JModelComponent.h"
+#include "Scene/SceneComponents/JModelComponent.h"
 
 class JModelResource;
 

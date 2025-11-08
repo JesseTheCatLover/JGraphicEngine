@@ -1,16 +1,12 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Scene/JActor.h"
-#include "../../Public/Scene/Components/JSceneComponent.h"
+#include "Scene/SceneComponents/JSceneComponent.h"
 
 #include "Core/JEngine.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
-#include "glm/gtc/matrix_transform.hpp"
-
-#include "../Rendering/Legacy/JModel.h"
-
-#include "Scene/Components/Scene/JModelComponent.h"
+#include "Scene/SceneComponents/JModelComponent.h"
 
 JActor::JActor() : m_VectorIndex(0)
 {

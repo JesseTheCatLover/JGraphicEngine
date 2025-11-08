@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Scene/Components/JSceneComponent.h"
+#include "Scene/SceneComponents/JSceneComponent.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 #include <algorithm>

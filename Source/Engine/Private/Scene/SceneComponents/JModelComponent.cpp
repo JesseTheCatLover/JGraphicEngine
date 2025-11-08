@@ -1,11 +1,13 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Scene/Components/Scene/JModelComponent.h"
+#include "Scene/SceneComponents/JModelComponent.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
-#include "../../../Rendering/Legacy/JShader.h"
+#include "Rendering/Legacy/JModel.h"
+#include "Rendering/Legacy/JShader.h"
+
 #include "Resources/JResourceManager.h"
-#include "../../../Resources/GpuResources/JModelResource.h"
+#include "Resources/GpuResources/JModelResource.h"
 
 void JModelComponent::SetModel(const std::string& inPath)
 {
