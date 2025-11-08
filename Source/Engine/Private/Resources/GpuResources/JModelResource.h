@@ -1,8 +1,8 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
 #include "Core/JCoreObject.h"
-#include "../Rendering/Legacy/JModel.h"
+#include "Rendering/Legacy/JModel.h"
 #include <memory>
 #include <string>
 

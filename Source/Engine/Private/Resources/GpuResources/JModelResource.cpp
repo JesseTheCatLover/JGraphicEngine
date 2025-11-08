@@ -1,6 +1,6 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "JModelResource.h"
+#include "Resources/GpuResources/JModelResource.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 #include <iostream>

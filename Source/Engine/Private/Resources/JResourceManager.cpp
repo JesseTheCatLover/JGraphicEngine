@@ -35,59 +35,67 @@ bool JResourceManager::Has(const std::string& key) const
 
 bool JResourceManager::Unload(const std::string& key)
 {
-    const std::string norm = NormalizeKey(key);
+    const std::string normalizedKey = NormalizeKey(key);
     std::unique_lock wlock(m_Mutex);
 
-    auto it = m_ByKey.find(norm);
+    auto it = m_ByKey.find(normalizedKey);
     if (it == m_ByKey.end()) return false;
 
     BasePtr ptr = it->second.ptr;
     m_ByKey.erase(it);
     m_ByID.erase(ptr->GetID());
 
+    // If the cache held the last strong ref, allow GPU teardown.
     if (ptr.use_count() == 1)
-        FGpuLifecycle::TryOnDestroyGpuResources(*ptr, m_Device, 0);
+    {
+        if (auto* gpuResource = dynamic_cast<IGpuResource*>(ptr.get()))
+            gpuResource->DestroyGpuResources(m_Device);
+    }
 
     return true;
 }
 
 size_t JResourceManager::UnloadUnused()
 {
-    std::unique_lock wlock(m_Mutex);
-    size_t freed = 0;
-
-    std::vector<std::string> dropKeys;
-    dropKeys.reserve(m_ByKey.size());
-
-    for (auto& [key, entry] : m_ByKey)
+    std::vector<BasePtr> toDestroy;
     {
-        if (entry.ptr.use_count() == 1)
+        std::unique_lock wlock(m_Mutex);
+        for (auto it = m_ByKey.begin(); it != m_ByKey.end();)
         {
-            FGpuLifecycle::TryOnDestroyGpuResources(*entry.ptr, m_Device, 0);
-            m_ByID.erase(entry.ptr->GetID());
-            dropKeys.push_back(key);
-            ++freed;
+            if (it->second.ptr.use_count() == 1)
+            {
+                m_ByID.erase(it->second.ptr->GetID());
+                toDestroy.push_back(it->second.ptr);
+                it = m_ByKey.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
         }
     }
 
-    for (const auto& k : dropKeys)
-        m_ByKey.erase(k);
+    // Outside the lock
+    for (auto& pointer : toDestroy)
+        if (auto* gpuResource = dynamic_cast<IGpuResource*>(pointer.get()))
+            gpuResource->DestroyGpuResources(m_Device);
 
-    return freed;
+    return toDestroy.size();
 }
 
 void JResourceManager::UnloadAll()
 {
-    std::unique_lock wlock(m_Mutex);
-
-    for (auto& [key, entry] : m_ByKey)
+    std::vector<BasePtr> toDestroy;
     {
-        if (entry.ptr)
-            FGpuLifecycle::TryOnDestroyGpuResources(*entry.ptr, m_Device, 0);
+        std::unique_lock wlock(m_Mutex);
+        for (auto& [_, entry] : m_ByKey) toDestroy.push_back(entry.ptr);
+        m_ByKey.clear();
+        m_ByID.clear();
     }
 
-    m_ByKey.clear();
-    m_ByID.clear();
+    for (auto& p : toDestroy)
+        if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
+            gpu->DestroyGpuResources(m_Device);
 }
 
 std::string JResourceManager::NormalizeKey(std::string s)

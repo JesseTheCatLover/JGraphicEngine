@@ -5,7 +5,7 @@
 #include "Core/Serialization/JsonReader.h"
 #include "../../../Rendering/Legacy/JShader.h"
 #include "Resources/JResourceManager.h"
-#include "Resources/JModelResource.h"
+#include "../../../Resources/GpuResources/JModelResource.h"
 
 void JModelComponent::SetModel(const std::string& inPath)
 {

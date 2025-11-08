@@ -8,51 +8,14 @@
 #include <typeindex>
 #include <type_traits>
 #include <cstdint>
+#include <iostream>
+#include <ostream>
 #include <vector>
 
+#include "IGpuResource.h"
 #include "Core/JCoreObject.h"
 
 class IRenderDevice;
-
-/**
- * @struct FGpuLifecycle
- * @brief Optional GPU lifecycle hooks that a resource class may implement.
- *
- * Allows resources to react to GPU initialization and teardown events.
- * The manager automatically detects and invokes these methods if they exist:
- *   - void CreateGpuResources(IRenderDevice* device)
- *   - void DestroyGpuResources(IRenderDevice* device)
- *
- * These methods are optional. If not defined on a type, no call is made.
- * This mechanism ensures GPU-backed resources (e.g., textures, meshes, shaders)
- * can manage their GPU memory automatically.
- */
-struct FGpuLifecycle
-{
-    /** @brief Attempt to call CreateGpuResources() if defined on the resource. */
-    template <class T>
-    static auto TryOnCreateGpuResources(T& obj, IRenderDevice* dev, int)
-        -> decltype(obj.CreateGpuResources(dev), void())
-    {
-        if (dev) obj.CreateGpuResources(dev);
-    }
-
-    /** @brief No-op fallback if CreateGpuResources() does not exist. */
-    template <class T>
-    static void TryOnCreateGpuResources(T&, IRenderDevice*, ...) {}
-
-    /** @brief Attempt to call DestroyGpuResources() if defined on the resource. */
-    template <class T>
-    static auto TryOnDestroyGpuResources(T& obj, IRenderDevice* dev, int)
-        -> decltype(obj.DestroyGpuResources(dev), void())
-    {
-        if (dev) obj.DestroyGpuResources(dev);
-    }
-
-    /** @brief No-op fallback if DestroyGpuResources() does not exist. */
-    template <class T>
-    static void TryOnDestroyGpuResources(T&, IRenderDevice*, ...) {}
-};
 
 /**
  * @class JResourceManager
@@ -62,7 +25,8 @@ struct FGpuLifecycle
  * It supports:
  *   - Safe shared ownership via std::shared_ptr.
  *   - Fast lookup by key (e.g., file path or name) or unique object ID.
- *   - Automatic GPU resource setup/teardown using IRenderDevice.
+ *   - Automatic GPU resource setup/teardown using IRenderDevice for types that implement IGpuResource.
+ *
  *
  * ### Usage
  * Typical engine usage pattern:
@@ -74,18 +38,42 @@ struct FGpuLifecycle
  *
  * ### Design Notes
  * - Thread-safe: uses std::shared_mutex for concurrent read/write access.
- * - Automatic GPU integration:
- *     * Prefers constructor with (IRenderDevice*, Args...).
- *     * Falls back to (Args...) + optional SetRenderDevice(IRenderDevice*).
- *     * Calls CreateGpuResources() after construction.
+ * - CPU-only resources:
+ *     * Constructed and cached normally; no device interaction.
+ * - GPU resources (types implementing IGpuResource):
+ *     * Preferred constructor: T(IRenderDevice*, Args...).
+ *     * Fallback: T(Args...), then SetRenderDevice(IRenderDevice*).
+ *     * After construction, CreateGpuResources(IRenderDevice*) is called.
+ *     * On Unload / UnloadUnused / UnloadAll, if the cache holds the last reference,
+ *       DestroyGpuResources(IRenderDevice*) is called before release.
  * - Normalized keys ensure cross-platform consistent lookups.
  */
 class JResourceManager
 {
-public:
+private:
+    JResourceManager() = default;
+    ~JResourceManager() = default;
+
+    //======================================================================
+    // Internal Structures
+    //======================================================================
+
     /** @brief Shared pointer to the base resource type. */
     using BasePtr = std::shared_ptr<JCoreObject>;
 
+    /** @brief Internal cache entry. */
+    struct Entry
+    {
+        BasePtr ptr;
+        std::type_index type{ typeid(void) };
+    };
+
+    mutable std::shared_mutex m_Mutex;              ///< Thread-safe read/write access.
+    std::unordered_map<std::string, Entry> m_ByKey; ///< Cache by normalized key.
+    std::unordered_map<uint64_t, BasePtr> m_ByID;   ///< Cache by object ID.
+    IRenderDevice* m_Device = nullptr;              ///< GPU device pointer.
+
+public:
     /** @brief Global singleton accessor. */
     static JResourceManager& Get()
     {
@@ -119,13 +107,14 @@ public:
     // Load / Creation
     //======================================================================
 
-    /**
+     /**
      * @brief Loads a resource by key or creates it if not already cached.
      *
      * Construction order:
      *  1. If available, prefers constructor: T(IRenderDevice*, Args...).
-     *  2. Otherwise constructs T(Args...) and calls SetRenderDevice(IRenderDevice*) if defined.
-     *  3. Calls CreateGpuResources(IRenderDevice*) if defined.
+     *  2. Otherwise constructs T(Args...), then if it implements IGpuResource:
+     *       - SetRenderDevice(IRenderDevice*)
+     *       - CreateGpuResources(IRenderDevice*)
      *
      * @tparam T Resource type (must derive from JCoreObject).
      * @tparam Args Constructor argument types.
@@ -147,25 +136,35 @@ public:
         }
 
         // Create new instance
-        auto created = CreateInstance<T>(
-            std::integral_constant<bool,
-                std::is_constructible<T, IRenderDevice*, Args...>::value>{},
+        auto createdResource = CreateInstance<T>(
+            std::integral_constant<bool, std::is_constructible<T, IRenderDevice*, Args...>::value>{},
             std::forward<Args>(args)...
         );
 
-        const uint64_t id = created->GetID();
+        // If it's a GPU resource, finalize wiring and create its GPU cache.
+        if constexpr (std::is_base_of_v<IGpuResource, T>)
+        {
+            if (m_Device)
+            {
+                createdResource->SetRenderDevice(m_Device);
+                createdResource->CreateGpuResources(m_Device);
+            }
+            else
+            {
+                std::cerr << "[JResourceManager]: Failed to create gpu resource, RenderDevice is null\n";
+            }
+        }
 
-        // Post-create GPU hook
-        FGpuLifecycle::TryOnCreateGpuResources(*created, m_Device, 0);
+        const uint64_t id = createdResource->GetID();
 
         // Add to cache
         {
             std::unique_lock wlock(m_Mutex);
-            m_ByID[id] = created;
-            m_ByKey[norm] = Entry{ created, std::type_index(typeid(T)) };
+            m_ByID[id] = createdResource;
+            m_ByKey[norm] = Entry{ createdResource, std::type_index(typeid(T)) };
         }
 
-        return created;
+        return createdResource;
     }
 
     //======================================================================
@@ -222,47 +221,30 @@ public:
     //======================================================================
 
     /**
-     * @brief Removes a specific resource from the cache.
-     *
-     * If the cache holds the last reference, DestroyGpuResources() will be called.
-     * @param key Resource key.
-     * @return True if removed.
-     */
+      * @brief Removes a specific resource from the cache.
+      *
+      * If the cache holds the last reference and the resource implements IGpuResource,
+      * DestroyGpuResources() will be called before releasing it.
+      *
+      * @param key Resource key.
+      * @return True if removed.
+      */
     bool Unload(const std::string& key);
 
     /**
      * @brief Unloads all resources with only the cache reference remaining.
-     * Calls DestroyGpuResources() before freeing.
+     * Calls DestroyGpuResources() on IGpuResource types before freeing.
      * @return Number of resources removed.
      */
     size_t UnloadUnused();
 
     /**
      * @brief Clears all cached resources from memory.
-     * Calls DestroyGpuResources() on each before releasing.
+     * Calls DestroyGpuResources() on IGpuResource types before releasing.
      */
     void UnloadAll();
 
 private:
-    JResourceManager() = default;
-    ~JResourceManager() = default;
-
-    //======================================================================
-    // Internal Structures
-    //======================================================================
-
-    /** @brief Internal cache entry. */
-    struct Entry
-    {
-        BasePtr ptr;
-        std::type_index type{ typeid(void) };
-    };
-
-    mutable std::shared_mutex m_Mutex;              ///< Thread-safe read/write access.
-    std::unordered_map<std::string, Entry> m_ByKey; ///< Cache by normalized key.
-    std::unordered_map<uint64_t, BasePtr> m_ByID;   ///< Cache by object ID.
-    IRenderDevice* m_Device = nullptr;              ///< GPU device pointer.
-
     //======================================================================
     // Helpers
     //======================================================================
@@ -273,21 +255,32 @@ private:
     template<class T, class... Args>
     std::shared_ptr<T> CreateInstance(std::true_type /* has (IRenderDevice*, Args...) */, Args&&... args)
     {
-        return std::make_shared<T>(m_Device, std::forward<Args>(args)...);
+        auto p = std::make_shared<T>(m_Device, std::forward<Args>(args)...);
+
+        // If it is a GPU resource, ensure CreateGpuResources is called after construction.
+        if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
+        {
+            // constructor already received device, but call again to be explicit & safe
+            gpu->SetRenderDevice(m_Device);
+            // CreateGpuResources is called by caller (Load) to keep the policy in one place.
+        }
+        return p;
     }
 
     /**
-     * @brief Fallback: construct normally, then set render device if supported.
+     * @brief Fallback: construct normally; if it implements IGpuResource, wire device later.
      */
     template<class T, class... Args>
     std::shared_ptr<T> CreateInstance(std::false_type /* fallback */, Args&&... args)
     {
-        auto ptr = std::make_shared<T>(std::forward<Args>(args)...);
+        auto p = std::make_shared<T>(std::forward<Args>(args)...);
 
-        if constexpr (requires(T& t, IRenderDevice* d) { t.SetRenderDevice(d); })
-            ptr->SetRenderDevice(m_Device);
-
-        return ptr;
+        if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
+        {
+            gpu->SetRenderDevice(m_Device);
+            // CreateGpuResources is called by caller (Load) to keep the policy in one place.
+        }
+        return p;
     }
 
     /**
