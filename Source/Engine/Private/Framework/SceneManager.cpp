@@ -42,7 +42,7 @@ void SceneManager::Tick(float deltaTime)
 
 bool SceneManager::CreateSceneFile(const std::string &name, const std::string &filename, bool bOverwrite) const
 {
-    std::string scenePath = UPathFinder::Join(ENGINE_DIRECTORY, "Assets", "Scenes", filename + ".jscene");
+    std::string scenePath = UPathFinder::ResolvePath(UPathFinder::Join("Assets", "Scenes", filename + ".jscene"));
 
     if (UFileSystem::FileExists(scenePath) && !bOverwrite)
         return false;
@@ -53,7 +53,7 @@ bool SceneManager::CreateSceneFile(const std::string &name, const std::string &f
 
 JScene* SceneManager::LoadSceneFile(const std::string &filename)
 {
-    std::string scenePath = UPathFinder::Join(ENGINE_DIRECTORY, "Assets", "Scenes", filename + ".jscene");
+    std::string scenePath = UPathFinder::ResolvePath(UPathFinder::Join("Assets", "Scenes", filename + ".jscene"));
 
     if (!UFileSystem::FileExists(scenePath))
         return nullptr;
@@ -82,7 +82,7 @@ bool SceneManager::SaveSceneFile(const JScene *scene, const std::string &filenam
     if (!scene->m_bIsDirty)
         return true; // nothing to save
 
-    std::string scenePath = UPathFinder::Join(ENGINE_DIRECTORY, "Assets", "Scenes", filename + ".jscene");
+    std::string scenePath = UPathFinder::ResolvePath(UPathFinder::Join("Assets", "Scenes", filename + ".jscene"));
 
     JsonWriter writer;
     scene->Serialize(writer);

@@ -158,6 +158,7 @@ bool JEngine::InitializeSubsystems()
         return false;
     }
     m_Renderer->SetPostProcessManager(GetPostProcessManager());
+    JResourceManager::Get().SetRenderDevice(m_Renderer.get());
 
     return true;
 }
@@ -203,6 +204,7 @@ void JEngine::RunMainLoop()
 void JEngine::Shutdown()
 {
     GEngine = nullptr;
+    JResourceManager::Get().Shutdown();
     m_Renderer->Shutdown();
     m_PlatformSurface->Shutdown();
 }
@@ -319,52 +321,79 @@ void JEngine::RegisterServices()
 
 bool JEngine::BootstrapScene()
 {
-    auto* defaultScene = GetSceneManager()->LoadSceneFile("DefaultScene");
-    if (!defaultScene)
+    auto* startupScene = GetSceneManager()->LoadSceneFile("StartupScene");
+    if (!startupScene)
     {
-        //CreateDefaultScene();
+        CreateDefaultScene();
     }
     return true;
 }
 
-void JEngine::CreateDefaultScene() // TODO: Temporarily and deprecated
+void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper scene loading
 {
-    auto& rm = JResourceManager::Get();
-    auto* sceneManager = GetSceneManager();
+    constexpr const char* kSceneKey  = "StartupScene";
+    constexpr const char* kSceneName = "StartupScene";
 
-    // --- 1. Preload commonly used models (optional, speeds up first draw) ---
-    rm.Load<JModelResource>("DioMansion", "Dio Brando/DioMansion.obj");
-    rm.Load<JModelResource>("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
-
-    // --- 2. Load startup scene ---
-    auto* startupScene = sceneManager->LoadSceneFile("StartupScene");
-    if (!startupScene)
+    if (!GetSceneManager())
     {
-        // Scene doesn't exist, create a default one
-        bool bCreated = sceneManager->CreateSceneFile("StartupScene", "StartupScene", true);
-        if (!bCreated) return; // could not create
-        startupScene = sceneManager->LoadSceneFile("StartupScene");
+        std::cerr << "[JEngine] CreateStartupScene: SceneManager is null.\n";
+        return;
     }
 
-    if (!startupScene) return; // failed to load or create
+    // ---------------------------------------------------------------------
+    // 1) (Optional) Preload a few heavy assets to smooth first-frame stutter
+    //    Keys should be the same strings you’ll use from components.
+    // ---------------------------------------------------------------------
+    JResourceManager::Get().Load<JModelResource>("Dio Brando/DioMansion.obj",      "Dio Brando/DioMansion.obj");
+    JResourceManager::Get().Load<JModelResource>("MedievalWindow/MedievalWindow.obj","MedievalWindow/MedievalWindow.obj");
 
-    // --- 3. Populate scene actors (temporary hardcoded setup) ---
+    // ---------------------------------------------------------------------
+    // 2) Load or create the startup scene asset
+    // ---------------------------------------------------------------------
+    auto* scene = GetSceneManager()->LoadSceneFile(kSceneKey);
+    if (!scene)
+    {
+        const bool created = GetSceneManager()->CreateSceneFile(kSceneKey, kSceneName, /*setActive*/true);
+        if (!created)
+        {
+            std::cerr << "[JEngine] CreateStartupScene: failed to create scene file.\n";
+            return;
+        }
+        scene = GetSceneManager()->LoadSceneFile(kSceneKey);
+        if (!scene)
+        {
+            std::cerr << "[JEngine] CreateStartupScene: failed to load freshly created scene.\n";
+            return;
+        }
+    }
 
-    // Example: create a Dio Mansion actor
-    auto* dioActor = SceneManager().SpawnActor<JActor>();
-    auto* dioComp = dioActor->CreateDefaultComponent<JModelComponent>("DioMansion");
-    dioComp->SetModel("Dio Brando/DioMansion.obj");
+    // ---------------------------------------------------------------------
+    // 3) Utility: spawn a simple “Model Actor” with one JModelComponent
+    // ---------------------------------------------------------------------
+    auto spawnModelActor = [&](const char* actorName, const char* modelKey) -> JActor*
+    {
+        JActor* actor = GetSceneManager()->SpawnActor<JActor>();
+        if (!actor) return nullptr;
 
-    // Example: create a Medieval Window actor
-    auto* windowActor = SceneManager().SpawnActor<JActor>();
-    auto* windowComp = windowActor->CreateDefaultComponent<JModelComponent>("MedievalWindow");
-    windowComp->SetModel("MedievalWindow/MedievalWindow.obj");
+        actor->SetName(actorName ? actorName : "ModelActor");
 
-    // Save the scene for next launch
-    sceneManager->SaveSceneFile(startupScene, "StartupScene");
+        // Attach a model component at runtime to the actor’s root (uses route rendering)
+        auto* modelComp = actor->AddRuntimeComponent<JModelComponent>();
+        modelComp->SetModel(modelKey);
 
-    // At this point, every actor's JModelComponent already knows its model via the path
-    // No need to manually fetch from ResourceManager or assign
+        return actor;
+    };
+
+    // ---------------------------------------------------------------------
+    // 4) Populate scene (temporary, hardcoded)
+    // ---------------------------------------------------------------------
+    spawnModelActor("Dio Mansion",    "Dio Brando/DioMansion.obj");
+    spawnModelActor("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
+
+    // ---------------------------------------------------------------------
+    // 5) Save the scene so next launch restores this layout
+    // ---------------------------------------------------------------------
+    GetSceneManager()->SaveSceneFile(scene, kSceneKey);
 }
 
 void JEngine::CalculateDeltaTime()

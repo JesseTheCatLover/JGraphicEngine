@@ -112,17 +112,22 @@ public:
     // ----------------- Path Manipulation -----------------
 
     /**
-     * @brief Join multiple path segments into a single normalized path (relative to project root).
-     *
-     * @tparam Args Variadic list of path segments.
-     * @param args Path segments to join.
-     * @return Normalized absolute path.
-     */
+    * @brief Joins multiple path segments into a single normalized relative path.
+    *
+    * Concatenates all provided path segments using the native directory separator,
+    * producing a clean, platform-consistent path string (e.g., "Test1/Test2/Test3").
+    * This function does not resolve paths relative to any root — it only performs
+    * safe concatenation and normalization.
+    *
+    * @tparam Args Variadic list of path segment types convertible to std::filesystem::path.
+    * @param args Path segments to join (e.g., folder names, filenames).
+    * @return Normalized relative path as a string.
+    */
     template<typename... Args>
     static std::string Join(const Args&... args)
     {
         std::filesystem::path p;
-        (p.append(args), ...);
+        ((p /= std::filesystem::path(args)), ...);
         return Normalize(p.string());
     }
 
@@ -159,7 +164,6 @@ public:
      */
     static std::string GetExtension(const std::string& path);
 
-private:
     /** Resolve a path relative to the project root (if not absolute). */
     static std::filesystem::path ResolvePath(const std::string& path);
 

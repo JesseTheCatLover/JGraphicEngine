@@ -16,7 +16,7 @@ struct RRenderContext
     uint16_t depthBucket{0};
 };
 
-struct RRenderProxy
+struct RRenderProxy // TODO: Will re-introduce proxies in later developments, and avoid direct passing to route using proxies for further scalability
 {
     virtual ~RRenderProxy() = default;
     virtual void RecordToRoute(RRenderRoute& route, const RRenderContext& ctx) = 0;

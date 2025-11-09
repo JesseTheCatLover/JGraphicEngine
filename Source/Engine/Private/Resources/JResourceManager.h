@@ -87,6 +87,8 @@ public:
     JResourceManager(JResourceManager&&) = delete;
     JResourceManager& operator=(JResourceManager&&) = delete;
 
+    void Shutdown();
+
     //======================================================================
     // Render Device
     //======================================================================

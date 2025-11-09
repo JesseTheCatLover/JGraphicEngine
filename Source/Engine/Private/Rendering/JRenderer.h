@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "FSurfaceDesc.h"
 #include "IRenderDevice.h"
 #include "RHandles.h"
 #include "RRenderRoute.h"
@@ -33,6 +34,16 @@ private:
     void DrawRenderQueues();
 
 private:
+    struct FMaterialEntry
+    {
+        FSurfaceDesc surface;
+    };
+
+    std::unordered_map<Rint, FMaterialEntry> m_Materials{};
+    Rint m_NextMaterialId = 1;
+
+    RShaderHandle m_DefaultLit{};
+
     struct FTarget
     {
         RFramebufferHandle fbo{};
@@ -69,7 +80,7 @@ private:
     void EnsureFullscreenQuad();
     void BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
     void RebuildKernelsIfDirty();
-    
+
 public:
     ~JRenderer() = default;
 
@@ -84,7 +95,14 @@ public:
     RShaderHandle CreateShader(const RShader &data) override;
     void DestroyShader(RShaderHandle h) override;
 
-    void EnqueueRenderTask(std::function<void()> fn) override;
+    RMaterialHandle CreateMaterial(const FSurfaceDesc &surface) override;
+    void DestroyMaterial(RMaterialHandle h) override;
 
-    void SubmitProxy(RRenderProxy* proxy);
+    void SetDefaultLitShader(RShaderHandle h) { m_DefaultLit = h; }
+    [[nodiscard]] RShaderHandle GetDefaultLitShader() const { return m_DefaultLit; }
+
+    // Allow draw path to query surface by handle
+    const FSurfaceDesc* GetMaterialSurface(RMaterialHandle h) const;
+
+    void EnqueueRenderTask(std::function<void()> fn) override;
 };

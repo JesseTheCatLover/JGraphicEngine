@@ -66,7 +66,6 @@ public:
     virtual void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) = 0;
 
     virtual void UploadLights(const RLightData* lights, uint32_t count) = 0;
-    virtual void BindMaterial(RMaterialHandle material) = 0;
 
     // --- Uniforms (scalars/vectors/matrices) ---
     virtual void SetUniformInt  (RShaderHandle sh, const char* name, int v) = 0;

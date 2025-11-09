@@ -235,12 +235,6 @@ public:
 
     // -------------------- Rendering --------------------
 
-    /**
-     * @brief Render the actor's scene components.
-     * @param shader Shader to use for drawing
-     */
-    virtual void Draw(JShader& shader) const;
-
     // -------------------- Serialization --------------------
 
     void Serialize(JsonWriter& writer) const override;

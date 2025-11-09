@@ -31,7 +31,9 @@ protected:
 
     void SetMeshHandle(RMeshHandle handle) { m_Mesh = handle; }
     void SetShaderHandle(RShaderHandle handle) { m_Shader = handle; }
+    RShaderHandle GetShaderHandle() const { return m_Shader; }
     void SetMaterialHandle(RMaterialHandle handle) { m_Material = handle; }
+
 
     virtual bool CanRender() const { return m_Visible && m_Mesh.IsValid() && m_Shader.IsValid(); }
 

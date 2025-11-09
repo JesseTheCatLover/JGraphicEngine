@@ -890,31 +890,6 @@ void GLBackend::UploadLights(const RLightData *lights, uint32_t count)
     m_LastLightCount = (int)n;
 }
 
-void GLBackend::BindMaterial(RMaterialHandle material)
-{
-    if (!material.IsValid()) return;
-
-    auto it = m_Textures.find(RTextureHandle{material.id});
-    if (it == m_Textures.end()) return;
-
-    // Bind to slot 0 and set sampler uniform (your shaders should sample u_BaseColor)
-    //BindTexture(RTextureHandle{material.id}, 0);
-
-    // If we want: SetUniformInt(currentShader, "u_BaseColor", 0);
-    // but we need to know the currently bound shader (we can pass it in from DrawRenderQueues).. hmmmm sus
-
-    /*
-    Later, when RMaterial has fields (albedo/metal/rough/normal etc.), implement a lookup table in GLBackend for RMaterialHandle → MaterialGPU and bind textures to fixed slots:
-
-    slot 0: albedo (u_BaseColor)
-
-    slot 1: normal (u_Normal)
-
-    slot 2: metallic-roughness (u_MetalRough)
-    ...
-    */
-}
-
 void GLBackend::SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4 &transform)
 {
     // Lookup mesh

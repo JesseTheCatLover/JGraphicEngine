@@ -1,0 +1,39 @@
+{
+    "actor_count": 2,
+    "actors": [
+        {
+            "id": 5,
+            "name": "Dio Mansion",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                180.0,
+                -0.0,
+                0.0
+            ],
+            "vector_index": 0
+        },
+        {
+            "id": 9,
+            "name": "MedievalWindow",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                180.0,
+                -0.0,
+                0.0
+            ],
+            "vector_index": 1
+        }
+    ],
+    "meta": {
+        "last_modified": "2025-11-09 21:59:17"
+    },
+    "name": "StartupScene"
+}

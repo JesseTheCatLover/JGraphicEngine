@@ -42,6 +42,7 @@ struct RFramebufferHandle
 inline bool operator==(RMeshHandle a, RMeshHandle b)             noexcept { return a.id == b.id; }
 inline bool operator==(RShaderHandle a, RShaderHandle b)         noexcept { return a.id == b.id; }
 inline bool operator==(RTextureHandle a, RTextureHandle b)       noexcept { return a.id == b.id; }
+inline bool operator==(RMaterialHandle a, RMaterialHandle b)       noexcept { return a.id == b.id; }
 inline bool operator==(RFramebufferHandle a, RFramebufferHandle b) noexcept { return a.id == b.id; }
 
 inline bool operator!=(RMeshHandle a, RMeshHandle b)             noexcept { return !(a == b); }
@@ -53,6 +54,7 @@ namespace std
 {
     template<> struct hash<RMeshHandle> { size_t operator()(const RMeshHandle& h) const noexcept { return hash<Rint>{}(h.id); } };
     template<> struct hash<RShaderHandle> { size_t operator()(const RShaderHandle& h) const noexcept { return hash<Rint>{}(h.id); } };
+    template<> struct hash<RMaterialHandle> { size_t operator()(const RMaterialHandle& h) const noexcept { return hash<Rint>{}(h.id); } };
     template<> struct hash<RTextureHandle>{ size_t operator()(const RTextureHandle& h) const noexcept { return hash<Rint>{}(h.id); } };
     template<> struct hash<RFramebufferHandle>{ size_t operator()(const RFramebufferHandle& h) const noexcept { return hash<Rint>{}(h.id); } };
 }

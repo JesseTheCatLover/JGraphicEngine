@@ -1,58 +1,58 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025 JesseTheCatLover
 
 #include "Scene/SceneComponents/JModelComponent.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
-#include "Rendering/Legacy/JModel.h"
-#include "Rendering/Legacy/JShader.h"
 
+#include "Rendering/RRenderRoute.h"
+#include "Rendering/RRenderQueue.h"
 #include "Resources/JResourceManager.h"
 #include "Resources/GpuResources/JModelResource.h"
 
-void JModelComponent::SetModel(const std::string& inPath)
+void JModelComponent::SetModel(const std::string& modelKey)
 {
-    m_ModelPath = inPath;
-
-    m_ModelResource = JResourceManager::Get().Load<JModelResource>(inPath, inPath);
+    m_ModelKey = modelKey;
+    m_Model = JResourceManager::Get().Load<JModelResource>(modelKey, modelKey);
 }
 
-void JModelComponent::Draw(JShader& shader) const
+void JModelComponent::EmitToRoute(RRenderRoute& route) const
 {
-    if (auto modelRes = m_ModelResource.lock())
+    if (!IsVisible()) return;
+
+    auto model = m_Model.lock();
+    if (!model) return;
+
+    const auto& subs = model->GetSubmeshes();
+    if (subs.empty()) return;
+
+    const FMatrix4 world = GetWorldTransform().ToMatrix();
+
+    for (const auto& sm : subs)
     {
-        auto model = modelRes->GetModel();
-        if (model)
-        {
-            // Get world transform from the scene graph
-            FMatrix4 worldTransformMat4 = GetWorldTransform().ToMatrix();
+        if (!sm.mesh.IsValid()) continue;
+        RDrawCommand cmd{};
+        cmd.state.mesh     = sm.mesh;
+        cmd.state.shader   = GetShaderHandle();   // set externally (e.g., default lit)
+        cmd.state.material = sm.material;
+        cmd.transform      = world;
 
-            // Send it to the shader (as the "model matrix")
-            shader.Use();
-            shader.SetMat4("u_Model", worldTransformMat4.GetMat4());
+        const uint16_t depthBucket = 0; // will be filled by renderer depth bucketer
+        cmd.packet = RRenderQueue::MakeSortKey(GetRenderLayer(), cmd.state.shader.id, cmd.state.material.id, depthBucket);
 
-            // Now draw the model
-            model->Draw(shader);
-        }
+        route.Submit(cmd);
     }
 }
 
 void JModelComponent::SerializeProperties(JsonWriter& writer) const
 {
     Super::SerializeProperties(writer);
-
-    // Save the path/key of the model
-    writer.Write("model_path", m_ModelPath);
+    writer.Write("model_key", m_ModelKey);
 }
 
 void JModelComponent::DeserializeProperties(const JsonReader& reader)
 {
     Super::DeserializeProperties(reader);
-
-    m_ModelPath = reader.Read("model_path", std::string{});
-
-    // Lazy load: you can load the model now or defer it until Draw()
-    if (!m_ModelPath.empty())
-    {
-        m_ModelResource = JResourceManager::Get().Load<JModelResource>(m_ModelPath, m_ModelPath);
-    }
+    m_ModelKey = reader.Read("model_key", std::string{});
+    if (!m_ModelKey.empty())
+        m_Model = JResourceManager::Get().Load<JModelResource>(m_ModelKey, m_ModelKey);
 }

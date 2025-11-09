@@ -4,6 +4,7 @@
 #include <functional>
 #include "RHandles.h"
 
+struct FSurfaceDesc;
 struct RShader;
 struct RTexture;
 struct RMesh;
@@ -21,6 +22,10 @@ public:
 
     virtual RShaderHandle CreateShader  (const RShader& data) = 0;
     virtual void DestroyShader (RShaderHandle h) = 0;
+
+    // Material
+    virtual RMaterialHandle CreateMaterial(const FSurfaceDesc& surface) = 0;
+    virtual void DestroyMaterial(RMaterialHandle h) = 0;
 
     // virtual RMaterialHandle CreateMaterial(const RMaterialDesc& d) = 0;
     // Queue a lambda to run on the render thread.

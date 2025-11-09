@@ -1,64 +1,41 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025 JesseTheCatLover
 
 #pragma once
-#include "Scene/SceneComponents/JSceneComponent.h"
-#include <string>
 #include <memory>
+#include <string>
 
-class JShader;
+#include "Scene/SceneComponents/JRenderableComponent.h"
+
 class JModelResource;
 
 /**
- * @class JModelComponent TODO: This is a temporarily class
- * @brief Component responsible for rendering a model within the scene.
+ * @class JModelComponent
+ * @brief Temporary “heavy” component to render a full model.
  *
- * Inherits from JSceneComponent, so it has full transform, hierarchy, and attachment support.
- * This component holds a reference to a JModelResource, which encapsulates the mesh and
- * any associated materials or textures.
- *
- * Responsibilities:
- *  - Store and reference the model resource.
- *  - Provide transform and world-space information through the scene graph.
- *  - Support serialization of its resource reference and transform state.
- *
- * Example usage:
- * @code
- * auto modelComp = Actor->AddComponent<JModelComponent>();
- * modelComp->SetModel(ResourceManager.Load<JModelResource>("Models/Tree.fbx", "Models/Tree.fbx"));
- * @endcode
+ * Future work splits this into Model + Mesh + Material components.
  */
-// TODO: Update the api doc for this class (code section)
-class JModelComponent : public JSceneComponent
+class JModelComponent : public JRenderableComponent
 {
-    DECLARE_JOBJECT(JModelComponent, JSceneComponent)
-
-private:
-    std::string m_ModelPath; ///< Serialized path/key of the model
-    std::weak_ptr<JModelResource> m_ModelResource; ///< Loaded model resource
+    DECLARE_JOBJECT(JModelComponent, JRenderableComponent)
 
 public:
     JModelComponent() = default;
-    virtual ~JModelComponent() = default;
+    ~JModelComponent() override = default;
 
-    /**
-     * @brief Set the model resource by path/key.
-     * @param inPath Path or key to the model resource.
-     */
-    void SetModel(const std::string& inPath);
+    /** Set by project-relative key; ResourceManager resolves & loads. */
+    void SetModel(const std::string& modelKey);
 
-    /**
-     * @brief Get the model resource.
-     * @return Pointer to the model resource.
-     */
-    std::shared_ptr<JModelResource> GetModel() const { return m_ModelResource.lock(); }
+    /** Strong read access (if needed). Prefer using EmitToRoute to draw. */
+    std::shared_ptr<JModelResource> GetModel() const { return m_Model.lock(); }
 
-    /**
-     * @brief Draw the mesh using the provided shader.
-     * @param shader Shader to use for rendering.
-     */
-    void Draw(JShader& shader) const;
+    // JRenderableComponent
+    void EmitToRoute(class RRenderRoute& route) const override;
 
 protected:
-    void SerializeProperties(JsonWriter& writer) const override;
-    void DeserializeProperties(const JsonReader& reader) override;
+    void SerializeProperties(class JsonWriter& writer) const override;
+    void DeserializeProperties(const class JsonReader& reader) override;
+
+private:
+    std::string                        m_ModelKey;
+    std::weak_ptr<JModelResource>      m_Model;
 };

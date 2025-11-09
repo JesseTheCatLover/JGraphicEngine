@@ -160,7 +160,57 @@ void JRenderer::DrawRenderQueues()
                 m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_LightCount", lightCount);
             }
 
-            if (c.state.material.id) m_Backend->BindMaterial(c.state.material);
+            // optional small cache to avoid redundant binds per-draw
+            if (c.state.material != m_GPUStateCache.material)
+            {
+                m_GPUStateCache.material = c.state.material;
+
+                if (const FSurfaceDesc *surf = GetMaterialSurface(c.state.material))
+                {
+                    int unit = 0;
+
+                    if (surf->baseColor.IsValid())
+                    {
+                        m_Backend->BindTexture(surf->baseColor, unit);
+                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_BaseColor", unit);
+                        ++unit;
+                    }
+                    else
+                    {
+                        // fallback factor
+                        m_Backend->SetUniformVec4(m_GPUStateCache.shader, "u_BaseColorFactor",
+                                                  surf->params.baseColorFactor);
+                    }
+
+                    if (surf->normal.IsValid())
+                    {
+                        m_Backend->BindTexture(surf->normal, unit);
+                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_NormalMap", unit);
+                        ++unit;
+                    }
+
+                    if (surf->metallicRoughness.IsValid())
+                    {
+                        m_Backend->BindTexture(surf->metallicRoughness, unit);
+                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_MetalRoughMap", unit);
+                        ++unit;
+                        m_Backend->SetUniformFloat(m_GPUStateCache.shader, "u_MetallicFactor",
+                                                   surf->params.metallicFactor);
+                        m_Backend->SetUniformFloat(m_GPUStateCache.shader, "u_RoughnessFactor",
+                                                   surf->params.roughnessFactor);
+                    }
+
+                    if (surf->emissive.IsValid())
+                    {
+                        m_Backend->BindTexture(surf->emissive, unit);
+                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_EmissiveMap", unit);
+                        ++unit;
+                    }
+
+                    m_Backend->SetUniformVec2(m_GPUStateCache.shader, "u_UVTiling", surf->params.uvTiling);
+                    // add more params here
+                }
+            }
 
             m_Backend->SubmitMesh(c.state.mesh, m_GPUStateCache.shader, c.transform);
         }
@@ -358,7 +408,7 @@ void JRenderer::RebuildKernelsIfDirty()
 
 RMeshHandle JRenderer::CreateMesh(const RMesh &data)
 {
-
+    return m_Backend->CreateMesh(data);
 }
 
 void JRenderer::DestroyMesh(RMeshHandle h)
@@ -378,7 +428,7 @@ void JRenderer::DestroyTexture(RTextureHandle h)
 
 RShaderHandle JRenderer::CreateShader(const RShader &data)
 {
-    m_Backend->CreateShader(data);
+    return m_Backend->CreateShader(data);
 }
 
 void JRenderer::DestroyShader(RShaderHandle h)
@@ -386,16 +436,33 @@ void JRenderer::DestroyShader(RShaderHandle h)
     m_Backend->DestroyShader(h);
 }
 
+RMaterialHandle JRenderer::CreateMaterial(const FSurfaceDesc &surface)
+{
+    // Generate a new handle id
+    const Rint id = m_NextMaterialId++;
+    m_Materials.emplace(id, FMaterialEntry{ surface });
+    return RMaterialHandle{ id };
+}
+
+void JRenderer::DestroyMaterial(RMaterialHandle h)
+{
+    if (!h.IsValid()) return;
+    m_Materials.erase(h.id);
+    if (m_GPUStateCache.material == h)
+        {
+        m_GPUStateCache.material = RMaterialHandle::Invalid();
+    }
+}
+
+const FSurfaceDesc* JRenderer::GetMaterialSurface(RMaterialHandle h) const
+{
+    if (!h.IsValid()) return nullptr;
+    auto it = m_Materials.find(h.id);
+    return (it == m_Materials.end()) ? nullptr : &it->second.surface;
+}
+
 void JRenderer::EnqueueRenderTask(std::function<void()> fn)
 {
     // TODO: later, push into a lock-free queue drained in BeginFrame/EndFrame
     fn();
-}
-
-void JRenderer::SubmitProxy(RRenderProxy *proxy)
-{
-    if (proxy)
-    {
-        m_Proxies.push_back(proxy);
-    }
 }
