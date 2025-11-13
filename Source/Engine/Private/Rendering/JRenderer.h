@@ -7,7 +7,7 @@
 #include "FSurfaceDesc.h"
 #include "IRenderDevice.h"
 #include "RHandles.h"
-#include "RRenderRoute.h"
+#include "RCommandBuffer.h"
 
 struct FPassParam;
 class PostProcessManager;
@@ -19,7 +19,11 @@ class JRenderer : public IRenderDevice
     friend class JEngine;
 
 private:
-    explicit JRenderer(IRenderBackend* backend) { m_Backend = backend; }
+    explicit JRenderer(IRenderBackend* backend)
+    {
+        m_Backend = backend;
+        BuildDefaultShader();
+    }
 
     void BeginScene();
     void EndScene();
@@ -28,10 +32,13 @@ private:
     IRenderBackend* m_Backend = nullptr;
     PostProcessManager* m_PPM = nullptr;
 
-    std::vector<RRenderProxy*> m_Proxies; // Gathered each frame
-    RRenderRoute m_Route;
+    RCommandBuffer m_CommandBuffer;
+    void FlushCommandBuffer();
+
     FGPUStateCache m_GPUStateCache;
-    void DrawRenderQueues();
+
+    RShaderHandle m_DefaultShader{};
+    void BuildDefaultShader();
 
 private:
     struct FMaterialEntry
@@ -41,8 +48,6 @@ private:
 
     std::unordered_map<Rint, FMaterialEntry> m_Materials{};
     Rint m_NextMaterialId = 1;
-
-    RShaderHandle m_DefaultLit{};
 
     struct FTarget
     {
@@ -86,6 +91,8 @@ public:
 
     void SetPostProcessManager(PostProcessManager* ppm) { m_PPM = ppm;}
 
+    IRenderSubmission& GetSubmission() override { return m_CommandBuffer; }
+
     RMeshHandle CreateMesh(const RMesh &data) override;
     void DestroyMesh(RMeshHandle h) override;
 
@@ -98,8 +105,8 @@ public:
     RMaterialHandle CreateMaterial(const FSurfaceDesc &surface) override;
     void DestroyMaterial(RMaterialHandle h) override;
 
-    void SetDefaultLitShader(RShaderHandle h) { m_DefaultLit = h; }
-    [[nodiscard]] RShaderHandle GetDefaultLitShader() const { return m_DefaultLit; }
+    void SetDefaultShader(RShaderHandle h) { m_DefaultShader = h; }
+    [[nodiscard]] RShaderHandle GetDefaultShader() const { return m_DefaultShader; }
 
     // Allow draw path to query surface by handle
     const FSurfaceDesc* GetMaterialSurface(RMaterialHandle h) const;

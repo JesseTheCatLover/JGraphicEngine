@@ -9,38 +9,6 @@
 #include <algorithm>
 #include <iostream>
 
-// Helpers to read/replace the 16-bit depth inside 'packet'
-static inline uint16_t ExtractDepth(uint64_t p) { return uint16_t((p >> 40) & 0xFFFF); }
-static inline uint64_t ReplaceDepth(uint64_t p, uint16_t d)
-{
-    const uint64_t clear = ~(0xFFFFULL << 40);
-    return (p & clear) | (uint64_t(d) << 40);
-}
-
-// Map view-space Z to a 16-bit bucket (tweak sign to your view convention)
-static inline uint16_t DepthToBucket(float viewZ, float nearZ, float farZ)
-{
-    float z = (viewZ - nearZ) / (farZ - nearZ);   // normalize 0..1
-    z = std::clamp(z, 0.0f, 1.0f);
-    return uint16_t(z * 65535.0f + 0.5f);
-}
-
-// Compute buckets for any queue that needs depth ordering
-static void ComputeDepthBucketsFor(RRenderQueue& q, const FMatrix4& view, float nearZ, float farZ)
-{
-    auto& commands = q.GetDrawCommands();
-    for (auto& c : commands)
-    {
-        if (ExtractDepth(c.packet) != 0) continue; // respect pre-filled depth
-
-        const FVector3 worldP = c.transform.GetTranslation();
-        const FVector3 viewP  = view.TransformPoint(worldP); // (View * Model) * [0,0,0,1]
-        const float zVS = viewP.z; // If -Z is forward, use -viewP.z
-
-        c.packet = ReplaceDepth(c.packet, DepthToBucket(zVS, nearZ, farZ));
-    }
-}
-
 void JRenderer::BeginScene()
 {
     if (!m_PPM)
@@ -49,7 +17,7 @@ void JRenderer::BeginScene()
         return;
     }
 
-    m_Route.Clear();
+    m_CommandBuffer.Clear();
     m_GPUStateCache = {};
 
     // Determine desired size from surface/window
@@ -73,22 +41,14 @@ void JRenderer::BeginScene()
 
 void JRenderer::EndScene()
 {
-    // Record proxies to the route
-    RRenderContext ctx{};
-    for (RRenderProxy* proxy : m_Proxies)
-        if (proxy) proxy->RecordToRoute(m_Route, ctx);
-    m_Proxies.clear();
-
     const FMatrix4 view = /* TODO: active camera view */ FMatrix4::Identity();
     const float nearZ = 0.1f, farZ = 1000.0f;
 
-    ComputeDepthBucketsFor(m_Route.opaque, view, nearZ, farZ);
-    ComputeDepthBucketsFor(m_Route.alpha,  view, nearZ, farZ);
+    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.opaque, view, nearZ, farZ);
+    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.alpha,  view, nearZ, farZ);
 
-    m_Route.SortAllQueues();
-
-    // DRAW recorded commands into the scene FBO (already bound in BeginScene)
-    DrawRenderQueues();
+    m_CommandBuffer.SortAllQueues();
+    FlushCommandBuffer();
 
     // Resolve MSAA to m_Scene if needed
     if (m_SceneMSAA.fbo.IsValid()) {
@@ -114,10 +74,10 @@ void JRenderer::Shutdown()
     m_Backend->Shutdown();
 }
 
-void JRenderer::DrawRenderQueues()
+void JRenderer::FlushCommandBuffer()
 {
-    if (!m_Route.GetLights().empty())
-        m_Backend->UploadLights(m_Route.GetLights().data(), static_cast<uint32_t>(m_Route.GetLights().size()));
+    if (!m_CommandBuffer.GetLights().empty())
+        m_Backend->UploadLights(m_CommandBuffer.GetLights().data(), static_cast<uint32_t>(m_CommandBuffer.GetLights().size()));
 
     // Local lambda for state changes
     auto setLayerState = [&](ERenderLayer layer){
@@ -125,13 +85,13 @@ void JRenderer::DrawRenderQueues()
         {
             case ERenderLayer::Opaque:
                 m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
-                m_Backend->SetDepthState(/*test*/true, /*write*/true, IRenderBackend::ECompareFunc::LessEqual);
+                m_Backend->SetDepthState(true, true, IRenderBackend::ECompareFunc::LessEqual);
                 m_Backend->SetBlendState(false, IRenderBackend::EBlendFactor::One, IRenderBackend::EBlendFactor::Zero);
                 break;
 
             case ERenderLayer::Alpha:
                 m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
-                m_Backend->SetDepthState(true, /*write*/false, IRenderBackend::ECompareFunc::LessEqual);
+                m_Backend->SetDepthState(true, false, IRenderBackend::ECompareFunc::LessEqual);
                 m_Backend->SetBlendState(true, IRenderBackend::EBlendFactor::SrcAlpha, IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
                 break;
 
@@ -156,7 +116,7 @@ void JRenderer::DrawRenderQueues()
                 m_Backend->BindShader(m_GPUStateCache.shader);
 
                 // Set light count once per shader bind (clamp to backend max)
-                const int lightCount = (int)std::min<size_t>(m_Route.GetLights().size(), IRenderBackend::kMaxLights);
+                const int lightCount = (int)std::min<size_t>(m_CommandBuffer.GetLights().size(), IRenderBackend::kMaxLights);
                 m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_LightCount", lightCount);
             }
 
@@ -173,6 +133,7 @@ void JRenderer::DrawRenderQueues()
                     {
                         m_Backend->BindTexture(surf->baseColor, unit);
                         m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_BaseColor", unit);
+                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_UseBaseColorMap", 1);
                         ++unit;
                     }
                     else
@@ -180,6 +141,7 @@ void JRenderer::DrawRenderQueues()
                         // fallback factor
                         m_Backend->SetUniformVec4(m_GPUStateCache.shader, "u_BaseColorFactor",
                                                   surf->params.baseColorFactor);
+                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_UseBaseColorMap", 0);
                     }
 
                     if (surf->normal.IsValid())
@@ -216,9 +178,86 @@ void JRenderer::DrawRenderQueues()
         }
     };
 
-    drawList(m_Route.opaque.GetDrawCommands(), ERenderLayer::Opaque);
-    drawList(m_Route.alpha.GetDrawCommands(), ERenderLayer::Alpha);
-    drawList(m_Route.overlay.GetDrawCommands(), ERenderLayer::Overlay);
+    drawList(m_CommandBuffer.opaque.GetDrawCommands(), ERenderLayer::Opaque);
+    drawList(m_CommandBuffer.alpha.GetDrawCommands(), ERenderLayer::Alpha);
+    drawList(m_CommandBuffer.overlay.GetDrawCommands(), ERenderLayer::Overlay);
+}
+
+void JRenderer::BuildDefaultShader()
+{
+    if (m_DefaultShader.IsValid())
+        return;
+
+    // Attributes:
+    //   location=0: position (vec3)
+    //   location=1: normal   (vec3)
+    //   location=2: uv       (vec2)
+    //
+    // Uniforms expected from engine:
+    //   u_Model, u_View, u_Proj        : mat4
+    //   u_BaseColor                    : sampler2D (optional)
+    //   u_BaseColorFactor              : vec4      (used if no texture)
+    //   u_UseBaseColorMap              : int       (0/1)
+    //
+    // Notes:
+    //  - Hemisphere lighting avoids needing a light buffer/UBO for the "first pixels".
+    //  - Normal transform uses a standard normal matrix from u_Model.
+    const char* kVertex = R"(#version 330 core
+    layout (location=0) in vec3 aPos;
+    layout (location=1) in vec3 aNormal;
+    layout (location=2) in vec2 aUV;
+
+    uniform mat4 u_Model;
+    uniform mat4 u_View;
+    uniform mat4 u_Proj;
+
+    out vec3 vWorldNormal;
+    out vec2 vUV;
+
+    void main()
+    {
+        // normal matrix = transpose(inverse(mat3(u_Model)))
+        mat3 N = transpose(inverse(mat3(u_Model)));
+        vWorldNormal = normalize(N * aNormal);
+        vUV = aUV;
+
+        gl_Position = u_Proj * u_View * u_Model * vec4(aPos, 1.0);
+    }
+)";
+
+    const char* kFragment = R"(#version 330 core
+    in vec3 vWorldNormal;
+    in vec2 vUV;
+    out vec4 FragColor;
+
+    uniform sampler2D u_BaseColor;        // only valid if u_UseBaseColorMap == 1
+    uniform vec4      u_BaseColorFactor;  // used when no texture
+    uniform int       u_UseBaseColorMap;  // 0 or 1
+
+    // Simple hemisphere lighting so there's always something visible.
+    // You can drive these as uniforms later if you want.
+    const vec3 SKY_COLOR    = vec3(0.6, 0.7, 0.9);
+    const vec3 GROUND_COLOR = vec3(0.3, 0.25, 0.2);
+    const float AMBIENT     = 0.15;
+
+    void main()
+    {
+        vec4 baseColorTex = texture(u_BaseColor, vUV);
+        vec4 baseColor    = (u_UseBaseColorMap == 1) ? baseColorTex : u_BaseColorFactor;
+
+        // Hemisphere term (y-up)
+        float hemiT = clamp(vWorldNormal.y * 0.5 + 0.5, 0.0, 1.0);
+        vec3 hemi   = mix(GROUND_COLOR, SKY_COLOR, hemiT);
+
+        vec3 lit = baseColor.rgb * (AMBIENT + hemi);
+        FragColor = vec4(lit, baseColor.a);
+    }
+)";
+
+    RShader sh{};
+    sh.vertexSource = kVertex;
+    sh.fragmentSource = kFragment;
+    m_DefaultShader = m_Backend->CreateShader(sh);
 }
 
 void JRenderer::EnsureTargets(int w, int h, int samples)

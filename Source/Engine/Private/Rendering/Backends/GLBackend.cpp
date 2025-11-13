@@ -9,7 +9,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "Rendering/RRenderQueue.h"
+#include "Rendering/RCommandQueue.h"
 
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE

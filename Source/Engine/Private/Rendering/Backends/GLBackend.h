@@ -149,8 +149,7 @@ public:
 
     void LinkUniformBlock(RShaderHandle sh, const char* blockName, uint32_t bindingPoint) override;
 
-    void UploadLights(const RLightData* lights, uint32_t count) override;
-
     // Rendering
     void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) override;
+    void UploadLights(const RLightData* lights, uint32_t count) override;
 };

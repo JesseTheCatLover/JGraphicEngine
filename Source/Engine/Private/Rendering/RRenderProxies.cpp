@@ -1,22 +1,36 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "RRenderProxies.h"
-#include "IRenderBackend.h"
-#include "RRenderRoute.h"
+#include "IRenderSubmission.h"
 
-void RMeshProxy::RecordToRoute(RRenderRoute& route, const RRenderContext &ctx)
+void RMeshProxy::SubmitProxy(IRenderSubmission& submission,
+const FRenderContext &ctx) const
 {
     RDrawCommand cmd{};
-    cmd.state.mesh = mesh;
-    cmd.state.shader = shader;
+    cmd.state.mesh     = mesh;
+    cmd.state.shader   = shader;
     cmd.state.material = material;
-    cmd.transform = transform;
-    cmd.packet = RRenderQueue::MakeSortKey(ctx.layer, shader.id, material.id, ctx.depthBucket);
-    route.Submit(cmd);
+    cmd.transform      = transform;
+
+    cmd.packet = RCommandQueue::MakeSortKey(
+        ctx.layer,
+        shader.id,
+        material.id,
+        ctx.depthBucket
+    );
+
+    submission.SubmitDrawCommand(cmd);
 }
 
-void RLightProxy::RecordToRoute(RRenderRoute& route, const RRenderContext &ctx)
+void RLightProxy::SubmitProxy(IRenderSubmission& submission,
+                              const FRenderContext &ctx) const
 {
-    (void)ctx;
-    route.SubmitLight(RLightData{ position, intensity, color});
+    (void)ctx; // not needed for now, but kept for future (e.g., per-view stuff)
+
+    RLightData light{};
+    light.position  = position;
+    light.color     = color;
+    light.intensity = intensity;
+
+    submission.SubmitLightData(light);
 }

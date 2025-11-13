@@ -33,16 +33,14 @@ struct RLightData
     FVector3 color{1, 1, 1};
 };
 
-class RRenderQueue
+class RCommandQueue
 {
 private:
     std::vector<RDrawCommand> drawCommands;
-    std::vector<RLightData> lights;
 
 public:
-    void Clear() { drawCommands.clear(); lights.clear(); }
+    void Clear() { drawCommands.clear();}
     void Submit(const RDrawCommand& c) { drawCommands.push_back(c); }
-    void SubmitLight(const RLightData& L) { lights.push_back(L); }
     void Sort(ESortMode mode = ESortMode::FrontToBack)
     {
         if (mode == ESortMode::SubmissionOrder) return; // keep submission order (e.g., overlay)
@@ -73,6 +71,39 @@ public:
                  (uint64_t(materialId & 0xFFFFF)) );
     }
 
+    // Helpers to read/replace the 16-bit depth inside 'packet'
+    static inline uint16_t ExtractDepth(uint64_t p) { return uint16_t((p >> 40) & 0xFFFF); }
+
+    static inline uint64_t ReplaceDepth(uint64_t p, uint16_t d)
+    {
+        const uint64_t clear = ~(0xFFFFULL << 40);
+        return (p & clear) | (uint64_t(d) << 40);
+    }
+
+    // Map view-space Z to a 16-bit bucket (tweak sign to your view convention)
+    static inline uint16_t DepthToBucket(float viewZ, float nearZ, float farZ)
+    {
+        float z = (viewZ - nearZ) / (farZ - nearZ);   // normalize 0..1
+        z = std::clamp(z, 0.0f, 1.0f);
+        return uint16_t(z * 65535.0f + 0.5f);
+    }
+
+    // Compute buckets for any queue that needs depth ordering
+    static void ComputeDepthBucketsFor(RCommandQueue& q, const FMatrix4& view, float nearZ, float farZ)
+    {
+        auto& commands = q.GetDrawCommands();
+        for (auto& c : commands)
+        {
+            if (ExtractDepth(c.packet) != 0) continue; // respect pre-filled depth
+
+            const FVector3 worldP = c.transform.GetTranslation();
+            const FVector3 viewP  = view.TransformPoint(worldP); // (View * Model) * [0,0,0,1]
+            const float zVS = viewP.z; // If -Z is forward, use -viewP.z
+
+            c.packet = ReplaceDepth(c.packet, DepthToBucket(zVS, nearZ, farZ));
+        }
+    }
+
     [[nodiscard]] std::vector<RDrawCommand>& GetDrawCommands() { return drawCommands; }
-    [[nodiscard]] std::vector<RLightData>& GetLights() { return lights; }
+    [[nodiscard]] const std::vector<RDrawCommand>& GetDrawCommands() const { return drawCommands; }
 };

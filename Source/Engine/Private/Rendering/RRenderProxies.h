@@ -1,42 +1,46 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+
 #include <vector>
 #include "RHandles.h"
-#include "RRenderQueue.h"
+#include "RCommandQueue.h"
 
 #include "Core/Math/FMatrix4.h"
+#include "Core/Math/FVector3.h"
 
-class RRenderRoute;
-class IRenderBackend;
+class IRenderSubmission;
 
-struct RRenderContext
+struct FRenderContext
 {
     ERenderLayer layer = ERenderLayer::Opaque;
     uint16_t depthBucket{0};
 };
 
-struct RRenderProxy // TODO: Will re-introduce proxies in later developments, and avoid direct passing to route using proxies for further scalability
+class RRenderProxy
 {
+public:
     virtual ~RRenderProxy() = default;
-    virtual void RecordToRoute(RRenderRoute& route, const RRenderContext& ctx) = 0;
+
+    // Main entry: take context + submission sink, emit draw/light work into it
+    virtual void SubmitProxy(IRenderSubmission& submission, const FRenderContext& ctx) const = 0;
 };
 
 struct RMeshProxy : public RRenderProxy
 {
-    RMeshHandle mesh;
-    RShaderHandle shader;
+    RMeshHandle     mesh;
+    RShaderHandle   shader;
     RMaterialHandle material;
-    FMatrix4 transform;
+    FMatrix4        transform;
 
-    void RecordToRoute(RRenderRoute& route, const RRenderContext &ctx) override;
+    void SubmitProxy(IRenderSubmission& submission, const FRenderContext &ctx) const override;
 };
 
 struct RLightProxy : public RRenderProxy
 {
     FVector3 position;
     FVector3 color{1,1,1};
-    float intensity{1.f};
+    float    intensity{1.f};
 
-    void RecordToRoute(RRenderRoute& route, const RRenderContext &ctx) override;
+    void SubmitProxy(IRenderSubmission& submission, const FRenderContext &ctx) const override;
 };

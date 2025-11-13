@@ -9,6 +9,8 @@
 #include <string>
 #include <type_traits>
 
+#include "Core/Memory/SmartPointers.h"
+
 class JModelComponent;
 class JShader;
 class JActorComponent;
@@ -28,9 +30,9 @@ class JActor : public JCoreObject
 private:
     std::string m_Name; ///< Actor name
     size_t m_VectorIndex; ///< internal index for O(1) removal from scene
-    std::shared_ptr<JSceneComponent> m_RootComponent; ///< Root of the scene component hierarchy
-    std::vector<std::shared_ptr<JSceneComponent>> m_SceneComponents; ///< Scene components attached to this actor
-    std::vector<std::shared_ptr<JActorComponent>> m_ActorComponents; ///< Actor components attached to this actor
+    TSharedPtr<JSceneComponent> m_RootComponent; ///< Root of the scene component hierarchy
+    std::vector<TSharedPtr<JSceneComponent>> m_SceneComponents; ///< Scene components attached to this actor
+    std::vector<TSharedPtr<JActorComponent>> m_ActorComponents; ///< Actor components attached to this actor
 
     /**
     * @brief Initializes and assigns the root scene component for this actor.
@@ -139,7 +141,7 @@ public:
         static_assert(std::is_base_of_v<JActorComponent, T>, "T must derive from JActorComponent");
 
         // Create the component
-        auto component = std::make_shared<T>(std::forward<Args>(args)...);
+        auto component = MakeShared<T>(std::forward<Args>(args)...);
         component->SetOwnerActor(this);
         component->SetName(name);
 
@@ -176,7 +178,7 @@ public:
         static_assert(std::is_base_of_v<JActorComponent, T>, "T must derive from JActorComponent");
 
         // Create the component
-        auto component = std::make_shared<T>(std::forward<Args>(args)...);
+        auto component = MakeShared<T>(std::forward<Args>(args)...);
         component->SetOwnerActor(this);
 
         if constexpr (std::is_base_of_v<JSceneComponent, T>)
@@ -231,7 +233,7 @@ public:
     // -------------------- Root & Transform --------------------
 
     [[nodiscard]] JSceneComponent* GetRootComponent() const { return m_RootComponent.get(); }
-    void SetRootComponent(std::shared_ptr<JSceneComponent> root) { m_RootComponent = std::move(root); }
+    void SetRootComponent(TSharedPtr<JSceneComponent> root) { m_RootComponent = std::move(root); }
 
     // -------------------- Rendering --------------------
 

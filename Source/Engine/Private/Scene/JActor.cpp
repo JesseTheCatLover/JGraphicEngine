@@ -22,7 +22,7 @@ void JActor::SetupRootComponent()
 {
     if (!m_RootComponent)
     {
-        m_RootComponent = std::make_shared<JSceneComponent>();
+        m_RootComponent = MakeShared<JSceneComponent>();
         m_RootComponent->SetOwnerActor(this);
         m_RootComponent->SetName("RootComponent");
         m_SceneComponents.push_back(m_RootComponent);
@@ -100,7 +100,7 @@ void JActor::Deserialize(const JsonReader& reader)
 {
     m_Name = reader.Read<std::string>("name", "");
 
-    // --- Scene Components ---
+    // Scene components
     if (reader.Has("scene_components"))
     {
         auto sceneCompsReader = reader.GetArray("scene_components");
@@ -114,7 +114,7 @@ void JActor::Deserialize(const JsonReader& reader)
                 auto* comp = new JModelComponent();
                 comp->SetOwnerActor(this);
                 comp->Deserialize(compJson);
-                m_SceneComponents.push_back(std::shared_ptr<JSceneComponent>(comp));
+                m_SceneComponents.push_back(TSharedPtr<JSceneComponent>(comp));
 
                 // Also assign to ModelComponent pointer for convenience
                 ModelComponent = comp;
@@ -122,5 +122,5 @@ void JActor::Deserialize(const JsonReader& reader)
         }
     }
 
-    //  skip actor components for now cause not needed
+    //  Skip actor components for now cause not needed
 }
