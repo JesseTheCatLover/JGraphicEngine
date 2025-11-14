@@ -38,6 +38,9 @@ public:
         return FVector3(M[3][0], M[3][1], M[3][2]);
     }
 
+    /** Assignment operator */
+    FMatrix4& operator=(const glm::mat4& other) { *this = FMatrix4(other); return *this; }
+
     /** Matrix multiplication */
     FMatrix4 operator*(const FMatrix4& other) const { return FMatrix4(M * other.M); }
     FMatrix4& operator*=(const FMatrix4& other) { M *= other.M; return *this; }

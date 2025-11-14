@@ -28,9 +28,6 @@ void JModelComponent::GatherProxies(IRenderSubmission& submission,
     if (subs.empty())
         return;
 
-    if (!m_Shader.IsValid())
-        return; // or fallback to renderer default if you want
-
     const FMatrix4 world = GetWorldTransform().ToMatrix();
 
     // One draw command per submesh
@@ -44,7 +41,6 @@ void JModelComponent::GatherProxies(IRenderSubmission& submission,
         cmd.state.shader   = m_Shader;
         cmd.state.material = sm.material;
         cmd.transform      = world;
-
         const uint16_t depthBucket = 0; // filled later by depth bucketer
         cmd.packet = RCommandQueue::MakeSortKey(
             GetRenderLayer(), cmd.state.shader.id, cmd.state.material.id, depthBucket);
@@ -57,7 +53,7 @@ void JModelComponent::SerializeProperties(JsonWriter& writer) const
 {
     Super::SerializeProperties(writer);
     writer.Write("model_key", m_ModelKey);
-    writer.Write("shader_id", m_Shader.id); // if you have stable IDs
+    writer.Write("shader_id", m_Shader.id);
 }
 
 void JModelComponent::DeserializeProperties(const JsonReader& reader)

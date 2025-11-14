@@ -72,6 +72,21 @@ void JActor::Destroy()
     m_RootComponent.reset();
 }
 
+void JActor::GatherRenderables(IRenderSubmission &submission, const FRenderContext &ctx) const // TODO: This is temp
+{
+    // Actor-level culling / conditions can go here later:
+    // if (!bIsVisible || IsTooFarFromCamera(...)) return;
+
+    for (auto& comp : m_SceneComponents)
+    {
+        if (auto* renderable = dynamic_cast<JRenderableComponent*>(comp.get()))
+        {
+            // Let the component turn itself into proxies / draw commands
+            renderable->GatherProxies(submission, ctx);
+        }
+    }
+}
+
 void JActor::Serialize(JsonWriter& writer) const
 {
     writer.BeginObject();

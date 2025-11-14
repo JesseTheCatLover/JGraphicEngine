@@ -11,9 +11,12 @@
 
 #include "Core/Memory/SmartPointers.h"
 
+struct FRenderContext;
+class IRenderSubmission;
 class JModelComponent;
 class JShader;
 class JActorComponent;
+class JScene;
 
 /**
  * @class JActor
@@ -26,6 +29,8 @@ class JActorComponent;
 class JActor : public JCoreObject
 {
     DECLARE_JOBJECT(JActor)
+
+    friend class JScene;
 
 private:
     std::string m_Name; ///< Actor name
@@ -236,6 +241,8 @@ public:
     void SetRootComponent(TSharedPtr<JSceneComponent> root) { m_RootComponent = std::move(root); }
 
     // -------------------- Rendering --------------------
+
+    void GatherRenderables(IRenderSubmission& submission, const FRenderContext& ctx) const; // TODO: This is temp
 
     // -------------------- Serialization --------------------
 
