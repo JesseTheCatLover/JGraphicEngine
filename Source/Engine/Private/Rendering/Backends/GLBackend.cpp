@@ -8,6 +8,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <unordered_set>
 
 #include "Rendering/RCommandQueue.h"
 
@@ -896,6 +897,7 @@ void GLBackend::SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix
     auto mit = m_Meshes.find(mesh);
     if (mit == m_Meshes.end()) return;
     const FGLMesh& m = mit->second;
+
     if (m.indexCount == 0 || m.vao == 0) return;
 
     // Lookup shader

@@ -4,6 +4,8 @@
 
 #include "Core/Serialization/JsonWriter.h"
 
+#include "Rendering/RRenderProxies.h"
+
 #include "Scene/JActor.h"
 
 JScene::JScene(const std::string &name):
@@ -135,4 +137,17 @@ bool JScene::RemoveActor(unsigned int id)
 
     m_bIsDirty = true; // mark cache stale
     return true;
+}
+
+void JScene::GatherRenderables(IRenderSubmission &submission, const FRenderContext &baseCtx) const
+{
+    for (const auto& actor : m_Actors)
+    {
+        if (!actor) continue;
+
+        FRenderContext ctx = baseCtx;
+        // e.g. ctx.layer override for special actor, etc.
+
+        actor->GatherRenderables(submission, ctx);
+    }
 }

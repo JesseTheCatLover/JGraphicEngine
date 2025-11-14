@@ -188,6 +188,11 @@ void JEngine::RunMainLoop()
 
         Tick();
         m_Renderer->BeginScene();
+        FRenderContext ctx{};
+        if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
+        {
+            scene->GatherRenderables(GetRenderer()->GetSubmission(), ctx);
+        }
         m_Renderer->EndScene();
         
         if (m_EditorBridge)
@@ -321,6 +326,8 @@ void JEngine::RegisterServices()
 
 bool JEngine::BootstrapScene()
 {
+    CreateDefaultScene();
+    return true;
     auto* startupScene = GetSceneManager()->LoadSceneFile("StartupScene");
     if (!startupScene)
     {
@@ -387,8 +394,11 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     // ---------------------------------------------------------------------
     // 4) Populate scene (temporary, hardcoded)
     // ---------------------------------------------------------------------
-    spawnModelActor("Dio Mansion",    "Dio Brando/DioMansion.obj");
-    spawnModelActor("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
+    auto actor1 = spawnModelActor("Dio Mansion",    "Dio Brando/DioMansion.obj");
+    auto actor2 = spawnModelActor("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
+    actor1->SetActorPosition({10.f, 0.f, 5.f});
+    actor2->SetActorPosition({-10.f, 0.f, 0.f});
+
 
     // ---------------------------------------------------------------------
     // 5) Save the scene so next launch restores this layout

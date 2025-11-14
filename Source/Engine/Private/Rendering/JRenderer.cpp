@@ -41,11 +41,11 @@ void JRenderer::BeginScene()
 
 void JRenderer::EndScene()
 {
-    const FMatrix4 view = /* TODO: active camera view */ FMatrix4::Identity();
-    const float nearZ = 0.1f, farZ = 1000.0f;
-
-    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.opaque, view, nearZ, farZ);
-    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.alpha,  view, nearZ, farZ);
+    auto camera = JEngine::Get().GetState().GetCamera();
+    m_ViewMat = camera->GetViewMatrix();
+    m_ProjMat = camera->GetProjectionMatrix();
+    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.opaque, m_ViewMat, camera->NearClip, camera->FarClip);
+    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.alpha,  m_ViewMat, camera->NearClip, camera->FarClip);
 
     m_CommandBuffer.SortAllQueues();
     FlushCommandBuffer();
@@ -77,10 +77,11 @@ void JRenderer::Shutdown()
 void JRenderer::FlushCommandBuffer()
 {
     if (!m_CommandBuffer.GetLights().empty())
-        m_Backend->UploadLights(m_CommandBuffer.GetLights().data(), static_cast<uint32_t>(m_CommandBuffer.GetLights().size()));
+        m_Backend->UploadLights(m_CommandBuffer.GetLights().data(),
+            static_cast<uint32_t>(m_CommandBuffer.GetLights().size()));
 
     // Local lambda for state changes
-    auto setLayerState = [&](ERenderLayer layer){
+    auto setLayerState = [&](ERenderLayer layer) {
         switch (layer)
         {
             case ERenderLayer::Opaque:
@@ -92,35 +93,50 @@ void JRenderer::FlushCommandBuffer()
             case ERenderLayer::Alpha:
                 m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
                 m_Backend->SetDepthState(true, false, IRenderBackend::ECompareFunc::LessEqual);
-                m_Backend->SetBlendState(true, IRenderBackend::EBlendFactor::SrcAlpha, IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+                m_Backend->SetBlendState(true, IRenderBackend::EBlendFactor::SrcAlpha,
+                                         IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
                 break;
 
             case ERenderLayer::Overlay:
                 m_Backend->SetCullMode(IRenderBackend::ECullMode::None);
                 m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
-                m_Backend->SetBlendState(true, IRenderBackend::EBlendFactor::SrcAlpha, IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+                m_Backend->SetBlendState(true, IRenderBackend::EBlendFactor::SrcAlpha,
+                                         IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
                 break;
         }
     };
 
-    auto drawList = [&](const std::vector<RDrawCommand>& cmds, ERenderLayer L)
-    {
+    auto drawList = [&](const std::vector<RDrawCommand> &cmds, ERenderLayer L) {
         if (cmds.empty()) return;
         setLayerState(L);
 
-        for (const auto& c : cmds)
+        for (const auto &c: cmds)
         {
-            if (c.state.shader.id != m_GPUStateCache.shader.id)
+            // choose shader handle (use model shader if valid, otherwise fallback)
+            RShaderHandle shaderToUse = c.state.shader.IsValid() ? c.state.shader : m_DefaultShader;
+            if (!shaderToUse.IsValid())
             {
-                m_GPUStateCache.shader = c.state.shader;
-                m_Backend->BindShader(m_GPUStateCache.shader);
-
-                // Set light count once per shader bind (clamp to backend max)
-                const int lightCount = (int)std::min<size_t>(m_CommandBuffer.GetLights().size(), IRenderBackend::kMaxLights);
-                m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_LightCount", lightCount);
+                BuildDefaultShader();
+                shaderToUse = m_DefaultShader;
             }
 
-            // optional small cache to avoid redundant binds per-draw
+            // only re-bind when shader actually changed
+            if (shaderToUse.id != m_GPUStateCache.shader.id)
+            {
+                m_GPUStateCache.shader = shaderToUse; // cache the actual shader handle
+                m_Backend->BindShader(shaderToUse);
+
+                // upload camera matrices to the shader we just bound
+                m_Backend->SetUniformMat4(shaderToUse, "u_View", m_ViewMat.GetValue());
+                m_Backend->SetUniformMat4(shaderToUse, "u_Proj", m_ProjMat.GetValue());
+
+                // Set light count once per shader bind
+                const int lightCount = (int) std::min<size_t>(m_CommandBuffer.GetLights().size(),
+                                                              IRenderBackend::kMaxLights);
+                m_Backend->SetUniformInt(shaderToUse, "u_LightCount", lightCount);
+            }
+
+            // material cache update (use shaderToUse for uniform calls)
             if (c.state.material != m_GPUStateCache.material)
             {
                 m_GPUStateCache.material = c.state.material;
@@ -132,49 +148,48 @@ void JRenderer::FlushCommandBuffer()
                     if (surf->baseColor.IsValid())
                     {
                         m_Backend->BindTexture(surf->baseColor, unit);
-                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_BaseColor", unit);
-                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_UseBaseColorMap", 1);
+                        m_Backend->SetUniformInt(shaderToUse, "u_BaseColor", unit);
+                        m_Backend->SetUniformInt(shaderToUse, "u_UseBaseColorMap", 1);
                         ++unit;
                     }
                     else
                     {
-                        // fallback factor
-                        m_Backend->SetUniformVec4(m_GPUStateCache.shader, "u_BaseColorFactor",
-                                                  surf->params.baseColorFactor);
-                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_UseBaseColorMap", 0);
+                        m_Backend->SetUniformVec4(shaderToUse, "u_BaseColorFactor", surf->params.baseColorFactor);
+                        m_Backend->SetUniformInt(shaderToUse, "u_UseBaseColorMap", 0);
                     }
 
                     if (surf->normal.IsValid())
                     {
                         m_Backend->BindTexture(surf->normal, unit);
-                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_NormalMap", unit);
+                        m_Backend->SetUniformInt(shaderToUse, "u_NormalMap", unit);
                         ++unit;
                     }
 
                     if (surf->metallicRoughness.IsValid())
                     {
                         m_Backend->BindTexture(surf->metallicRoughness, unit);
-                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_MetalRoughMap", unit);
+                        m_Backend->SetUniformInt(shaderToUse, "u_MetalRoughMap", unit);
                         ++unit;
-                        m_Backend->SetUniformFloat(m_GPUStateCache.shader, "u_MetallicFactor",
-                                                   surf->params.metallicFactor);
-                        m_Backend->SetUniformFloat(m_GPUStateCache.shader, "u_RoughnessFactor",
-                                                   surf->params.roughnessFactor);
+                        m_Backend->SetUniformFloat(shaderToUse, "u_MetallicFactor", surf->params.metallicFactor);
+                        m_Backend->SetUniformFloat(shaderToUse, "u_RoughnessFactor", surf->params.roughnessFactor);
                     }
 
                     if (surf->emissive.IsValid())
                     {
                         m_Backend->BindTexture(surf->emissive, unit);
-                        m_Backend->SetUniformInt(m_GPUStateCache.shader, "u_EmissiveMap", unit);
+                        m_Backend->SetUniformInt(shaderToUse, "u_EmissiveMap", unit);
                         ++unit;
                     }
 
-                    m_Backend->SetUniformVec2(m_GPUStateCache.shader, "u_UVTiling", surf->params.uvTiling);
-                    // add more params here
+                    m_Backend->SetUniformVec2(shaderToUse, "u_UVTiling", surf->params.uvTiling);
                 }
             }
 
-            m_Backend->SubmitMesh(c.state.mesh, m_GPUStateCache.shader, c.transform);
+            // upload model matrix JUST BEFORE submit (ensure shader is the same one we bound)
+            m_Backend->SetUniformMat4(shaderToUse, "u_Model", c.transform.GetValue());
+
+            // finally submit using the shader we bound
+            m_Backend->SubmitMesh(c.state.mesh, shaderToUse, c.transform);
         }
     };
 

@@ -40,6 +40,9 @@ private:
     RShaderHandle m_DefaultShader{};
     void BuildDefaultShader();
 
+    FMatrix4 m_ViewMat;
+    FMatrix4 m_ProjMat;
+
 private:
     struct FMaterialEntry
     {

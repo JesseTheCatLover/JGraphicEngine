@@ -33,6 +33,11 @@ mat4 JCamera::GetViewMatrix()
     return lookAt(Position, Position + Front, Up);
 }
 
+mat4 JCamera::GetProjectionMatrix() const
+{
+    return glm::perspective(glm::radians(FOV), AspectRatio, NearClip, FarClip);
+}
+
 void JCamera::ProcessKeyboard(ECameraMovement Direction, float DeltaTime)
 {
     float Velocity = Speed * DeltaTime;

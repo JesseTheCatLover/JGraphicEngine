@@ -23,6 +23,7 @@
 JModelResource::JModelResource(std::string sourcePath)
     : m_Source(std::move(sourcePath))
 {
+    stbi_set_flip_vertically_on_load(true);
 }
 
 // ====== JGpuResource hooks ======

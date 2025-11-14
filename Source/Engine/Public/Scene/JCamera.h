@@ -37,7 +37,13 @@ public:
     vec3 Right;
     vec3 WorldUp;
 
+    float FOV = 90.0f;
+    float AspectRatio = 16.f/10.f;
+    float NearClip = 0.1f;
+    float FarClip = 1000.f;
+
     mat4 GetViewMatrix();
+    mat4 GetProjectionMatrix() const;
     void ProcessKeyboard(ECameraMovement Direction, float DeltaTime);
     void ProcessMouseMovement(float xOffset, float yOffset, bool ConstrainPitch = true);
     void ProcessMouseScroll(float yOffset, float MaxFOV);

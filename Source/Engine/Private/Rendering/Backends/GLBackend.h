@@ -2,10 +2,8 @@
 
 #pragma once
 #include <unordered_map>
-
 #include "../IRenderBackend.h"
 #include <glad/gl.h>
-
 #include "Core/Math/FVector2.h"
 #include "Core/Math/FVector3.h"
 
@@ -29,9 +27,7 @@ public:
 
     struct FGLMesh
     {
-        GLuint vao = 0;
-        GLuint vbo = 0;
-        GLuint ebo = 0;
+        GLuint vao = 0, vbo = 0, ebo = 0;
         uint32_t indexCount = 0;
     };
 

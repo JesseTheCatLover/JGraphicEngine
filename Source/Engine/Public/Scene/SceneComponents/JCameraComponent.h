@@ -33,6 +33,7 @@ mat4 JCamera::GetViewMatrix()
     return lookAt(Position, Position + Front, Up);
 }
 
+
 void JCamera::ProcessKeyboard(ECameraMovement Direction, float DeltaTime)
 {
     float Velocity = Speed * DeltaTime;
