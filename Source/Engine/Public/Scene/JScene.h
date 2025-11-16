@@ -123,6 +123,8 @@ private:
 public:
     void GatherRenderables(IRenderSubmission& submission, const FRenderContext& baseCtx) const; // TODO: Temp here
 
+    JCameraComponent* GetCameraComponent() const;
+
     /** @return The scene’s name. */
     inline const std::string& GetName() const { return m_Name;}
 

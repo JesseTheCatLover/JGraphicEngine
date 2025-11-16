@@ -8,8 +8,7 @@
 #include "Framework/PostProcessManager.h"
 #include <algorithm>
 #include <iostream>
-
-#include "Scene/JCamera.h"
+#include "Scene/SceneComponents/JCameraComponent.h"
 
 void JRenderer::BeginScene()
 {
@@ -46,8 +45,8 @@ void JRenderer::EndScene()
     auto camera = JEngine::Get().GetState().GetCamera();
     m_ViewMat = camera->GetViewMatrix();
     m_ProjMat = camera->GetProjectionMatrix();
-    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.opaque, m_ViewMat, camera->NearClip, camera->FarClip);
-    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.alpha,  m_ViewMat, camera->NearClip, camera->FarClip);
+    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.opaque, m_ViewMat, camera->GetNearPlane(), camera->GetFarPlane());
+    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.alpha,  m_ViewMat, camera->GetNearPlane(), camera->GetFarPlane());
 
     m_CommandBuffer.SortAllQueues();
     FlushCommandBuffer();

@@ -232,42 +232,42 @@ namespace FMath
     /**
      * @brief Returns the identity matrix.
      */
-    inline FMatrix4 Identity();
+    FMatrix4 Identity();
 
     /**
      * @brief Returns the inverse of a matrix.
      */
-    inline FMatrix4 Inverse(const FMatrix4 &M);
+    FMatrix4 Inverse(const FMatrix4 &M);
 
     /**
      * @brief Returns the transpose of a matrix.
      */
-    inline FMatrix4 Transpose(const FMatrix4 &M);
+    FMatrix4 Transpose(const FMatrix4 &M);
 
     /**
      * @brief Returns a translation matrix.
      */
-    inline FMatrix4 Translate(const FVector3 &T);
+    FMatrix4 Translate(const FVector3 &T);
 
     /**
      * @brief Returns a scaling matrix.
      */
-    inline FMatrix4 Scale(const FVector3 &S);
+    FMatrix4 Scale(const FVector3 &S);
 
     /**
      * @brief Returns a rotation matrix from a quaternion.
      */
-    inline FMatrix4 Rotate(const FQuat& Q);
+    FMatrix4 Rotate(const FQuat& Q);
 
     /**
      * @brief Returns an orthographic projection matrix.
      */
-    inline FMatrix4 Ortho(float Left, float Right, float Bottom, float Top, float Near, float Far);
+    FMatrix4 Ortho(float Left, float Right, float Bottom, float Top, float Near, float Far);
 
     /**
      * @brief Returns a perspective projection matrix.
      */
-    inline FMatrix4 Perspective(float FOV, float Aspect, float Near, float Far);
+    FMatrix4 Perspective(float FOVInDegree, float Aspect, float Near, float Far);
     /**
     * @brief Creates a look-at matrix.
     * @param Eye Position of the camera.
@@ -275,7 +275,7 @@ namespace FMath
     * @param Up Up direction vector.
     * @return Look-at matrix.
     */
-    inline FMatrix4 LookAt(const FVector3& Eye, const FVector3& Target, const FVector3& Up);
+    FMatrix4 LookAt(const FVector3& Eye, const FVector3& Target, const FVector3& Up);
 
     /////////////////////
     // Quaternion Utilities

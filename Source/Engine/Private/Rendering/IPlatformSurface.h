@@ -50,6 +50,7 @@ public:
     virtual void* GetNativeHandle() const = 0;
     [[nodiscard]] virtual int GetWidth() const = 0;
     [[nodiscard]] virtual int GetHeight() const = 0;
+    [[nodiscard]] virtual float GetAspectRatio() const = 0;
     virtual void GetFramebufferSize(int& w, int& h) const = 0;
     virtual void GetWindowSize(int& w, int& h) const = 0;
     [[nodiscard]] virtual bool IsVSyncEnabled() const = 0;

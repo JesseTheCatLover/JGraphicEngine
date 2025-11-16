@@ -7,7 +7,7 @@
 
 #include "Memory/SmartPointers.h"
 
-class JCamera;
+class JCameraComponent;
 struct FInputContext;
 struct FViewportContext;
 struct FFrameContext;
@@ -40,14 +40,15 @@ public:
     void SetFramebufferWidth(int w);
     int GetFramebufferHeight() const;
     void SetFramebufferHeight(int h);
+    float GetAspectRatio() const;
     bool GetIsSurfaceFullscreen();
 
     bool GetWireframeMode();
     void SetWireframeMode(bool bWireMode);
     EViewMode GetViewMode() const;
     void SetViewMode(EViewMode mode);
-    JCamera* GetCamera() const;
-    void SetCamera(JCamera* camera);
+    JCameraComponent* GetCamera() const;
+    void SetCamera(JCameraComponent* camera);
     FViewportContext* GetCameraSettings() const;
 
 private:

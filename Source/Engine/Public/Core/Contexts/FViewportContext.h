@@ -1,5 +1,7 @@
 #include "Scene/JCamera.h"
 
+class JCameraComponent;
+
 struct FViewportContext
 {
 private:
@@ -8,25 +10,13 @@ private:
     bool bWireframe = false;
     EViewMode viewMode = EViewMode::Scene;
 
-    JCamera camera;
-    float Yaw = -90.f;
-    float Pitch = 0.f;
-    float Speed = 8.5f;
+    JCameraComponent* camera;
     float xSensitivity = 0.1f;
     float ySensitivity = 0.1f;
     float MaxFOV = 45.f;
     float Zoom = 45.f;
 
 public:
-    float GetYaw() const { return Yaw; }
-    void SetYaw(float yaw) { Yaw = yaw; }
-
-    float GetPitch() const { return Pitch; }
-    void SetPitch(float pitch) { Pitch = pitch; }
-
-    float GetSpeed() const { return Speed; }
-    void SetSpeed(float speed) { Speed = speed; }
-
     float GetXSensitivity() const { return xSensitivity; }
     void SetXSensitivity(float sens) { xSensitivity = sens; }
 

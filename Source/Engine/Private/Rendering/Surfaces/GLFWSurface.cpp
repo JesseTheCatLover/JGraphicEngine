@@ -150,6 +150,11 @@ int GLFWSurface::GetHeight() const
     return m_State.height;
 }
 
+float GLFWSurface::GetAspectRatio() const
+{
+    return (m_State.height / m_State.width);
+}
+
 void GLFWSurface::SetCursorMode(ECursorMode mode)
 {
     m_CursorMode = mode;

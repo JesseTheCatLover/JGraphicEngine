@@ -31,6 +31,13 @@ struct FVector3
     /** @return The length (magnitude) of the vector. */
     [[nodiscard]] float Length() const { return std::sqrt(x * x + y * y + z * z); }
 
+    static FVector3 Up() { return FVector3(0.0f, 0.0f, 1.0f); }
+    static FVector3 Down() { return FVector3(0.0f, 0.0f, -1.0f); }
+    static FVector3 Right() { return FVector3(0.0f, 1.0f, 0.0f); }
+    static FVector3 Left() { return FVector3(0.0f, -1.0f, 0.0f); }
+    static FVector3 Forward() { return FVector3(1.0f, 0.0f, 0.0f); }
+    static FVector3 Backward() { return FVector3(-1.0f, 0.0f, 0.0f); }
+
     /** @return A normalized copy of the vector. */
     [[nodiscard]] FVector3 Normalized() const
     {

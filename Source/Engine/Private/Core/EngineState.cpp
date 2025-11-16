@@ -1,7 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Core/EngineState.h"
-
 #include "Core/Contexts/FInputContext.h"
 #include "Core/Contexts/FViewportContext.h"
 #include "Core/Contexts/FFrameContext.h"
@@ -36,22 +35,27 @@ void EngineState::SetDeltaTime(float dt)
 
 int EngineState::GetFramebufferWidth() const
 {
-    return m_SurfaceContext->fWidth;
+    return m_SurfaceContext->width;
 }
 
 void EngineState::SetFramebufferWidth(int w)
 {
-    m_SurfaceContext->fWidth = w;
+    m_SurfaceContext->width = w;
 }
 
 int EngineState::GetFramebufferHeight() const
 {
-    return m_SurfaceContext->fHeight;
+    return m_SurfaceContext->height;
 }
 
 void EngineState::SetFramebufferHeight(int h)
 {
-    m_SurfaceContext->fHeight = h;
+    m_SurfaceContext->height = h;
+}
+
+float EngineState::GetAspectRatio() const
+{
+    return m_SurfaceContext->aspectRatio;
 }
 
 bool EngineState::GetIsSurfaceFullscreen()
@@ -119,17 +123,17 @@ void EngineState::SetLastMouseY(float y)
     m_InputContext->lastMouseY = y;
 }
 
-JCamera* EngineState::GetCamera() const
+JCameraComponent* EngineState::GetCamera() const
 {
-    return &m_ViewportContext->camera;
+    return m_ViewportContext->camera;
 }
 
-void EngineState::SetCamera(JCamera *camera)
+void EngineState::SetCamera(JCameraComponent *camera)
 {
-    m_ViewportContext->camera = *camera;
+    m_ViewportContext->camera = camera;
 }
 
-FViewportContext * EngineState::GetCameraSettings() const
+FViewportContext* EngineState::GetCameraSettings() const
 {
     return m_ViewportContext.get();
 }

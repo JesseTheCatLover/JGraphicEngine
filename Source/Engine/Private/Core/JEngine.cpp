@@ -7,7 +7,6 @@
 #include "Framework/SceneManager.h"
 #include "Core/EngineGlobals.h"
 #include "Core/Contexts/FViewportContext.h"
-#include "Scene/JCamera.h"
 #include <iostream>
 #include "Core/TServiceContainer.h"
 
@@ -16,7 +15,8 @@
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/JRenderer.h"
 #include "Resources/JResourceManager.h"
-#include "../Resources/GpuResources/JModelResource.h"
+#include "Resources/GpuResources/JModelResource.h"
+#include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
 
 class JModelResource;
@@ -43,6 +43,14 @@ bool JEngine::Run()
     {
         std::cerr << "[JEngine]: Bootstrapping the default scene has failed" << std::endl;
         return false;
+    }
+    if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
+    {
+        auto camera = scene->GetCameraComponent();
+        if (camera)
+        {
+            m_State.SetCamera(camera);
+        }
     }
     RunMainLoop();
     Shutdown();
@@ -228,40 +236,110 @@ void JEngine::Tick()
 
 void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
 {
-    // close engine if ESC is pressed
+    // Close engine if ESC is pressed
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         m_State.SetRunning(false);
     }
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) m_State.GetCamera()->ProcessKeyboard(ECM_Forward, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) m_State.GetCamera()->ProcessKeyboard(ECM_Backward, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) m_State.GetCamera()->ProcessKeyboard(ECM_Left, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) m_State.GetCamera()->ProcessKeyboard(ECM_Right, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) m_State.GetCamera()->ProcessKeyboard(ECM_Up, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) m_State.GetCamera()->ProcessKeyboard((ECM_Down), deltaTime);
+    //  TODO: TEMP: drive active camera with WASD/Space/Shift
+
+    auto* sceneMgr = GetSceneManager();
+    if (!sceneMgr) return;
+
+    auto* scene = sceneMgr->GetActiveScene();
+    if (!scene) return;
+
+    auto* camera = scene->GetCameraComponent();
+    if (!camera) return;
+
+    JActor* camActor = camera->GetOwnerActor();
+    if (!camActor) return;
+
+    const float moveSpeed = 10.0f;
+    FVector3 movement(0.f, 0.f, 0.f);
+
+    // Move along camera local axes
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        movement += camera->GetForwardVector();  // forward
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        movement -= camera->GetForwardVector();  // backward
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        movement += camera->GetRightVector();    // right
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        movement -= camera->GetRightVector();    // left
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        movement += camera->GetUpVector();       // up
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        movement -= camera->GetUpVector();       // down
+
+    if (movement.Length() > 0.0f)
+    {
+        movement = movement.Normalized() * moveSpeed * deltaTime;
+
+        FVector3 pos = camActor->GetActorPosition();
+        camActor->SetActorPosition(pos + movement);
+
+        camera->RecalculateViewMatrix();
+        camera->RecalculateProjectionMatrix();
+    }
 }
 
 void JEngine::OnMouseMove(double xPosIn, double yPosIn)
 {
-    if (m_State.GetViewMode() != EViewMode::Scene) return;
+    if (m_State.GetViewMode() != EViewMode::Scene)
+        return;
 
-    const float xPos = static_cast<float>(xPosIn);
-    const float yPos = static_cast<float>(yPosIn);
+    float xPos = static_cast<float>(xPosIn);
+    float yPos = static_cast<float>(yPosIn);
 
-    float xOffset = xPos - m_State.GetLastMouseX();
-    float yOffset = m_State.GetLastMouseY() - yPos; // reversed since y-coordinates go from bottom to top
+    float dx = xPos - m_State.GetLastMouseX();
+    float dy = m_State.GetLastMouseY() - yPos;
 
     m_State.SetLastMouseX(xPos);
     m_State.SetLastMouseY(yPos);
 
-    m_State.GetCamera()->ProcessMouseMovement(xOffset, yOffset);
+    const float sensitivity = 0.008f;
+    dx *= sensitivity;
+    dy *= sensitivity;
+
+    auto* sceneMgr = GetSceneManager();
+    if (!sceneMgr) return;
+    auto* scene = sceneMgr->GetActiveScene();
+    if (!scene) return;
+    auto* camera = scene->GetCameraComponent();
+    if (!camera) return;
+
+    static bool sInitialized = false;
+    static float sYaw = 0.0f;
+    static float sPitch = 0.0f;
+
+    if (!sInitialized)
+    {
+        FTransform world = camera->GetWorldTransform();
+        FQuat rot = world.GetRotation();
+        FEuler e = rot.ToEuler();
+
+        sPitch = e.Pitch;
+        sYaw = e.Yaw;
+        sInitialized = true;
+    }
+
+    sYaw -= dx;
+    sPitch -= dy;
+    sPitch = FMath::Clamp(sPitch, -89.0f, 89.0f);
+
+    FEuler euler(sPitch, sYaw, 0.0f);
+    FQuat newRot = euler.ToQuat();
+
+    camera->SetWorldRotation(newRot);
 }
+
 
 void JEngine::OnScroll(double xOffset, double yOffset)
 {
-    m_State.GetCamera()->ProcessMouseScroll(static_cast<float>(yOffset),
-        m_State.GetCameraSettings()->GetMaxFOV());
+    // m_State.GetCamera()->ProcessMouseScroll(static_cast<float>(yOffset),
+        // m_State.GetCameraSettings()->GetMaxFOV());
 }
 
 void JEngine::OnKeyboardAction(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -398,6 +476,11 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     auto actor2 = spawnModelActor("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
     actor1->SetActorPosition({10.f, 0.f, 5.f});
     actor2->SetActorPosition({-10.f, 0.f, 0.f});
+
+    JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
+    cameraActor->SetName("CameraActor");
+    cameraActor->AddRuntimeComponent<JCameraComponent>();
+    cameraActor->SetActorPosition(0.f, 0.f, 5.f);
 
 
     // ---------------------------------------------------------------------

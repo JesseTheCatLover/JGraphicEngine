@@ -6,6 +6,8 @@
 #include "Core/JEngine.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
+
+#include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
 
 JActor::JActor() : m_VectorIndex(0)
@@ -85,6 +87,18 @@ void JActor::GatherRenderables(IRenderSubmission &submission, const FRenderConte
             renderable->GatherProxies(submission, ctx);
         }
     }
+}
+
+JCameraComponent* JActor::GetCameraComponent()
+{
+    for (auto& comp : m_SceneComponents)
+    {
+        if (auto* camera = dynamic_cast<JCameraComponent*>(comp.get()))
+        {
+            return camera;
+        }
+    }
+    return nullptr;
 }
 
 void JActor::Serialize(JsonWriter& writer) const

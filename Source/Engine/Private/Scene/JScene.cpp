@@ -151,3 +151,15 @@ void JScene::GatherRenderables(IRenderSubmission &submission, const FRenderConte
         actor->GatherRenderables(submission, ctx);
     }
 }
+
+JCameraComponent* JScene::GetCameraComponent() const
+{
+    for (const auto& actor : m_Actors)
+    {
+        if (!actor) continue;
+
+        if (actor->GetCameraComponent())
+            return actor->GetCameraComponent();
+    }
+    return nullptr;
+}

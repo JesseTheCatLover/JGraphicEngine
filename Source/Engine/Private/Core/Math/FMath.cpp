@@ -1,7 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Core/Math/FMath.h"
-
 #include "Core/Math/FMatrix4.h"
 #include "Core/Math/FRotator.h"
 #include <glm/gtc/matrix_transform.hpp>
@@ -25,9 +24,9 @@ FMatrix4 FMath::Ortho(float Left, float Right, float Bottom, float Top, float Ne
     return FMatrix4(glm::ortho(Left, Right, Bottom, Top, Near, Far));
 }
 
-FMatrix4 FMath::Perspective(float FOV, float Aspect, float Near, float Far)
+FMatrix4 FMath::Perspective(float FOVInDegree, float Aspect, float Near, float Far)
 {
-    return FMatrix4(glm::perspective(glm::radians(FOV), Aspect, Near, Far));
+    return FMatrix4(glm::perspective(glm::radians(FOVInDegree), Aspect, Near, Far));
 }
 
 FMatrix4 FMath::LookAt(const FVector3& Eye, const FVector3& Target, const FVector3& Up)

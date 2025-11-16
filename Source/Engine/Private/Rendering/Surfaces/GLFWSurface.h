@@ -44,6 +44,8 @@ public:
 
     [[nodiscard]] int GetHeight() const override;
 
+    [[nodiscard]] float GetAspectRatio() const override;
+
     void SetCursorMode(ECursorMode mode) override;
 
     void GetFramebufferSize(int &w, int &h) const override;

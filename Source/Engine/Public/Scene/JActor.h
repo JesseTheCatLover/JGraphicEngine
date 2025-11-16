@@ -8,9 +8,9 @@
 #include <vector>
 #include <string>
 #include <type_traits>
-
 #include "Core/Memory/SmartPointers.h"
 
+class JCameraComponent;
 struct FRenderContext;
 class IRenderSubmission;
 class JModelComponent;
@@ -104,6 +104,11 @@ public:
     void SetActorPosition(const FVector3& pos)
     {
         if (m_RootComponent) m_RootComponent->SetWorldPosition(pos);
+    }
+
+    void SetActorPosition(float x, float y, float z)
+    {
+        SetActorPosition(FVector3(x, y, z));
     }
 
     [[nodiscard]] FRotator GetActorRotation() const
@@ -243,6 +248,8 @@ public:
     // -------------------- Rendering --------------------
 
     void GatherRenderables(IRenderSubmission& submission, const FRenderContext& ctx) const; // TODO: This is temp
+
+    JCameraComponent* GetCameraComponent();
 
     // -------------------- Serialization --------------------
 

@@ -1,97 +1,110 @@
-// Copyright (c) 2024. JesseTheCatLover. All Rights Reserved.
+// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+#pragma once
 
-#include "Scene/JCamera.h"
+#include "Scene/SceneComponents/JSceneComponent.h"
+#include "Core/Serialization/JsonWriter.h"
+#include "Core/Serialization/JsonReader.h"
+#include "Core/Math/FMatrix4.h"
+#include "Core/Math/FVector3.h"
 
-JCamera::JCamera(vec3 Position, vec3 Up, float Yaw, float Pitch):
-Speed(8.5f),
-xSensitivity(0.1f),
-ySensitivity(0.1f),
-Zoom(45.f),
-Front(vec3(0.f, 0.f, -1.f))
+/**
+ * @brief Camera component providing view/projection matrices.
+ */
+class JCameraComponent : public JSceneComponent
 {
-    this->Position = Position; WorldUp = Up;
-    this->Yaw = Yaw; this->Pitch = Pitch;
-    UpdateCameraVectors();
-}
+    DECLARE_JOBJECT(JCameraComponent, JSceneComponent)
 
-JCamera::JCamera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch):
-Speed(8.5f),
-xSensitivity(0.1f),
-ySensitivity(0.1f),
-Zoom(45.f),
-Front(vec3(0.f, 0.f, -1.f))
-{
-    Position = vec3(posX, posY, posZ);
-    WorldUp = vec3(upX, upY, upZ);
-    Yaw = yaw;
-    Pitch = pitch;
-    UpdateCameraVectors();
-}
+public:
+    enum class EProjectionType { Perspective, Orthographic };
 
-mat4 JCamera::GetViewMatrix()
-{
-    return lookAt(Position, Position + Front, Up);
-}
+protected:
+    EProjectionType m_ProjectionType = EProjectionType::Perspective;
 
+    // Perspective
+    float m_FOV = 60.0f;
+    float m_AspectRatio = 16.0f / 9.0f;
+    float m_NearClip = 0.01f;
+    float m_FarClip  = 1000.0f;
 
-void JCamera::ProcessKeyboard(ECameraMovement Direction, float DeltaTime)
-{
-    float Velocity = Speed * DeltaTime;
-    if(Direction == ECM_Forward)
-        Position += Front * Velocity;
-    if(Direction == ECM_Backward)
-        Position -= Front * Velocity;
-    if(Direction == ECM_Right)
-        Position += Right * Velocity;
-    if(Direction == ECM_Left)
-        Position -= Right * Velocity;
+    // Orthographic
+    float m_OrthoHalfHeight = 10.0f;
 
-    if(bFPS) Position.y = 0.f;
-    else
+    // Cached matrices
+    mutable FMatrix4 m_ViewMatrix = FMatrix4::Identity();
+    mutable FMatrix4 m_ProjectionMatrix = FMatrix4::Identity();
+    mutable bool m_ViewDirty = true;
+    mutable bool m_ProjDirty = true;
+
+public:
+    JCameraComponent();
+    virtual ~JCameraComponent() = default;
+
+    // Getters
+    EProjectionType GetProjectionType() const { return m_ProjectionType; }
+    float GetFOV() const { return m_FOV; }
+    float GetAspectRatio() const { return m_AspectRatio; }
+    float GetNearPlane() const { return m_NearClip; }
+    float GetFarPlane() const { return m_FarClip; }
+    float GetOrthoHalfHeight() const { return m_OrthoHalfHeight; }
+
+    // Settters
+    void SetProjectionType(EProjectionType type) { m_ProjectionType = type; m_ProjDirty = true; }
+    void SetPerspective(float fovDegrees, float aspect, float nearPlane, float farPlane)
     {
-        if(Direction == ECM_Up)
-            Position += WorldUp * Velocity;
-        if(Direction == ECM_Down)
-            Position -= WorldUp * Velocity;
+        m_FOV = fovDegrees;
+        m_AspectRatio = aspect;
+        m_NearClip = nearPlane;
+        m_FarClip = farPlane;
+        m_ProjDirty = true;
     }
-}
+    void SetPerspectiveFOV(float fovDegrees) { m_FOV = fovDegrees; m_ProjDirty = true; }
+    void SetAspect(float aspect) { m_AspectRatio = aspect; m_ProjDirty = true; }
+    void SetNearFar(float nearPlane, float farPlane) { m_NearClip = nearPlane; m_FarClip = farPlane; m_ProjDirty = true; }
 
-void JCamera::ProcessMouseMovement(float xOffset, float yOffset, bool ConstrainPitch)
-{
-    xOffset *= xSensitivity;
-    yOffset *= ySensitivity;
-
-    Yaw = mod(Yaw + xOffset, 360.0f);
-    Pitch += yOffset;
-
-    if(ConstrainPitch) // avoid screen flipping
+    void SetOrthographic(float halfHeight, float aspect, float nearPlane, float farPlane)
     {
-        if(Pitch > 89.f)
-            Pitch = 89.f;
-        if(Pitch < -89.f)
-            Pitch = -89.f;
+        m_OrthoHalfHeight = halfHeight;
+        m_AspectRatio = aspect;
+        m_NearClip = nearPlane;
+        m_FarClip = farPlane;
+        m_ProjDirty = true;
+    }
+    void SetOrthoHalfHeight(float halfHeight) { m_OrthoHalfHeight = halfHeight; m_ProjDirty = true; }
+
+    // Matrices
+    [[nodiscard]] const FMatrix4& GetViewMatrix() const;
+    [[nodiscard]] const FMatrix4& GetProjectionMatrix() const;
+
+    // Recalculate both explicitly
+    void RecalculateViewMatrix() const;
+    void RecalculateProjectionMatrix() const;
+    void RecalculateMatrices() const { RecalculateViewMatrix(); RecalculateProjectionMatrix(); }
+
+    // Utility
+    FVector3 GetForwardVector() const; // camera forward in world space (engine convention: -Z forward assumed)
+    FVector3 GetUpVector() const;
+    FVector3 GetRightVector() const;
+
+    // LookAt helper (sets world transform to look at target)
+    void LookAt(const FVector3& worldTarget, const FVector3& worldUp = FVector3::Up());
+
+protected:
+    // When local transform changes, view becomes dirty.
+    void OnLocalTransformChanged() override
+    {
+        Super::OnLocalTransformChanged();
+        m_ViewDirty = true;
     }
 
-    UpdateCameraVectors();
-}
+    // Called when attached — ensure matrices marked dirty so they recalc on first use
+    void OnAttachment() override
+    {
+        Super::OnAttachment();
+        m_ViewDirty = true;
+        m_ProjDirty = true;
+    }
 
-void JCamera::ProcessMouseScroll(float yOffset, float MaxFOV)
-{
-    Zoom -= (float)yOffset;
-    if(Zoom < 1.f)
-        Zoom = 1.f;
-    if(Zoom > MaxFOV)
-        Zoom = MaxFOV;
-}
-
-void JCamera::UpdateCameraVectors()
-{
-    vec3 front;
-    front.x = cos(radians(Yaw)) * cos(radians(Pitch));
-    front.y = sin(radians(Pitch));
-    front.z = sin(radians(Yaw)) * cos(radians(Pitch));
-    Front = normalize(front);
-    // also re-calculate the Right and Up vector
-    Right = normalize(cross(Front, WorldUp));
-    Up    = normalize(cross(Right, Front));
-}
+    // Serialization
+    void SerializeProperties(JsonWriter& writer) const override;
+    void DeserializeProperties(const JsonReader& reader) override;
+};
