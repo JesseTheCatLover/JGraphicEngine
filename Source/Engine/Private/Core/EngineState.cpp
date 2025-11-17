@@ -123,12 +123,12 @@ void EngineState::SetLastMouseY(float y)
     m_InputContext->lastMouseY = y;
 }
 
-JCameraComponent* EngineState::GetCamera() const
+ICameraViewSource* EngineState::GetCamera() const
 {
     return m_ViewportContext->camera;
 }
 
-void EngineState::SetCamera(JCameraComponent *camera)
+void EngineState::SetCamera(ICameraViewSource *camera)
 {
     m_ViewportContext->camera = camera;
 }

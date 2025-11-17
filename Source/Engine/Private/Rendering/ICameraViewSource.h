@@ -1,0 +1,23 @@
+//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+
+#pragma once
+
+class JRenderer;
+
+/**
+ * @brief Interface providing view/projection matrices and required parameters for rendering a view.
+ */
+class ICameraViewSource
+{
+    friend JRenderer;
+
+public:
+    virtual ~ICameraViewSource() = default;
+
+protected:
+    [[nodiscard]] virtual const FMatrix4& GetViewMatrix() const = 0;
+    [[nodiscard]] virtual const FMatrix4& GetProjectionMatrix() const = 0;
+    [[nodiscard]] virtual float GetNearPlane() const = 0;
+    [[nodiscard]] virtual float GetFarPlane() const = 0;
+    [[nodiscard]] virtual float GetOrthoHalfHeight() const = 0;
+};

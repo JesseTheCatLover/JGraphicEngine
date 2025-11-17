@@ -7,10 +7,12 @@
 #include "Core/Math/FMatrix4.h"
 #include "Core/Math/FVector3.h"
 
+#include "Rendering/ICameraViewSource.h"
+
 /**
- * @brief Camera component providing view/projection matrices.
+ * @brief Camera component for runtime/gameplay rendering in the scene
  */
-class JCameraComponent : public JSceneComponent
+class JCameraComponent : public JSceneComponent, public ICameraViewSource
 {
     DECLARE_JOBJECT(JCameraComponent, JSceneComponent)
 
@@ -24,7 +26,7 @@ protected:
     float m_FOV = 60.0f;
     float m_AspectRatio = 16.0f / 9.0f;
     float m_NearClip = 0.01f;
-    float m_FarClip  = 1000.0f;
+    float m_FarClip = 1000.0f;
 
     // Orthographic
     float m_OrthoHalfHeight = 10.0f;
@@ -42,14 +44,19 @@ public:
 protected:
     void Initialize() override;
 
+    // Matrices
+    [[nodiscard]] const FMatrix4& GetViewMatrix() const override;
+    [[nodiscard]] const FMatrix4& GetProjectionMatrix() const override;
+
+    float GetNearPlane() const override { return m_NearClip; }
+    float GetFarPlane() const override { return m_FarClip; }
+    float GetOrthoHalfHeight() const override { return m_OrthoHalfHeight; }
+
 public:
     // Getters
     EProjectionType GetProjectionType() const { return m_ProjectionType; }
     float GetFOV() const { return m_FOV; }
     float GetAspectRatio() const { return m_AspectRatio; }
-    float GetNearPlane() const { return m_NearClip; }
-    float GetFarPlane() const { return m_FarClip; }
-    float GetOrthoHalfHeight() const { return m_OrthoHalfHeight; }
 
     // Settters
     void SetProjectionType(EProjectionType type) { m_ProjectionType = type; m_bProjDirty = true; }
@@ -75,17 +82,13 @@ public:
     }
     void SetOrthoHalfHeight(float halfHeight) { m_OrthoHalfHeight = halfHeight; m_bProjDirty = true; }
 
-    // Matrices
-    [[nodiscard]] const FMatrix4& GetViewMatrix() const;
-    [[nodiscard]] const FMatrix4& GetProjectionMatrix() const;
-
     // Recalculate both explicitly
     void RecalculateViewMatrix() const;
     void RecalculateProjectionMatrix() const;
     void RecalculateMatrices() const { RecalculateViewMatrix(); RecalculateProjectionMatrix(); }
 
     // Utility
-    FVector3 GetForwardVector() const; // camera forward in world space (engine convention: -Z forward assumed)
+    FVector3 GetForwardVector() const;
     FVector3 GetUpVector() const;
     FVector3 GetRightVector() const;
 
@@ -100,7 +103,7 @@ protected:
         m_bViewDirty = true;
     }
 
-    // Called when attached — ensure matrices marked dirty so they recalc on first use
+    // Called when attached, ensure matrices marked dirty so they recalc on first use
     void OnAttachment() override
     {
         Super::OnAttachment();

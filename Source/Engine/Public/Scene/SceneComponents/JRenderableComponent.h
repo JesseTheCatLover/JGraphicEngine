@@ -11,7 +11,7 @@ class IRendererSubmission;
 
 class JRenderableComponent : public JSceneComponent
 {
-    DECLARE_JOBJECT(JRenderableComponent, JSceneComponent);
+    DECLARE_JOBJECT(JRenderableComponent, JSceneComponent)
 
 private:
     bool m_Visible{true};

@@ -1,6 +1,6 @@
 #include "Scene/JCamera.h"
 
-class JCameraComponent;
+class ICameraViewSource;
 
 struct FViewportContext
 {
@@ -10,7 +10,7 @@ private:
     bool bWireframe = false;
     EViewMode viewMode = EViewMode::Scene;
 
-    JCameraComponent* camera;
+    ICameraViewSource* camera;
     float xSensitivity = 0.1f;
     float ySensitivity = 0.1f;
     float MaxFOV = 45.f;

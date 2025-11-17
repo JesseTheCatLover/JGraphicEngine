@@ -6,7 +6,7 @@
 
 class JGpuResource : public JCoreObject, public IGpuResource
 {
-    DECLARE_JOBJECT(JGpuResource, JCoreObject);
+    DECLARE_JOBJECT(JGpuResource, JCoreObject)
 
 private:
     IRenderDevice* m_Device = nullptr;
