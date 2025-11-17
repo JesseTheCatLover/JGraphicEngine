@@ -4,6 +4,22 @@
 
 #include "RObjects.h"
 #include "RHandles.h"
+#include "Core/Math/FVector3.h"
+
+// This describes how the backend's axes relate to ENGINE axes.
+// Engine coordinate system : X=Forward, Y=Right, Z=Up
+struct FBackendCoordDesc
+{
+    // Backend basis vectors expressed in ENGINE space.
+    // Example: if backend X is engine Right, then X = (0, 1, 0).
+    FVector3 X; // backend +X in engine coordinates
+    FVector3 Y; // backend +Y in engine coordinates
+    FVector3 Z; // backend +Z in engine coordinates
+
+    // Clip-space / depth flags
+    bool depthZeroToOne = false; // true for D3D/Vulkan, false for OpenGL
+    bool clipSpaceYUp = true; // etc. if we care about NDC orientation
+};
 
 class IPlatformSurface;
 struct FMatrix4;
@@ -23,6 +39,8 @@ public:
     static constexpr uint32_t kMaxLights = 128;
 
     virtual ~IRenderBackend() = default;
+
+    [[nodiscard]] virtual FBackendCoordDesc GetCoordConvention() const = 0;
 
     // Lifecycle
     virtual bool Initialize(IPlatformSurface* surface) = 0;

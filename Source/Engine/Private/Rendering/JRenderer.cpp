@@ -10,6 +10,13 @@
 #include <iostream>
 #include "Scene/SceneComponents/JCameraComponent.h"
 
+JRenderer::JRenderer(IRenderBackend *backend)
+{
+    m_Backend = backend;
+    BuildDefaultShader();
+    m_CoordAdaptor = BuildCoordAdapter(m_Backend->GetCoordConvention());
+}
+
 void JRenderer::BeginScene()
 {
     if (!m_PPM)
@@ -128,8 +135,7 @@ void JRenderer::FlushCommandBuffer()
                 m_Backend->BindShader(shaderToUse);
 
                 // upload camera matrices to the shader we just bound
-                m_Backend->SetUniformMat4(shaderToUse, "u_View", m_ViewMat.GetValue());
-                m_Backend->SetUniformMat4(shaderToUse, "u_Proj", m_ProjMat.GetValue());
+                ApplyCamera(shaderToUse, m_ViewMat, m_ProjMat);
 
                 // Set light count once per shader bind
                 const int lightCount = (int) std::min<size_t>(m_CommandBuffer.GetLights().size(),
@@ -186,11 +192,7 @@ void JRenderer::FlushCommandBuffer()
                 }
             }
 
-            // upload model matrix JUST BEFORE submit (ensure shader is the same one we bound)
-            m_Backend->SetUniformMat4(shaderToUse, "u_Model", c.transform.GetValue());
-
-            // finally submit using the shader we bound
-            m_Backend->SubmitMesh(c.state.mesh, shaderToUse, c.transform);
+            DrawMesh(c.state.mesh, shaderToUse, c.transform);
         }
     };
 
@@ -459,6 +461,59 @@ void JRenderer::RebuildKernelsIfDirty()
     }
 
     m_Kernels.swap(newKernels);
+}
+
+FCoordAdapter JRenderer::BuildCoordAdapter(const FBackendCoordDesc& d)
+{
+    // d.X, d.Y, d.Z are backend basis expressed in ENGINE coordinates.
+
+    // Build the 4x4 basis transform T: Engine -> Backend
+    // Columns are images of backend's basis vectors in engine space,
+    // but we want a matrix that transforms engine-space vectors into backend-space.
+    //
+    // Since d.X, d.Y, d.Z are backend axes in engine coordinates, we actually want
+    // the matrix that maps engine basis -> backend basis.
+    // That matrix is the inverse of the one with columns d.X, d.Y, d.Z.
+    //
+    // Let B = [d.X d.Y d.Z]. A vector in backend coords v_b = B * v_e (engine coords).
+    // We want v_b = T * v_e, so T = B.
+
+    FMatrix4 T = FMatrix4::Identity();
+
+    T.SetBasisX(d.X); // backend X axis in engine coords
+    T.SetBasisY(d.Y);
+    T.SetBasisZ(d.Z);
+
+    FCoordAdapter adapter;
+    adapter.EngineToBackend = T;
+    adapter.BackendToEngine = T.Inverse();
+    return adapter;
+}
+
+void JRenderer::ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& viewEngine, const FMatrix4& projEngine)
+{
+    // Convert from engine space to backend space
+    FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * viewEngine * m_CoordAdaptor.BackendToEngine;
+    FMatrix4 projBackend = projEngine;
+
+    float viewRaw[16];
+    float projRaw[16];
+
+    viewBackend.ToFloatArray(viewRaw);
+    projBackend.ToFloatArray(projRaw);
+
+    m_Backend->SetUniformMat4(shaderToUse, "u_View", viewRaw);
+    m_Backend->SetUniformMat4(shaderToUse, "u_Proj", projRaw);
+}
+
+void JRenderer::DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle &shaderToUse, const FMatrix4 &modelEngine)
+{
+    FMatrix4 modelBackend = m_CoordAdaptor.EngineToBackend * modelEngine * m_CoordAdaptor.BackendToEngine;
+    float modelRaw[16];
+    modelBackend.ToFloatArray(modelRaw);
+    m_Backend->SetUniformMat4(shaderToUse, "u_Model", modelRaw);
+
+    m_Backend->SubmitMesh(meshHandle, shaderToUse, modelBackend);
 }
 
 RMeshHandle JRenderer::CreateMesh(const RMesh &data)

@@ -9,6 +9,14 @@
 #include "RHandles.h"
 #include "RCommandBuffer.h"
 
+struct FBackendCoordDesc;
+
+struct FCoordAdapter
+{
+    FMatrix4 EngineToBackend;
+    FMatrix4 BackendToEngine;
+};
+
 struct FPassParam;
 class PostProcessManager;
 struct RRenderProxy;
@@ -19,11 +27,7 @@ class JRenderer : public IRenderDevice
     friend class JEngine;
 
 private:
-    explicit JRenderer(IRenderBackend* backend)
-    {
-        m_Backend = backend;
-        BuildDefaultShader();
-    }
+    explicit JRenderer(IRenderBackend* backend);
 
     void BeginScene();
     void EndScene();
@@ -40,6 +44,7 @@ private:
     RShaderHandle m_DefaultShader{};
     void BuildDefaultShader();
 
+    FCoordAdapter m_CoordAdaptor;
     FMatrix4 m_ViewMat;
     FMatrix4 m_ProjMat;
 
@@ -88,6 +93,11 @@ private:
     void EnsureFullscreenQuad();
     void BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
     void RebuildKernelsIfDirty();
+
+    FCoordAdapter BuildCoordAdapter(const FBackendCoordDesc& d);
+
+    void ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& viewEngine, const FMatrix4& projEngine);
+    void DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle& shaderToUse, const FMatrix4& modelEngine);
 
 public:
     ~JRenderer() = default;

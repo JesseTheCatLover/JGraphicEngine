@@ -857,6 +857,18 @@ void GLBackend::LinkUniformBlock(RShaderHandle sh, const char* blockName, uint32
     }
 }
 
+FBackendCoordDesc GLBackend::GetCoordConvention() const
+{
+    FBackendCoordDesc d;
+    d.X = FVector3(0, 1, 0); // +X = Right in engine
+    d.Y = FVector3(0, 0, 1); // +Y = Up in engine
+    d.Z = FVector3(-1, 0, 0); // +Z = Forward in engine
+
+    d.depthZeroToOne = false; // OpenGL [-1,1]
+    d.clipSpaceYUp = true;  // assume standard GL
+    return d;
+}
+
 void GLBackend::UploadLights(const RLightData *lights, uint32_t count)
 {
     if (!m_LightUBO) {

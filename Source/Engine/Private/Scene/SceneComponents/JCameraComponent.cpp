@@ -10,28 +10,30 @@ JCameraComponent::JCameraComponent()
     m_AspectRatio = JEngine::Get().GetState().GetAspectRatio();
 }
 
+void JCameraComponent::Initialize()
+{
+    Super::Initialize();
+}
+
 const FMatrix4& JCameraComponent::GetViewMatrix() const
 {
-    if (m_ViewDirty)
+    if (m_bViewDirty)
         RecalculateViewMatrix();
     return m_ViewMatrix;
 }
 
 const FMatrix4& JCameraComponent::GetProjectionMatrix() const
 {
-    if (m_ProjDirty)
+    if (m_bProjDirty)
         RecalculateProjectionMatrix();
     return m_ProjectionMatrix;
 }
 
 void JCameraComponent::RecalculateViewMatrix() const
 {
-    // We assume FTransform::ToMatrix() returns an FMatrix4 representing world transform:
-    // world = Translate * Rotate * Scale (camera's world transform).
-    // View is inverse(world).
     const FMatrix4 worldMat = GetWorldTransform().ToMatrix();
-    m_ViewMatrix = worldMat.Inverse(); // requires FMatrix4::Inverse()
-    m_ViewDirty = false;
+    m_ViewMatrix = worldMat.Inverse();
+    m_bViewDirty = false;
 }
 
 void JCameraComponent::RecalculateProjectionMatrix() const
@@ -57,31 +59,28 @@ void JCameraComponent::RecalculateProjectionMatrix() const
         m_ProjectionMatrix = FMath::Ortho(left, right, bottom, top, nearP, farP);
     }
 
-    m_ProjDirty = false;
+    m_bProjDirty = false;
 }
 
 FVector3 JCameraComponent::GetForwardVector() const
 {
-    // Camera-local forward is -Z. Transform local -Z into world space.
-    const FMatrix4 world = GetWorldTransform().ToMatrix();
-    FVector3 forward = world.TransformVector(FVector3(0.0f, 0.0f, -1.0f));
-    return forward.Normalized();
-}
-
-FVector3 JCameraComponent::GetUpVector() const
-{
-    // Camera-local up is +Y.
-    const FMatrix4 world = GetWorldTransform().ToMatrix();
-    FVector3 up = world.TransformVector(FVector3(0.0f, 1.0f, 0.0f));
-    return up.Normalized();
+    const FTransform worldT = GetWorldTransform();
+    const FQuat rot = worldT.GetRotation();
+    return rot.RotateVector(FVector3::Forward()).Normalized();
 }
 
 FVector3 JCameraComponent::GetRightVector() const
 {
-    // Camera-local right is +X.
-    const FMatrix4 world = GetWorldTransform().ToMatrix();
-    FVector3 right = world.TransformVector(FVector3(1.0f, 0.0f, 0.0f));
-    return right.Normalized();
+    const FTransform worldT = GetWorldTransform();
+    const FQuat rot = worldT.GetRotation();
+    return rot.RotateVector(FVector3::Right()).Normalized();
+}
+
+FVector3 JCameraComponent::GetUpVector() const
+{
+    const FTransform worldT = GetWorldTransform();
+    const FQuat rot = worldT.GetRotation();
+    return rot.RotateVector(FVector3::Up()).Normalized();
 }
 
 void JCameraComponent::LookAt(const FVector3& worldTarget, const FVector3& worldUp)
@@ -97,7 +96,7 @@ void JCameraComponent::LookAt(const FVector3& worldTarget, const FVector3& world
     FTransform newWorld = FTransform::MakeFromMatrix(worldFromView);
     SetWorldTransform(newWorld);
 
-    m_ViewDirty = true;
+    m_bViewDirty = true;
 }
 
 void JCameraComponent::SerializeProperties(JsonWriter& writer) const
@@ -124,6 +123,6 @@ void JCameraComponent::DeserializeProperties(const JsonReader& reader)
     m_FarClip = reader.Read("far_plane", m_FarClip);
     m_OrthoHalfHeight = reader.Read("ortho_half_height", m_OrthoHalfHeight);
 
-    m_ViewDirty = true;
-    m_ProjDirty = true;
+    m_bViewDirty = true;
+    m_bProjDirty = true;
 }

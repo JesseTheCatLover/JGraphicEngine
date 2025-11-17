@@ -14,14 +14,14 @@ FMatrix4 FMatrix4::Rotate(const FQuat &q)
 
 [[nodiscard]] FEuler FMatrix4::ToEuler() const
 {
-    glm::vec3 euler = glm::eulerAngles(glm::quat_cast(M));
-    return FEuler(euler.x, euler.y, euler.z);
+    glm::quat q = glm::quat_cast(M);
+    return FEuler::MakeFromQuat(FQuat(q));
 }
 
 FMatrix4 FMatrix4::MakeFromEuler(const FEuler& euler)
 {
-    glm::mat4 m = glm::yawPitchRoll(euler.Yaw, euler.Pitch, euler.Roll);
-    return FMatrix4(m);
+    FQuat q = euler.ToQuat();
+    return q.ToMatrix();
 }
 
 [[nodiscard]] FRotator FMatrix4::ToRotator() const

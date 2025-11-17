@@ -32,13 +32,17 @@ protected:
     // Cached matrices
     mutable FMatrix4 m_ViewMatrix = FMatrix4::Identity();
     mutable FMatrix4 m_ProjectionMatrix = FMatrix4::Identity();
-    mutable bool m_ViewDirty = true;
-    mutable bool m_ProjDirty = true;
+    mutable bool m_bViewDirty = true;
+    mutable bool m_bProjDirty = true;
 
 public:
     JCameraComponent();
     virtual ~JCameraComponent() = default;
 
+protected:
+    void Initialize() override;
+
+public:
     // Getters
     EProjectionType GetProjectionType() const { return m_ProjectionType; }
     float GetFOV() const { return m_FOV; }
@@ -48,18 +52,18 @@ public:
     float GetOrthoHalfHeight() const { return m_OrthoHalfHeight; }
 
     // Settters
-    void SetProjectionType(EProjectionType type) { m_ProjectionType = type; m_ProjDirty = true; }
+    void SetProjectionType(EProjectionType type) { m_ProjectionType = type; m_bProjDirty = true; }
     void SetPerspective(float fovDegrees, float aspect, float nearPlane, float farPlane)
     {
         m_FOV = fovDegrees;
         m_AspectRatio = aspect;
         m_NearClip = nearPlane;
         m_FarClip = farPlane;
-        m_ProjDirty = true;
+        m_bProjDirty = true;
     }
-    void SetPerspectiveFOV(float fovDegrees) { m_FOV = fovDegrees; m_ProjDirty = true; }
-    void SetAspect(float aspect) { m_AspectRatio = aspect; m_ProjDirty = true; }
-    void SetNearFar(float nearPlane, float farPlane) { m_NearClip = nearPlane; m_FarClip = farPlane; m_ProjDirty = true; }
+    void SetPerspectiveFOV(float fovDegrees) { m_FOV = fovDegrees; m_bProjDirty = true; }
+    void SetAspect(float aspect) { m_AspectRatio = aspect; m_bProjDirty = true; }
+    void SetNearFar(float nearPlane, float farPlane) { m_NearClip = nearPlane; m_FarClip = farPlane; m_bProjDirty = true; }
 
     void SetOrthographic(float halfHeight, float aspect, float nearPlane, float farPlane)
     {
@@ -67,9 +71,9 @@ public:
         m_AspectRatio = aspect;
         m_NearClip = nearPlane;
         m_FarClip = farPlane;
-        m_ProjDirty = true;
+        m_bProjDirty = true;
     }
-    void SetOrthoHalfHeight(float halfHeight) { m_OrthoHalfHeight = halfHeight; m_ProjDirty = true; }
+    void SetOrthoHalfHeight(float halfHeight) { m_OrthoHalfHeight = halfHeight; m_bProjDirty = true; }
 
     // Matrices
     [[nodiscard]] const FMatrix4& GetViewMatrix() const;
@@ -93,15 +97,15 @@ protected:
     void OnLocalTransformChanged() override
     {
         Super::OnLocalTransformChanged();
-        m_ViewDirty = true;
+        m_bViewDirty = true;
     }
 
     // Called when attached — ensure matrices marked dirty so they recalc on first use
     void OnAttachment() override
     {
         Super::OnAttachment();
-        m_ViewDirty = true;
-        m_ProjDirty = true;
+        m_bViewDirty = true;
+        m_bProjDirty = true;
     }
 
     // Serialization

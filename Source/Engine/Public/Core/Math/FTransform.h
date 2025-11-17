@@ -21,7 +21,7 @@ struct FTransform
 {
 private:
     FVector3 m_Position{0.f};
-    FQuat m_Rotation{1.f, 0.f, 0.f, 0.f};
+    FQuat m_Rotation{0.f, 0.f, 0.f, 1.f};  // Identity quaternion by default
     FVector3 m_Scale{1.f};
 
 public:
@@ -81,7 +81,9 @@ public:
 
     bool operator==(const FTransform& other) const
     {
-        return m_Position == other.m_Position && m_Rotation == other.m_Rotation && m_Scale == other.m_Scale;
+        return m_Position == other.m_Position
+        && m_Rotation == other.m_Rotation
+        && m_Scale == other.m_Scale;
     }
 
     bool operator!=(const FTransform& other) const { return !(*this == other); }

@@ -256,22 +256,22 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
     JActor* camActor = camera->GetOwnerActor();
     if (!camActor) return;
 
-    const float moveSpeed = 10.0f;
+    const float moveSpeed = 15.0f;
     FVector3 movement(0.f, 0.f, 0.f);
 
     // Move along camera local axes
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        movement += camera->GetForwardVector();  // forward
+        movement += camera->GetForwardVector();
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        movement -= camera->GetForwardVector();  // backward
+        movement -= camera->GetForwardVector();
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        movement += camera->GetRightVector();    // right
+        movement += camera->GetRightVector();
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        movement -= camera->GetRightVector();    // left
+        movement -= camera->GetRightVector();
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        movement += camera->GetUpVector();       // up
+        movement += FVector3::Up();
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        movement -= camera->GetUpVector();       // down
+        movement -= FVector3::Up();
 
     if (movement.Length() > 0.0f)
     {
@@ -293,15 +293,9 @@ void JEngine::OnMouseMove(double xPosIn, double yPosIn)
     float xPos = static_cast<float>(xPosIn);
     float yPos = static_cast<float>(yPosIn);
 
-    float dx = xPos - m_State.GetLastMouseX();
-    float dy = m_State.GetLastMouseY() - yPos;
-
-    m_State.SetLastMouseX(xPos);
-    m_State.SetLastMouseY(yPos);
-
-    const float sensitivity = 0.008f;
-    dx *= sensitivity;
-    dy *= sensitivity;
+    static bool  sInitialized = false;
+    static float sYaw   = 0.0f;   // radians
+    static float sPitch = 0.0f;   // radians
 
     auto* sceneMgr = GetSceneManager();
     if (!sceneMgr) return;
@@ -310,31 +304,41 @@ void JEngine::OnMouseMove(double xPosIn, double yPosIn)
     auto* camera = scene->GetCameraComponent();
     if (!camera) return;
 
-    static bool sInitialized = false;
-    static float sYaw = 0.0f;
-    static float sPitch = 0.0f;
-
     if (!sInitialized)
     {
         FTransform world = camera->GetWorldTransform();
-        FQuat rot = world.GetRotation();
-        FEuler e = rot.ToEuler();
+        FEuler rotation = world.GetRotation().ToEuler();
 
-        sPitch = e.Pitch;
-        sYaw = e.Yaw;
+        sPitch = rotation.Pitch;
+        sYaw = rotation.Yaw;
+
+        m_State.SetLastMouseX(xPos);
+        m_State.SetLastMouseY(yPos);
+
         sInitialized = true;
+        return;    // skip applying deltas on this first event
     }
 
-    sYaw -= dx;
-    sPitch -= dy;
-    sPitch = FMath::Clamp(sPitch, -89.0f, 89.0f);
+    float dx = xPos - m_State.GetLastMouseX();
+    float dy = yPos - m_State.GetLastMouseY();
 
-    FEuler euler(sPitch, sYaw, 0.0f);
+    m_State.SetLastMouseX(xPos);
+    m_State.SetLastMouseY(yPos);
+
+    const float sensitivity = 0.0038f;
+    dx *= sensitivity;
+    dy *= sensitivity;
+
+    sYaw += dx;
+    sPitch -= dy;
+
+    sPitch = FMath::Radians(FMath::Clamp(FMath::Degrees(sPitch), -90.f, 90.f));
+
+    FEuler euler(-sPitch, sYaw, 0.f);
     FQuat newRot = euler.ToQuat();
 
     camera->SetWorldRotation(newRot);
 }
-
 
 void JEngine::OnScroll(double xOffset, double yOffset)
 {
@@ -474,13 +478,13 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     // ---------------------------------------------------------------------
     auto actor1 = spawnModelActor("Dio Mansion",    "Dio Brando/DioMansion.obj");
     auto actor2 = spawnModelActor("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
-    actor1->SetActorPosition({10.f, 0.f, 5.f});
-    actor2->SetActorPosition({-10.f, 0.f, 0.f});
+    actor1->SetActorPosition(-5.f, 10.f, 0.f);
+    actor2->SetActorPosition(0.f, -10.f, 0.f);
 
     JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
     cameraActor->SetName("CameraActor");
     cameraActor->AddRuntimeComponent<JCameraComponent>();
-    cameraActor->SetActorPosition(0.f, 0.f, 5.f);
+    cameraActor->SetActorPosition(-20.f, 0.f, 15.f);
 
 
     // ---------------------------------------------------------------------

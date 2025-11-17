@@ -36,13 +36,12 @@ FQuat FQuat::MakeFromRotator(const FRotator& rotator)
 
 FEuler FQuat::ToEuler() const
 {
-    glm::vec3 eulerRad = glm::eulerAngles(Q); // GLM returns radians
-    return {eulerRad.x, eulerRad.y, eulerRad.z};
+    return FEuler::MakeFromQuat(*this);
 }
 
 FQuat FQuat::MakeFromEuler(const FEuler &euler)
 {
-    return FQuat(glm::quat(glm::vec3(euler.Pitch, euler.Yaw, euler.Roll)));
+    return euler.ToQuat();
 }
 
 FQuat FQuat::MakeFromVector3(const FVector3& vector)

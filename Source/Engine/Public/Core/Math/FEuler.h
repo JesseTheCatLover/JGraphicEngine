@@ -15,18 +15,18 @@ struct FQuat;
  * @struct FEuler
  * @brief Represents rotation in Euler angles (pitch, yaw, roll), in radians.
  *
+ * Roll  (X) = rotation around X-axis,
+ * Pitch (Y) = rotation around Y-axis,
+ * Yaw   (Z) = rotation around Z-axis.
+ *
  * Provides conversions to and from FQuat and FVector3.
  * Internally uses radians for consistency with internal calculations.
- *
- * Pitch (X) = rotation around X-axis
- * Yaw   (Y) = rotation around Y-axis
- * Roll  (Z) = rotation around Z-axis
  */
 struct FEuler
 {
-    float Pitch{0.0f};  ///< Rotation around X-axis (radians)
-    float Yaw{0.0f};    ///< Rotation around Y-axis (radians)
-    float Roll{0.0f};   ///< Rotation around Z-axis (radians)
+    float Pitch{0.0f};  ///< Rotation around Y-axis (radians)
+    float Yaw{0.0f};    ///< Rotation around Z-axis (radians)
+    float Roll{0.0f};   ///< Rotation around X-axis (radians)
 
     /** Default constructor (identity rotation). */
     FEuler() = default;

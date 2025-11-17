@@ -83,10 +83,9 @@ public:
      */
     [[nodiscard]] FVector3 TransformPoint(const FVector3& point) const
     {
-        float rx = M[0][0] * point.x + M[0][1] * point.y + M[0][2] * point.z + M[0][3];
-        float ry = M[1][0] * point.x + M[1][1] * point.y + M[1][2] * point.z + M[1][3];
-        float rz = M[2][0] * point.x + M[2][1] * point.y + M[2][2] * point.z + M[2][3];
-        return {rx, ry, rz};
+        glm::vec4 p(point.x, point.y, point.z, 1.0f);
+        glm::vec4 r = M * p;  // column-major correct multiply
+        return { r.x, r.y, r.z };
     }
 
     /**
@@ -96,10 +95,9 @@ public:
      */
     [[nodiscard]] FVector3 TransformVector(const FVector3& vec) const
     {
-        float rx = M[0][0] * vec.x + M[0][1] * vec.y + M[0][2] * vec.z;
-        float ry = M[1][0] * vec.x + M[1][1] * vec.y + M[1][2] * vec.z;
-        float rz = M[2][0] * vec.x + M[2][1] * vec.y + M[2][2] * vec.z;
-        return {rx, ry, rz};
+        glm::vec4 v(vec.x, vec.y, vec.z, 0.0f);  // w=0 -> no translation
+        glm::vec4 r = M * v;
+        return { r.x, r.y, r.z };
     }
 
     [[nodiscard]] FEuler ToEuler() const;
@@ -116,6 +114,28 @@ public:
 
     /** Converts to glm::mat4 for internal use */
     explicit operator glm::mat4() const { return M; }
+
+    void SetBasisX(const FVector3& x)
+    {
+        // set column 0 to (x, 0)
+        M[0][0] = x.x; M[1][0] = x.y; M[2][0] = x.z; M[3][0] = 0.0f;
+    }
+
+    void SetBasisY(const FVector3& y)
+    {
+        M[0][1] = y.x; M[1][1] = y.y; M[2][1] = y.z; M[3][1] = 0.0f;
+    }
+
+    void SetBasisZ(const FVector3& z)
+    {
+        M[0][2] = z.x; M[1][2] = z.y; M[2][2] = z.z; M[3][2] = 0.0f;
+    }
+
+    void ToFloatArray(float out[16]) const
+    {
+        // assuming column-major, straightforward memcpy is fine too:
+        std::memcpy(out, glm::value_ptr(M), sizeof(float) * 16);
+    }
 
     /** Returns a string representation of the matrix */
     [[nodiscard]] std::string ToString() const
