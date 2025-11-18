@@ -103,6 +103,8 @@ JCameraComponent* JActor::GetCameraComponent()
 
 void JActor::Serialize(JsonWriter& writer) const
 {
+    Super::Serialize(writer);
+
     writer.BeginObject();
     writer.Write("name", m_Name);
 
@@ -121,12 +123,13 @@ void JActor::Serialize(JsonWriter& writer) const
         comp->Serialize(writer);
     }
     writer.EndArray();
-
     writer.EndObject();
 }
 
 void JActor::Deserialize(const JsonReader& reader)
 {
+    Super::Deserialize(reader);
+
     m_Name = reader.Read<std::string>("name", "");
 
     // Scene components

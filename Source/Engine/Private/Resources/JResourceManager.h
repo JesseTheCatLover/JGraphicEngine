@@ -157,7 +157,7 @@ public:
             }
         }
 
-        const uint64_t id = createdResource->GetID();
+        const uint64_t id = createdResource->GetRuntimeID();
 
         // Add to cache
         {

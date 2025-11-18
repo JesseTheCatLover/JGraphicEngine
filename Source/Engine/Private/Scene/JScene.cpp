@@ -42,8 +42,10 @@ void JScene::Destroy()
         actor->Destroy();
 }
 
-void JScene::Serialize(class JsonWriter &writer) const
+void JScene::Serialize(JsonWriter &writer) const
 {
+    Super::Serialize(writer);
+
     writer.BeginObject(); // root object
 
     writer.Write("name", m_Name);
@@ -52,21 +54,16 @@ void JScene::Serialize(class JsonWriter &writer) const
     writer.BeginArray("actors");
     for (const auto& actor : m_Actors)
     {
-        writer.BeginObject();
-        writer.Write("id", actor->GetRuntimeID());
-        writer.Write("vector_index", actor->GetVectorIndex());
-        writer.Write("name", actor->GetName());
-        writer.WriteVect3("position", actor->GetActorPosition());
-        writer.WriteRotator("rotation", actor->GetActorRotation());
-        writer.EndObject();
+        actor->Serialize(writer);
     }
     writer.EndArray();
-
     writer.EndObject();
 }
 
 void JScene::Deserialize(const class JsonReader &reader)
 {
+    Super::Deserialize(reader);
+
     m_Name = reader.Read("name", std::string("Unnamed"));
 
     m_Actors.clear();

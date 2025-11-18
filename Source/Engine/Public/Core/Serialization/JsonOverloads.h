@@ -17,7 +17,8 @@
  * @brief Defines serialization overloads for engine math types.
  *
  * These `to_json()` and `from_json()` functions allow nlohmann::json
- * to automatically serialize and deserialize JEngine’s core math types.
+ * (and nlohmann::ordered_json) to automatically serialize and deserialize
+ * JEngine’s core math types.
  *
  * They enable generic code such as:
  * @code
@@ -31,12 +32,17 @@
 // FVector2
 // =========================================================
 
-inline void to_json(nlohmann::json& j, const FVector2& v)
+template <typename BasicJsonType>
+inline void to_json(BasicJsonType& j, const FVector2& v)
 {
-    j = nlohmann::json{{"x", v.x}, {"y", v.y}};
+    j = BasicJsonType{
+        {"x", v.x},
+        {"y", v.y}
+    };
 }
 
-inline void from_json(const nlohmann::json& j, FVector2& v)
+template <typename BasicJsonType>
+inline void from_json(const BasicJsonType& j, FVector2& v)
 {
     j.at("x").get_to(v.x);
     j.at("y").get_to(v.y);
@@ -46,12 +52,18 @@ inline void from_json(const nlohmann::json& j, FVector2& v)
 // FVector3
 // =========================================================
 
-inline void to_json(nlohmann::json& j, const FVector3& v)
+template <typename BasicJsonType>
+inline void to_json(BasicJsonType& j, const FVector3& v)
 {
-    j = nlohmann::json{{"x", v.x}, {"y", v.y}, {"z", v.z}};
+    j = BasicJsonType{
+        {"x", v.x},
+        {"y", v.y},
+        {"z", v.z}
+    };
 }
 
-inline void from_json(const nlohmann::json& j, FVector3& v)
+template <typename BasicJsonType>
+inline void from_json(const BasicJsonType& j, FVector3& v)
 {
     j.at("x").get_to(v.x);
     j.at("y").get_to(v.y);
@@ -62,12 +74,19 @@ inline void from_json(const nlohmann::json& j, FVector3& v)
 // FVector4
 // =========================================================
 
-inline void to_json(nlohmann::json& j, const FVector4& v)
+template <typename BasicJsonType>
+inline void to_json(BasicJsonType& j, const FVector4& v)
 {
-    j = nlohmann::json{{"x", v.x}, {"y", v.y}, {"z", v.z}, {"w", v.w}};
+    j = BasicJsonType{
+        {"x", v.x},
+        {"y", v.y},
+        {"z", v.z},
+        {"w", v.w}
+    };
 }
 
-inline void from_json(const nlohmann::json& j, FVector4& v)
+template <typename BasicJsonType>
+inline void from_json(const BasicJsonType& j, FVector4& v)
 {
     j.at("x").get_to(v.x);
     j.at("y").get_to(v.y);
@@ -79,9 +98,10 @@ inline void from_json(const nlohmann::json& j, FVector4& v)
 // FQuat
 // =========================================================
 
-inline void to_json(nlohmann::json& j, const FQuat& q)
+template <typename BasicJsonType>
+inline void to_json(BasicJsonType& j, const FQuat& q)
 {
-    j = nlohmann::json{
+    j = BasicJsonType{
         {"x", q.x()},
         {"y", q.y()},
         {"z", q.z()},
@@ -89,7 +109,8 @@ inline void to_json(nlohmann::json& j, const FQuat& q)
     };
 }
 
-inline void from_json(const nlohmann::json& j, FQuat& q)
+template <typename BasicJsonType>
+inline void from_json(const BasicJsonType& j, FQuat& q)
 {
     float x, y, z, w;
     j.at("x").get_to(x);
@@ -103,16 +124,18 @@ inline void from_json(const nlohmann::json& j, FQuat& q)
 // FRotator (degrees)
 // =========================================================
 
-inline void to_json(nlohmann::json& j, const FRotator& r)
+template <typename BasicJsonType>
+inline void to_json(BasicJsonType& j, const FRotator& r)
 {
-    j = nlohmann::json{
+    j = BasicJsonType{
         {"pitch", r.Pitch},
         {"yaw",   r.Yaw},
         {"roll",  r.Roll}
     };
 }
 
-inline void from_json(const nlohmann::json& j, FRotator& r)
+template <typename BasicJsonType>
+inline void from_json(const BasicJsonType& j, FRotator& r)
 {
     j.at("pitch").get_to(r.Pitch);
     j.at("yaw").get_to(r.Yaw);
@@ -123,16 +146,18 @@ inline void from_json(const nlohmann::json& j, FRotator& r)
 // FEuler (radians)
 // =========================================================
 
-inline void to_json(nlohmann::json& j, const FEuler& e)
+template <typename BasicJsonType>
+inline void to_json(BasicJsonType& j, const FEuler& e)
 {
-    j = nlohmann::json{
+    j = BasicJsonType{
         {"pitch", e.Pitch},
         {"yaw",   e.Yaw},
         {"roll",  e.Roll}
     };
 }
 
-inline void from_json(const nlohmann::json& j, FEuler& e)
+template <typename BasicJsonType>
+inline void from_json(const BasicJsonType& j, FEuler& e)
 {
     j.at("pitch").get_to(e.Pitch);
     j.at("yaw").get_to(e.Yaw);
@@ -143,18 +168,20 @@ inline void from_json(const nlohmann::json& j, FEuler& e)
 // FTransform
 // =========================================================
 
-inline void to_json(nlohmann::json& j, const FTransform& t)
+template <typename BasicJsonType>
+inline void to_json(BasicJsonType& j, const FTransform& t)
 {
-    j = nlohmann::json{
+    j = BasicJsonType{
         {"position", t.GetPosition()},
         {"rotation", t.GetRotation()},
         {"scale",    t.GetScale()}
     };
 }
 
-inline void from_json(const nlohmann::json& j, FTransform& t)
+template <typename BasicJsonType>
+inline void from_json(const BasicJsonType& j, FTransform& t)
 {
-    t.SetPosition(j.at("position").get<FVector3>());
-    t.SetRotation(j.at("rotation").get<FQuat>());
-    t.SetScale(j.at("scale").get<FVector3>());
+    t.SetPosition(j.at("position").template get<FVector3>());
+    t.SetRotation(j.at("rotation").template get<FQuat>());
+    t.SetScale   (j.at("scale").template get<FVector3>());
 }

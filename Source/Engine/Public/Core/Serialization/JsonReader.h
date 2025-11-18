@@ -3,17 +3,21 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <array>
 #include "glm/vec3.hpp"
 #include "glm/vec2.hpp"
 #include "glm/vec4.hpp"
 #include "Core/Math/FMath.h"
 #include <nlohmann/json.hpp>
 
+// Alias for the nlohmann's json backend type
+using JJson = nlohmann::ordered_json;
+
 /**
  * @class JsonReader
  * @brief Lightweight wrapper around nlohmann::json for deserialization.
  *
- * Supports reading nested objects, arrays, and engine-specific types like vectors ecs.
+ * Supports reading nested objects, arrays, and engine-specific types like vectors etc.
  */
 class JsonReader
 {
@@ -22,7 +26,7 @@ public:
     JsonReader() = default;
 
     /** Construct from existing json node (for nested objects) */
-    explicit JsonReader(const nlohmann::json& node) : m_Data(node) {}
+    explicit JsonReader(const JJson& node) : m_Data(node) {}
 
     /** Load JSON from file */
     bool LoadFromFile(const std::string& filePath);
@@ -38,7 +42,7 @@ public:
     template<typename T>
     T ReadNested(const std::string &Key, const T &DefaultValue = T()) const
     {
-        const nlohmann::json *current = &m_Data;
+        const JJson* current = &m_Data;
         size_t start = 0;
         while (start < Key.size())
         {
@@ -59,7 +63,8 @@ public:
         try
         {
             return current->get<T>();
-        } catch (...)
+        }
+        catch (...)
         {
             return DefaultValue;
         }
@@ -105,10 +110,10 @@ public:
     [[nodiscard]] std::vector<JsonReader> GetArray(const std::string& key) const;
 
     /** Access the underlying JSON node (advanced) */
-    const nlohmann::json& GetData() const { return m_Data; }
+    const JJson& GetData() const { return m_Data; }
 
 private:
-    nlohmann::json m_Data;
+    JJson m_Data;
 
     /** Helper: safely read an array of size N into a std::array or glm type */
     template<typename T, size_t N>

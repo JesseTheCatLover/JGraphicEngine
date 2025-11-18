@@ -3,6 +3,7 @@
 #include "Core/Serialization/JsonWriter.h"
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
 void JsonWriter::BeginObject(const std::string& key)
 {
@@ -10,26 +11,26 @@ void JsonWriter::BeginObject(const std::string& key)
     {
         if (key.empty())
         {
-            m_Data = nlohmann::json::object();
+            m_Data = JJson::object();
             m_Stack.push(&m_Data);
         }
         else
         {
-            m_Data[key] = nlohmann::json::object();
+            m_Data[key] = JJson::object();
             m_Stack.push(&m_Data[key]);
         }
     }
     else
     {
-        nlohmann::json& parent = *m_Stack.top();
+        JJson& parent = *m_Stack.top();
         if (key.empty())
         {
-            parent.push_back(nlohmann::json::object());
+            parent.push_back(JJson::object());
             m_Stack.push(&parent.back());
         }
         else
         {
-            parent[key] = nlohmann::json::object();
+            parent[key] = JJson::object();
             m_Stack.push(&parent[key]);
         }
     }
@@ -45,13 +46,13 @@ void JsonWriter::BeginArray(const std::string& key)
 {
     if (m_Stack.empty())
     {
-        m_Data[key] = nlohmann::json::array();
+        m_Data[key] = JJson::array();
         m_Stack.push(&m_Data[key]);
     }
     else
     {
-        nlohmann::json& parent = *m_Stack.top();
-        parent[key] = nlohmann::json::array();
+        JJson& parent = *m_Stack.top();
+        parent[key] = JJson::array();
         m_Stack.push(&parent[key]);
     }
 }
@@ -99,18 +100,18 @@ void JsonWriter::WriteRotator(const std::string& key, const FRotator& rotator)
 
 void JsonWriter::WriteQuat(const std::string& key, const FQuat& quat)
 {
-    (*m_Stack.top())[key] = nlohmann::json::array({
+    (*m_Stack.top())[key] = JJson::array({
         quat.x(), quat.y(), quat.z(), quat.w()
     });
 }
 
 void JsonWriter::WriteTransform(const std::string& key, const FTransform& transform)
 {
-    const FVector3 pos = transform.GetPosition();
-    const FQuat rot = transform.GetRotation();
+    const FVector3 pos   = transform.GetPosition();
+    const FQuat    rot   = transform.GetRotation();
     const FVector3 scale = transform.GetScale();
 
-    nlohmann::json transformObj;
+    JJson transformObj;
     transformObj["position"] = { pos.x, pos.y, pos.z };
     transformObj["rotation"] = { rot.x(), rot.y(), rot.z(), rot.w() };
     transformObj["scale"]    = { scale.x, scale.y, scale.z };
@@ -120,7 +121,7 @@ void JsonWriter::WriteTransform(const std::string& key, const FTransform& transf
 
 // --------------------- Object and array helpers --------------------
 
-void JsonWriter::WriteObject(const std::string& key, const nlohmann::json& object)
+void JsonWriter::WriteObject(const std::string& key, const JJson& object)
 {
     if (m_Stack.empty())
         m_Data[key] = object;
@@ -128,15 +129,15 @@ void JsonWriter::WriteObject(const std::string& key, const nlohmann::json& objec
         (*m_Stack.top())[key] = object;
 }
 
-void JsonWriter::WriteObjectToArray(const std::string& key, const nlohmann::json& object)
+void JsonWriter::WriteObjectToArray(const std::string& key, const JJson& object)
 {
     if (m_Stack.empty())
         return;
 
-    nlohmann::json& current = *m_Stack.top();
+    JJson& current = *m_Stack.top();
 
     if (!current.contains(key) || !current[key].is_array())
-        current[key] = nlohmann::json::array();
+        current[key] = JJson::array();
 
     current[key].push_back(object);
 }
@@ -150,7 +151,7 @@ bool JsonWriter::SaveToFile(const std::string& filePath) const
     if (!out.is_open())
     {
         std::cerr << "[JsonWriter]: Failed to open file: " << filePath
-        << " (directory may not exist or permissions denied)"<< std::endl;
+                  << " (directory may not exist or permissions denied)" << std::endl;
         return false;
     }
 

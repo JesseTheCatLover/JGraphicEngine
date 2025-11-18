@@ -9,15 +9,19 @@ bool JsonReader::LoadFromFile(const std::string& filePath)
     std::ifstream in(filePath);
     if (!in.is_open()) return false;
 
-    try {
+    try
+    {
         in >> m_Data;
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e)
+    {
         std::cerr << "[JsonReader]: Failed to parse JSON: " << e.what() << std::endl;
         return false;
     }
 
     return true;
 }
+
 glm::vec2 JsonReader::ReadVec2(const std::string& key, const glm::vec2& defaultVal) const
 {
     auto arr = ReadArray<float, 2>(key, { defaultVal.x, defaultVal.y });
@@ -104,10 +108,37 @@ FTransform JsonReader::ReadTransform(const std::string& key, const FTransform& d
 
     const auto& obj = m_Data[key];
 
-    FTransform result;
-    result.SetPosition(ReadVector3(obj.contains("position") ? "position" : "", defaultVal.GetPosition()));
-    result.SetRotation(ReadQuat(obj.contains("rotation") ? "rotation" : "", defaultVal.GetRotation()));
-    result.SetScale(ReadVector3(obj.contains("scale") ? "scale" : "", defaultVal.GetScale()));
+    FTransform result = defaultVal;
+
+    // These helper lambdas read from `obj`, not from the root m_Data
+    auto readVec3Local = [&](const char* k, const FVector3& def) -> FVector3
+    {
+        if (!obj.contains(k) || !obj[k].is_array() || obj[k].size() < 3)
+            return def;
+
+        return FVector3(
+            obj[k][0].get<float>(),
+            obj[k][1].get<float>(),
+            obj[k][2].get<float>()
+        );
+    };
+
+    auto readQuatLocal = [&](const char* k, const FQuat& def) -> FQuat
+    {
+        if (!obj.contains(k) || !obj[k].is_array() || obj[k].size() < 4)
+            return def;
+
+        return FQuat(
+            obj[k][0].get<float>(),
+            obj[k][1].get<float>(),
+            obj[k][2].get<float>(),
+            obj[k][3].get<float>()
+        );
+    };
+
+    result.SetPosition(readVec3Local("position", defaultVal.GetPosition()));
+    result.SetRotation(readQuatLocal("rotation", defaultVal.GetRotation()));
+    result.SetScale(readVec3Local("scale", defaultVal.GetScale()));
 
     return result;
 }

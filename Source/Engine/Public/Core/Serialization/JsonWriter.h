@@ -10,9 +10,15 @@
 #include "glm/vec4.hpp"
 #include "Core/Math/FMath.h"
 
+// Alias for the nlohmann's json backend type
+using JJson = nlohmann::ordered_json;
+
 /**
  * @class JsonWriter
  * @brief Lightweight wrapper around nlohmann::json for serialization.
+ *
+ * Uses insertion-ordered JSON (nlohmann::ordered_json) so keys appear
+ * in the order they're written, which is nicer for scene files and diffs.
  *
  * Provides both simple embedding and streaming-style nested JSON support.
  */
@@ -45,24 +51,10 @@ public:
             (*m_Stack.top())[key] = value;
     }
 
-
     // ----------------- glm types -----------------
-    /** @brief Write a glm::vec2 to JSON. */
     void WriteVec2(const std::string& key, const glm::vec2& vec);
-
-    /** @brief Write a glm::vec3 to JSON. */
     void WriteVec3(const std::string& key, const glm::vec3& vec);
-
-    /** @brief Write a glm::vec4 to JSON. */
     void WriteVec4(const std::string& key, const glm::vec4& vec);
-
-    // ----------------- FMath types -----------------
-    //
-    // NOTE: These exist for backward compatibility.
-    // Prefer using `Write("key", value)` directly with JsonOverloads.h support.
-    //
-    // These wrappers simply call the new generic Write() under the hood.
-    //
 
     // ----------------- FMath types -----------------
     void WriteVect2(const std::string& key, const FVector2& vec);
@@ -75,20 +67,20 @@ public:
     // ----------------- Embedding API -----------------
 
     /** @brief Embed a complete JSON object under a key. */
-    void WriteObject(const std::string& key, const nlohmann::json& object);
+    void WriteObject(const std::string& key, const JJson& object);
 
     /** @brief Append a JSON object to an array (creates array if missing). */
-    void WriteObjectToArray(const std::string& key, const nlohmann::json& object);
+    void WriteObjectToArray(const std::string& key, const JJson& object);
 
     /** @brief Get raw JSON reference (advanced usage). */
-    nlohmann::json& GetData() { return m_Data; }
+    JJson& GetData() { return m_Data; }
 
     /** @brief Write JSON to file. */
     bool SaveToFile(const std::string& filePath) const;
 
 private:
-    nlohmann::json m_Data;
+    JJson m_Data;
 
     // Stack of currently active objects/arrays for streaming API
-    std::stack<nlohmann::json*> m_Stack;
+    std::stack<JJson*> m_Stack;
 };

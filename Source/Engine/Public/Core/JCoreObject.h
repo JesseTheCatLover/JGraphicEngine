@@ -3,6 +3,10 @@
 #pragma once
 #include <cstdint>
 #include <cstring>
+
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonWriter.h"
+
 #include "Utilities/UUUID.h"
 
 // TODO: instead of an expensive RTTI we do this for now
@@ -43,10 +47,6 @@ public:
     // Unique ID across all save/load sessions
     [[nodiscard]] const std::string& GetUUID() const { return m_UUID; }
 
-    // Serialization hooks
-    virtual void Serialize(class JsonWriter& writer) const = 0;
-    virtual void Deserialize(const class JsonReader& reader) = 0;
-
 protected:
     JCoreObject()
         : m_ID(++m_NextID)
@@ -54,9 +54,28 @@ protected:
         m_UUID = UUUID::GenerateUUID();
     }
 
+    // Serialization hooks
+    virtual void Serialize(class JsonWriter& writer) const {}
+    virtual void Deserialize(const class JsonReader& reader) {}
+
 private:
     uint64_t m_ID; // runtime-only ID
     std::string m_UUID; // serialized stable and unique ID
 
     inline static uint64_t m_NextID = 0; // global counter
+
+    void SerializeJObject(class JsonWriter& writer) const
+    {
+        writer.BeginObject("test");
+        writer.Write("uuid", m_UUID);
+        writer.EndObject();
+
+        Serialize(writer);
+    }
+    void DeserializeJObject(const class JsonReader& reader)
+    {
+        m_UUID = reader.Read("uuid", m_UUID);
+
+        Deserialize(reader);
+    }
 };
