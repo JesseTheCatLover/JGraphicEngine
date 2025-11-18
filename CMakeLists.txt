@@ -23,18 +23,24 @@ FetchContent_Declare(
 
 FetchContent_Declare(
         glm
-        GIT_TAG cmake-fix
+        GIT_TAG CMakeVersionFix
         GIT_SHALLOW TRUE
-        GIT_REPOSITORY https://github.com/Saman-Safaei-Dev/glm.git
+        GIT_REPOSITORY https://github.com/JesseTheCatLover/glm.git
 )
 
 FetchContent_Declare(
         json
-        GIT_TAG v3.11.3 # pick latest
+        GIT_TAG v3.11.3
         GIT_REPOSITORY https://github.com/nlohmann/json.git
 )
 
-FetchContent_MakeAvailable(glfw assimp glm json)
+FetchContent_Declare(
+        rttr
+        GIT_TAG v0.9.6
+        GIT_REPOSITORY https://github.com/rttrorg/rttr.git
+)
+
+FetchContent_MakeAvailable(glfw assimp glm json rttr)
 
 # Add submodules
 # --- ThirdParty libraries ---
