@@ -53,7 +53,7 @@ void JScene::Serialize(class JsonWriter &writer) const
     for (const auto& actor : m_Actors)
     {
         writer.BeginObject();
-        writer.Write("id", actor->GetID());
+        writer.Write("id", actor->GetRuntimeID());
         writer.Write("vector_index", actor->GetVectorIndex());
         writer.Write("name", actor->GetName());
         writer.WriteVect3("position", actor->GetActorPosition());
@@ -76,7 +76,7 @@ void JScene::Deserialize(const class JsonReader &reader)
     for (const auto& actorReader : actorsArray)
     {
         auto actor = std::make_unique<JActor>();
-        actor->SetID(actorReader.Read("id", 0));
+        actor->SetRuntimeID(actorReader.Read("id", 0));
         actor->SetVectorIndex(actorReader.Read("vector_index", 0));
         actor->SetName(actorReader.Read("name", std::string("Actor")));
 
@@ -101,7 +101,7 @@ void JScene::SetName(const std::string &name)
 void JScene::AddActorToList(std::unique_ptr<JActor> actor)
 {
     actor->SetVectorIndex(m_Actors.size()); // track index
-    m_ActorsByID[actor->GetID()] = actor.get();
+    m_ActorsByID[actor->GetRuntimeID()] = actor.get();
     m_Actors.push_back(std::move(actor));
 }
 
@@ -114,7 +114,7 @@ JActor* JScene::FindActorByID(unsigned int id)
 bool JScene::RemoveActor(JActor *actorPtr)
 {
     if(!actorPtr) return false;
-    return RemoveActor(actorPtr->GetID());
+    return RemoveActor(actorPtr->GetRuntimeID());
 }
 
 bool JScene::RemoveActor(unsigned int id)

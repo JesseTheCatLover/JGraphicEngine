@@ -151,7 +151,7 @@ void JSceneComponent::SerializeProperties(JsonWriter& writer) const
     }
 
     // Serialize parent reference
-    writer.Write("parent_id", m_Parent ? m_Parent->GetID() : 0);
+    writer.Write("parent_id", m_Parent ? m_Parent->GetRuntimeID() : 0);
 }
 
 void JSceneComponent::DeserializeProperties(const JsonReader& reader)

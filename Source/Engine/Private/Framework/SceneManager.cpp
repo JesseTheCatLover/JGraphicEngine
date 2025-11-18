@@ -20,7 +20,7 @@ bool SceneManager::RemoveActor(JActor *actorPtr)
     if (!m_ActiveScene || !actorPtr) return false;
 
     if (OnActorRemoving) OnActorRemoving(actorPtr);
-    unsigned int id = actorPtr->GetID();
+    unsigned int id = actorPtr->GetRuntimeID();
     bool removed = m_ActiveScene->RemoveActor(actorPtr);
     if (removed && OnActorRemoved) OnActorRemoved(id);
     return removed;

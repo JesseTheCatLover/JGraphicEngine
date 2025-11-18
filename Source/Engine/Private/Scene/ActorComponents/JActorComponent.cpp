@@ -23,7 +23,7 @@ void JActorComponent::Serialize(JsonWriter &writer) const
 {
     writer.BeginObject();
     writer.Write("type", GetClassTypeName());
-    writer.Write("id", GetID());
+    writer.Write("id", GetRuntimeID());
 
     SerializeProperties(writer);
 

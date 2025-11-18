@@ -3,6 +3,7 @@
 #pragma once
 #include <cstdint>
 #include <cstring>
+#include "Utilities/UUUID.h"
 
 // TODO: instead of an expensive RTTI we do this for now
 // Helper macros to pick the first argument if given, otherwise default
@@ -35,10 +36,12 @@ public:
         return std::strcmp(GetClassTypeName(), T::StaticTypeName()) == 0;
     }
 
-    // Every core object has a unique ID
-    uint64_t GetID() const { return m_ID; }
+    // Every core object had a runtime ID for fast runtime lookup
+    [[nodiscard]] uint64_t GetRuntimeID() const { return m_ID; }
+    void SetRuntimeID(const uint64_t id) { m_ID = id; }
 
-    void SetID(const uint64_t id) { m_ID = id; }
+    // Unique ID across all save/load sessions
+    [[nodiscard]] const std::string& GetUUID() const { return m_UUID; }
 
     // Serialization hooks
     virtual void Serialize(class JsonWriter& writer) const = 0;
@@ -46,9 +49,14 @@ public:
 
 protected:
     JCoreObject()
-        : m_ID(++m_NextID) {} // assign unique ID at construction
+        : m_ID(++m_NextID)
+    { // assign unique ID at construction
+        m_UUID = UUUID::GenerateUUID();
+    }
 
 private:
-    uint64_t m_ID; // engine-unique object ID
+    uint64_t m_ID; // runtime-only ID
+    std::string m_UUID; // serialized stable and unique ID
+
     inline static uint64_t m_NextID = 0; // global counter
 };

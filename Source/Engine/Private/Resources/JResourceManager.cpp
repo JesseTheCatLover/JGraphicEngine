@@ -48,7 +48,7 @@ bool JResourceManager::Unload(const std::string& key)
 
     BasePtr ptr = it->second.ptr;
     m_ByKey.erase(it);
-    m_ByID.erase(ptr->GetID());
+    m_ByID.erase(ptr->GetRuntimeID());
 
     // If the cache held the last strong ref, allow GPU teardown.
     if (ptr.use_count() == 1)
@@ -69,7 +69,7 @@ size_t JResourceManager::UnloadUnused()
         {
             if (it->second.ptr.use_count() == 1)
             {
-                m_ByID.erase(it->second.ptr->GetID());
+                m_ByID.erase(it->second.ptr->GetRuntimeID());
                 toDestroy.push_back(it->second.ptr);
                 it = m_ByKey.erase(it);
             }

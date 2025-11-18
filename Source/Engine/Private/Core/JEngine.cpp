@@ -194,6 +194,29 @@ void JEngine::RunMainLoop()
 
         ProcessInputs(win, m_State.GetDeltaTime());
 
+        auto actors = JEngine::Get().GetSceneManager()->FindActorsOfType<JActor>();
+        int amogus = 0;
+        if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
+        {
+            for (auto& actor : actors)
+            {
+                auto a = actor->GetComponent<JModelComponent>();
+                if (a)
+                    amogus++;
+            }
+        }
+        std::cout << "there are " << actors.size() << " sussy actors." << std::endl;
+        std::cerr << "There are " << amogus << " amoguses on the actors." << std::endl;
+
+        auto* win = static_cast<GLFWwindow*>(m_PlatformSurface
+                                             ? m_PlatformSurface->GetNativeHandle()
+                                             : nullptr);
+        if (glfwGetKey(win, GLFW_KEY_G) == GLFW_PRESS)
+        {
+            std::cout << actors[0]->GetName() << std::endl;
+            actors[0]->Destroy();
+        }
+
         Tick();
         m_Renderer->BeginScene();
         FRenderContext ctx{};
