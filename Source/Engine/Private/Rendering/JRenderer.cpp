@@ -50,6 +50,11 @@ void JRenderer::BeginScene()
 void JRenderer::EndScene()
 {
     auto camera = JEngine::Get().GetState().GetCamera();
+    if (!camera)
+    {
+        std::cerr << "[JRenderer]: EndScene called with null camera" << std::endl;
+        return;
+    }
     m_ViewMat = camera->GetViewMatrix();
     m_ProjMat = camera->GetProjectionMatrix();
     RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.opaque, m_ViewMat, camera->GetNearPlane(), camera->GetFarPlane());

@@ -80,19 +80,19 @@ public:
 
     /**
      * @brief Find an actor by ID in the active scene.
-     * @param id Unique actor ID
+     * @param id Unique runtime actor ID
      * @return Pointer to actor, or nullptr if not found or no active scene
      */
-    JActor *FindActorByID(unsigned int id) const;
+    JActor *FindActorByID(uint64_t id) const;
 
     /**
      * @brief Find an actor of type T by ID in the active scene.
      * @tparam T Actor type (must derive from JActor)
-     * @param id Unique actor ID
+     * @param id Unique runtime actor ID
      * @return Pointer to actor of type T, or nullptr if not found or wrong type
      */
     template<typename T>
-    T *FindActorByID(unsigned int id)
+    T *FindActorByID(uint64_t id)
     {
         if (!m_ActiveScene) return nullptr;
         return m_ActiveScene->FindActorByID<T>(id);
@@ -123,18 +123,25 @@ public:
     }
 
     /**
-     * @brief Remove an actor by pointer in the active scene.
+     * @brief Request destroy on an actor by pointer in the active scene.
      * @param actorPtr Pointer to the actor to remove
-     * @return true if removed successfully, false otherwise
+     * @return False, if already requested; True if requested for the first time.
      */
-    bool RemoveActor(JActor* actorPtr);
+    bool DestroyActor(JActor* actorPtr);
 
     /**
-     * @brief Remove an actor by ID in the active scene.
-     * @param id Unique actor ID
-     * @return true if removed successfully, false otherwise
+     * @brief Request destroy on an actor by ID in the active scene.
+     * @param id Unique runtime actor ID
+     * @return False, if already requested; True if requested for the first time.
      */
-    bool RemoveActor(unsigned int id);
+    bool DestroyActor(uint64_t id);
+
+    /**
+     * @brief Immediately destroys an actor by runtime ID. Editor preferred. Not suitable for general gameplay.
+     * @param id Unique runtime actor ID
+     * @return False, if already requested; True if requested for the first time.
+     */
+    bool ImmediateDestroyActor(uint64_t id);
 
     // -------------------- Scene Runtime API --------------------
 

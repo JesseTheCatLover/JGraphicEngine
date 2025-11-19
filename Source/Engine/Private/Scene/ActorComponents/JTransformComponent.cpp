@@ -5,7 +5,7 @@
 #include "Core/Serialization/JsonReader.h"
 #include "Core/Serialization/JsonWriter.h"
 
-void JTransformComponent::SerializeProperties(JsonWriter& writer) const
+void JTransformComponent::Serialize(JsonWriter &writer) const
 {
     writer.BeginObject("transform");
     writer.Write("position", m_LocalTransform.GetPosition());
@@ -14,7 +14,7 @@ void JTransformComponent::SerializeProperties(JsonWriter& writer) const
     writer.EndObject();
 }
 
-void JTransformComponent::DeserializeProperties(const JsonReader& reader)
+void JTransformComponent::Deserialize(const JsonReader &reader)
 {
     auto transformReader = reader.GetObject("transform");
 

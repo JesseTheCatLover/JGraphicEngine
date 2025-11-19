@@ -51,11 +51,17 @@ void JActor::BeginPlay()
 
 void JActor::Tick(float deltaTime)
 {
-    // Tick all components
+    // Tick all components that are not pending destroy
     for (auto& comp : m_ActorComponents)
-        comp->Tick(deltaTime);
+        if (comp && !comp->IsPendingDestroy())
+            comp->Tick(deltaTime);
+
     for (auto& comp : m_SceneComponents)
-        comp->Tick(deltaTime);
+        if (comp && !comp->IsPendingDestroy())
+            comp->Tick(deltaTime);
+
+    // After ticking, clean up destroyed components
+    FlushDestroyedComponents();
 }
 
 void JActor::EndPlay()
@@ -67,11 +73,90 @@ void JActor::EndPlay()
         comp->EndPlay();
 }
 
-void JActor::Destroy()
+bool JActor::DestroyActor()
 {
+    if (m_bPendingDestroy)
+        return false; // already requested
+
+    m_bPendingDestroy = true;
+    return true;
+}
+
+void JActor::ExecuteDestroy()
+{
+    for (auto& comp : m_ActorComponents)
+    {
+        if (!comp) continue;
+        comp->EndPlay();
+        comp->OnDestroy();
+    }
+
+    for (auto& comp : m_SceneComponents)
+    {
+        if (!comp) continue;
+
+        comp->EndPlay();
+        comp->OnDestroy();
+    }
+
     m_ActorComponents.clear();
     m_SceneComponents.clear();
     m_RootComponent.reset();
+}
+
+void JActor::FlushDestroyedComponents()
+{
+    // Actor components
+    for (size_t i = 0; i < m_ActorComponents.size(); )
+    {
+        auto& comp = m_ActorComponents[i];
+        if (!comp || comp->IsPendingDestroy())
+        {
+            // Give it a chance to clean up
+            comp->EndPlay();
+            comp->OnDestroy();
+
+            // Drop from list (swap + pop)
+            if (i != m_ActorComponents.size() - 1)
+                std::swap(m_ActorComponents[i], m_ActorComponents.back());
+
+            m_ActorComponents.pop_back();
+            // do NOT increment i; we just swapped a new element into this index
+        }
+        else
+        {
+            ++i;
+        }
+    }
+
+    // Scene components
+    for (size_t i = 0; i < m_SceneComponents.size(); )
+    {
+        auto& comp = m_SceneComponents[i];
+        if (!comp || comp->IsPendingDestroy())
+        {
+            // EndPlay for safety
+            comp->EndPlay();
+            comp->OnDestroy();
+
+            // If it has a parent, detach from it
+            if (auto* sceneComp = comp.get())
+            {
+                sceneComp->UnlinkFromParent();
+            }
+
+            // Swap + pop from actor's list
+            if (i != m_SceneComponents.size() - 1)
+                std::swap(m_SceneComponents[i], m_SceneComponents.back());
+
+            m_SceneComponents.pop_back();
+            // DO NOT increment i
+        }
+        else
+        {
+            ++i;
+        }
+    }
 }
 
 void JActor::GatherRenderables(IRenderSubmission &submission, const FRenderContext &ctx) const // TODO: This is temp
@@ -120,7 +205,7 @@ void JActor::Serialize(JsonWriter& writer) const
     writer.BeginArray("scene_components");
     for (auto& comp : m_SceneComponents)
     {
-        comp->Serialize(writer);
+        //comp->Serialize(writer);
     }
     writer.EndArray();
     writer.EndObject();
@@ -145,7 +230,7 @@ void JActor::Deserialize(const JsonReader& reader)
             {
                 auto* comp = new JModelComponent();
                 comp->SetOwnerActor(this);
-                comp->Deserialize(compJson);
+                //comp->Deserialize(compJson);
                 m_SceneComponents.push_back(TSharedPtr<JSceneComponent>(comp));
 
                 // Also assign to ModelComponent pointer for convenience

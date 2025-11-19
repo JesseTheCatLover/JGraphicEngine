@@ -99,9 +99,9 @@ void JCameraComponent::LookAt(const FVector3& worldTarget, const FVector3& world
     m_bViewDirty = true;
 }
 
-void JCameraComponent::SerializeProperties(JsonWriter& writer) const
+void JCameraComponent::Serialize(JsonWriter& writer) const
 {
-    JSceneComponent::SerializeProperties(writer);
+    JSceneComponent::Serialize(writer);
 
     writer.Write("projection_type", (int)m_ProjectionType);
     writer.Write("fov_degrees", m_FOV);
@@ -111,9 +111,9 @@ void JCameraComponent::SerializeProperties(JsonWriter& writer) const
     writer.Write("ortho_half_height", m_OrthoHalfHeight);
 }
 
-void JCameraComponent::DeserializeProperties(const JsonReader& reader)
+void JCameraComponent::Deserialize(const JsonReader& reader)
 {
-    JSceneComponent::DeserializeProperties(reader);
+    JSceneComponent::Deserialize(reader);
 
     int projType = reader.Read("projection_type", (int)EProjectionType::Perspective);
     m_ProjectionType = static_cast<EProjectionType>(projType);

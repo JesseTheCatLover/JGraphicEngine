@@ -29,8 +29,8 @@ public:
     void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const override;
 
 protected:
-    void SerializeProperties(class JsonWriter& writer) const override;
-    void DeserializeProperties(const class JsonReader& reader) override;
+    void Serialize(class JsonWriter& writer) const override;
+    void Deserialize(const class JsonReader& reader) override;
 
 private:
     std::string m_ModelKey;

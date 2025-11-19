@@ -16,7 +16,7 @@
  *
  * JScene is responsible for owning, updating, and managing actors.
  * Actors are stored internally as unique pointers for lifetime management,
- * while a fast lookup table (ID → pointer) is used for quick access.
+ * while a fast lookup table (ID -> pointer) is used for quick access.
  *
  * Scenes also provide events for actor creation and removal, allowing
  * editor tools or gameplay systems to react dynamically.
@@ -71,7 +71,12 @@ private:
     /**
      * @brief Completely destroys the scene and its actors.
      */
-    virtual void Destroy();
+    virtual void DestroyScene();
+
+    /**
+     * @brief Private helper, to execute destroy on pending actors.
+     */
+    void FlushDestroyedActors();
 
     /**
      * @brief Internal helper that registers an actor into the scene’s storage.
@@ -115,10 +120,10 @@ private:
 
     /**
      * @brief Removes an actor from the scene by ID.
-     * @param id The unique ID of the actor to remove.
+     * @param id The unique runtime ID of the actor to remove.
      * @return true if removed successfully, false otherwise.
      */
-    bool RemoveActor(unsigned int id);
+    bool RemoveActor(uint64_t id);
 
 public:
     void GatherRenderables(IRenderSubmission& submission, const FRenderContext& baseCtx) const; // TODO: Temp here
@@ -130,19 +135,19 @@ public:
 
     /**
      * @brief Finds an actor by its unique ID.
-     * @param id The unique ID of the actor.
+     * @param id The unique runtime ID of the actor.
      * @return Pointer to the actor, or nullptr if not found.
      */
-    JActor* FindActorByID(unsigned int id);
+    JActor* FindActorByID(uint64_t id);
 
     /**
      * @brief Finds an actor of type T by ID and casts automatically.
      * @tparam T Must be derived from JActor.
-     * @param id The unique ID of the actor.
+     * @param id The unique runtime ID of the actor.
      * @return Pointer to the actor of type T, or nullptr if not found or wrong type.
      */
     template<typename T>
-    T* FindActorByID(unsigned int id)
+    T* FindActorByID(uint64_t id)
     {
         static_assert(std::is_base_of<JActor, T>::value, "T must derive from JActor");
         auto it = m_ActorsByID.find(id);

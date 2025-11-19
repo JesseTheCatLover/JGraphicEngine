@@ -6,6 +6,15 @@
 #include <algorithm>
 #include "Scene/JActor.h"
 
+void JSceneComponent::UnlinkFromParent()
+{
+    if (!m_Parent) return;
+
+    auto& siblings = m_Parent->m_Children;
+    siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+    m_Parent = nullptr;
+}
+
 void JSceneComponent::MarkWorldDirty()
 {
     if (!m_WorldDirty)
@@ -22,7 +31,7 @@ void JSceneComponent::AttachToComponent(JSceneComponent* parent)
     if (parent && parent->m_Parent == this) return; // avoid immediate cycle
 
     if (m_Parent)
-        Detach();
+        UnlinkFromParent();
 
     m_Parent = parent;
     if (m_Parent)
@@ -46,6 +55,20 @@ void JSceneComponent::Detach()
     {
         m_Parent = nullptr; // truly detached
     }
+}
+
+bool JSceneComponent::DestroyComponent()
+{
+    if (m_bPendingDestroy)
+        return false;
+
+    m_bPendingDestroy = true;
+
+    for (auto* child : m_Children)
+        if (child)
+            child->DestroyComponent();
+
+    return true;
 }
 
 FTransform JSceneComponent::GetWorldTransform() const
@@ -137,10 +160,35 @@ void JSceneComponent::OnAttachment()
     JTransformComponent::OnAttachment();
 }
 
-void JSceneComponent::SerializeProperties(JsonWriter& writer) const
+void JSceneComponent::BeginPlay()
+{
+    JTransformComponent::BeginPlay();
+}
+
+void JSceneComponent::EndPlay()
+{
+    JTransformComponent::EndPlay();
+}
+
+void JSceneComponent::OnDestroy()
+{
+    JTransformComponent::OnDestroy();
+}
+
+void JSceneComponent::Tick(float deltaTime)
+{
+    JTransformComponent::Tick(deltaTime);
+}
+
+void JSceneComponent::Initialize()
+{
+    JTransformComponent::Initialize();
+}
+
+void JSceneComponent::Serialize(JsonWriter &writer) const
 {
     // Serialize local transform
-    JTransformComponent::SerializeProperties(writer);
+    JTransformComponent::Serialize(writer);
 
     // Serialize all children
     for (auto* child : m_Children)
@@ -154,10 +202,10 @@ void JSceneComponent::SerializeProperties(JsonWriter& writer) const
     writer.Write("parent_id", m_Parent ? m_Parent->GetRuntimeID() : 0);
 }
 
-void JSceneComponent::DeserializeProperties(const JsonReader& reader)
+void JSceneComponent::Deserialize(const JsonReader &reader)
 {
     // Deserialize local transform
-    JTransformComponent::DeserializeProperties(reader);
+    JTransformComponent::Deserialize(reader);
 
     // Deserialize children
     if (reader.GetData().contains("children"))

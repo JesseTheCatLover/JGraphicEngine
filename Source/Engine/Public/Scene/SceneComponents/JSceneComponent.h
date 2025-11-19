@@ -18,6 +18,20 @@ class JSceneComponent : public JTransformComponent
 {
     DECLARE_JOBJECT(JSceneComponent, JTransformComponent)
 
+private:
+    friend class JActor;
+
+    /**
+     * @brief Private helper to detach this component from its parent without reparenting it to the actor's root.
+     * Making it a non-owned component.
+     *
+     * After calling this:
+     *  - The parent will no longer reference this component.
+     *  - This component will not belong to any hierarchy.
+     *  - Children remain linked to this component
+     */
+    void UnlinkFromParent();
+
 protected:
     // Hierarchy
     JSceneComponent* m_Parent = nullptr; ///< Parent component in the hierarchy
@@ -40,9 +54,12 @@ public:
     void AttachToComponent(JSceneComponent* parent);
 
     /**
-     * @brief Detach this component from its current parent.
+     * @brief Detach this component from its current scene component parent,
+     * and re attach it to the actor's root component.
      */
     void Detach();
+
+    bool DestroyComponent() final;
 
     /**
      * @brief Get the parent of this component.
@@ -91,9 +108,20 @@ public:
     [[nodiscard]] FEuler GetWorldRotationAsEuler() const { return GetWorldTransform().GetRotation().ToEuler(); }
 
     /**
- * @brief Set world position, adjusting local transform accordingly.
- */
+    * @brief Set world position, adjusting local transform accordingly.
+    */
     void SetWorldPosition(const FVector3& worldPosition);
+
+    /**
+     * @brief Updates the world-space position of the component.
+     * @param x The new world X position.
+     * @param y The new world Y position.
+     * @param z The new world Z position.
+     */
+    void SetWorldPosition(float x, float y, float z)
+    {
+        SetWorldPosition(FVector3(x, y, z));
+    }
 
     /**
      * @brief Set world rotation (as quaternion), adjusting local transform accordingly.
@@ -128,10 +156,19 @@ protected:
         MarkWorldDirty();
     }
 
-    /** @brief Serialize component-specific properties, including transform and hierarchy. */
-    void SerializeProperties(JsonWriter& writer) const override;
+    void BeginPlay() override;
 
-    /** @brief Deserialize component-specific properties, including transform and hierarchy. */
-    void DeserializeProperties(const JsonReader& reader) override;
+    void EndPlay() override;
 
+    void OnDestroy() override;
+
+public:
+    void Tick(float deltaTime) override;
+
+protected:
+    void Initialize() override;
+
+    void Serialize(JsonWriter &writer) const override;
+
+    void Deserialize(const JsonReader &reader) override;
 };

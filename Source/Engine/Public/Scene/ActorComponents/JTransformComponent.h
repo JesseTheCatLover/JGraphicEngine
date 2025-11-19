@@ -42,6 +42,17 @@ public:
         OnLocalTransformChanged();
     }
 
+    /**
+     * @brief Updates the local-space position of the component.
+     * @param x The new local X position.
+     * @param y The new local Y position.
+     * @param z The new local Z position.
+     */
+    void SetLocalPosition(float x, float y, float z)
+    {
+        SetLocalPosition(FVector3(x, y, z));
+    }
+
     //==================================================
     // Rotation
     //==================================================
@@ -133,6 +144,8 @@ public:
         OnLocalTransformChanged();
     }
 
+    void Tick(float deltaTime) override {}
+
 protected:
     /**
      * @brief Called whenever the local transform changes (position, rotation, or scale).
@@ -142,9 +155,11 @@ protected:
      */
     virtual void OnLocalTransformChanged() {}
 
-    /** @brief Serializes this component’s properties into JSON. */
-    void SerializeProperties(JsonWriter& writer) const override;
+    void OnAttachment() override {}
 
-    /** @brief Deserializes this component’s properties from JSON. */
-    void DeserializeProperties(const JsonReader& reader) override;
+    void Initialize() override {}
+
+    void Serialize(JsonWriter &writer) const override;
+
+    void Deserialize(const JsonReader &reader) override;
 };

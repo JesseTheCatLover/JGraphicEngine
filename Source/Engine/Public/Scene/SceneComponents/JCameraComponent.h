@@ -112,6 +112,6 @@ protected:
     }
 
     // Serialization
-    void SerializeProperties(JsonWriter& writer) const override;
-    void DeserializeProperties(const JsonReader& reader) override;
+    void Serialize(JsonWriter& writer) const override;
+    void Deserialize(const JsonReader& reader) override;
 };

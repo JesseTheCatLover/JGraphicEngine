@@ -49,16 +49,16 @@ void JModelComponent::GatherProxies(IRenderSubmission& submission,
     }
 }
 
-void JModelComponent::SerializeProperties(JsonWriter& writer) const
+void JModelComponent::Serialize(JsonWriter& writer) const
 {
-    Super::SerializeProperties(writer);
+    Super::Serialize(writer);
     writer.Write("model_key", m_ModelKey);
     writer.Write("shader_id", m_Shader.id);
 }
 
-void JModelComponent::DeserializeProperties(const JsonReader& reader)
+void JModelComponent::Deserialize(const JsonReader& reader)
 {
-    Super::DeserializeProperties(reader);
+    Super::Deserialize(reader);
     m_ModelKey = reader.Read("model_key", std::string{});
     if (!m_ModelKey.empty())
         m_Model = JResourceManager::Get().Load<JModelResource>(m_ModelKey, m_ModelKey);

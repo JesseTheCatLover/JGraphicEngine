@@ -9,29 +9,48 @@
 #include "Core/Serialization/JsonReader.h"
 #include "Core/Serialization/JsonWriter.h"
 
-JActor* SceneManager::FindActorByID(unsigned int id) const
+JActor* SceneManager::FindActorByID(uint64_t id) const
 {
     if(!m_ActiveScene) return nullptr;
     return m_ActiveScene->FindActorByID(id);
 }
 
-bool SceneManager::RemoveActor(JActor *actorPtr)
+bool SceneManager::DestroyActor(JActor *actorPtr)
 {
-    if (!m_ActiveScene || !actorPtr) return false;
+    if (!m_ActiveScene || !actorPtr)
+        return false;
 
-    if (OnActorRemoving) OnActorRemoving(actorPtr);
-    unsigned int id = actorPtr->GetRuntimeID();
-    bool removed = m_ActiveScene->RemoveActor(actorPtr);
-    if (removed && OnActorRemoved) OnActorRemoved(id);
-    return removed;
+    if (OnActorRemoving)
+        OnActorRemoving(actorPtr);
+
+    // Only mark this actor as pending destroy.
+    // JScene will clean it up in FlushDestroyedActors().
+    return actorPtr->DestroyActor();
 }
 
-bool SceneManager::RemoveActor(unsigned int id)
+bool SceneManager::DestroyActor(uint64_t id)
 {
-    if (!m_ActiveScene) return false;
-    JActor* actor = m_ActiveScene->FindActorByID(id);
-    if (!actor) return false;
-    return RemoveActor(actor);
+    if (!m_ActiveScene)
+        return false;
+
+    JActor* actorPtr = m_ActiveScene->FindActorByID(id);
+    return DestroyActor(actorPtr);
+}
+
+bool SceneManager::ImmediateDestroyActor(uint64_t id)
+{
+    if (!m_ActiveScene)
+        return false;
+
+    // First, request destruction (fires OnActorRemoving & pending flag).
+    const bool requested = DestroyActor(id);
+    if (!requested)
+        return false; // no actor / already pending / no active scene
+
+    // Now force immediate cleanup this frame.
+    m_ActiveScene->FlushDestroyedActors();
+
+    return true;
 }
 
 void SceneManager::Tick(float deltaTime)

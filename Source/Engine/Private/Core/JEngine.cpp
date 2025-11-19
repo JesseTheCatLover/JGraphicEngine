@@ -44,14 +44,6 @@ bool JEngine::Run()
         std::cerr << "[JEngine]: Bootstrapping the default scene has failed" << std::endl;
         return false;
     }
-    if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
-    {
-        auto camera = scene->GetCameraComponent();
-        if (camera)
-        {
-            m_State.SetCamera(camera);
-        }
-    }
     RunMainLoop();
     Shutdown();
 
@@ -193,36 +185,20 @@ void JEngine::RunMainLoop()
         UpdateFramebufferSizeContext();
 
         ProcessInputs(win, m_State.GetDeltaTime());
-
-        auto actors = JEngine::Get().GetSceneManager()->FindActorsOfType<JActor>();
-        int amogus = 0;
-        if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
-        {
-            for (auto& actor : actors)
-            {
-                auto a = actor->GetComponent<JModelComponent>();
-                if (a)
-                    amogus++;
-            }
-        }
-        std::cout << "there are " << actors.size() << " sussy actors." << std::endl;
-        std::cerr << "There are " << amogus << " amoguses on the actors." << std::endl;
-
-        auto* win = static_cast<GLFWwindow*>(m_PlatformSurface
-                                             ? m_PlatformSurface->GetNativeHandle()
-                                             : nullptr);
-        if (glfwGetKey(win, GLFW_KEY_G) == GLFW_PRESS)
-        {
-            std::cout << actors[0]->GetName() << std::endl;
-            actors[0]->Destroy();
-        }
-
         Tick();
         m_Renderer->BeginScene();
         FRenderContext ctx{};
         if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
         {
             scene->GatherRenderables(GetRenderer()->GetSubmission(), ctx);
+        }
+        if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
+        {
+            auto camera = scene->GetCameraComponent();
+            if (camera)
+            {
+                m_State.SetCamera(camera);
+            }
         }
         m_Renderer->EndScene();
         
@@ -499,10 +475,23 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     // ---------------------------------------------------------------------
     // 4) Populate scene (temporary, hardcoded)
     // ---------------------------------------------------------------------
-    auto actor1 = spawnModelActor("Dio Mansion",    "Dio Brando/DioMansion.obj");
+    JActor* actor1 = GetSceneManager()->SpawnActor<JActor>();
+
+    actor1->SetName("DioMansion");
+
+    // Attach a model component at runtime to the actor’s root (uses route rendering)
+    auto* modelCompDio = actor1->AddRuntimeComponent<JModelComponent>();
+    modelCompDio->SetModel("Dio Brando/DioMansion.obj");
+
     auto actor2 = spawnModelActor("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
     actor1->SetActorPosition(-5.f, 10.f, 0.f);
     actor2->SetActorPosition(0.f, -10.f, 0.f);
+
+    auto* modelComp = actor1->AddRuntimeComponent<JModelComponent>();
+    modelComp->SetModel("MedievalWindow/MedievalWindow.obj");
+
+    modelComp->AttachToComponent(modelCompDio);
+    modelComp->SetWorldPosition(10.f, 0.f, 2.f);
 
     JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
     cameraActor->SetName("CameraActor");

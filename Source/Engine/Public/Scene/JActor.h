@@ -39,6 +39,11 @@ private:
     std::vector<TSharedPtr<JSceneComponent>> m_SceneComponents; ///< Scene components attached to this actor
     std::vector<TSharedPtr<JActorComponent>> m_ActorComponents; ///< Actor components attached to this actor
 
+    bool m_bPendingDestroy = false;
+    JScene* m_OwningScene = nullptr; // Set by JScene when adding actor
+
+    void FlushDestroyedComponents();
+
     /**
     * @brief Initializes and assigns the root scene component for this actor.
     *
@@ -90,9 +95,20 @@ public:
     virtual void EndPlay();
 
     /**
-     * @brief Completely destroys the actor and its components.
+     * @brief Marks this actor to be destroyed for the next frame.
+     * @return False, if already requested; True if requested for the first time.
      */
-    virtual void Destroy();
+    virtual bool DestroyActor();
+
+    /**
+     * @return True if listed in pending destroy
+     */
+    [[nodiscard]] bool IsPendingDestroy() const { return m_bPendingDestroy; }
+
+    /**
+     * @brief Only called internally from JScene, and completely destroys the actor and its components.
+     */
+    virtual void ExecuteDestroy();
 
     // -------------------- Actor API --------------------
 
@@ -238,7 +254,7 @@ public:
 
     // ------------------- Default Components -------------------
 
-    JModelComponent* ModelComponent;
+    JModelComponent* ModelComponent; // TODO: Should be removed in future
 
     // -------------------- Root & Transform --------------------
 
@@ -247,7 +263,7 @@ public:
 
     // -------------------- Rendering --------------------
 
-    void GatherRenderables(IRenderSubmission& submission, const FRenderContext& ctx) const; // TODO: This is temp
+    void GatherRenderables(IRenderSubmission& submission, const FRenderContext& ctx) const; // TODO: This is temporarily here
 
     JCameraComponent* GetCameraComponent();
 
@@ -260,6 +276,8 @@ public:
 
     [[nodiscard]] std::string GetName() const { return m_Name; }
     void SetName(const std::string& name) { m_Name = name; }
+
+    [[nodiscard]] JScene* GetOwningScene() const { return m_OwningScene; }
 
     [[nodiscard]] size_t GetVectorIndex() const { return m_VectorIndex; }
     void SetVectorIndex(size_t index) { m_VectorIndex = index; }
