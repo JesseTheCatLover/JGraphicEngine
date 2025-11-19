@@ -62,6 +62,10 @@ private:
     */
     void SetupRootComponent();
 
+    /**
+     * @brief Only called internally from JScene, and completely destroys the actor and its components.
+     */
+    virtual void ExecuteDestroy();
 
 public:
     JActor();
@@ -104,11 +108,6 @@ public:
      * @return True if listed in pending destroy
      */
     [[nodiscard]] bool IsPendingDestroy() const { return m_bPendingDestroy; }
-
-    /**
-     * @brief Only called internally from JScene, and completely destroys the actor and its components.
-     */
-    virtual void ExecuteDestroy();
 
     // -------------------- Actor API --------------------
 
