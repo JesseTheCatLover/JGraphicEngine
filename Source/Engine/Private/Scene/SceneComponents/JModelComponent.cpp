@@ -8,10 +8,10 @@
 #include "Resources/GpuResources/JModelResource.h"
 #include "Rendering/RCommandQueue.h"
 
-void JModelComponent::SetModel(const std::string& modelKey)
+void JModelComponent::SetModel(const std::string& assetID)
 {
-    m_ModelKey = modelKey;
-    m_Model = JResourceManager::Get().Load<JModelResource>(modelKey, modelKey);
+    m_ModelKey = assetID;
+    m_Model = JResourceManager::Get().Load<JModelResource>(assetID, assetID);
 }
 
 void JModelComponent::GatherProxies(IRenderSubmission& submission,
@@ -20,7 +20,7 @@ void JModelComponent::GatherProxies(IRenderSubmission& submission,
     if (!IsVisible())
         return;
 
-    auto model = m_Model.lock();
+    auto model = m_Model;
     if (!model)
         return;
 
@@ -51,18 +51,8 @@ void JModelComponent::GatherProxies(IRenderSubmission& submission,
 
 void JModelComponent::Serialize(JsonWriter& writer) const
 {
-    Super::Serialize(writer);
-    writer.Write("model_key", m_ModelKey);
-    writer.Write("shader_id", m_Shader.id);
 }
 
 void JModelComponent::Deserialize(const JsonReader& reader)
 {
-    Super::Deserialize(reader);
-    m_ModelKey = reader.Read("model_key", std::string{});
-    if (!m_ModelKey.empty())
-        m_Model = JResourceManager::Get().Load<JModelResource>(m_ModelKey, m_ModelKey);
-
-    const Rint shaderId = reader.Read("shader_id", Rint{0});
-    m_Shader = shaderId != 0 ? RShaderHandle{ shaderId } : RShaderHandle::Invalid();
 }

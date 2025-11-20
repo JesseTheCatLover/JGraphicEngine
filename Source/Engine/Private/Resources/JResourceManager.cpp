@@ -1,57 +1,43 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Resources/JResourceManager.h"
-#include <algorithm>
-
-/**
- * @brief Converts uppercase ASCII to lowercase.
- */
-static inline char ToLowerASCII(char c)
-{
-    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
-}
 
 void JResourceManager::Shutdown()
 {
     UnloadAll();
 }
 
-std::shared_ptr<JCoreObject> JResourceManager::Get(const std::string& key) const
-{
-    const std::string norm = NormalizeKey(key);
-    std::shared_lock rlock(m_Mutex);
-    auto it = m_ByKey.find(norm);
-    return it == m_ByKey.end() ? nullptr : it->second.ptr;
-}
-
-std::shared_ptr<JCoreObject> JResourceManager::GetByID(uint64_t id) const
+std::shared_ptr<JCoreObject> JResourceManager::Get(const JAssetID& assetId) const
 {
     std::shared_lock rlock(m_Mutex);
-    auto it = m_ByID.find(id);
-    return it == m_ByID.end() ? nullptr : it->second;
+    auto it = m_ByAsset.find(assetId);
+    return it == m_ByAsset.end() ? nullptr : it->second.ptr;
 }
 
-bool JResourceManager::Has(const std::string& key) const
+bool JResourceManager::Has(const JAssetID& assetId) const
 {
-    const std::string norm = NormalizeKey(key);
     std::shared_lock rlock(m_Mutex);
-    return m_ByKey.find(norm) != m_ByKey.end();
+    return m_ByAsset.find(assetId) != m_ByAsset.end();
 }
 
-bool JResourceManager::Unload(const std::string& key)
+bool JResourceManager::Unload(const JAssetID& assetId)
 {
-    const std::string normalizedKey = NormalizeKey(key);
-    std::unique_lock wlock(m_Mutex);
+    BasePtr ptr;
+    bool lastOwner = false;
 
-    auto it = m_ByKey.find(normalizedKey);
-    if (it == m_ByKey.end()) return false;
+    {
+        std::unique_lock wlock(m_Mutex);
+        auto it = m_ByAsset.find(assetId);
+        if (it == m_ByAsset.end())
+            return false;
 
-    BasePtr ptr = it->second.ptr;
-    m_ByKey.erase(it);
-    m_ByID.erase(ptr->GetRuntimeID());
+        // Check refcount before copying out
+        lastOwner = (it->second.ptr.use_count() == 1);
+        ptr = it->second.ptr; // keep alive outside
+        m_ByAsset.erase(it);
+    }
 
-    // If the cache held the last strong ref, allow GPU teardown.
-    if (ptr.use_count() == 1)
+    if (ptr && lastOwner)
     {
         if (auto* gpuResource = dynamic_cast<IGpuResource*>(ptr.get()))
             gpuResource->DestroyGpuResources(m_Device);
@@ -63,15 +49,16 @@ bool JResourceManager::Unload(const std::string& key)
 size_t JResourceManager::UnloadUnused()
 {
     std::vector<BasePtr> toDestroy;
+
     {
         std::unique_lock wlock(m_Mutex);
-        for (auto it = m_ByKey.begin(); it != m_ByKey.end();)
+        for (auto it = m_ByAsset.begin(); it != m_ByAsset.end();)
         {
-            if (it->second.ptr.use_count() == 1)
+            BasePtr& sp = it->second.ptr;
+            if (sp && sp.use_count() == 1) // only manager holds it
             {
-                m_ByID.erase(it->second.ptr->GetRuntimeID());
-                toDestroy.push_back(it->second.ptr);
-                it = m_ByKey.erase(it);
+                toDestroy.push_back(sp);
+                it = m_ByAsset.erase(it);
             }
             else
             {
@@ -80,7 +67,7 @@ size_t JResourceManager::UnloadUnused()
         }
     }
 
-    // Outside the lock
+    // Outside the lock, release GPU caches
     for (auto& pointer : toDestroy)
         if (auto* gpuResource = dynamic_cast<IGpuResource*>(pointer.get()))
             gpuResource->DestroyGpuResources(m_Device);
@@ -93,9 +80,10 @@ void JResourceManager::UnloadAll()
     std::vector<BasePtr> toDestroy;
     {
         std::unique_lock wlock(m_Mutex);
-        for (auto& [_, entry] : m_ByKey) toDestroy.push_back(entry.ptr);
-        m_ByKey.clear();
-        m_ByID.clear();
+        for (auto& [id, entry] : m_ByAsset)
+            toDestroy.push_back(entry.ptr);
+
+        m_ByAsset.clear();
     }
 
     for (auto& p : toDestroy)
@@ -103,9 +91,16 @@ void JResourceManager::UnloadAll()
             gpu->DestroyGpuResources(m_Device);
 }
 
-std::string JResourceManager::NormalizeKey(std::string s)
+void JResourceManager::DebugDump() const
 {
-    std::replace(s.begin(), s.end(), '\\', '/');
-    std::transform(s.begin(), s.end(), s.begin(), ToLowerASCII);
-    return s;
+    std::shared_lock rlock(m_Mutex);
+    std::cout << "[JResourceManager]: Cache list:\n";
+    for (const auto& [id, entry] : m_ByAsset)
+    {
+        if (!entry.ptr) continue;
+        std::cout << " assetId='" << id << "'"
+                  << " type=" << entry.type.name()
+                  << " refs=" << entry.ptr.use_count()
+                  << "\n";
+    }
 }

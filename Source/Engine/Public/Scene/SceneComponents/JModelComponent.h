@@ -1,6 +1,7 @@
 // Copyright 2025 JesseTheCatLover
 
 #pragma once
+#include <iostream>
 #include <string>
 
 #include "Core/Memory/SmartPointers.h"
@@ -15,15 +16,18 @@ class JModelComponent : public JRenderableComponent
 
 public:
     JModelComponent() = default;
-    ~JModelComponent() override = default;
+    ~JModelComponent()
+    {
+        std::cout << "[JModelComponent] dtor, modelKey='" << m_ModelKey << "'\n";
+    }
 
     /// Set by project-relative key; ResourceManager resolves & loads.
-    void SetModel(const std::string& modelKey);
+    void SetModel(const std::string& assetID);
 
     /// Optional: allow overriding the shader used for this model.
     void SetShader(RShaderHandle shader) { m_Shader = shader; }
 
-    TSharedPtr<JModelResource> GetModel() const { return m_Model.lock(); }
+    TSharedPtr<JModelResource> GetModel() const { return m_Model; }
 
     // JRenderableComponent
     void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const override;
@@ -34,6 +38,6 @@ protected:
 
 private:
     std::string m_ModelKey;
-    TWeakPtr<JModelResource> m_Model;
+    TSharedPtr<JModelResource> m_Model;
     RShaderHandle m_Shader{}; // shader used for all submeshes (for now)
 };

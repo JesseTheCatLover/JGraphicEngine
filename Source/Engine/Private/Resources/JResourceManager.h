@@ -14,52 +14,37 @@
 
 #include "IGpuResource.h"
 #include "Core/JCoreObject.h"
+#include "Core/Memory/SmartPointers.h"
 
 class IRenderDevice;
 
 /**
  * @class JResourceManager
- * @brief Centralized manager for loading, caching, and managing resource lifetimes.
+ * @brief Centralized internal manager for loading, caching, and managing runtime resources keyed by asset UUID.
  *
- * This manager handles both CPU and GPU-backed resources derived from JCoreObject.
- * It supports:
- *   - Safe shared ownership via std::shared_ptr.
- *   - Fast lookup by key (e.g., file path or name) or unique object ID.
- *   - Automatic GPU resource setup/teardown using IRenderDevice for types that implement IGpuResource.
+ * JResourceManager guarantees that each asset UUID maps to exactly one runtime
+ * resource instance (e.g., mesh data, textures, audio buffers). The manager owns
+ * a single TSharedPtr for each resource and hands out additional TSharedPtr
+ * references to engine systems and components.
  *
+ * Used only by engine core and components, not exposed to gameplay scripts.
+ * If a resource implements IGpuResource, the manager also drives
+ * CreateGpuResources / DestroyGpuResources based on its lifetime.
  *
- * ### Usage
- * Typical engine usage pattern:
- * @code
- * auto& rm = JResourceManager::Get();
- * rm.SetRenderDevice(&Renderer);
- * auto model = rm.Load<JModelResource>("Models/Tree.fbx");
- * @endcode
- *
- * ### Design Notes
- * - Thread-safe: uses std::shared_mutex for concurrent read/write access.
- * - CPU-only resources:
- *     * Constructed and cached normally; no device interaction.
- * - GPU resources (types implementing IGpuResource):
- *     * Preferred constructor: T(IRenderDevice*, Args...).
- *     * Fallback: T(Args...), then SetRenderDevice(IRenderDevice*).
- *     * After construction, CreateGpuResources(IRenderDevice*) is called.
- *     * On Unload / UnloadUnused / UnloadAll, if the cache holds the last reference,
- *       DestroyGpuResources(IRenderDevice*) is called before release.
- * - Normalized keys ensure cross-platform consistent lookups.
+ * A resource is considered unused when its TSharedPtr use count is equal to 1
+ * (only stored in the manager) and may be reclaimed by UnloadUnused().
  */
 class JResourceManager
 {
+public:
+    using JAssetID = std::string;
+
 private:
     JResourceManager() = default;
     ~JResourceManager() = default;
 
-    //======================================================================
-    // Internal Structures
-    //======================================================================
-
     /** @brief Shared pointer to the base resource type. */
-    using BasePtr = std::shared_ptr<JCoreObject>;
+    using BasePtr = TSharedPtr<JCoreObject>;
 
     /** @brief Internal cache entry. */
     struct Entry
@@ -68,10 +53,9 @@ private:
         std::type_index type{ typeid(void) };
     };
 
-    mutable std::shared_mutex m_Mutex;              ///< Thread-safe read/write access.
-    std::unordered_map<std::string, Entry> m_ByKey; ///< Cache by normalized key.
-    std::unordered_map<uint64_t, BasePtr> m_ByID;   ///< Cache by object ID.
-    IRenderDevice* m_Device = nullptr;              ///< GPU device pointer.
+    mutable std::shared_mutex m_Mutex;                  ///< Thread-safe read/write access.
+    std::unordered_map<JAssetID, Entry> m_ByAsset;      ///< Cache by asset UUID.
+    IRenderDevice* m_Device = nullptr;                  ///< GPU device pointer.
 
 public:
     /** @brief Global singleton accessor. */
@@ -93,47 +77,36 @@ public:
     // Render Device
     //======================================================================
 
-    /**
-     * @brief Assigns the active render device.
-     * This device is passed to resources during creation.
-     */
     void SetRenderDevice(IRenderDevice* device) { m_Device = device; }
-
-    /**
-     * @brief Returns the currently assigned render device.
-     * @return Pointer to IRenderDevice (may be nullptr).
-     */
     [[nodiscard]] IRenderDevice* GetRenderDevice() const { return m_Device; }
 
     //======================================================================
     // Load / Creation
     //======================================================================
 
-     /**
-     * @brief Loads a resource by key or creates it if not already cached.
+    /**
+     * @brief Loads a resource by asset UUID or creates it if not already cached.
      *
      * Construction order:
      *  1. If available, prefers constructor: T(IRenderDevice*, Args...).
-     *  2. Otherwise constructs T(Args...), then if it implements IGpuResource:
+     *  2. Otherwise, constructs T(Args...), then if it implements IGpuResource:
      *       - SetRenderDevice(IRenderDevice*)
      *       - CreateGpuResources(IRenderDevice*)
      *
      * @tparam T Resource type (must derive from JCoreObject).
      * @tparam Args Constructor argument types.
-     * @param key Unique string key (e.g., path, asset name).
-     * @param args Forwarded constructor arguments.
-     * @return Shared pointer to the cached or newly created resource.
+     * @param assetId Unique asset UUID string.
+     * @param args Forwarded constructor arguments (typically asset-specific info).
      */
     template<class T, class... Args>
-    std::shared_ptr<T> Load(const std::string& key, Args&&... args)
+    TSharedPtr<T> Load(const JAssetID& assetId, Args&&... args)
     {
         static_assert(std::is_base_of<JCoreObject, T>::value, "T must derive from JCoreObject");
-        const std::string norm = NormalizeKey(key);
 
         // Fast path read
         {
             std::shared_lock rlock(m_Mutex);
-            if (auto it = m_ByKey.find(norm); it != m_ByKey.end())
+            if (auto it = m_ByAsset.find(assetId); it != m_ByAsset.end())
                 return std::dynamic_pointer_cast<T>(it->second.ptr);
         }
 
@@ -142,6 +115,11 @@ public:
             std::integral_constant<bool, std::is_constructible<T, IRenderDevice*, Args...>::value>{},
             std::forward<Args>(args)...
         );
+
+        std::cout << "[RM] Load assetId='" << assetId
+          << "' type=" << typeid(T).name()
+          << " refs=" << createdResource.use_count()
+          << "\n";
 
         // If it's a GPU resource, finalize wiring and create its GPU cache.
         if constexpr (std::is_base_of_v<IGpuResource, T>)
@@ -157,13 +135,9 @@ public:
             }
         }
 
-        const uint64_t id = createdResource->GetRuntimeID();
-
-        // Add to cache
         {
             std::unique_lock wlock(m_Mutex);
-            m_ByID[id] = createdResource;
-            m_ByKey[norm] = Entry{ createdResource, std::type_index(typeid(T)) };
+            m_ByAsset[assetId] = Entry{ createdResource, std::type_index(typeid(T)) };
         }
 
         return createdResource;
@@ -174,126 +148,82 @@ public:
     //======================================================================
 
     /**
-     * @brief Retrieves an untyped resource by string key.
-     * @param key Identifier key.
+     * @brief Retrieves an untyped resource by UUID key.
+     * @param key UUID Identifier key.
      * @return Shared pointer or nullptr if not found.
      */
-    [[nodiscard]] std::shared_ptr<JCoreObject> Get(const std::string& key) const;
+    [[nodiscard]] TSharedPtr<JCoreObject> Get(const JAssetID& assetId) const;
 
     /**
-     * @brief Retrieves an untyped resource by unique object ID.
-     * @param id Unique identifier.
+     * @brief Retrieves a typed resource by UUID key.
+     * @param key UUID Identifier key.
      * @return Shared pointer or nullptr if not found.
      */
-    [[nodiscard]] std::shared_ptr<JCoreObject> GetByID(uint64_t id) const;
-
-    /**
-     * @brief Retrieves a typed resource by key.
-     * @tparam T Desired type.
-     * @param key Identifier key.
-     * @return Shared pointer of type T or nullptr if not found or type mismatch.
-     */
     template<class T>
-    [[nodiscard]] std::shared_ptr<T> GetAs(const std::string& key) const
+    [[nodiscard]] TSharedPtr<T> GetAs(const JAssetID& assetId) const
     {
-        return std::dynamic_pointer_cast<T>(Get(key));
-    }
-
-    /**
-     * @brief Retrieves a typed resource by unique object ID.
-     * @tparam T Desired type.
-     * @param id Object ID.
-     * @return Shared pointer of type T or nullptr if not found or type mismatch.
-     */
-    template<class T>
-    [[nodiscard]] std::shared_ptr<T> GetByIDAs(uint64_t id) const
-    {
-        return std::dynamic_pointer_cast<T>(GetByID(id));
+        return std::dynamic_pointer_cast<T>(Get(assetId));
     }
 
     /**
      * @brief Checks if a resource exists in the cache.
-     * @param key Identifier key.
+     * @param key UUID Identifier key.
      * @return True if present.
      */
-    [[nodiscard]] bool Has(const std::string& key) const;
+    [[nodiscard]] bool Has(const JAssetID& assetId) const;
 
     //======================================================================
     // Unload / Garbage Collection
     //======================================================================
 
     /**
-      * @brief Removes a specific resource from the cache.
+      * @brief Removes a specific resource from the cache by asset UUID.
       *
       * If the cache holds the last reference and the resource implements IGpuResource,
       * DestroyGpuResources() will be called before releasing it.
-      *
-      * @param key Resource key.
-      * @return True if removed.
       */
-    bool Unload(const std::string& key);
+    bool Unload(const JAssetID& assetId);
 
     /**
-     * @brief Unloads all resources with only the cache reference remaining.
-     * Calls DestroyGpuResources() on IGpuResource types before freeing.
+     * @brief Unloads all unused resources with only the using cache reference remaining.
      * @return Number of resources removed.
      */
     size_t UnloadUnused();
 
     /**
      * @brief Clears all cached resources from memory.
-     * Calls DestroyGpuResources() on IGpuResource types before releasing.
      */
     void UnloadAll();
+
+    // Debug helpers
+    void DebugDump() const;
 
 private:
     //======================================================================
     // Helpers
     //======================================================================
 
-    /**
-     * @brief Preferred path: construct with IRenderDevice* if supported.
-     */
     template<class T, class... Args>
-    std::shared_ptr<T> CreateInstance(std::true_type /* has (IRenderDevice*, Args...) */, Args&&... args)
+    TSharedPtr<T> CreateInstance(std::true_type /* has (IRenderDevice*, Args...) */, Args&&... args)
     {
-        auto p = std::make_shared<T>(m_Device, std::forward<Args>(args)...);
-
-        // If it is a GPU resource, ensure CreateGpuResources is called after construction.
-        if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
-        {
-            // constructor already received device, but call again to be explicit & safe
-            gpu->SetRenderDevice(m_Device);
-            // CreateGpuResources is called by caller (Load) to keep the policy in one place.
-        }
-        return p;
-    }
-
-    /**
-     * @brief Fallback: construct normally; if it implements IGpuResource, wire device later.
-     */
-    template<class T, class... Args>
-    std::shared_ptr<T> CreateInstance(std::false_type /* fallback */, Args&&... args)
-    {
-        auto p = std::make_shared<T>(std::forward<Args>(args)...);
+        auto p = MakeShared<T>(m_Device, std::forward<Args>(args)...);
 
         if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
         {
             gpu->SetRenderDevice(m_Device);
-            // CreateGpuResources is called by caller (Load) to keep the policy in one place.
         }
         return p;
     }
 
-    /**
-     * @brief Normalizes a resource key for consistent lookups.
-     *
-     * Converts all backslashes to forward slashes and lowercases all letters.
-     * Example:
-     *   "Assets\\Models\\Tree.FBX" → "assets/models/tree.fbx"
-     *
-     * @param s Input key string.
-     * @return Normalized key string.
-     */
-    static std::string NormalizeKey(std::string s);
+    template<class T, class... Args>
+    TSharedPtr<T> CreateInstance(std::false_type /* fallback */, Args&&... args)
+    {
+        auto p = MakeShared<T>(std::forward<Args>(args)...);
+
+        if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
+        {
+            gpu->SetRenderDevice(m_Device);
+        }
+        return p;
+    }
 };
