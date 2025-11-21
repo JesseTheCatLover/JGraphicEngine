@@ -116,11 +116,6 @@ public:
             std::forward<Args>(args)...
         );
 
-        std::cout << "[RM] Load assetId='" << assetId
-          << "' type=" << typeid(T).name()
-          << " refs=" << createdResource.use_count()
-          << "\n";
-
         // If it's a GPU resource, finalize wiring and create its GPU cache.
         if constexpr (std::is_base_of_v<IGpuResource, T>)
         {

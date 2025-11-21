@@ -16,10 +16,7 @@ class JModelComponent : public JRenderableComponent
 
 public:
     JModelComponent() = default;
-    ~JModelComponent()
-    {
-        std::cout << "[JModelComponent] dtor, modelKey='" << m_ModelKey << "'\n";
-    }
+    ~JModelComponent() = default;
 
     /// Set by project-relative key; ResourceManager resolves & loads.
     void SetModel(const std::string& assetID);
