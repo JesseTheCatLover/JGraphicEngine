@@ -71,6 +71,9 @@ public:
     JActor();
     virtual ~JActor() = default;
 
+    int   Health = 100;
+    float Speed  = 5.0f;
+
     // -------------------- Lifecycle --------------------
 
     /**

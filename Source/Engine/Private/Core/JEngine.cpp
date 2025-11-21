@@ -44,6 +44,7 @@ bool JEngine::Run()
         std::cerr << "[JEngine]: Bootstrapping the default scene has failed" << std::endl;
         return false;
     }
+    JReflectionRegistrar::DebugReflection_JActor();
     RunMainLoop();
     Shutdown();
 

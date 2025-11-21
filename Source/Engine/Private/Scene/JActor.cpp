@@ -241,3 +241,10 @@ void JActor::Deserialize(const JsonReader& reader)
 
     //  Skip actor components for now cause not needed
 }
+
+JREFLECT_TYPE(JActor)
+{
+    JPROPERTY(Health);
+
+    JPROPERTY(Speed, Category("Movement"), Range(0.0, 10.0), VisibleToScript);
+}}

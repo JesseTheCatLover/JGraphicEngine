@@ -7,9 +7,13 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonWriter.h"
 
+#include "Core/Reflection/JReflectionMacro.h"
+#include "Core/Reflection/JTypeRegistry.h"
+
 #include "Utilities/UUUID.h"
 
-// TODO: instead of an expensive RTTI we do this for now
+class JReflectionRegistrar;
+
 // Helper macros to pick the first argument if given, otherwise default
 #define DECLARE_JOBJECT_1(Type) DECLARE_JOBJECT_IMPL(Type, JCoreObject)
 #define DECLARE_JOBJECT_2(Type, BaseType) DECLARE_JOBJECT_IMPL(Type, BaseType)
@@ -21,9 +25,10 @@
 // Implementation
 #define DECLARE_JOBJECT_IMPL(Type, BaseType) \
 public: \
-static const char* StaticTypeName() { return #Type; } \
-const char* GetClassTypeName() const override { return #Type; } \
-using Super = BaseType; \
+    static const char* StaticTypeName() { return #Type; } \
+    const char* GetClassTypeName() const override { return #Type; } \
+    using Super = BaseType; \
+    friend void _JRegister_##Type(JReflectionRegistrar&);         \
 private:
 
 class JCoreObject
