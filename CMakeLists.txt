@@ -34,13 +34,7 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/nlohmann/json.git
 )
 
-FetchContent_Declare(
-        rttr
-        GIT_TAG v0.9.6
-        GIT_REPOSITORY https://github.com/rttrorg/rttr.git
-)
-
-FetchContent_MakeAvailable(glfw assimp glm json rttr)
+FetchContent_MakeAvailable(glfw assimp glm json)
 
 # Add submodules
 # --- ThirdParty libraries ---
