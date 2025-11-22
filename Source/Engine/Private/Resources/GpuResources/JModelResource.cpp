@@ -52,7 +52,7 @@ void JModelResource::OnDestroyGpuResources()
     m_TexturesGPU.clear();
 }
 
-void JModelResource::Serialize(JsonWriter &writer) const
+void JModelResource::SerializeCustom(JsonWriter &writer) const
 {
 }
 

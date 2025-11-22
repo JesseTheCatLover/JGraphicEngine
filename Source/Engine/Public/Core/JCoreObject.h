@@ -4,15 +4,17 @@
 #include <cstdint>
 #include <cstring>
 
-#include "Serialization/JsonReader.h"
-#include "Serialization/JsonWriter.h"
+#include "Serialization/SerializeUtilities.h"
 
-#include "Core/Reflection/JReflectionMacro.h"
-#include "Core/Reflection/JTypeRegistry.h"
+#include "Reflection/JReflectionMacro.h"
+#include "Reflection/RETypeRegistry.h"
+
+#include "Reflection/JReflectionSerialization.h"
 
 #include "Utilities/UUUID.h"
 
 class JReflectionRegistrar;
+class JSerializeManager;
 
 // Helper macros to pick the first argument if given, otherwise default
 #define DECLARE_JOBJECT_1(Type) DECLARE_JOBJECT_IMPL(Type, JCoreObject)
@@ -31,13 +33,28 @@ public: \
     friend void _JRegister_##Type(JReflectionRegistrar&);         \
 private:
 
+/**
+ * @class JCoreObject
+ * @brief Base class for all engine objects that support identity, reflection, and serialization.
+ *
+ * JCoreObject provides:
+ *  - A unique runtime ID (fast integer)
+ *  - A persistent UUID used for load/save identification
+ *  - Engine-level type information via DECLARE_JOBJECT()
+ *  - Automatic reflection-based serialization for all JPROPERTY() fields
+ *
+ * Derived classes may override SerializeCustom() and DeserializeCustom() to handle
+ * non-reflected or special-case data.
+ */
 class JCoreObject
 {
+    friend class JSerializeManager;
+
 public:
     virtual ~JCoreObject() = default;
 
     // Type info
-    virtual const char* GetClassTypeName() const = 0;
+    [[nodiscard]] virtual const char* GetClassTypeName() const = 0;
 
     template<typename T>
     [[nodiscard]] bool IsA() const
@@ -49,7 +66,7 @@ public:
     [[nodiscard]] uint64_t GetRuntimeID() const { return m_ID; }
     void SetRuntimeID(const uint64_t id) { m_ID = id; }
 
-    // Unique ID across all save/load sessions
+    // Unique UUID across all save/load sessions
     [[nodiscard]] const std::string& GetUUID() const { return m_UUID; }
 
 protected:
@@ -59,28 +76,47 @@ protected:
         m_UUID = UUUID::GenerateUUID();
     }
 
-    // Serialization hooks
-    virtual void Serialize(class JsonWriter& writer) const {}
-    virtual void Deserialize(const class JsonReader& reader) {}
+    /**
+     * Custom (manual) serialization hook, for serializing objects out of the reflection system.
+     * @param writer Writer utility
+     */
+    virtual void SerializeCustom(class JsonWriter& writer) const {}
+
+    /**
+     * Custom (manual) deserialization hook, for deserializing objects out of the reflection system.
+     * @param reader Reader utility
+     */
+    virtual void DeserializeCustom(const class JsonReader& reader) {}
 
 private:
-    uint64_t m_ID; // runtime-only ID
-    std::string m_UUID; // serialized stable and unique ID
+    uint64_t m_ID; ///< runtime-only ID
+    std::string m_UUID; ///< serialized stable and unique UUID
 
-    inline static uint64_t m_NextID = 0; // global counter
+    inline static uint64_t m_NextID = 0; // global counter for runtime IDs
 
+    /**
+     * Reflective serialization on each JCoreObject derived class.
+     * @param writer Writer utility
+     */
     void SerializeJObject(class JsonWriter& writer) const
     {
-        writer.BeginObject("test");
-        writer.Write("uuid", m_UUID);
-        writer.EndObject();
+        // Reflective serialization:
+        JReflectionSerialization::SerializeReflectedProperties(writer, *this);
 
-        Serialize(writer);
+        // Custom (manual) serialization hook:
+        SerializeCustom(writer);
     }
+
+    /**
+     * Reflective deserialization on each JCoreObject derived class.
+     * @param reader Reader utility
+     */
     void DeserializeJObject(const class JsonReader& reader)
     {
-        m_UUID = reader.Read("uuid", m_UUID);
+        // Reflective deserialization:
+        JReflectionSerialization::DeserializeReflectedProperties(reader, *this);
 
-        Deserialize(reader);
+        // Custom hook:
+        DeserializeCustom(reader);
     }
 };

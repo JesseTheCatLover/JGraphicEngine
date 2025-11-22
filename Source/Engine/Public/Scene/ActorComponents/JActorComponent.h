@@ -133,7 +133,7 @@
          * @brief Serialize this component into JSON.
          * Calls SerializeProperties() to allow subclasses to write their own fields.
          */
-        void Serialize(JsonWriter& writer) const override;
+        void SerializeCustom(JsonWriter& writer) const override;
 
         /**
          * @brief Deserialize this component from JSON.

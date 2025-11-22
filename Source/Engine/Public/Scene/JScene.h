@@ -209,7 +209,7 @@ public:
      * @param writer Reference to the JsonWriter used for structured output.
      * @note This function does not write to disk directly. The SceneManager or Resource system handles file I/O.
      */
-    void Serialize(class JsonWriter& writer) const override;
+    void SerializeCustom(class JsonWriter& writer) const override;
 
     /**
      * @brief Deserializes the scene and reconstructs all actors from JSON.

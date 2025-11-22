@@ -5,7 +5,7 @@
 #include "Core/Serialization/JsonReader.h"
 #include "Core/Serialization/JsonWriter.h"
 
-void JTransformComponent::Serialize(JsonWriter &writer) const
+void JTransformComponent::SerializeCustom(JsonWriter &writer) const
 {
     writer.BeginObject("transform");
     writer.Write("position", m_LocalTransform.GetPosition());

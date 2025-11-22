@@ -30,7 +30,7 @@ public:
     void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const override;
 
 protected:
-    void Serialize(class JsonWriter& writer) const override;
+    void SerializeCustom(class JsonWriter& writer) const override;
     void Deserialize(const class JsonReader& reader) override;
 
 private:

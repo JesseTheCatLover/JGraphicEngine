@@ -49,7 +49,7 @@ void JModelComponent::GatherProxies(IRenderSubmission& submission,
     }
 }
 
-void JModelComponent::Serialize(JsonWriter& writer) const
+void JModelComponent::SerializeCustom(JsonWriter& writer) const
 {
 }
 

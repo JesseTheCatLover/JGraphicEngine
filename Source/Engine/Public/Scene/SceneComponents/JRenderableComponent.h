@@ -26,6 +26,6 @@ public:
 
     virtual void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const = 0;
 
-    void Serialize(JsonWriter& w) const override;
+    void SerializeCustom(JsonWriter& w) const override;
     void Deserialize(const JsonReader& r) override;
 };

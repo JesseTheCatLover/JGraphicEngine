@@ -3,9 +3,9 @@
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 
-void JRenderableComponent::Serialize(JsonWriter& writer) const
+void JRenderableComponent::SerializeCustom(JsonWriter& writer) const
 {
-    Super::Serialize(writer);
+    Super::SerializeCustom(writer);
     writer.Write("visible", m_Visible);
     writer.Write("render_layer", static_cast<uint8_t>(m_RenderLayer));
 }

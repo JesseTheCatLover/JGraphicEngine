@@ -1,10 +1,11 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Core/Reflection/JTypeRegistry.h"
+#include "../../../Public/Core/Reflection/RETypeRegistry.h"
 #include <utility>
-std::unordered_map<std::type_index, REType> JTypeRegistry::s_types;
 
-void JTypeRegistry::BeginType(const char* name, const std::type_info& typeInfo, const std::type_info& baseType)
+std::unordered_map<std::type_index, REType> RETypeRegistry::s_types;
+
+void RETypeRegistry::BeginType(const char* name, const std::type_info& typeInfo, const std::type_info& baseType)
 {
     REType type;
     type.name = name;

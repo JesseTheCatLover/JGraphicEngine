@@ -271,7 +271,7 @@ public:
 
     // -------------------- Serialization --------------------
 
-    void Serialize(JsonWriter& writer) const override;
+    void SerializeCustom(JsonWriter& writer) const override;
     void Deserialize(const JsonReader& reader) override;
 
     // -------------------- Getter/Setter --------------------

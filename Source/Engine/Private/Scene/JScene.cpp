@@ -73,9 +73,9 @@ void JScene::FlushDestroyedActors()
     }
 }
 
-void JScene::Serialize(JsonWriter &writer) const
+void JScene::SerializeCustom(JsonWriter &writer) const
 {
-    Super::Serialize(writer);
+    Super::SerializeCustom(writer);
 
     writer.Write("name", m_Name);
     writer.Write("actor_count", static_cast<int>(m_Actors.size()));
@@ -83,7 +83,7 @@ void JScene::Serialize(JsonWriter &writer) const
     writer.BeginArray("actors");
     for (const auto& actor : m_Actors)
     {
-        actor->Serialize(writer);
+        actor->SerializeCustom(writer);
     }
     writer.EndArray();
 }

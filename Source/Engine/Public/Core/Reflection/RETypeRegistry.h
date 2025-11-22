@@ -1,10 +1,13 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <typeindex>
 #include "Core/Reflection/JReflectionMetaData.h"
+
+class JCoreObject;
 
 struct REProperty
 {
@@ -20,14 +23,13 @@ struct REType
     std::type_index cppType{ typeid(void) };
     std::type_index baseCppType{ typeid(void) };
     std::vector<REProperty> properties;
+    std::function<JCoreObject*()> factory;
 };
 
-class JTypeRegistry
+class RETypeRegistry
 {
 public:
-    static void BeginType(const char* name,
-                          const std::type_info& typeInfo,
-                          const std::type_info& baseType);
+    static void BeginType(const char* name, const std::type_info& typeInfo, const std::type_info& baseType);
 
     template<typename SelfType, typename T>
     static void AddProperty(const char* propName, T SelfType::*member,
@@ -52,6 +54,41 @@ public:
     static const REType* GetType()
     {
         return FindType(typeid(T));
+    }
+
+    static const REType* FindTypeByTypeName(const std::string& name)
+    {
+        for (auto& [key, value] : s_types)
+        {
+            if (value.name == name)
+                return &value;
+        }
+        return nullptr;
+    }
+
+    /**
+     * @brief Attach a default factory for T (new T()).
+     * Call this once when registering the type.
+     **/
+    template<typename T>
+    static void SetFactory()
+    {
+        auto it = s_types.find(std::type_index(typeid(T)));
+        if (it != s_types.end())
+        {
+            it->second.factory = []() -> JCoreObject*
+            {
+                return new T();
+            };
+        }
+    }
+
+    static JCoreObject* CreateInstanceByTypeName(const std::string& name)
+    {
+        const REType* type = FindTypeByTypeName(name);
+        if (!type || !type->factory)
+            return nullptr;
+        return type->factory();
     }
 
 private:

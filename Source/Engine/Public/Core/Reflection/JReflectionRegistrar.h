@@ -4,7 +4,7 @@
 
 #include <typeinfo>
 #include "Core/Reflection/JReflectionMetaData.h"
-#include "Core/Reflection/JTypeRegistry.h"
+#include "Core/Reflection/RETypeRegistry.h"
 
 class JReflectionRegistrar
 {
@@ -16,7 +16,7 @@ public:
                      const FPropertyMetadata& meta)
     {
         // Engine's reflection:
-        JTypeRegistry::AddProperty<SelfType, T>(name, member, meta);
+        RETypeRegistry::AddProperty<SelfType, T>(name, member, meta);
     }
 
     static void DebugReflection_JActor();

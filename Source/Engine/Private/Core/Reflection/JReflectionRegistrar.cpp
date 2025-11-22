@@ -1,20 +1,18 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Core/Reflection/JReflectionRegistrar.h"
-
 #include <iostream>
-
 #include "Scene/JActor.h"
 
 JReflectionRegistrar::JReflectionRegistrar(const char* name, const std::type_info& typeInfo, const std::type_info& baseTypeInfo)
 {
     // Engine's own registry side:
-    JTypeRegistry::BeginType(name, typeInfo, baseTypeInfo);
+    RETypeRegistry::BeginType(name, typeInfo, baseTypeInfo);
 }
 
 static void DumpType(const std::type_info& ti)
 {
-    const REType* type = JTypeRegistry::FindType(ti);
+    const REType* type = RETypeRegistry::FindType(ti);
     if (!type)
     {
         std::cout << "[JReflection]: Type not found in registry\n";

@@ -99,9 +99,9 @@ void JCameraComponent::LookAt(const FVector3& worldTarget, const FVector3& world
     m_bViewDirty = true;
 }
 
-void JCameraComponent::Serialize(JsonWriter& writer) const
+void JCameraComponent::SerializeCustom(JsonWriter& writer) const
 {
-    JSceneComponent::Serialize(writer);
+    JSceneComponent::SerializeCustom(writer);
 
     writer.Write("projection_type", (int)m_ProjectionType);
     writer.Write("fov_degrees", m_FOV);

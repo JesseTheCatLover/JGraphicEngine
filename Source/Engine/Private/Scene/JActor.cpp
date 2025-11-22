@@ -186,9 +186,9 @@ JCameraComponent* JActor::GetCameraComponent()
     return nullptr;
 }
 
-void JActor::Serialize(JsonWriter& writer) const
+void JActor::SerializeCustom(JsonWriter& writer) const
 {
-    Super::Serialize(writer);
+    Super::SerializeCustom(writer);
 
     writer.BeginObject();
     writer.Write("name", m_Name);
@@ -197,7 +197,7 @@ void JActor::Serialize(JsonWriter& writer) const
     writer.BeginArray("components");
     for (auto& comp : m_ActorComponents)
     {
-        comp->Serialize(writer);
+        comp->SerializeCustom(writer);
     }
     writer.EndArray();
 
@@ -223,7 +223,7 @@ void JActor::Deserialize(const JsonReader& reader)
         auto sceneCompsReader = reader.GetArray("scene_components");
         for (const auto& compJson : sceneCompsReader)
         {
-            std::string type = compJson.Read<std::string>("type", "");
+            auto type = compJson.Read<std::string>("type", "");
 
             // Only handle JModelComponent for now
             if (type == "JModelComponent")

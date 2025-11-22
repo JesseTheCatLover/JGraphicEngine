@@ -185,16 +185,16 @@ void JSceneComponent::Initialize()
     JTransformComponent::Initialize();
 }
 
-void JSceneComponent::Serialize(JsonWriter &writer) const
+void JSceneComponent::SerializeCustom(JsonWriter &writer) const
 {
     // Serialize local transform
-    JTransformComponent::Serialize(writer);
+    JTransformComponent::SerializeCustom(writer);
 
     // Serialize all children
     for (auto* child : m_Children)
     {
         JsonWriter childWriter;
-        child->Serialize(childWriter);
+        child->SerializeCustom(childWriter);
         writer.WriteObjectToArray("children", childWriter.GetData());
     }
 

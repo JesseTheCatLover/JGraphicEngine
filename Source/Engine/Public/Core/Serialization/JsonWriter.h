@@ -51,6 +51,20 @@ public:
             (*m_Stack.top())[key] = value;
     }
 
+    /** @brief Add a value to the current key and stack. */
+    template<typename T>
+    void WriteValue(const T& value)
+    {
+        if (m_Stack.empty())
+            return; // or error
+
+        JJson* current = m_Stack.top();
+        if (!current->is_array())
+            return; // or assert
+
+        current->push_back(value);
+    }
+
     // ----------------- glm types -----------------
     void WriteVec2(const std::string& key, const glm::vec2& vec);
     void WriteVec3(const std::string& key, const glm::vec3& vec);

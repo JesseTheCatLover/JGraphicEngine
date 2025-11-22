@@ -12,6 +12,7 @@
                 using BaseType = typename Type::Super;            \
                 JReflectionRegistrar registrar(                   \
                     #Type, typeid(SelfType), typeid(BaseType));   \
+                RETypeRegistry::SetFactory<SelfType>();            \
                 _JRegister_##Type(registrar);                     \
             }                                                     \
         };                                                        \

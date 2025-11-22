@@ -104,7 +104,7 @@ bool SceneManager::SaveSceneFile(const JScene *scene, const std::string &filenam
     std::string scenePath = UPathFinder::ResolvePath(UPathFinder::Join("Assets", "Scenes", filename + ".jscene"));
 
     JsonWriter writer;
-    scene->Serialize(writer);
+    scene->SerializeCustom(writer);
 
     // Meta data
     auto now = std::chrono::system_clock::now();
