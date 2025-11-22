@@ -38,12 +38,7 @@ bool JActorComponent::DestroyComponent()
     return true;
 }
 
-void JActorComponent::SerializeCustom(JsonWriter &writer) const
+JREFLECT_TYPE(JActorComponent)
 {
-    writer.Write("type", GetClassTypeName());
-    writer.Write("id", GetRuntimeID());
-}
-
-void JActorComponent::Deserialize(const JsonReader &reader)
-{
-}
+    JPROPERTY(m_Name);
+}}

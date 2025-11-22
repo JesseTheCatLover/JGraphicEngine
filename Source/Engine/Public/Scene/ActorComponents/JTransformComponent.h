@@ -158,8 +158,4 @@ protected:
     void OnAttachment() override {}
 
     void Initialize() override {}
-
-    void SerializeCustom(JsonWriter &writer) const override;
-
-    void Deserialize(const JsonReader &reader) override;
 };

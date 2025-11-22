@@ -35,7 +35,7 @@ public:
     static void AddProperty(const char* propName, T SelfType::*member,
                             const FPropertyMetadata& metadata)
     {
-        auto& t = s_types[std::type_index(typeid(SelfType))];
+        auto& t = s_Types[std::type_index(typeid(SelfType))];
         t.properties.push_back(REProperty{
             propName,
             std::type_index(typeid(T)),
@@ -46,8 +46,8 @@ public:
 
     static const REType* FindType(const std::type_info& typeInfo)
     {
-        auto it = s_types.find(std::type_index(typeInfo));
-        return (it != s_types.end()) ? &it->second : nullptr;
+        auto it = s_Types.find(std::type_index(typeInfo));
+        return (it != s_Types.end()) ? &it->second : nullptr;
     }
 
     template<typename T>
@@ -58,7 +58,7 @@ public:
 
     static const REType* FindTypeByTypeName(const std::string& name)
     {
-        for (auto& [key, value] : s_types)
+        for (auto& [key, value] : s_Types)
         {
             if (value.name == name)
                 return &value;
@@ -66,21 +66,45 @@ public:
         return nullptr;
     }
 
-    /**
-     * @brief Attach a default factory for T (new T()).
-     * Call this once when registering the type.
-     **/
-    template<typename T>
-    static void SetFactory()
+    // Generic: set factory from any callable
+    template<typename T, typename FactoryFn>
+    static void SetFactory(FactoryFn fn)
     {
-        auto it = s_types.find(std::type_index(typeid(T)));
-        if (it != s_types.end())
+        auto typeIndex = std::type_index(typeid(T));
+        auto it = s_Types.find(typeIndex);
+        if (it == s_Types.end())
+            it = s_Types.emplace(typeIndex, REType{}).first;
+
+        it->second.baseCppType = typeIndex;
+        it->second.factory = fn;
+    }
+
+    // Default: new T() (for concrete types)
+    template<typename T>
+    static void SetDefaultFactory()
+    {
+        if constexpr (std::is_abstract_v<T>)
         {
-            it->second.factory = []() -> JCoreObject*
+            ClearFactory<T>();
+        }
+        else
+        {
+            SetFactory<T>([]() -> JCoreObject*
             {
                 return new T();
-            };
+            });
         }
+    }
+
+    template<typename T>
+    static void ClearFactory()
+    {
+        auto ti = std::type_index(typeid(T));
+        auto it = s_Types.find(ti);
+        if (it == s_Types.end())
+            return;
+
+        it->second.factory = nullptr;
     }
 
     static JCoreObject* CreateInstanceByTypeName(const std::string& name)
@@ -92,5 +116,5 @@ public:
     }
 
 private:
-    static std::unordered_map<std::type_index, REType> s_types;
+    static std::unordered_map<std::type_index, REType> s_Types;
 };

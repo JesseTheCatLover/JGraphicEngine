@@ -76,6 +76,41 @@ FVector4 JsonReader::ReadVector4(const std::string& key, const FVector4& default
     );
 }
 
+FMatrix4 JsonReader::ReadMatrix4(const std::string& key, const FMatrix4& defaultVal) const
+{
+    // If key missing -> default
+    if (!m_Data.contains(key))
+        return defaultVal;
+
+    const JJson& node = m_Data.at(key);
+    if (!node.is_array() || node.size() != 4)
+        return defaultVal;
+
+    FMatrix4 result = defaultVal;
+
+    for (int row = 0; row < 4; ++row)
+    {
+        const JJson& rowJson = node[row];
+        if (!rowJson.is_array() || rowJson.size() != 4)
+            return defaultVal;
+
+        for (int col = 0; col < 4; ++col)
+        {
+            try
+            {
+                float v = rowJson[col].get<float>();
+                result.GetMat4()[row][col] = v;
+            }
+            catch (...)
+            {
+                // If conversion fails, leave default for that element
+            }
+        }
+    }
+
+    return result;
+}
+
 FRotator JsonReader::ReadRotator(const std::string& key, const FRotator& defaultVal) const
 {
     if (!m_Data.contains(key) || !m_Data[key].is_array() || m_Data[key].size() < 3)

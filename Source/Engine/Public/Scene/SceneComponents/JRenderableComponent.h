@@ -25,7 +25,4 @@ public:
     ERenderLayer GetRenderLayer() const { return m_RenderLayer; }
 
     virtual void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const = 0;
-
-    void SerializeCustom(JsonWriter& w) const override;
-    void Deserialize(const JsonReader& r) override;
 };

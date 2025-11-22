@@ -12,7 +12,53 @@
                 using BaseType = typename Type::Super;            \
                 JReflectionRegistrar registrar(                   \
                     #Type, typeid(SelfType), typeid(BaseType));   \
-                RETypeRegistry::SetFactory<SelfType>();            \
+                RETypeRegistry::SetDefaultFactory<SelfType>();    \
+                _JRegister_##Type(registrar);                     \
+            }                                                     \
+        };                                                        \
+        static _JAutoRegister_##Type _JAutoRegister_Instance_##Type; \
+    }                                                             \
+    void _JRegister_##Type(JReflectionRegistrar& registrar)       \
+    {                                                             \
+        using SelfType = Type;                                    \
+        (void)registrar;
+
+
+#define JREFLECT_TYPE_CTOR(Type, ...)                             \
+    void _JRegister_##Type(JReflectionRegistrar&);                \
+    namespace {                                                   \
+        struct _JAutoRegister_##Type {                            \
+            _JAutoRegister_##Type() {                             \
+                using SelfType = Type;                            \
+                using BaseType = typename Type::Super;            \
+                JReflectionRegistrar registrar(                   \
+                    #Type, typeid(SelfType), typeid(BaseType));   \
+                RETypeRegistry::SetFactory<SelfType>(             \
+                    []() -> JCoreObject* {                        \
+                        return new SelfType(__VA_ARGS__);         \
+                    }                                             \
+                );                                                \
+                _JRegister_##Type(registrar);                     \
+            }                                                     \
+        };                                                        \
+        static _JAutoRegister_##Type _JAutoRegister_Instance_##Type; \
+    }                                                             \
+    void _JRegister_##Type(JReflectionRegistrar& registrar)       \
+    {                                                             \
+        using SelfType = Type;                                    \
+        (void)registrar;
+
+
+#define JREFLECT_ABSTRACT_TYPE(Type)                              \
+    void _JRegister_##Type(JReflectionRegistrar&);                \
+    namespace {                                                   \
+        struct _JAutoRegister_##Type {                            \
+            _JAutoRegister_##Type() {                             \
+                using SelfType = Type;                            \
+                using BaseType = typename Type::Super;            \
+                JReflectionRegistrar registrar(                   \
+                    #Type, typeid(SelfType), typeid(BaseType));   \
+                RETypeRegistry::ClearFactory<SelfType>();         \
                 _JRegister_##Type(registrar);                     \
             }                                                     \
         };                                                        \

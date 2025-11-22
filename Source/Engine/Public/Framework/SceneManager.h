@@ -3,6 +3,9 @@
 #include <string>
 #include "Scene/JScene.h"
 
+struct FSceneSaveInfo;
+struct FSceneLoadResult;
+
 /**
  * @struct FSceneMeta
  * @brief Metadata container for a scene file.
@@ -17,7 +20,7 @@ struct FSceneMeta
     std::string name;
 
     /** @brief Number of actors currently in the scene. */
-    int actorCount;
+    int actorCount = 0;
 
     /** @brief Path or identifier for a thumbnail image representing the scene. */
     std::string thumbnail;
@@ -53,6 +56,9 @@ private:
      */
     void Tick(float deltaTime);
 
+    void BuildSaveInfoFromScene(const JScene* scene, FSceneSaveInfo& outInfo) const;
+    void ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, JScene& scene);
+
 public:
     /** @brief Default constructor. */
     SceneManager() = default;
@@ -83,7 +89,7 @@ public:
      * @param id Unique runtime actor ID
      * @return Pointer to actor, or nullptr if not found or no active scene
      */
-    JActor *FindActorByID(uint64_t id) const;
+    [[nodiscard]] JActor* FindActorByID(uint64_t id) const;
 
     /**
      * @brief Find an actor of type T by ID in the active scene.
@@ -196,6 +202,7 @@ public:
      */
     bool SaveSceneFile(const JScene* scene, const std::string& filename) const;
 
+
     /**
      * @brief Reads metadata from a scene file without fully loading the scene.
      *
@@ -217,6 +224,7 @@ public:
      * @return Vector of SceneMeta structures for each valid scene file.
      */
     static std::vector<FSceneMeta> ListScenesMeta(const std::string& directory);
+
 
     /**
      * @brief Lists all available scene files in a directory.

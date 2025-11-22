@@ -110,8 +110,4 @@ protected:
         m_bViewDirty = true;
         m_bProjDirty = true;
     }
-
-    // Serialization
-    void SerializeCustom(JsonWriter& writer) const override;
-    void Deserialize(const JsonReader& reader) override;
 };

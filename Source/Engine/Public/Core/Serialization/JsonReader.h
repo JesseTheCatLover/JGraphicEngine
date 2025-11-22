@@ -94,6 +94,9 @@ public:
     /** Read an FVector4 from JSON */
     [[nodiscard]] FVector4 ReadVector4(const std::string& key, const FVector4& defaultVal) const;
 
+    /** Read an FMatrix4 from JSON */
+    [[nodiscard]] FMatrix4 ReadMatrix4(const std::string& key, const FMatrix4& defaultVal = FMatrix4()) const;
+
     /** Read an FRotator from JSON */
     [[nodiscard]] FRotator ReadRotator(const std::string& key, const FRotator& defaultVal) const;
 

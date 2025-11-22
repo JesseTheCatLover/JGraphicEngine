@@ -49,10 +49,17 @@ void JModelComponent::GatherProxies(IRenderSubmission& submission,
     }
 }
 
-void JModelComponent::SerializeCustom(JsonWriter& writer) const
+void JModelComponent::DeserializeCustom(const class JsonReader &reader)
 {
+    JRenderableComponent::DeserializeCustom(reader);
+
+    // Then rebuild runtime state from that data
+    if (!m_ModelKey.empty())
+    {
+        m_Model = JResourceManager::Get().Load<JModelResource>(m_ModelKey, m_ModelKey);
+    }
 }
 
-void JModelComponent::Deserialize(const JsonReader& reader)
-{
-}
+JREFLECT_TYPE(JModelComponent) {
+    JPROPERTY(m_ModelKey);
+}}

@@ -2,7 +2,6 @@
 
 #pragma once
 #include "Core/JCoreObject.h"
-#include "Core/Serialization/JsonReader.h"
 #include "SceneComponents/JSceneComponent.h"
 #include <memory>
 #include <vector>
@@ -31,6 +30,7 @@ class JActor : public JCoreObject
     DECLARE_JOBJECT(JActor)
 
     friend class JScene;
+    friend class SceneManager;
 
 private:
     std::string m_Name; ///< Actor name
@@ -67,12 +67,60 @@ private:
      */
     virtual void ExecuteDestroy();
 
+    [[nodiscard]] std::vector<JSceneComponent*> GetSceneComponentsRaw() const
+    {
+        std::vector<JSceneComponent*> result;
+        result.reserve(m_SceneComponents.size());
+        for (const auto& comp : m_SceneComponents)
+            if (comp)
+                result.push_back(comp.get());
+        return result;
+    }
+
+    [[nodiscard]] std::vector<JActorComponent*> GetActorComponentsRaw() const
+    {
+        std::vector<JActorComponent*> result;
+        result.reserve(m_ActorComponents.size());
+        for (const auto& comp : m_ActorComponents)
+            if (comp)
+                result.push_back(comp.get());
+        return result;
+    }
+
+    // Attach an already-constructed logic component (from load) to this actor
+    void AttachActorComponentFromLoad(JActorComponent* comp)
+    {
+        if (!comp) return;
+
+        comp->SetOwnerActor(this);
+
+        // Take ownership via TSharedPtr
+        TSharedPtr<JActorComponent> ptr(comp);
+        m_ActorComponents.push_back(std::move(ptr));
+    }
+
+    // Attach an already-constructed scene component (from load) to this actor
+    void AttachSceneComponentFromLoad(JSceneComponent* comp, JSceneComponent* parent = nullptr)
+    {
+        if (!comp) return;
+
+        comp->SetOwnerActor(this);
+
+        // Wrap raw pointer
+        TSharedPtr<JSceneComponent> ptr(comp);
+
+        // Restore parent relationship (for now: parent or root)
+        if (parent)
+            comp->AttachToComponent(parent);
+        else if (m_RootComponent)
+            comp->AttachToComponent(m_RootComponent.get());
+
+        m_SceneComponents.push_back(std::move(ptr));
+    }
+
 public:
     JActor();
     virtual ~JActor() = default;
-
-    int   Health = 100;
-    float Speed  = 5.0f;
 
     // -------------------- Lifecycle --------------------
 
@@ -113,6 +161,13 @@ public:
     [[nodiscard]] bool IsPendingDestroy() const { return m_bPendingDestroy; }
 
     // -------------------- Actor API --------------------
+
+    bool IsRootActor() const
+    {
+        // For now: every actor is treated as root.
+        // TODO: Later, change this when you implement parent/child actors.
+        return true;
+    }
 
     [[nodiscard]] FVector3 GetActorPosition() const
     {
@@ -254,10 +309,6 @@ public:
         return nullptr;
     }
 
-    // ------------------- Default Components -------------------
-
-    JModelComponent* ModelComponent; // TODO: Should be removed in future
-
     // -------------------- Root & Transform --------------------
 
     [[nodiscard]] JSceneComponent* GetRootComponent() const { return m_RootComponent.get(); }
@@ -269,18 +320,13 @@ public:
 
     JCameraComponent* GetCameraComponent();
 
-    // -------------------- Serialization --------------------
-
-    void SerializeCustom(JsonWriter& writer) const override;
-    void Deserialize(const JsonReader& reader) override;
-
     // -------------------- Getter/Setter --------------------
 
     [[nodiscard]] std::string GetName() const { return m_Name; }
     void SetName(const std::string& name) { m_Name = name; }
 
-    [[nodiscard]] JScene* GetOwningScene() const { return m_OwningScene; }
-
     [[nodiscard]] size_t GetVectorIndex() const { return m_VectorIndex; }
     void SetVectorIndex(size_t index) { m_VectorIndex = index; }
+
+    [[nodiscard]] JScene* GetOwningScene() const { return m_OwningScene; }
 };

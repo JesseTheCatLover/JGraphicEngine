@@ -33,10 +33,6 @@ public:
     void OnCreateGpuResources() override;
     void OnDestroyGpuResources() override;
 
-    void SerializeCustom(JsonWriter &writer) const override;
-
-    void Deserialize(const JsonReader &reader) override;
-
     struct FSubmeshGPU
     {
         RMeshHandle     mesh{};

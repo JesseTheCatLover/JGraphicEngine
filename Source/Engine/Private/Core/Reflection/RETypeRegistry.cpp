@@ -3,7 +3,7 @@
 #include "../../../Public/Core/Reflection/RETypeRegistry.h"
 #include <utility>
 
-std::unordered_map<std::type_index, REType> RETypeRegistry::s_types;
+std::unordered_map<std::type_index, REType> RETypeRegistry::s_Types;
 
 void RETypeRegistry::BeginType(const char* name, const std::type_info& typeInfo, const std::type_info& baseType)
 {
@@ -12,5 +12,5 @@ void RETypeRegistry::BeginType(const char* name, const std::type_info& typeInfo,
     type.cppType = std::type_index(typeInfo);
     type.baseCppType = std::type_index(baseType);
 
-    s_types[std::type_index(typeInfo)] = std::move(type);
+    s_Types[std::type_index(typeInfo)] = std::move(type);
 }

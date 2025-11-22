@@ -99,30 +99,12 @@ void JCameraComponent::LookAt(const FVector3& worldTarget, const FVector3& world
     m_bViewDirty = true;
 }
 
-void JCameraComponent::SerializeCustom(JsonWriter& writer) const
+JREFLECT_TYPE(JCameraComponent)
 {
-    JSceneComponent::SerializeCustom(writer);
-
-    writer.Write("projection_type", (int)m_ProjectionType);
-    writer.Write("fov_degrees", m_FOV);
-    writer.Write("aspect", m_AspectRatio);
-    writer.Write("near_plane", m_NearClip);
-    writer.Write("far_plane", m_FarClip);
-    writer.Write("ortho_half_height", m_OrthoHalfHeight);
-}
-
-void JCameraComponent::Deserialize(const JsonReader& reader)
-{
-    JSceneComponent::Deserialize(reader);
-
-    int projType = reader.Read("projection_type", (int)EProjectionType::Perspective);
-    m_ProjectionType = static_cast<EProjectionType>(projType);
-    m_FOV = reader.Read("fov_degrees", m_FOV);
-    m_AspectRatio = reader.Read("aspect", m_AspectRatio);
-    m_NearClip = reader.Read("near_plane", m_NearClip);
-    m_FarClip = reader.Read("far_plane", m_FarClip);
-    m_OrthoHalfHeight = reader.Read("ortho_half_height", m_OrthoHalfHeight);
-
-    m_bViewDirty = true;
-    m_bProjDirty = true;
-}
+    JPROPERTY(m_FOV);
+    JPROPERTY(m_AspectRatio);
+    JPROPERTY(m_NearClip);
+    JPROPERTY(m_FarClip);
+    JPROPERTY(m_ProjectionType);
+    JPROPERTY(m_OrthoHalfHeight);
+}}

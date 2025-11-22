@@ -4,8 +4,6 @@
 #include "Scene/SceneComponents/JSceneComponent.h"
 
 #include "Core/JEngine.h"
-#include "Core/Serialization/JsonWriter.h"
-#include "Core/Serialization/JsonReader.h"
 
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
@@ -14,10 +12,6 @@ JActor::JActor() : m_VectorIndex(0)
 {
     // Ensure root component exists
     SetupRootComponent();
-
-    // Add default components for this actor
-    ModelComponent = CreateDefaultComponent<JModelComponent>("Model");
-    ModelComponent->AttachToComponent(GetRootComponent());
 }
 
 void JActor::SetupRootComponent()
@@ -186,65 +180,8 @@ JCameraComponent* JActor::GetCameraComponent()
     return nullptr;
 }
 
-void JActor::SerializeCustom(JsonWriter& writer) const
-{
-    Super::SerializeCustom(writer);
-
-    writer.BeginObject();
-    writer.Write("name", m_Name);
-
-    // Serialize components
-    writer.BeginArray("components");
-    for (auto& comp : m_ActorComponents)
-    {
-        comp->SerializeCustom(writer);
-    }
-    writer.EndArray();
-
-    // Serialize scene components
-    writer.BeginArray("scene_components");
-    for (auto& comp : m_SceneComponents)
-    {
-        //comp->Serialize(writer);
-    }
-    writer.EndArray();
-    writer.EndObject();
-}
-
-void JActor::Deserialize(const JsonReader& reader)
-{
-    Super::Deserialize(reader);
-
-    m_Name = reader.Read<std::string>("name", "");
-
-    // Scene components
-    if (reader.Has("scene_components"))
-    {
-        auto sceneCompsReader = reader.GetArray("scene_components");
-        for (const auto& compJson : sceneCompsReader)
-        {
-            auto type = compJson.Read<std::string>("type", "");
-
-            // Only handle JModelComponent for now
-            if (type == "JModelComponent")
-            {
-                auto* comp = new JModelComponent();
-                comp->SetOwnerActor(this);
-                //comp->Deserialize(compJson);
-                m_SceneComponents.push_back(TSharedPtr<JSceneComponent>(comp));
-
-                // Also assign to ModelComponent pointer for convenience
-                ModelComponent = comp;
-            }
-        }
-    }
-
-    //  Skip actor components for now cause not needed
-}
-
 JREFLECT_TYPE(JActor)
 {
-    JPROPERTY(Health);
-
-    JPROPERTY(Speed, Category("Movement"), Range(0.0, 10.0), VisibleToScript);
+    JPROPERTY(m_Name);
+    JPROPERTY(m_VectorIndex);
 }}

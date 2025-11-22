@@ -408,8 +408,6 @@ void JEngine::RegisterServices()
 
 bool JEngine::BootstrapScene()
 {
-    CreateDefaultScene();
-    return true;
     auto* startupScene = GetSceneManager()->LoadSceneFile("StartupScene");
     if (!startupScene)
     {

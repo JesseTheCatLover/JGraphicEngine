@@ -52,14 +52,6 @@ void JModelResource::OnDestroyGpuResources()
     m_TexturesGPU.clear();
 }
 
-void JModelResource::SerializeCustom(JsonWriter &writer) const
-{
-}
-
-void JModelResource::Deserialize(const JsonReader &reader)
-{
-}
-
 // ====== CPU load ======
 
 static inline bool HasTexCoords0(const aiMesh* m) { return m->mTextureCoords[0] != nullptr; }

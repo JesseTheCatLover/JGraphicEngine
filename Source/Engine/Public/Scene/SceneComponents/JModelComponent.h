@@ -29,12 +29,11 @@ public:
     // JRenderableComponent
     void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const override;
 
-protected:
-    void SerializeCustom(class JsonWriter& writer) const override;
-    void Deserialize(const class JsonReader& reader) override;
-
 private:
     std::string m_ModelKey;
     TSharedPtr<JModelResource> m_Model;
     RShaderHandle m_Shader{}; // shader used for all submeshes (for now)
+
+protected:
+    virtual void DeserializeCustom(const class JsonReader &reader) override;
 };

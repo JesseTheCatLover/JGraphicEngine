@@ -185,42 +185,7 @@ void JSceneComponent::Initialize()
     JTransformComponent::Initialize();
 }
 
-void JSceneComponent::SerializeCustom(JsonWriter &writer) const
+JREFLECT_TYPE(JSceneComponent)
 {
-    // Serialize local transform
-    JTransformComponent::SerializeCustom(writer);
-
-    // Serialize all children
-    for (auto* child : m_Children)
-    {
-        JsonWriter childWriter;
-        child->SerializeCustom(childWriter);
-        writer.WriteObjectToArray("children", childWriter.GetData());
-    }
-
-    // Serialize parent reference
-    writer.Write("parent_id", m_Parent ? m_Parent->GetRuntimeID() : 0);
-}
-
-void JSceneComponent::Deserialize(const JsonReader &reader)
-{
-    // Deserialize local transform
-    JTransformComponent::Deserialize(reader);
-
-    // Deserialize children
-    if (reader.GetData().contains("children"))
-    {
-        const auto& children = reader.GetData()["children"];
-        for (const auto& childData : children)
-        {
-            JsonReader childReader(childData);
-
-            /* auto* child = new JSceneComponent(); // TODO: do it via factory
-            child->Deserialize(childReader);
-            child->AttachToComponent(this); */
-        }
-    }
-
-    uint64_t parentID = reader.Read("parent_id", 0);
-    // (optional) store for later parent fixup
-}
+    JPROPERTY(m_WorldTransform);
+}}

@@ -128,16 +128,4 @@
          * @note Safe to call engine APIs here; component is still fully valid.
          */
         virtual void OnDestroy();
-
-        /**
-         * @brief Serialize this component into JSON.
-         * Calls SerializeProperties() to allow subclasses to write their own fields.
-         */
-        void SerializeCustom(JsonWriter& writer) const override;
-
-        /**
-         * @brief Deserialize this component from JSON.
-         * Calls DeserializeProperties() to allow subclasses to read their own fields.
-         */
-        void Deserialize(const JsonReader& reader) override;
     };

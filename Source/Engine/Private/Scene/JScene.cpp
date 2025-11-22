@@ -2,10 +2,7 @@
 
 #include "Scene/JScene.h"
 
-#include "Core/Serialization/JsonWriter.h"
-
 #include "Rendering/RRenderProxies.h"
-
 #include "Scene/JActor.h"
 
 JScene::JScene(const std::string &name):
@@ -70,50 +67,6 @@ void JScene::FlushDestroyedActors()
         {
             ++i;
         }
-    }
-}
-
-void JScene::SerializeCustom(JsonWriter &writer) const
-{
-    Super::SerializeCustom(writer);
-
-    writer.Write("name", m_Name);
-    writer.Write("actor_count", static_cast<int>(m_Actors.size()));
-
-    writer.BeginArray("actors");
-    for (const auto& actor : m_Actors)
-    {
-        actor->SerializeCustom(writer);
-    }
-    writer.EndArray();
-}
-
-void JScene::Deserialize(const class JsonReader &reader)
-{
-    Super::Deserialize(reader);
-
-    m_Name = reader.Read("name", std::string("Unnamed"));
-
-    m_Actors.clear();
-    m_ActorsByID.clear();
-
-    auto actorsArray = reader.GetArray("actors");
-    for (const auto& actorReader : actorsArray)
-    {
-        auto actor = std::make_unique<JActor>();
-        actor->SetRuntimeID(actorReader.Read("id", 0));
-        actor->SetVectorIndex(actorReader.Read("vector_index", 0));
-        actor->SetName(actorReader.Read("name", std::string("Actor")));
-
-        // Setup position & rotation from root component
-        FVector3 pos = actorReader.ReadVector3("position", FVector3{});
-        FRotator rot = actorReader.ReadRotator( "rotation", FRotator{});
-
-        actor->SetActorPosition(pos);
-        actor->SetActorRotation(rot);
-
-        // Add actor to the scene and ID map
-        AddActorToList(std::move(actor));
     }
 }
 

@@ -5,10 +5,9 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
-#include <nlohmann/json.hpp>
-#include "JActor.h"
 
 #include "Core/JCoreObject.h"
+#include "JActor.h"
 
 /**
  * @class JScene
@@ -32,9 +31,8 @@ class JScene : public JCoreObject
 private:
     std::string m_Name;  ///< Name of the scene (e.g. "Lake", "Level1").
     std::vector<std::unique_ptr<JActor>> m_Actors; ///< Storage of all actors in the scene.
-    std::unordered_map<uint64_t, JActor*> m_ActorsByID; ///< Fast lookup map from ID → actor.
+    std::unordered_map<uint64_t, JActor*> m_ActorsByID; ///< Fast lookup map from ID -> actor.
 
-    mutable nlohmann::json m_CachedJson; ///< Cached serialization of the scene.
     mutable bool m_bIsDirty = true; ///< track if cache needs rebuilding
 
     /**
@@ -84,6 +82,15 @@ private:
      */
     void AddActorToList(std::unique_ptr<JActor> actor);
 
+    // Used by SceneManager to take ownership of a raw actor allocated by JSerializeManager (via new)
+    void TakeActorOwnershipFromLoad(JActor* actor)
+    {
+        if (!actor) return;
+
+        std::unique_ptr<JActor> ptr(actor);
+        AddActorToList(std::move(ptr));
+    }
+
     /** @brief Rename the scene. */
     void SetName(const std::string& name);
 
@@ -124,6 +131,19 @@ private:
      * @return true if removed successfully, false otherwise.
      */
     bool RemoveActor(uint64_t id);
+
+    /**
+     * @brief Gathers all actors in the scene, this API is only available to SceneManager.
+     * @return List of raw JActor pointers.
+     */
+    std::vector<JActor*> GetAllActors() const
+    {
+        std::vector<JActor*> result;
+        result.reserve(m_Actors.size());
+        for (const auto& a : m_Actors)
+            result.push_back(a.get());
+        return result;
+    }
 
 public:
     void GatherRenderables(IRenderSubmission& submission, const FRenderContext& baseCtx) const; // TODO: Temp here
@@ -193,42 +213,4 @@ public:
         }
         return results;
     }
-
-    /**
-     * @brief Serializes the scene and all contained actors to JSON.
-     *
-     * This method writes the scene's name, actor list, and any scene-level metadata
-     * into the provided JsonWriter. Each actor’s own Serialize() method is called
-     * recursively, ensuring full hierarchical serialization.
-     *
-     * The output JSON typically includes:
-     *  - Scene name
-     *  - List of actors (with class type, ID, and component data)
-     *  - Optional scene metadata
-     *
-     * @param writer Reference to the JsonWriter used for structured output.
-     * @note This function does not write to disk directly. The SceneManager or Resource system handles file I/O.
-     */
-    void SerializeCustom(class JsonWriter& writer) const override;
-
-    /**
-     * @brief Deserializes the scene and reconstructs all actors from JSON.
-     *
-     * This method reads scene data produced by Serialize(), recreating actors
-     * and restoring their properties, IDs, and components. Any existing actors
-     * in the scene are cleared before loading new data.
-     *
-     * Expected JSON structure:
-     *  {
-     *      "Name": "ExampleScene",
-     *      "Actors": [
-     *          { "Type": "JActor", "ID": 1, "Components": [...] },
-     *          ...
-     *      ]
-     *  }
-     *
-     * @param reader Reference to the JsonReader providing parsed scene data.
-     * @note Called automatically by SceneManager during scene loading.
-     */
-    void Deserialize(const class JsonReader& reader) override;
 };

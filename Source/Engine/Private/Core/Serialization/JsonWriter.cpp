@@ -93,6 +93,24 @@ void JsonWriter::WriteVect4(const std::string& key, const FVector4& vec)
     (*m_Stack.top())[key] = { vec.x, vec.y, vec.z, vec.w };
 }
 
+void JsonWriter::WriteMatrix4(const std::string &key, const FMatrix4 &matrix)
+{
+    // Represent matrix as 4x4 nested array: [[r0c0, r0c1, ...], ...]
+    JJson matJson = JJson::array();
+
+    for (int row = 0; row < 4; ++row)
+    {
+        JJson rowJson = JJson::array();
+        for (int col = 0; col < 4; ++col)
+        {
+            rowJson.push_back(matrix.GetMat4()[row][col]);
+        }
+        matJson.push_back(rowJson);
+    }
+
+    Write(key, matJson);
+}
+
 void JsonWriter::WriteRotator(const std::string& key, const FRotator& rotator)
 {
     (*m_Stack.top())[key] = { rotator.Pitch, rotator.Yaw, rotator.Roll };
