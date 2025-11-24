@@ -59,4 +59,9 @@ struct FRotator
     }
 
     bool operator!=(const FRotator& other) const { return !(*this == other); }
+
+    constexpr FRotator operator+(const FRotator& rot) const { return {Pitch + rot.Pitch, Yaw + rot.Yaw, Roll + rot.Roll}; }
+    constexpr FRotator operator-(const FRotator& rot) const { return {Pitch - rot.Pitch, Yaw - rot.Yaw, Roll - rot.Roll}; }
+
+    constexpr FRotator operator*(const float& scale) const { return {Pitch * scale, Yaw * scale, Roll * scale}; }
 };

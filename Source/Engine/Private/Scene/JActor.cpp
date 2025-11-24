@@ -73,11 +73,77 @@ bool JActor::DestroyActor()
         return false; // already requested
 
     m_bPendingDestroy = true;
+
+    // Cascade to children: mark them as pending destroy too
+    for (JActor* child : m_ChildActors)
+    {
+        if (child && !child->IsPendingDestroy())
+            child->DestroyActor();
+    }
+
     return true;
+}
+
+bool JActor::AttachToActor(JActor* newParent)
+{
+    if (newParent == nullptr)
+    {
+        DetachFromParentActor();
+        return true;
+    }
+
+    if (newParent == this)
+        return false; // cannot parent to self
+
+    // Prevent simple cycles: walk up the chain from newParent
+    for (JActor* p = newParent; p != nullptr; p = p->m_ParentActor)
+    {
+        if (p == this)
+            return false; // would create a cycle
+    }
+
+    // Remove from old parent, if any
+    if (m_ParentActor)
+    {
+        auto& siblings = m_ParentActor->m_ChildActors;
+        siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+    }
+
+    m_ParentActor = newParent;
+    if (m_ParentActor)
+        m_ParentActor->m_ChildActors.push_back(this);
+
+    // Transform parenting: attach this actor's root to parent's root
+    if (m_RootComponent && m_ParentActor->m_RootComponent)
+        m_RootComponent->AttachToComponent(m_ParentActor->m_RootComponent.get());
+
+    return true;
+}
+
+void JActor::DetachFromParentActor()
+{
+    if (!m_ParentActor)
+        return;
+
+    auto& siblings = m_ParentActor->m_ChildActors;
+    siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+
+    m_ParentActor = nullptr;
+
+    // Detach root from the parent component; become world/root-space
+    if (m_RootComponent)
+        m_RootComponent->AttachToComponent(nullptr);
 }
 
 void JActor::ExecuteDestroy()
 {
+    DetachFromParentActor();
+
+    // Children are already pending destroy; just clear our list so
+    // we don't hold pointers longer than necessary
+    m_ChildActors.clear();
+
+    // Existing component cleanup
     for (auto& comp : m_ActorComponents)
     {
         if (!comp) continue;

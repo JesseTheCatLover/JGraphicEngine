@@ -277,8 +277,8 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
     {
         movement = movement.Normalized() * moveSpeed * deltaTime;
 
-        FVector3 pos = camActor->GetActorPosition();
-        camActor->SetActorPosition(pos + movement);
+        FVector3 pos = camActor->GetActorLocation();
+        camActor->SetActorLocation(pos + movement);
 
         camera->RecalculateViewMatrix();
         camera->RecalculateProjectionMatrix();
@@ -483,8 +483,8 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     modelCompDio->SetModel("Dio Brando/DioMansion.obj");
 
     auto actor2 = spawnModelActor("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
-    actor1->SetActorPosition(-5.f, 10.f, 0.f);
-    actor2->SetActorPosition(0.f, -10.f, 0.f);
+    actor1->SetActorLocation(-5.f, 10.f, 0.f);
+    actor2->SetActorLocation(0.f, -10.f, 0.f);
 
     auto* modelComp = actor1->AddRuntimeComponent<JModelComponent>();
     modelComp->SetModel("MedievalWindow/MedievalWindow.obj");
@@ -495,7 +495,19 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
     cameraActor->SetName("CameraActor");
     cameraActor->AddRuntimeComponent<JCameraComponent>();
-    cameraActor->SetActorPosition(-20.f, 0.f, 15.f);
+    cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
+
+    auto* sceneMgr = JEngine::Get().GetSceneManager();
+    JActor* parent = sceneMgr->SpawnActor<JActor>();
+    JActor* child  = sceneMgr->SpawnActor<JActor>();
+
+    parent->SetName("ParentActor");
+    child->SetName("ChildActor");
+
+    parent->SetActorLocation(10.f, 0.f, 20.f);
+    child->AttachToActor(parent);
+    child->SetActorRelativeLocation(0.f, 5.f, 0.f); // relative to parent
+    std::cout << child->GetActorLocation().ToString() << std::endl;
 
 
     // ---------------------------------------------------------------------

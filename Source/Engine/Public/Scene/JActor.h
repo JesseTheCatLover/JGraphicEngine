@@ -42,6 +42,9 @@ private:
     bool m_bPendingDestroy = false;
     JScene* m_OwningScene = nullptr; // Set by JScene when adding actor
 
+    JActor* m_ParentActor = nullptr;
+    std::vector<JActor*> m_ChildActors;
+
     void FlushDestroyedComponents();
 
     /**
@@ -162,37 +165,232 @@ public:
 
     // -------------------- Actor API --------------------
 
-    bool IsRootActor() const
+    [[nodiscard]] bool IsRootActor() const
     {
-        // For now: every actor is treated as root.
-        // TODO: Later, change this when you implement parent/child actors.
-        return true;
+        return m_ParentActor == nullptr;
     }
 
-    [[nodiscard]] FVector3 GetActorPosition() const
+    /** Attach this actor under another actor (parental actor hierarchy). */
+    bool AttachToActor(JActor* newParent);
+
+    /** Detach from parent actor and become a root actor again. */
+    void DetachFromParentActor();
+
+    // -------------------- Root & Transform --------------------
+
+    [[nodiscard]] JSceneComponent* GetRootComponent() const { return m_RootComponent.get(); }
+    void SetRootComponent(TSharedPtr<JSceneComponent> root) { m_RootComponent = std::move(root); }
+
+    // -------------------- Transform API (world space) --------------------
+
+    /** World location of the actor’s root. */
+    [[nodiscard]] FVector3 GetActorLocation() const
     {
-        return m_RootComponent ? m_RootComponent->GetWorldPosition() : FVector3(0);
+        return m_RootComponent ? m_RootComponent->GetWorldPosition() : FVector3(0.f);
     }
 
-    void SetActorPosition(const FVector3& pos)
+    /** Set world location of the actor. */
+    void SetActorLocation(const FVector3& worldLocation)
     {
-        if (m_RootComponent) m_RootComponent->SetWorldPosition(pos);
+        if (m_RootComponent)
+            m_RootComponent->SetWorldPosition(worldLocation);
     }
 
-    void SetActorPosition(float x, float y, float z)
+    /** Set world location of the actor. */
+    void SetActorLocation(float x, float y, float z)
     {
-        SetActorPosition(FVector3(x, y, z));
+        SetActorLocation(FVector3(x, y, z));
     }
 
+    /** Add a world‐space offset to the actor. */
+    void AddActorWorldOffset(const FVector3& delta)
+    {
+        if (!m_RootComponent) return;
+        SetActorLocation(GetActorLocation() + delta);
+    }
+
+    /** Add a world-space offset to the actor. */
+    void AddActorWorldOffset(float x, float y, float z)
+    {
+        AddActorWorldOffset(FVector3(x, y, z));
+    }
+
+    /** World rotation (as FRotator) of the actor. */
     [[nodiscard]] FRotator GetActorRotation() const
     {
         return m_RootComponent ? m_RootComponent->GetWorldRotationAsRotator() : FRotator{};
     }
 
-
-    void SetActorRotation(const FRotator& rotator)
+    /** Set world rotation (FRotator) of the actor. */
+    void SetActorRotation(const FRotator& worldRot)
     {
-        if (m_RootComponent) m_RootComponent->SetWorldRotation(rotator.ToQuat());
+        if (m_RootComponent)
+            m_RootComponent->SetWorldRotation(worldRot);
+    }
+
+    /** Set world rotation from pitch/yaw/roll (degrees). */
+    void SetActorRotation(float pitch, float yaw, float roll)
+    {
+        SetActorRotation(FRotator(pitch, yaw, roll));
+    }
+
+    /** World rotation (as quaternion) of the actor. */
+    [[nodiscard]] FQuat GetActorQuat() const
+    {
+        return m_RootComponent ? m_RootComponent->GetWorldRotationAsQuat() : FQuat();
+    }
+
+    /** Set world rotation (quaternion) of the actor. */
+    void SetActorQuat(const FQuat& worldQuat)
+    {
+        if (m_RootComponent)
+            m_RootComponent->SetWorldRotation(worldQuat);
+    }
+
+    /** Add a world‐space rotation (FRotator). */
+    void AddActorWorldRotation(const FRotator& deltaRot)
+    {
+        SetActorRotation(GetActorRotation() + deltaRot);
+    }
+
+    /** Add world rotation delta from pitch/yaw/roll (degrees). */
+    void AddActorWorldRotation(float pitch, float yaw, float roll)
+    {
+        AddActorWorldRotation(FRotator(pitch, yaw, roll));
+    }
+
+    /** World scale of the actor (from root component). */
+    [[nodiscard]] FVector3 GetActorScale() const
+    {
+        return m_RootComponent ? m_RootComponent->GetWorldTransform().GetScale()
+                               : FVector3(1.f);
+    }
+
+    /** Set world scale of the actor. */
+    void SetActorScale(const FVector3& worldScale)
+    {
+        if (m_RootComponent)
+            m_RootComponent->SetWorldScale(worldScale);
+    }
+
+    /** Full world transform of the actor. */
+    [[nodiscard]] FTransform GetActorTransform() const
+    {
+        return m_RootComponent ? m_RootComponent->GetWorldTransform()
+                               : FTransform();
+    }
+
+    /** Set full world transform of the actor. */
+    void SetActorTransform(const FTransform& worldTransform)
+    {
+        if (m_RootComponent)
+            m_RootComponent->SetWorldTransform(worldTransform);
+    }
+
+    // -------------------- Transform API (relative/local space) --------------------
+
+    /** Local (relative) location of the actor’s root component. */
+    [[nodiscard]] FVector3 GetActorRelativeLocation() const
+    {
+        return m_RootComponent ? m_RootComponent->GetLocalPosition() : FVector3(0.f);
+    }
+
+    /** Set local (relative) location of the actor’s root component. */
+    void SetActorRelativeLocation(const FVector3& relLocation)
+    {
+        if (m_RootComponent)
+            m_RootComponent->SetLocalPosition(relLocation);
+    }
+
+    /** Set local (relative) location of the actor’s root component. */
+    void SetActorRelativeLocation(float x, float y, float z)
+    {
+        SetActorRelativeLocation(FVector3(x, y, z));
+    }
+
+    /** Add a local‐space offset to the actor. */
+    void AddActorLocalOffset(const FVector3& delta)
+    {
+        if (!m_RootComponent) return;
+        SetActorRelativeLocation(GetActorRelativeLocation() + delta);
+    }
+
+    /** Add a local-space offset to the actor. */
+    void AddActorLocalOffset(float x, float y, float z)
+    {
+        AddActorLocalOffset(FVector3(x, y, z));
+    }
+
+    /** Local rotation (as FRotator) of the actor. */
+    [[nodiscard]] FRotator GetActorRelativeRotation() const
+    {
+        return m_RootComponent
+            ? m_RootComponent->GetLocalRotationAsRotator() : FRotator{};
+    }
+
+    /** Set local rotation from pitch/yaw/roll (degrees). */
+    void SetActorRelativeRotation(float pitch, float yaw, float roll)
+    {
+        SetActorRelativeRotation(FRotator(pitch, yaw, roll));
+    }
+
+    /** Set local rotation (as FRotator) of the actor. */
+    void SetActorRelativeRotation(const FRotator& relRot)
+    {
+        if (m_RootComponent)
+            m_RootComponent->SetLocalRotation(relRot.ToQuat());
+    }
+
+    /** Local rotation (as quaternion) of the actor. */
+    [[nodiscard]] FQuat GetActorRelativeQuat() const
+    {
+        return m_RootComponent ? m_RootComponent->GetLocalRotationAsQuat() : FQuat();
+    }
+
+    /** Set local rotation (quaternion) of the actor. */
+    void SetActorRelativeQuat(const FQuat& worldQuat)
+    {
+        if (m_RootComponent)
+            m_RootComponent->SetLocalRotation(worldQuat);
+    }
+
+    /** Add a local‐space rotation (FRotator). */
+    void AddActorRelativeRotation(const FRotator& deltaRot)
+    {
+        SetActorRelativeRotation(GetActorRelativeRotation() + deltaRot);
+    }
+
+    /** Add local rotation delta from pitch/yaw/roll (degrees). */
+    void AddActorRelativeRotation(float pitch, float yaw, float roll)
+    {
+        AddActorRelativeRotation(FRotator(pitch, yaw, roll));
+    }
+
+    /** Local scale of the actor (from root component). */
+    [[nodiscard]] FVector3 GetActorRelativeScale() const
+    {
+        return m_RootComponent ? m_RootComponent->GetLocalScale() : FVector3(1.f);
+    }
+
+    /** Set local scale of the actor (from root component). */
+    void SetActorRelativeScale(const FVector3& relScale)
+    {
+        if (m_RootComponent)
+            m_RootComponent->SetLocalScale(relScale);
+    }
+
+    /** Full local transform of the actor. */
+    [[nodiscard]] FTransform GetActorRelativeTransform() const
+    {
+        return m_RootComponent ? m_RootComponent->GetLocalTransform()
+                               : FTransform();
+    }
+
+    /** Set full local transform of the actor. */
+    void SetActorRelativeTransform(const FTransform& relTransform)
+    {
+        if (m_RootComponent)
+            m_RootComponent->SetLocalTransform(relTransform);
     }
 
     // -------------------- Component API --------------------
@@ -309,11 +507,6 @@ public:
         return nullptr;
     }
 
-    // -------------------- Root & Transform --------------------
-
-    [[nodiscard]] JSceneComponent* GetRootComponent() const { return m_RootComponent.get(); }
-    void SetRootComponent(TSharedPtr<JSceneComponent> root) { m_RootComponent = std::move(root); }
-
     // -------------------- Rendering --------------------
 
     void GatherRenderables(IRenderSubmission& submission, const FRenderContext& ctx) const; // TODO: This is temporarily here
@@ -329,4 +522,7 @@ public:
     void SetVectorIndex(size_t index) { m_VectorIndex = index; }
 
     [[nodiscard]] JScene* GetOwningScene() const { return m_OwningScene; }
+
+    [[nodiscard]] JActor* GetParentActor() const { return m_ParentActor; }
+    [[nodiscard]] const std::vector<JActor*>& GetChildActors() const { return m_ChildActors; }
 };
