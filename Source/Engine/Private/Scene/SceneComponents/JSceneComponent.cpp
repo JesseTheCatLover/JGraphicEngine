@@ -85,6 +85,13 @@ FTransform JSceneComponent::GetWorldTransform() const
     return m_WorldTransform;
 }
 
+void JSceneComponent::PostLoad()
+{
+    JTransformComponent::PostLoad();
+
+    MarkWorldDirty();
+}
+
 void JSceneComponent::SetWorldPosition(const FVector3& worldPosition)
 {
     if (m_Parent)
@@ -187,5 +194,4 @@ void JSceneComponent::Initialize()
 
 JREFLECT_TYPE(JSceneComponent)
 {
-    JPROPERTY(m_WorldTransform);
 }}

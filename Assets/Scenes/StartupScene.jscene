@@ -1,24 +1,28 @@
 {
     "name": "StartupScene",
-    "actor_count": 3,
+    "actor_count": 5,
     "meta": {
         "thumbnail": "thumbnail.png",
-        "last_modified": "2025-11-23 01:24:30"
+        "last_modified": "2025-11-25 02:07:50"
     },
-    "Objects": [
+    "objects": [
         {
-            "uuid": "1c2c3aff-9f82-4e15-837e-df1d7573ae97",
+            "uuid": "e434f284-bd53-4714-af07-8c4913e87b53",
             "type": "JActor",
+            "relation": {},
             "data": {
                 "m_Name": "DioMansion",
                 "m_VectorIndex": 0
             }
         },
         {
-            "uuid": "eb4de1ac-f20b-4b87-afe9-42fbefacbdb8",
+            "uuid": "69a020a0-0850-4f58-aea1-ad07d4e7dc23",
             "type": "JSceneComponent",
+            "relation": {
+                "owner_actor": "e434f284-bd53-4714-af07-8c4913e87b53"
+            },
             "data": {
-                "m_WorldTransform": {
+                "m_LocalTransform": {
                     "position": [
                         -5.0,
                         10.0,
@@ -35,36 +39,120 @@
                         1.0,
                         1.0
                     ]
-                }
+                },
+                "m_Name": "RootComponent"
             }
         },
         {
-            "uuid": "7c5c3f28-1a36-4fdf-9272-3ca71cafdfb1",
+            "uuid": "bdd0a265-8605-4ee3-bd3c-8a95a8aa1b54",
             "type": "JModelComponent",
+            "relation": {
+                "owner_actor": "e434f284-bd53-4714-af07-8c4913e87b53",
+                "parent_component": "69a020a0-0850-4f58-aea1-ad07d4e7dc23"
+            },
             "data": {
-                "m_ModelKey": "Dio Brando/DioMansion.obj"
+                "m_ModelKey": "Dio Brando/DioMansion.obj",
+                "m_Visible": true,
+                "m_LocalTransform": {
+                    "position": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "m_Name": ""
             }
         },
         {
-            "uuid": "1b1db419-a684-4c43-a4d9-144fbb899de8",
+            "uuid": "cb936c76-57c7-4e07-a93c-d54aa96a6d7b",
             "type": "JModelComponent",
+            "relation": {
+                "owner_actor": "e434f284-bd53-4714-af07-8c4913e87b53",
+                "parent_component": "bdd0a265-8605-4ee3-bd3c-8a95a8aa1b54"
+            },
             "data": {
-                "m_ModelKey": "MedievalWindow/MedievalWindow.obj"
+                "m_ModelKey": "MedievalWindow/MedievalWindow.obj",
+                "m_Visible": true,
+                "m_LocalTransform": {
+                    "position": [
+                        15.0,
+                        -10.0,
+                        2.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "m_Name": ""
             }
         },
         {
-            "uuid": "b87d475a-7872-4cb3-b59f-8887a3f175f6",
+            "uuid": "6a3179c5-f168-4486-b536-bd339e2b1292",
             "type": "JActor",
+            "relation": {},
             "data": {
                 "m_Name": "MedievalWindow",
                 "m_VectorIndex": 1
             }
         },
         {
-            "uuid": "1d944d90-8261-47d3-a991-d0c5d35e9ca6",
+            "uuid": "db710763-6189-4e37-a07b-f28b0682136d",
             "type": "JSceneComponent",
+            "relation": {
+                "owner_actor": "6a3179c5-f168-4486-b536-bd339e2b1292"
+            },
             "data": {
-                "m_WorldTransform": {
+                "m_LocalTransform": {
+                    "position": [
+                        0.0,
+                        -10.0,
+                        0.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "m_Name": "RootComponent"
+            }
+        },
+        {
+            "uuid": "d4722441-465c-4ca7-bdc4-c9b498b9fc57",
+            "type": "JModelComponent",
+            "relation": {
+                "owner_actor": "6a3179c5-f168-4486-b536-bd339e2b1292",
+                "parent_component": "db710763-6189-4e37-a07b-f28b0682136d"
+            },
+            "data": {
+                "m_ModelKey": "MedievalWindow/MedievalWindow.obj",
+                "m_Visible": true,
+                "m_LocalTransform": {
                     "position": [
                         0.0,
                         0.0,
@@ -81,29 +169,61 @@
                         1.0,
                         1.0
                     ]
-                }
+                },
+                "m_Name": ""
             }
         },
         {
-            "uuid": "7c04404c-924e-42ed-9b61-3f034eb200b8",
-            "type": "JModelComponent",
-            "data": {
-                "m_ModelKey": "MedievalWindow/MedievalWindow.obj"
-            }
-        },
-        {
-            "uuid": "03e901f6-d1fd-4b27-8394-ebf0df83273a",
+            "uuid": "436be65a-8ce8-491b-bf3c-19e11a0aec40",
             "type": "JActor",
+            "relation": {},
             "data": {
                 "m_Name": "CameraActor",
                 "m_VectorIndex": 2
             }
         },
         {
-            "uuid": "e3b72474-7724-4c5e-9a7e-6f104386205d",
+            "uuid": "1f59c4d8-e0f8-45f1-94d9-65fbb603788f",
             "type": "JSceneComponent",
+            "relation": {
+                "owner_actor": "436be65a-8ce8-491b-bf3c-19e11a0aec40"
+            },
             "data": {
-                "m_WorldTransform": {
+                "m_LocalTransform": {
+                    "position": [
+                        -20.0,
+                        0.0,
+                        15.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "m_Name": "RootComponent"
+            }
+        },
+        {
+            "uuid": "95521959-01a0-426d-80ad-82532046a840",
+            "type": "JCameraComponent",
+            "relation": {
+                "owner_actor": "436be65a-8ce8-491b-bf3c-19e11a0aec40",
+                "parent_component": "1f59c4d8-e0f8-45f1-94d9-65fbb603788f"
+            },
+            "data": {
+                "m_FOV": 60.0,
+                "m_AspectRatio": 1.7777777910232544,
+                "m_NearClip": 0.009999999776482582,
+                "m_FarClip": 1000.0,
+                "m_OrthoHalfHeight": 10.0,
+                "m_LocalTransform": {
                     "position": [
                         0.0,
                         0.0,
@@ -120,46 +240,86 @@
                         1.0,
                         1.0
                     ]
-                }
+                },
+                "m_Name": ""
             }
         },
         {
-            "uuid": "15547c34-0acc-488f-8776-565a605d387d",
-            "type": "JCameraComponent",
+            "uuid": "eddb066d-098b-46bc-9bf7-b0e28e2ef044",
+            "type": "JActor",
+            "relation": {},
             "data": {
-                "m_FOV": 60.0,
-                "m_AspectRatio": 1.7777777910232544,
-                "m_NearClip": 0.009999999776482582,
-                "m_FarClip": 1000.0,
-                "m_OrthoHalfHeight": 10.0
+                "m_Name": "ParentActor",
+                "m_VectorIndex": 3
+            }
+        },
+        {
+            "uuid": "916a07cf-95dc-4b4a-bfa4-a0149f32a5b3",
+            "type": "JSceneComponent",
+            "relation": {
+                "owner_actor": "eddb066d-098b-46bc-9bf7-b0e28e2ef044"
+            },
+            "data": {
+                "m_LocalTransform": {
+                    "position": [
+                        10.0,
+                        0.0,
+                        20.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "m_Name": "RootComponent"
+            }
+        },
+        {
+            "uuid": "689168d7-4384-4178-b00b-694afbcf719a",
+            "type": "JActor",
+            "relation": {
+                "parent_actor": "eddb066d-098b-46bc-9bf7-b0e28e2ef044"
+            },
+            "data": {
+                "m_Name": "ChildActor",
+                "m_VectorIndex": 4
+            }
+        },
+        {
+            "uuid": "a1d1167a-8104-4856-a004-654062b78b45",
+            "type": "JSceneComponent",
+            "relation": {
+                "owner_actor": "689168d7-4384-4178-b00b-694afbcf719a",
+                "parent_component": "916a07cf-95dc-4b4a-bfa4-a0149f32a5b3"
+            },
+            "data": {
+                "m_LocalTransform": {
+                    "position": [
+                        0.0,
+                        5.0,
+                        0.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "m_Name": "RootComponent"
             }
         }
-    ],
-    "scene": {
-        "root_actors": [
-            "1c2c3aff-9f82-4e15-837e-df1d7573ae97",
-            "b87d475a-7872-4cb3-b59f-8887a3f175f6",
-            "03e901f6-d1fd-4b27-8394-ebf0df83273a"
-        ],
-        "actor_components": {
-            "03e901f6-d1fd-4b27-8394-ebf0df83273a": [],
-            "b87d475a-7872-4cb3-b59f-8887a3f175f6": [],
-            "1c2c3aff-9f82-4e15-837e-df1d7573ae97": []
-        },
-        "scene_components": {
-            "03e901f6-d1fd-4b27-8394-ebf0df83273a": [
-                "e3b72474-7724-4c5e-9a7e-6f104386205d",
-                "15547c34-0acc-488f-8776-565a605d387d"
-            ],
-            "b87d475a-7872-4cb3-b59f-8887a3f175f6": [
-                "1d944d90-8261-47d3-a991-d0c5d35e9ca6",
-                "7c04404c-924e-42ed-9b61-3f034eb200b8"
-            ],
-            "1c2c3aff-9f82-4e15-837e-df1d7573ae97": [
-                "eb4de1ac-f20b-4b87-afe9-42fbefacbdb8",
-                "7c5c3f28-1a36-4fdf-9272-3ca71cafdfb1",
-                "1b1db419-a684-4c43-a4d9-144fbb899de8"
-            ]
-        }
-    }
+    ]
 }

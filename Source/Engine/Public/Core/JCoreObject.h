@@ -14,7 +14,6 @@
 #include "Utilities/UUUID.h"
 
 class JReflectionRegistrar;
-class JSerializeManager;
 
 // Helper macros to pick the first argument if given, otherwise default
 #define DECLARE_JOBJECT_1(Type) DECLARE_JOBJECT_IMPL(Type, JCoreObject)
@@ -49,6 +48,7 @@ private:
 class JCoreObject
 {
     friend class JSerializeManager;
+    friend class SceneManager;
 
 public:
     virtual ~JCoreObject() = default;
@@ -88,6 +88,11 @@ protected:
      */
     virtual void DeserializeCustom(const class JsonReader& reader) {}
 
+    /**
+     * Called after deserialization. Objects may construct, populate data and allocate resources using this hook.
+     */
+    virtual void PostLoad() {};
+
 private:
     uint64_t m_ID; ///< runtime-only ID
     std::string m_UUID; ///< serialized stable and unique UUID
@@ -118,5 +123,7 @@ private:
 
         // Custom hook:
         DeserializeCustom(reader);
+
+        PostLoad();
     }
 };

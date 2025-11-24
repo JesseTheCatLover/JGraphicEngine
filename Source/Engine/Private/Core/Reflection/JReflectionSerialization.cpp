@@ -1,8 +1,10 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Core/Reflection/JReflectionSerialization.h"
-#include "Core/JCoreObject.h"
+
 #include <iostream>
+
+#include "Core/JCoreObject.h"
 
 // Helper: write a single property value based on its type
 static void WritePropertyValue(JsonWriter& writer, const char* name, const void* fieldPtr, const std::type_index& typeIndex)
@@ -145,34 +147,41 @@ static void ReadPropertyValue(const JsonReader& reader, const char* name, void* 
 
 void JReflectionSerialization::SerializeReflectedProperties(JsonWriter& writer, const JCoreObject& obj)
 {
-    const REType* type = RETypeRegistry::FindType(typeid(obj));
-    if (!type)
+    const REType* mostDerived = RETypeRegistry::FindType(typeid(obj));
+    if (!mostDerived)
         return;
 
-    const char* base = reinterpret_cast<const char*>(&obj);
+    const char* basePtr = reinterpret_cast<const char*>(&obj);
 
-    for (const REProperty& prop : type->properties)
+    // Walk from derived up through all base types
+    for (const REType* type = mostDerived; type != nullptr; type = RETypeRegistry::GetBaseType(type))
     {
-        const char* fieldName = prop.name.c_str();
-        const void* fieldPtr  = base + prop.offset;
+        for (const REProperty& prop : type->properties)
+        {
+            const char* fieldName = prop.name.c_str();
+            const void* fieldPtr = basePtr + prop.offset;
 
-        WritePropertyValue(writer, fieldName, fieldPtr, prop.type);
+            WritePropertyValue(writer, fieldName, fieldPtr, prop.type);
+        }
     }
 }
 
 void JReflectionSerialization::DeserializeReflectedProperties(const JsonReader &reader, JCoreObject &obj)
 {
-    const REType* type = RETypeRegistry::FindType(typeid(obj));
-    if (!type)
+    const REType* mostDerived = RETypeRegistry::FindType(typeid(obj));
+    if (!mostDerived)
         return;
 
-    char* base = reinterpret_cast<char*>(&obj);
+    char* basePtr = reinterpret_cast<char*>(&obj);
 
-    for (const REProperty& prop : type->properties)
+    for (const REType* type = mostDerived; type != nullptr; type = RETypeRegistry::GetBaseType(type))
     {
-        const char* fieldName = prop.name.c_str();
-        void* fieldPtr = base + prop.offset;
+        for (const REProperty& prop : type->properties)
+        {
+            const char* fieldName = prop.name.c_str();
+            void* fieldPtr = basePtr + prop.offset;
 
-        ReadPropertyValue(reader, fieldName, fieldPtr, prop.type);
+            ReadPropertyValue(reader, fieldName, fieldPtr, prop.type);
+        }
     }
 }

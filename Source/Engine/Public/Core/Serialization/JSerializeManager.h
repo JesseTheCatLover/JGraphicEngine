@@ -9,43 +9,38 @@ class JActorComponent;
 class JActor;
 class JCoreObject;
 
+struct FSceneObjectRelation
+{
+    JCoreObject* object = nullptr;
+
+    std::string parentActorUUID;     // for JActor
+    std::string ownerActorUUID;      // for components
+    std::string parentComponentUUID; // for scene components
+};
+
 struct FSceneSaveInfo
 {
     std::vector<JCoreObject*> objects;  // all actors + components
-    std::vector<JActor*> rootActors;
-    std::unordered_map<JActor*, std::vector<JActorComponent*>> actorComponents; // logic
-    std::unordered_map<JActor*, std::vector<JSceneComponent*>> sceneComponents; // transform/render
 
-    /** @brief Name of the scene. */
+    // Metadata
     std::string sceneName;
-
-    /** @brief Number of actors currently in the scene. */
-    unsigned int actorCount;
-
-    /** @brief Path or identifier for a thumbnail image representing the scene. */
+    unsigned int actorCount = 0;
     std::string thumbnail;
-
-    /** @brief Timestamp of the last modification of the scene file (human-readable). */
     std::string lastModified;
 };
 
 struct FSceneLoadResult
 {
     std::vector<JCoreObject*> objects;
-    std::vector<JActor*> rootActors;
-    std::unordered_map<JActor*, std::vector<JActorComponent*>> actorComponents;
-    std::unordered_map<JActor*, std::vector<JSceneComponent*>> sceneComponents;
 
-    /** @brief Name of the scene. */
+    // Helper tables (internal to SceneManager/JSerializeManager)
+    std::unordered_map<std::string, JCoreObject*> uuidMap;
+    std::vector<FSceneObjectRelation> relations;
+
+    // Metadata
     std::string sceneName;
-
-    /** @brief Number of actors currently in the scene. */
-    unsigned int actorCount;
-
-    /** @brief Path or identifier for a thumbnail image representing the scene. */
+    unsigned int actorCount = 0;
     std::string thumbnail;
-
-    /** @brief Timestamp of the last modification of the scene file (human-readable). */
     std::string lastModified;
 };
 

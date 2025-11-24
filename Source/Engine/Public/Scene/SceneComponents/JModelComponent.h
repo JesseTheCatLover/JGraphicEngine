@@ -35,5 +35,5 @@ private:
     RShaderHandle m_Shader{}; // shader used for all submeshes (for now)
 
 protected:
-    virtual void DeserializeCustom(const class JsonReader &reader) override;
+    void AllocateGpuResources() override;
 };

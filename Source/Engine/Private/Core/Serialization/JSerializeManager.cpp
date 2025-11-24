@@ -3,6 +3,7 @@
 #include "Core/Serialization/JSerializeManager.h"
 #include "Core/Serialization/SerializeUtilities.h"
 #include "Core/JCoreObject.h"
+
 #include "Scene/JActor.h"
 #include "Scene/ActorComponents/JActorComponent.h"
 #include "Scene/SceneComponents/JSceneComponent.h"
@@ -11,84 +12,79 @@ bool JSerializeManager::SaveScene(const FSceneSaveInfo& info, const std::string&
 {
     JsonWriter writer;
 
-    // Root object
+    // ---------------- Root object ----------------
     writer.BeginObject(); // root {}
 
     // ------- Metadata at root -------
-    writer.Write("name",        info.sceneName);
-    writer.Write("actor_count", static_cast<int>(info.actorCount));
+    writer.Write("name", info.sceneName);
+    writer.Write("actor_count", info.actorCount);
 
-    // Editor meta section
     writer.BeginObject("meta");
-    writer.Write("thumbnail",     info.thumbnail);
+    writer.Write("thumbnail", info.thumbnail);
     writer.Write("last_modified", info.lastModified);
     writer.EndObject(); // meta
 
-    // ---------- "Objects" array ----------
-    writer.BeginArray("Objects"); // "Objects": [ ]
+    // ---------------- Objects array ----------------
+    writer.BeginArray("objects");
 
     for (const JCoreObject* obj : info.objects)
     {
         if (!obj) continue;
 
-        writer.BeginObject(); // { ... } inside Objects[]
+        writer.BeginObject(); // one object entry
 
-        // Top-level identity & type
+        // Identity + type
         writer.Write("uuid", obj->GetUUID());
         writer.Write("type", std::string(obj->GetClassTypeName()));
 
-        // "data": { ...fields... }
+        // ---------- Relations ----------
+        writer.BeginObject("relation");
+
+        // Actor hierarchy
+        if (auto* actor = dynamic_cast<const JActor*>(obj)) // TODO: For future use a custom type ID system for casting.
+        {
+            const JActor* parent = actor->GetParentActor();
+            if (parent)
+            {
+                writer.Write("parent_actor", parent->GetUUID());
+            }
+            // If root: we just omit "parent_actor".
+        }
+
+        // Scene component hierarchy
+        if (auto* sceneComp = dynamic_cast<const JSceneComponent*>(obj))
+        {
+            if (JActor* owner = sceneComp->GetOwnerActor())
+            {
+                writer.Write("owner_actor", owner->GetUUID());
+            }
+
+            if (JSceneComponent* parentComp = sceneComp->GetParent())
+            {
+                writer.Write("parent_component", parentComp->GetUUID());
+            }
+        }
+
+        // Logic components (non-scene actor components)
+        if (auto* logicComp = dynamic_cast<const JActorComponent*>(obj))
+        {
+            if (JActor* owner = logicComp->GetOwnerActor())
+            {
+                writer.Write("owner_actor", owner->GetUUID());
+            }
+        }
+
+        writer.EndObject(); // relation
+
+        // ---------- Data (reflected + custom) ----------
         writer.BeginObject("data");
-        obj->SerializeJObject(writer); // reflected + custom
-        writer.EndObject(); // end "data"
+        obj->SerializeJObject(writer); // reflection + SerializeCustom()
+        writer.EndObject(); // data
 
-        writer.EndObject(); // end this object entry
+        writer.EndObject(); // this object
     }
 
-    writer.EndArray(); // end "Objects"
-
-    // ---------- "scene" section ----------
-    writer.BeginObject("scene");
-
-    // RootActors array
-    writer.BeginArray("root_actors");
-    for (JActor* actor : info.rootActors)
-        writer.WriteValue(actor->GetUUID());
-    writer.EndArray();
-
-    // Actor logic components
-    writer.BeginObject("actor_components");
-    for (auto& [actor, comps] : info.actorComponents)
-    {
-        if (!actor) continue;
-
-        writer.BeginArray(actor->GetUUID());
-        for (JActorComponent* comp : comps)
-        {
-            if (!comp) continue;
-            writer.WriteValue(comp->GetUUID());
-        }
-        writer.EndArray();
-    }
-    writer.EndObject();
-
-    // Scene components (transform/render)
-    writer.BeginObject("scene_components");
-    for (auto& [actor, comps] : info.sceneComponents)
-    {
-        if (!actor) continue;
-
-        writer.BeginArray(actor->GetUUID());
-        for (JSceneComponent* comp : comps)
-        {
-            if (!comp) continue;
-            writer.WriteValue(comp->GetUUID());
-        }
-        writer.EndArray();
-    }
-    writer.EndObject();
-
-    writer.EndObject(); // scene
+    writer.EndArray(); // objects
 
     writer.EndObject(); // root
 
@@ -102,22 +98,27 @@ bool JSerializeManager::LoadScene(const std::string& filePath, FSceneLoadResult&
         return false;
 
     // --- Metadata ---
-    outResult.sceneName  = reader.Read<std::string>("name", "");
+    outResult.sceneName = reader.Read<std::string>("name", "");
     outResult.actorCount = reader.Read<unsigned int>("actor_count", 0u);
 
     if (reader.Has("meta"))
     {
-        auto metaReader       = reader.GetObject("meta");
-        outResult.thumbnail   = metaReader.Read<std::string>("thumbnail", "");
+        auto metaReader = reader.GetObject("meta");
+        outResult.thumbnail = metaReader.Read<std::string>("thumbnail", "");
         outResult.lastModified = metaReader.Read<std::string>("last_modified", "");
     }
 
     // --- Objects array ---
-    auto objectReaders = reader.GetArray("Objects");
+    auto objectReaders = reader.GetArray("objects");
 
-    // uuid -> object map for wiring
-    std::unordered_map<std::string, JCoreObject*> uuidMap;
-    uuidMap.reserve(objectReaders.size());
+    // Reset output containers
+    outResult.objects.clear();
+    outResult.relations.clear();
+    outResult.uuidMap.clear();
+
+    outResult.objects.reserve(objectReaders.size());
+    outResult.relations.reserve(objectReaders.size());
+    outResult.uuidMap.reserve(objectReaders.size());
 
     for (const JsonReader& objReader : objectReaders)
     {
@@ -134,120 +135,37 @@ bool JSerializeManager::LoadScene(const std::string& filePath, FSceneLoadResult&
         // JSerializeManager is friend of JCoreObject, so this is allowed:
         obj->m_UUID = uuid;
 
-        // "data" object
-        JsonReader dataReader = objReader.GetObject("data");
-        obj->DeserializeJObject(dataReader);
+        // --------- Deserialize data ---------
+        if (objReader.Has("data"))
+        {
+            JsonReader dataReader = objReader.GetObject("data");
+            obj->DeserializeJObject(dataReader);
+        }
 
-        uuidMap[uuid] = obj;
         outResult.objects.push_back(obj);
-    }
+        outResult.uuidMap[uuid] = obj;
 
-    // --- Scene: root actors + components ---
-    if (!reader.Has("scene"))
-        return true; // ok: no wiring, just objects + metadata
+        // --------- Capture relations (no wiring here) ---------
+        FSceneObjectRelation rel;
+        rel.object = obj;
 
-    JsonReader sceneReader = reader.GetObject("scene");
-    const JJson& sceneJson = sceneReader.GetData();
-
-    // RootActors
-    auto rootActorUUIDReaders = sceneReader.GetArray("root_actors");
-    for (const JsonReader& valueReader : rootActorUUIDReaders)
-    {
-        const JJson& raw = valueReader.GetData();
-        if (!raw.is_string()) continue;
-
-        std::string uuid = raw.get<std::string>();
-        auto it = uuidMap.find(uuid);
-        if (it != uuidMap.end())
+        if (objReader.Has("relation"))
         {
-            if (auto* actor = dynamic_cast<JActor*>(it->second))
-                outResult.rootActors.push_back(actor);
+            JsonReader relReader = objReader.GetObject("relation");
+            rel.parentActorUUID = relReader.Read<std::string>("parent_actor", "");
+            rel.ownerActorUUID = relReader.Read<std::string>("owner_actor", "");
+            rel.parentComponentUUID = relReader.Read<std::string>("parent_component", "");
         }
+
+        outResult.relations.push_back(std::move(rel));
     }
 
-    // ---- ActorComponents: { "ActorUuid": ["CompUuid", ...] } ----
-    if (sceneJson.contains("actor_components") && sceneJson["actor_components"].is_object())
-    {
-        const JJson& ac = sceneJson["actor_components"];
-
-        for (auto it = ac.begin(); it != ac.end(); ++it)
-        {
-            const std::string actorUUID = it.key();
-            const JJson& compArray = it.value();
-
-            auto itActor = uuidMap.find(actorUUID);
-            if (itActor == uuidMap.end())
-                continue;
-
-            JActor* actor = dynamic_cast<JActor*>(itActor->second);
-            if (!actor)
-                continue;
-
-            auto& compList = outResult.actorComponents[actor];
-
-            if (!compArray.is_array())
-                continue;
-
-            for (const auto& compUUIDJson : compArray)
-            {
-                if (!compUUIDJson.is_string())
-                    continue;
-
-                std::string compUUID = compUUIDJson.get<std::string>();
-                auto itComp = uuidMap.find(compUUID);
-                if (itComp == uuidMap.end())
-                    continue;
-
-                if (auto* actorComp = dynamic_cast<JActorComponent*>(itComp->second))
-                    compList.push_back(actorComp);
-            }
-        }
-    }
-
-    // ---- SceneComponents: { "ActorUuid": ["CompUuid", ...] } ----
-    if (sceneJson.contains("scene_components") && sceneJson["scene_components"].is_object())
-    {
-        const JJson& sc = sceneJson["scene_components"];
-
-        for (auto it = sc.begin(); it != sc.end(); ++it)
-        {
-            const std::string actorUUID = it.key();
-            const JJson& compArray = it.value();
-
-            auto itActor = uuidMap.find(actorUUID);
-            if (itActor == uuidMap.end())
-                continue;
-
-            JActor* actor = dynamic_cast<JActor*>(itActor->second);
-            if (!actor)
-                continue;
-
-            auto& compList = outResult.sceneComponents[actor];
-
-            if (!compArray.is_array())
-                continue;
-
-            for (const auto& compUUIDJson : compArray)
-            {
-                if (!compUUIDJson.is_string())
-                    continue;
-
-                std::string compUUID = compUUIDJson.get<std::string>();
-                auto itComp = uuidMap.find(compUUID);
-                if (itComp == uuidMap.end())
-                    continue;
-
-                if (auto* sceneComp = dynamic_cast<JSceneComponent*>(itComp->second))
-                    compList.push_back(sceneComp);
-            }
-        }
-    }
+    // SceneManager will wire relationship using outResult.objects, outResult.uuidMap and outResult.relations.
 
     return true;
 }
 
-
-JCoreObject* JSerializeManager::CreateObjectByTypeName(const char *typeName)
+JCoreObject* JSerializeManager::CreateObjectByTypeName(const char* typeName)
 {
     return RETypeRegistry::CreateInstanceByTypeName(typeName);
 }

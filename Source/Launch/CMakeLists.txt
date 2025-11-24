@@ -44,3 +44,21 @@ target_link_libraries(JEngine PRIVATE JApplication)
 set_target_properties(JEngine PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
+
+set(JENGINE_EXECUTABLES JEditor JGame JEngine)
+foreach(tgt IN LISTS JENGINE_EXECUTABLES) # TODO: We need a codegen to escape this mess....
+    if (MSVC)
+        # Force link all object files from Engine.lib
+        target_link_options(${tgt} PRIVATE /WHOLEARCHIVE:Engine)
+    elseif (APPLE)
+        # On macOS/Clang: force_load the static lib produced by target Engine
+        target_link_options(${tgt} PRIVATE
+                -Wl,-force_load,$<TARGET_FILE:Engine>
+        )
+    else()
+        # On GCC/Clang / lld
+        target_link_options(${tgt} PRIVATE
+                -Wl,--whole-archive,$<TARGET_FILE:Engine>,-Wl,--no-whole-archive
+        )
+    endif()
+endforeach()

@@ -70,7 +70,7 @@ private:
      */
     virtual void ExecuteDestroy();
 
-    [[nodiscard]] std::vector<JSceneComponent*> GetSceneComponentsRaw() const
+    [[nodiscard]] std::vector<JSceneComponent*> ListSceneComponentsRaw() const
     {
         std::vector<JSceneComponent*> result;
         result.reserve(m_SceneComponents.size());
@@ -80,7 +80,7 @@ private:
         return result;
     }
 
-    [[nodiscard]] std::vector<JActorComponent*> GetActorComponentsRaw() const
+    [[nodiscard]] std::vector<JActorComponent*> ListActorComponentsRaw() const
     {
         std::vector<JActorComponent*> result;
         result.reserve(m_ActorComponents.size());

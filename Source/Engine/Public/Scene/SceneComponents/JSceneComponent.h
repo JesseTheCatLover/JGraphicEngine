@@ -107,6 +107,10 @@ public:
      */
     [[nodiscard]] FEuler GetWorldRotationAsEuler() const { return GetWorldTransform().GetRotation().ToEuler(); }
 
+protected:
+    void PostLoad() override;
+
+public:
     /**
     * @brief Set world position, adjusting local transform accordingly.
     */

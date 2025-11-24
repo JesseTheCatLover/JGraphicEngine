@@ -1,16 +1,38 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "../../../Public/Core/Reflection/RETypeRegistry.h"
+
+#include <iostream>
 #include <utility>
 
 std::unordered_map<std::type_index, REType> RETypeRegistry::s_Types;
 
 void RETypeRegistry::BeginType(const char* name, const std::type_info& typeInfo, const std::type_info& baseType)
 {
-    REType type;
-    type.name = name;
-    type.cppType = std::type_index(typeInfo);
-    type.baseCppType = std::type_index(baseType);
+    auto typeIndex = std::type_index(typeInfo);
+    REType& type = s_Types[typeIndex]; // create or reuse
 
-    s_Types[std::type_index(typeInfo)] = std::move(type);
+    type.name = name;
+    type.cppType = typeIndex;
+    type.baseCppType = std::type_index(baseType);
 }
+
+void RETypeRegistry::DebugDumpAllTypes()
+{
+    std::cout << "=== Registered REType entries ===\n";
+    for (auto& [idx, type] : RETypeRegistry::s_Types)
+    {
+        std::cout << "Type: " << type.name << "  base: ";
+        if (type.baseCppType == std::type_index(typeid(void)))
+        {
+            std::cout << "<none>";
+        }
+        else
+        {
+            const REType* base = RETypeRegistry::FindType(type.baseCppType);
+            std::cout << (base ? base->name : "<unregistered>");
+        }
+        std::cout << "\n";
+    }
+}
+

@@ -44,7 +44,6 @@ bool JEngine::Run()
         std::cerr << "[JEngine]: Bootstrapping the default scene has failed" << std::endl;
         return false;
     }
-    JReflectionRegistrar::DebugReflection_JActor();
     RunMainLoop();
     Shutdown();
 
@@ -262,7 +261,9 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
     // Move along camera local axes
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         movement += camera->GetForwardVector();
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        GetSceneManager()->SaveSceneFile(GetSceneManager()->GetActiveScene(),"StartupScene");
+    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
         movement -= camera->GetForwardVector();
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         movement += camera->GetRightVector();

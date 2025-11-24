@@ -21,6 +21,15 @@ public:
     void SetVisible(bool v) { m_Visible = v; }
     bool IsVisible() const { return m_Visible; }
 
+protected:
+    void PostLoad() override
+    {
+        AllocateGpuResources();
+    }
+
+    virtual void AllocateGpuResources() {}
+
+public:
     void SetRenderLayer(ERenderLayer layer) { m_RenderLayer = layer; }
     ERenderLayer GetRenderLayer() const { return m_RenderLayer; }
 

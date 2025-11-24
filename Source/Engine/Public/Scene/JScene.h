@@ -136,7 +136,7 @@ private:
      * @brief Gathers all actors in the scene, this API is only available to SceneManager.
      * @return List of raw JActor pointers.
      */
-    std::vector<JActor*> GetAllActors() const
+    std::vector<JActor*> ListAllActors() const
     {
         std::vector<JActor*> result;
         result.reserve(m_Actors.size());

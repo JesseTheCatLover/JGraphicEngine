@@ -44,16 +44,34 @@ public:
         });
     }
 
+    static const REType* FindType(const std::type_index& idx)
+    {
+        auto it = s_Types.find(idx);
+        return (it != s_Types.end()) ? &it->second : nullptr;
+    }
+
     static const REType* FindType(const std::type_info& typeInfo)
     {
-        auto it = s_Types.find(std::type_index(typeInfo));
-        return (it != s_Types.end()) ? &it->second : nullptr;
+        return FindType(std::type_index(typeInfo));
     }
 
     template<typename T>
     static const REType* GetType()
     {
         return FindType(typeid(T));
+    }
+
+    // Small helper to walk up the inheritance chain
+    static const REType* GetBaseType(const REType* type)
+    {
+        if (!type)
+            return nullptr;
+
+        // Sentinel for "no base"
+        if (type->baseCppType == std::type_index(typeid(void)))
+            return nullptr;
+
+        return FindType(type->baseCppType);
     }
 
     static const REType* FindTypeByTypeName(const std::string& name)
@@ -75,7 +93,6 @@ public:
         if (it == s_Types.end())
             it = s_Types.emplace(typeIndex, REType{}).first;
 
-        it->second.baseCppType = typeIndex;
         it->second.factory = fn;
     }
 
@@ -114,6 +131,8 @@ public:
             return nullptr;
         return type->factory();
     }
+
+    static void DebugDumpAllTypes();
 
 private:
     static std::unordered_map<std::type_index, REType> s_Types;

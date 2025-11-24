@@ -61,103 +61,156 @@ void SceneManager::Tick(float deltaTime)
 void SceneManager::BuildSaveInfoFromScene(const JScene* scene, FSceneSaveInfo& outInfo) const
 {
     outInfo.objects.clear();
-    outInfo.rootActors.clear();
-    outInfo.actorComponents.clear();
 
-    // Meta data
-    auto now = std::chrono::system_clock::now();
-    std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
+    // ----------------- Metadata -----------------
+    if (!scene)
+        return;
 
+    // Name & actor count
     outInfo.sceneName = scene->GetName();
-    outInfo.actorCount = scene->m_Actors.size();
+    outInfo.actorCount = static_cast<unsigned int>(scene->m_Actors.size());
     outInfo.thumbnail = "thumbnail.png";
+
+    // Timestamp
+    auto now       = std::chrono::system_clock::now();
+    std::time_t ts = std::chrono::system_clock::to_time_t(now);
 
     std::tm timeInfo{};
 #ifdef _WIN32
-    localtime_s(&timeInfo, &timestamp);
+    localtime_s(&timeInfo, &ts);
 #else
-    localtime_r(&timestamp, &timeInfo);
+    localtime_r(&ts, &timeInfo);
 #endif
 
     char buffer[32];
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeInfo);
-    outInfo.lastModified =  std::string(buffer);
+    outInfo.lastModified = std::string(buffer);
 
-
-    if (!scene)
-        return;
-
-    auto actors = scene->GetAllActors();
+    // ----------------- Objects -----------------
+    auto actors = scene->ListAllActors();
 
     for (JActor* actor : actors)
     {
         if (!actor) continue;
 
+        // Add actor itself
         outInfo.objects.push_back(actor);
 
-        if (actor->IsRootActor())
-            outInfo.rootActors.push_back(actor);
-
-        // Logic components
-        auto actorComps = actor->GetActorComponentsRaw();
-        auto& logicList = outInfo.actorComponents[actor];
+        // Actor components
+        auto actorComps = actor->ListActorComponentsRaw();
         for (JActorComponent* comp : actorComps)
         {
             if (!comp) continue;
             outInfo.objects.push_back(comp);
-            logicList.push_back(comp);
         }
 
         // Scene components
-        auto sceneComps = actor->GetSceneComponentsRaw();
-        auto& sceneList = outInfo.sceneComponents[actor];
+        auto sceneComps = actor->ListSceneComponentsRaw();
         for (JSceneComponent* comp : sceneComps)
         {
             if (!comp) continue;
             outInfo.objects.push_back(comp);
-            sceneList.push_back(comp);
         }
     }
 }
 
 void SceneManager::ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, JScene& scene)
 {
-    //  Register all actors
+    // 1) Scene takes ownership of all actors
     for (JCoreObject* obj : loadResult.objects)
     {
         if (!obj) continue;
         if (auto* actor = dynamic_cast<JActor*>(obj))
+        {
             scene.TakeActorOwnershipFromLoad(actor);
-    }
-
-    // TODO: Root actors handling
-
-
-    // Attach actor components
-    for (auto& [actor, comps] : loadResult.actorComponents)
-    {
-        if (!actor) continue;
-
-        for (JActorComponent* comp : comps)
-        {
-            if (!comp) continue;
-            actor->AttachActorComponentFromLoad(comp);
         }
     }
 
-    // Attach scene components
-    for (auto& [actor, comps] : loadResult.sceneComponents)
+    // 2) Restore actor hierarchy
+    for (const FSceneObjectRelation& rel : loadResult.relations)
     {
-        if (!actor) continue;
+        if (!rel.object)
+            continue;
 
-        for (JSceneComponent* comp : comps)
+        auto* actor = dynamic_cast<JActor*>(rel.object);
+        if (!actor)
+            continue; // this relation isn't for an actor
+
+        if (rel.parentActorUUID.empty())
         {
-            if (!comp) continue;
-
-            // For now, attach everything to actor's root.
-            // Later we can restore full component hierarchy using extra metadata.
-            actor->AttachSceneComponentFromLoad(comp);
+            // Root actor; ensure no parent
+            actor->DetachFromParentActor();
+            continue;
         }
+
+        // Find parent actor by UUID
+        auto itParent = loadResult.uuidMap.find(rel.parentActorUUID);
+        if (itParent == loadResult.uuidMap.end())
+            continue;
+
+        auto* parentActor = dynamic_cast<JActor*>(itParent->second);
+        if (!parentActor)
+            continue;
+
+        actor->AttachToActor(parentActor);
+    }
+
+    // 3) Restore components (logic + scene) (Note: SCENE FIRST, then pure logic)
+    for (const FSceneObjectRelation& rel : loadResult.relations)
+    {
+        if (!rel.object)
+            continue;
+
+        // -------- Scene components (transform/render) --------
+        if (auto* sceneComp = dynamic_cast<JSceneComponent*>(rel.object))
+        {
+            if (rel.ownerActorUUID.empty())
+                continue;
+
+            auto itOwner = loadResult.uuidMap.find(rel.ownerActorUUID);
+            if (itOwner == loadResult.uuidMap.end())
+                continue;
+
+            auto* ownerActor = dynamic_cast<JActor*>(itOwner->second);
+            if (!ownerActor)
+                continue;
+
+            JSceneComponent* parentComp = nullptr;
+            if (!rel.parentComponentUUID.empty())
+            {
+                auto itParentComp = loadResult.uuidMap.find(rel.parentComponentUUID);
+                if (itParentComp != loadResult.uuidMap.end())
+                    parentComp = dynamic_cast<JSceneComponent*>(itParentComp->second);
+            }
+
+            ownerActor->AttachSceneComponentFromLoad(sceneComp, parentComp);
+            continue;  // IMPORTANT: don't also treat it as logic
+        }
+
+        // -------- Actor components (logic) --------
+        if (auto* logic = dynamic_cast<JActorComponent*>(rel.object))
+        {
+            if (rel.ownerActorUUID.empty())
+                continue;
+
+            auto itOwner = loadResult.uuidMap.find(rel.ownerActorUUID);
+            if (itOwner == loadResult.uuidMap.end())
+                continue;
+
+            auto* ownerActor = dynamic_cast<JActor*>(itOwner->second);
+            if (!ownerActor)
+                continue;
+
+            ownerActor->AttachActorComponentFromLoad(logic);
+            //continue; // done with this relation
+        }
+    }
+
+    // 4) Now that the graph is fully wired, call PostLoad for every object
+    for (JCoreObject* obj : loadResult.objects)
+    {
+        if (obj)
+            obj->PostLoad();
     }
 }
 
