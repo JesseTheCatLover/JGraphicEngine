@@ -125,7 +125,7 @@ public:
     JActor();
     virtual ~JActor() = default;
 
-    // -------------------- Lifecycle --------------------
+    // -------------------- Playtime API --------------------
 
     /**
      * @brief Called when the actor is first created or spawned.
@@ -152,6 +152,8 @@ public:
      */
     virtual void EndPlay();
 
+    // -------------------- Lifecycle API --------------------
+
     /**
      * @brief Marks this actor to be destroyed for the next frame.
      * @return False, if already requested; True if requested for the first time.
@@ -163,23 +165,21 @@ public:
      */
     [[nodiscard]] bool IsPendingDestroy() const { return m_bPendingDestroy; }
 
-    // -------------------- Actor API --------------------
+    // -------------------- Root Transform API --------------------
 
     [[nodiscard]] bool IsRootActor() const
     {
         return m_ParentActor == nullptr;
     }
 
+    [[nodiscard]] JSceneComponent* GetRootComponent() const { return m_RootComponent.get(); }
+    void SetRootComponent(TSharedPtr<JSceneComponent> root) { m_RootComponent = std::move(root); }
+
     /** Attach this actor under another actor (parental actor hierarchy). */
     bool AttachToActor(JActor* newParent);
 
     /** Detach from parent actor and become a root actor again. */
     void DetachFromParentActor();
-
-    // -------------------- Root & Transform --------------------
-
-    [[nodiscard]] JSceneComponent* GetRootComponent() const { return m_RootComponent.get(); }
-    void SetRootComponent(TSharedPtr<JSceneComponent> root) { m_RootComponent = std::move(root); }
 
     // -------------------- Transform API (world space) --------------------
 
