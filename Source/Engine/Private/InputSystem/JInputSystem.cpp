@@ -2,6 +2,34 @@
 
 #include "JInputSystem.h"
 
+JInputSystem::JInputSystem()
+{
+}
+
+void JInputSystem::Initialize(IInputBackend *backend)
+{
+}
+
+void JInputSystem::Shutdown()
+{
+}
+
+bool JInputSystem::IsKeyDown(int keyCode) const
+{
+}
+
+bool JInputSystem::WasKeyPressed(int keyCode) const
+{
+}
+
+bool JInputSystem::WasKeyReleased(int keyCode) const
+{
+}
+
+void JInputSystem::ProcessEvents()
+{
+}
+
 void JInputSystem::SetMappingStyle(TUniquePtr<IInputMappingStyle> style)
 {
     m_MappingStyle = std::move(style);

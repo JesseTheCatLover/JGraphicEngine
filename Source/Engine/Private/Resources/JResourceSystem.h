@@ -19,29 +19,32 @@
 class IRenderDevice;
 
 /**
- * @class JResourceManager
- * @brief Centralized internal manager for loading, caching, and managing runtime resources keyed by asset UUID.
+ * @class JResourceSystem
+ * @brief Centralized internal system for loading, caching, and managing runtime resources keyed by asset UUID.
  *
- * JResourceManager guarantees that each asset UUID maps to exactly one runtime
- * resource instance (e.g., mesh data, textures, audio buffers). The manager owns
+ * JResourceSystem guarantees that each asset UUID maps to exactly one runtime
+ * resource instance (e.g., mesh data, textures, audio buffers). The system owns
  * a single TSharedPtr for each resource and hands out additional TSharedPtr
  * references to engine systems and components.
  *
  * Used only by engine core and components, not exposed to gameplay scripts.
- * If a resource implements IGpuResource, the manager also drives
+ * If a resource implements IGpuResource, the system also drives
  * CreateGpuResources / DestroyGpuResources based on its lifetime.
  *
  * A resource is considered unused when its TSharedPtr use count is equal to 1
- * (only stored in the manager) and may be reclaimed by UnloadUnused().
+ * (only stored in the system) and may be reclaimed by UnloadUnused().
  */
-class JResourceManager
+class JResourceSystem
 {
+    friend class JEngine;
+
 public:
     using JAssetID = std::string;
 
+    ~JResourceSystem() = default;
+
 private:
-    JResourceManager() = default;
-    ~JResourceManager() = default;
+    JResourceSystem() = default;
 
     /** @brief Shared pointer to the base resource type. */
     using BasePtr = TSharedPtr<JCoreObject>;
@@ -58,18 +61,12 @@ private:
     IRenderDevice* m_Device = nullptr;                  ///< GPU device pointer.
 
 public:
-    /** @brief Global singleton accessor. */
-    static JResourceManager& Get()
-    {
-        static JResourceManager instance;
-        return instance;
-    }
 
     // Disable copy/move
-    JResourceManager(const JResourceManager&) = delete;
-    JResourceManager& operator=(const JResourceManager&) = delete;
-    JResourceManager(JResourceManager&&) = delete;
-    JResourceManager& operator=(JResourceManager&&) = delete;
+    JResourceSystem(const JResourceSystem&) = delete;
+    JResourceSystem& operator=(const JResourceSystem&) = delete;
+    JResourceSystem(JResourceSystem&&) = delete;
+    JResourceSystem& operator=(JResourceSystem&&) = delete;
 
     void Shutdown();
 
@@ -126,7 +123,7 @@ public:
             }
             else
             {
-                std::cerr << "[JResourceManager]: Failed to create gpu resource, RenderDevice is null\n";
+                std::cerr << "[JResourceSystem]: Failed to create gpu resource, RenderDevice is null\n";
             }
         }
 

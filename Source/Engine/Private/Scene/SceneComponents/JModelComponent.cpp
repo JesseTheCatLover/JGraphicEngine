@@ -2,16 +2,17 @@
 
 #include "Scene/SceneComponents/JModelComponent.h"
 
+#include "Core/JEngine.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
-#include "Resources/JResourceManager.h"
+#include "Resources/JResourceSystem.h"
 #include "Resources/GpuResources/JModelResource.h"
 #include "Rendering/RCommandQueue.h"
 
 void JModelComponent::SetModel(const std::string& assetID)
 {
     m_ModelKey = assetID;
-    m_Model = JResourceManager::Get().Load<JModelResource>(assetID, assetID);
+    m_Model = JEngine::Get().GetResourceSystem()->Load<JModelResource>(assetID, assetID);
 }
 
 void JModelComponent::GatherProxies(IRenderSubmission& submission,

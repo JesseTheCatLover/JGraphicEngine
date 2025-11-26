@@ -48,6 +48,8 @@ class SceneManager
 {
     friend class JEngine;
 private:
+    SceneManager() = default;
+
     std::unique_ptr<JScene> m_ActiveScene; ///< Currently active scene
 
     /**
@@ -60,8 +62,13 @@ private:
     void ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, JScene& scene);
 
 public:
-    /** @brief Default constructor. */
-    SceneManager() = default;
+    ~SceneManager() = default;
+
+    // Non-copyable / non-movable
+    SceneManager(const SceneManager&) = delete;
+    SceneManager& operator=(const SceneManager&) = delete;
+    SceneManager(SceneManager&&) = delete;
+    SceneManager& operator=(SceneManager&&) = delete;
 
     /** @brief Returns a pointer to the currently active scene. */
     [[nodiscard]] JScene* GetActiveScene() const { return m_ActiveScene.get(); }

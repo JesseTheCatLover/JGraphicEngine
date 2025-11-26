@@ -19,16 +19,31 @@ struct FPostPassDesc {
 
 class PostProcessManager
 {
+    friend class JEngine;
+private:
+    PostProcessManager()  = default;
+
+    std::vector<FPostPassDesc> Chain;
+    bool Dirty = true; // force initial build
+
 public:
+    ~PostProcessManager() = default;
+
+    // Non-copyable / non-movable
+    PostProcessManager(const PostProcessManager&) = delete;
+    PostProcessManager& operator=(const PostProcessManager&) = delete;
+    PostProcessManager(PostProcessManager&&) = delete;
+    PostProcessManager& operator=(PostProcessManager&&) = delete;
+
     const std::vector<FPostPassDesc>& GetChain() const { return Chain; }
     std::vector<FPostPassDesc>& EditChain() { Dirty = true; return Chain; }
     bool IsDirtyAndClear() { bool d = Dirty; Dirty = false; return d; }
 
     void AddPass(FPostPassDesc pass) { Chain.push_back(std::move(pass)); Dirty = true; }
     void RemovePass(size_t i) { if (i<Chain.size()) { Chain.erase(Chain.begin()+i); Dirty = true; } }
-    void MovePass(size_t from, size_t to) { if (from<Chain.size() && to<Chain.size()) { auto p=Chain[from]; Chain.erase(Chain.begin()+from); Chain.insert(Chain.begin()+to,p); Dirty=true; } }
-
-private:
-    std::vector<FPostPassDesc> Chain;
-    bool Dirty = true; // force initial build
+    void MovePass(size_t from, size_t to)
+    {
+        if (from<Chain.size() && to<Chain.size())
+            { auto p=Chain[from]; Chain.erase(Chain.begin()+from); Chain.insert(Chain.begin()+to,p); Dirty=true; }
+    }
 };

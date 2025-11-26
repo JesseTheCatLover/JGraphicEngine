@@ -1,13 +1,17 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include <functional>
+
 #include "EngineState.h"
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
-#include "Framework/PostProcessManager.h"
-#include "Framework/SceneManager.h"
-
+class InputManager;
+class PostProcessManager;
+class SceneManager;
+class JInputSystem;
+class JResourceSystem;
 class JRenderer;
 class IRenderBackend;
 class IPlatformSurface;
@@ -39,9 +43,11 @@ public:
 
     // Syntactic sugar manager accessors
     IPlatformSurface* GetPlatformSurface();
-    JRenderer* GetRenderer();
+    JResourceSystem* GetResourceSystem();
+
     SceneManager* GetSceneManager();
     PostProcessManager* GetPostProcessManager();
+    InputManager* GetInputManager();
 
 private:
     JEngine();
@@ -53,9 +59,13 @@ private:
 
     EngineState m_State;
     IEditorBridge* m_EditorBridge = nullptr;
+
     TUniquePtr<IPlatformSurface> m_PlatformSurface;
     TUniquePtr<IRenderBackend> m_RenderBackend;
     TUniquePtr<JRenderer> m_Renderer;
+    TUniquePtr<JResourceSystem> m_ResourceSystem;
+    TUniquePtr<JInputSystem> m_InputSystem;
+
     TUniquePtr<TServiceContainer> m_Services;
 
     bool Initialize();

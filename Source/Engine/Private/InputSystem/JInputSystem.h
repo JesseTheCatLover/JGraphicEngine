@@ -9,19 +9,32 @@
 #include "InputSystem/FActionStates.h"
 #include "InputSystem/MappingStyle/IInputMappingStyle.h"
 
+/**
+ * @class JInputSystem
+ * @brief Engine-internal subsystem responsible for collecting raw input events,
+ *        tracking device state, and evaluating logical input channels.
+ */
 class JInputSystem
 {
     friend class JEngine;
     friend class InputManager;
 
+public:
+    ~JInputSystem() = default;
+
+    // Non-copyable / non-movable
+    JInputSystem(const JInputSystem&) = delete;
+    JInputSystem& operator=(const JInputSystem&) = delete;
+    JInputSystem(JInputSystem&&) = delete;
+    JInputSystem& operator=(JInputSystem&&) = delete;
+
 private:
     JInputSystem();
-    ~JInputSystem();
 
     IInputBackend* m_Backend = nullptr;
     TUniquePtr<IInputMappingStyle> m_MappingStyle;
 
-    std::vector<FRawInputEvent>  m_Events;
+    std::vector<FRawInputEvent> m_Events;
 
     std::vector<FInputDeviceState> m_DevicesState;
     std::vector<FInputDeviceState> m_PrevDevicesState;

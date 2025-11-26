@@ -8,10 +8,15 @@ extern JEngine* GEngine;
 
 inline SceneManager* GetSceneManager()
 {
-    return (GEngine ? GEngine->GetService<SceneManager>().get() : nullptr);
+    return (GEngine ? GEngine->GetSceneManager() : nullptr);
 }
 
 inline PostProcessManager* GetPostProcessManager()
 {
-    return (GEngine ? GEngine->GetService<PostProcessManager>().get() : nullptr);
+    return (GEngine ? GEngine->GetPostProcessManager() : nullptr);
+}
+
+inline InputManager* GetInputManager()
+{
+    return (GEngine ? GEngine->GetInputManager() : nullptr);
 }

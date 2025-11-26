@@ -2,9 +2,6 @@
 #include <memory>
 
 #include "Contexts/EViewMode.h"
-
-#include "GLFW/glfw3.h"
-
 #include "Memory/SmartPointers.h"
 
 class ICameraViewSource;

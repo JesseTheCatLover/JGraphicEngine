@@ -1,7 +1,5 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "glad/gl.h"
-
 #include "Core/JEngine.h"
 
 #include "Framework/SceneManager.h"
@@ -9,12 +7,16 @@
 #include "Core/Contexts/FViewportContext.h"
 #include <iostream>
 #include "Core/TServiceContainer.h"
+#include "Framework/InputManager.h"
+#include "Framework/PostProcessManager.h"
+#include "GLFW/glfw3.h"
+#include "InputSystem/JInputSystem.h"
 
 #include "Rendering/BackendFactory.h"
 #include "Rendering/EGraphicsAPI.h"
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/JRenderer.h"
-#include "Resources/JResourceManager.h"
+#include "Resources/JResourceSystem.h"
 #include "Resources/GpuResources/JModelResource.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
@@ -158,13 +160,32 @@ bool JEngine::InitializeSubsystems()
         return false;
     }
     m_Renderer->SetPostProcessManager(GetPostProcessManager());
-    JResourceManager::Get().SetRenderDevice(m_Renderer.get());
+
+    m_ResourceSystem = TUniquePtr<JResourceSystem>(new JResourceSystem());
+    if (!m_ResourceSystem)
+    {
+        std::cerr << "[JEngine]: Failed to initialize resource subsystem" << std::endl;
+        return false;
+    }
+    m_ResourceSystem->SetRenderDevice(m_Renderer.get());
+
+    m_InputSystem = TUniquePtr<JInputSystem>(new JInputSystem());
+    if (!m_InputSystem)
+    {
+        std::cerr << "[JEngine]: Failed to initialize input subsystem" << std::endl;
+        return false;
+    }
 
     return true;
 }
 
 bool JEngine::InitializeManagers()
 {
+    if (!m_Services->GetService<InputManager>()->Initialize(m_InputSystem.get()))
+    {
+        std::cerr << "[JEngine]: Failed to initialize InputManager" << std::endl;
+        return false;
+    }
 
     return true;
 }
@@ -190,7 +211,7 @@ void JEngine::RunMainLoop()
         FRenderContext ctx{};
         if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
         {
-            scene->GatherRenderables(GetRenderer()->GetSubmission(), ctx);
+            scene->GatherRenderables(m_Renderer->GetSubmission(), ctx);
         }
         if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
         {
@@ -216,8 +237,9 @@ void JEngine::RunMainLoop()
 void JEngine::Shutdown()
 {
     GEngine = nullptr;
-    JResourceManager::Get().Shutdown();
     m_Renderer->Shutdown();
+    m_ResourceSystem->Shutdown();
+    m_InputSystem->Shutdown();
     m_PlatformSurface->Shutdown();
 }
 
@@ -225,9 +247,11 @@ void JEngine::Tick()
 {
     auto& deltaTime = m_State.GetDeltaTime();
 
-    auto* sceneMgr = GetSceneManager();
-    if (sceneMgr)
-        sceneMgr->Tick(deltaTime);
+    if (GetSceneManager())
+        GetSceneManager()->Tick(deltaTime);
+
+    if (GetInputManager())
+        GetInputManager()->Tick(deltaTime);
 
     if (m_EditorBridge)
         m_EditorBridge->OnTick(deltaTime);
@@ -375,9 +399,9 @@ IPlatformSurface * JEngine::GetPlatformSurface()
     return m_PlatformSurface.get();
 }
 
-JRenderer* JEngine::GetRenderer()
+JResourceSystem* JEngine::GetResourceSystem()
 {
-    return m_Renderer.get();
+    return m_ResourceSystem.get();
 }
 
 SceneManager* JEngine::GetSceneManager()
@@ -390,21 +414,30 @@ PostProcessManager* JEngine::GetPostProcessManager()
     return m_Services->GetService<PostProcessManager>().get();
 }
 
+InputManager* JEngine::GetInputManager()
+{
+    return m_Services->GetService<InputManager>().get();
+}
+
 void JEngine::RegisterServices()
 {
-    m_Services->RegisterFactory<PostProcessManager>([this]() -> std::shared_ptr<PostProcessManager>
+    m_Services->RegisterFactory<SceneManager>([]() -> TSharedPtr<SceneManager>
     {
-        return std::make_shared<PostProcessManager>();
+        return TSharedPtr<SceneManager>(new SceneManager());
     });
-
-    m_Services->RegisterFactory<SceneManager>([]() -> std::shared_ptr<SceneManager>
-    {
-        return std::make_shared<SceneManager>();
-    });
-
-    // Optionally: eager creation for deterministic startup
-    m_Services->GetService<PostProcessManager>();
     m_Services->GetService<SceneManager>();
+
+    m_Services->RegisterFactory<PostProcessManager>([this]() -> TSharedPtr<PostProcessManager>
+    {
+        return TSharedPtr<PostProcessManager>(new PostProcessManager());
+    });
+    m_Services->GetService<PostProcessManager>();
+
+    m_Services->RegisterFactory<InputManager>([this]() -> TSharedPtr<InputManager>
+    {
+        return TSharedPtr<InputManager>(new InputManager());
+    });
+    m_Services->GetService<InputManager>();
 }
 
 bool JEngine::BootstrapScene()
@@ -432,8 +465,8 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     // 1) (Optional) Preload a few heavy assets to smooth first-frame stutter
     //    Keys should be the same strings you’ll use from components.
     // ---------------------------------------------------------------------
-    JResourceManager::Get().Load<JModelResource>("Dio Brando/DioMansion.obj",      "Dio Brando/DioMansion.obj");
-    JResourceManager::Get().Load<JModelResource>("MedievalWindow/MedievalWindow.obj","MedievalWindow/MedievalWindow.obj");
+    m_ResourceSystem->Load<JModelResource>("Dio Brando/DioMansion.obj",      "Dio Brando/DioMansion.obj");
+    m_ResourceSystem->Load<JModelResource>("MedievalWindow/MedievalWindow.obj","MedievalWindow/MedievalWindow.obj");
 
     // ---------------------------------------------------------------------
     // 2) Load or create the startup scene asset
