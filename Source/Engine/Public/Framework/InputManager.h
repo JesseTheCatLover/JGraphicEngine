@@ -6,7 +6,14 @@
 #include <unordered_map>
 
 #include "Core/Math/FVector2.h"
+#include "InputSystem/InputCallbacks.h"
 #include "InputSystem/InputChannels.h"
+
+using InputCallbackHandle = ::InputCallbackHandle;
+using EInputEventPhase = ::EInputEventPhase;
+using FBoolActionCallback = ::FBoolActionCallback;
+using FAxis1DActionCallback = ::FAxis1DActionCallback;
+using FAxis2DActionCallback = ::FAxis2DActionCallback;
 
 class JInputSystem;
 
@@ -39,6 +46,7 @@ private:
 
     /// Cache: name -> channel handle.
     std::unordered_map<std::string, InputChannelHandle> m_Cache;
+    uint32_t m_LastChannelVersion = 0;
 
     /**
      * @brief Returns (and caches) the channel handle for the given name.
@@ -47,6 +55,14 @@ private:
     [[nodiscard]] InputChannelHandle GetChannelHandle(const std::string& name);
 
 public:
+    InputCallbackHandle BindAction(const std::string& name, EInputEventPhase phase, FBoolActionCallback cb);
+
+    InputCallbackHandle BindAxis1D(const std::string& name, EInputEventPhase phase, FAxis1DActionCallback cb);
+
+    InputCallbackHandle BindAxis2D(const std::string& name, EInputEventPhase phase, FAxis2DActionCallback cb);
+
+    void Unbind(InputCallbackHandle handle);
+
     [[nodiscard]] bool GetActionDown (const std::string& name);
     [[nodiscard]] bool GetActionUp (const std::string& name);
     [[nodiscard]] bool GetActionHeld (const std::string& name);

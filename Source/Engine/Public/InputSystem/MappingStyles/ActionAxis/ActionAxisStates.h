@@ -4,9 +4,9 @@
 
 struct FActionStateBool
 {
-    bool pressed  = false;
+    bool pressed = false;
     bool released = false;
-    bool held     = false;
+    bool held = false;
 };
 
 struct FActionStateAxis1D
@@ -17,8 +17,8 @@ struct FActionStateAxis1D
 
 struct FActionStateAxis2D
 {
-    float x  = 0.f;
-    float y  = 0.f;
+    float x = 0.f;
+    float y = 0.f;
     float dx = 0.f;
     float dy = 0.f;
 };

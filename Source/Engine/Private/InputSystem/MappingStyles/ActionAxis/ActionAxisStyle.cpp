@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "InputSystem/MappingStyle/ActionAxisStyle.h"
+#include "../../../../Public/InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
 
 ActionAxisStyle::ActionAxisStyle(const FActionAxisMap &configMap)
 : m_ConfigMap(configMap)

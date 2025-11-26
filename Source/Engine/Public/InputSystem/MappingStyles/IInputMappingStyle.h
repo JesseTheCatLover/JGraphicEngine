@@ -3,9 +3,9 @@
 #pragma once
 #include <vector>
 
-#include "InputSystem/FInputDeviceState.h"
+#include "../../../Private/InputSystem/FInputDeviceState.h"
 #include "InputSystem/InputChannels.h"
-#include "InputSystem/FActionStates.h"
+#include "ActionAxis/ActionAxisStates.h"
 
 class IInputMappingStyle
 {

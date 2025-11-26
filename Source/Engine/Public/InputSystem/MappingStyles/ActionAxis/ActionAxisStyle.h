@@ -3,7 +3,7 @@
 #pragma once
 #include <vector>
 #include "ActionAxisConfig.h"
-#include "IInputMappingStyle.h"
+#include "InputSystem/MappingStyles/IInputMappingStyle.h"
 
 class ActionAxisStyle : public IInputMappingStyle
 {

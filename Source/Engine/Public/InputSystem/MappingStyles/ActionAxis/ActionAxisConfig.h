@@ -10,12 +10,12 @@
 struct FInputBinding
 {
     EInputDeviceType deviceType; // Keyboard / Mouse / Gamepad
-    int deviceIndex; // usually 0
-    int code;        // keycode / button index / axis index
+    int deviceIndex{}; // usually 0
+    int code{}; // keycode / button index / axis index
 
-    float  scale    = 1.0f;
-    float  deadZone = 0.0f;
-    bool   invert   = false;
+    float scale = 1.0f;
+    float deadZone = 0.0f;
+    bool invert = false;
 };
 
 // One logical action/axis exposed to gameplay
@@ -26,7 +26,7 @@ struct FActionAxisSlot
     std::vector<FInputBinding> bindings;
 };
 
-// A map = list of actions (what will be serialize as a .jasset)
+// A map = list of actions (this is what will be serialized as a .jasset)
 struct FActionAxisMap
 {
     std::vector<FActionAxisSlot> actions;

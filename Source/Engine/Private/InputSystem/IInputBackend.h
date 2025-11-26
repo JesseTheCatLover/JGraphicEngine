@@ -3,7 +3,7 @@
 #pragma once
 #include <vector>
 
-#include "InputSystem/FRawInputEvent.h"
+#include "FRawInputEvent.h"
 
 class IInputBackend
 {

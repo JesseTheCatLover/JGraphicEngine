@@ -12,6 +12,7 @@ enum class EInputChannelType : uint8_t
 };
 
 using InputChannelHandle = uint32_t;
+static constexpr InputChannelHandle INVALID_CHANNEL_HANDLE = 0xFFFFFFFFu;
 
 struct FInputChannelDesc
 {

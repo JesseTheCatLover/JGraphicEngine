@@ -3,3 +3,4 @@
 #pragma once
 
 #include "Core/EngineGlobals.h"
+#include "Core/Memory/SmartPointers.h"
