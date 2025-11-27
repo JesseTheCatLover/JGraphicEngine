@@ -1,9 +1,7 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "BackendFactory.h""
-
 #include <iostream>
-
 #include "EGraphicsAPI.h"
 
 // Build flags set by CMake based on availability

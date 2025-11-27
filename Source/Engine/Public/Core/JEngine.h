@@ -7,6 +7,7 @@
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+class IInputBackend;
 class InputManager;
 class PostProcessManager;
 class SceneManager;
@@ -64,13 +65,14 @@ private:
     TUniquePtr<IRenderBackend> m_RenderBackend;
     TUniquePtr<JRenderer> m_Renderer;
     TUniquePtr<JResourceSystem> m_ResourceSystem;
+    TUniquePtr<IInputBackend> m_InputBackend;
     TUniquePtr<JInputSystem> m_InputSystem;
 
     TUniquePtr<TServiceContainer> m_Services;
 
     bool Initialize();
     bool SurfaceInitialize();
-    bool RenderBackendInitialize();
+    bool InitializeBackends();
     bool InitializeSubsystems();
     bool InitializeManagers();
     void RunMainLoop();

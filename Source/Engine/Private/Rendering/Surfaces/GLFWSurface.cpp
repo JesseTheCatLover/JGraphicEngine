@@ -128,6 +128,13 @@ void GLFWSurface::SetShouldClose(bool bShould)
 
 void GLFWSurface::GetWindowSize(int &w, int &h) const
 {
+    if (m_Window)
+        glfwGetWindowSize(m_Window, &w, &h);
+    else
+    {
+        w = 0;
+        h = 0;
+    }
 }
 
 void * GLFWSurface::GetNativeHandle() const
@@ -152,7 +159,9 @@ int GLFWSurface::GetHeight() const
 
 float GLFWSurface::GetAspectRatio() const
 {
-    return (m_State.height / m_State.width);
+    if (m_State.height == 0)
+        return 0.0f;
+    return static_cast<float>(m_State.width) / static_cast<float>(m_State.height);
 }
 
 void GLFWSurface::SetCursorMode(ECursorMode mode)

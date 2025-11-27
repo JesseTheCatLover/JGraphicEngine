@@ -2,19 +2,59 @@
 
 #include "JInputSystem.h"
 #include <algorithm>
+#include <iostream>
+
+namespace
+{
+    // Helper to find/create a device state entry
+    FInputDeviceState& GetOrCreateDevice(
+        std::vector<FInputDeviceState>& devices,
+        EInputDeviceType type,
+        int index,
+        size_t buttonCount,
+        size_t axisCount)
+    {
+        for (auto& d : devices)
+        {
+            if (d.type == type && d.index == index)
+                return d;
+        }
+
+        FInputDeviceState dev;
+        dev.type = type;
+        dev.index = index;
+        dev.buttons.assign(buttonCount, 0.0f);
+        dev.axes.assign(axisCount, 0.0f);
+
+        devices.push_back(std::move(dev));
+        return devices.back();
+    }
+
+    constexpr size_t KEYBOARD_BUTTONS   = 512;
+    constexpr size_t MOUSE_BUTTONS      = 8;
+    constexpr size_t MOUSE_AXES         = 4;  // e.g. [0]=wheelY, [1]=wheelX, [2]=deltaX, [3]=deltaY
+    constexpr size_t GAMEPAD_BUTTONS    = 32;
+    constexpr size_t GAMEPAD_AXES       = 8;
+}
 
 JInputSystem::JInputSystem()
 {
 }
 
-void JInputSystem::Initialize(IInputBackend *backend)
+bool JInputSystem::Initialize(IInputBackend *backend)
 {
+    if (!backend)
+    {
+        std::cerr << "[JInputSystem]: failed to initialize input backend." << std::endl;
+        return false;
+    }
     m_Backend = backend;
     m_Events.clear();
     m_DevicesState.clear();
     m_PrevDevicesState.clear();
     m_KeyCurrent.assign(512, 0);
     m_KeyPrevious.assign(512, 0);
+    return true;
 }
 
 void JInputSystem::Shutdown()
@@ -142,16 +182,123 @@ bool JInputSystem::WasKeyReleased(uint32_t keyCode) const
 
 void JInputSystem::ProcessEvents()
 {
-    // 1) copy keys
+    // 1) Copy keys
     m_KeyPrevious = m_KeyCurrent;
 
-    // 2) ensure device list exists
-    //    or grow on demand based on event.deviceID
+    // 2) Clear per-frame mouse axes
+    for (auto& dev : m_DevicesState)
+    {
+        if (dev.type == EInputDeviceType::Mouse)
+        {
+            for (float& a : dev.axes)
+                a = 0.0f;
+        }
+    }
 
+    // 3) Apply raw events to device state + key arrays
     for (const FRawInputEvent& e : m_Events)
     {
-        // update m_KeyCurrent for KeyDown/KeyUp
-        // update matching FInputDeviceState.buttons/axes based on e.code/value
+        switch (e.type)
+        {
+        // ---------------- KEYBOARD ----------------
+        case ERawInputType::KeyDown:
+        case ERawInputType::KeyUp:
+        {
+            // Update key arrays (keyboard only)
+            uint32_t key = e.code;
+            if (key < m_KeyCurrent.size())
+                m_KeyCurrent[key] = (e.type == ERawInputType::KeyDown) ? 1u : 0u;
+
+            // Update keyboard device 0
+            FInputDeviceState& kb = GetOrCreateDevice(m_DevicesState, EInputDeviceType::Keyboard, /*index*/ 0,
+                                  KEYBOARD_BUTTONS, /*axes*/ 0);
+
+            if (key < kb.buttons.size())
+                kb.buttons[key] = (e.type == ERawInputType::KeyDown) ? 1.0f : 0.0f;
+        }
+        break;
+
+        // ---------------- MOUSE BUTTONS ----------------
+        case ERawInputType::MouseButtonDown:
+        case ERawInputType::MouseButtonUp:
+        {
+            FInputDeviceState& mouse = GetOrCreateDevice(m_DevicesState, EInputDeviceType::Mouse, /*index*/ 0,
+                                  MOUSE_BUTTONS, MOUSE_AXES);
+
+            uint32_t btn = e.code; // backend: 0=left,1=right,2=middle,...
+            if (btn < mouse.buttons.size())
+                mouse.buttons[btn] = (e.type == ERawInputType::MouseButtonDown) ? 1.0f : 0.0f;
+        }
+        break;
+
+        // ---------------- MOUSE WHEEL ----------------
+        case ERawInputType::MouseWheel:
+        {
+            FInputDeviceState& mouse =
+                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Mouse, /*index*/ 0,
+                                  MOUSE_BUTTONS, MOUSE_AXES);
+
+            // Convention: e.code = axis index (0 = vertical, 1 = horizontal)
+            uint32_t axisIndex = e.code;
+            if (axisIndex < mouse.axes.size())
+            {
+                // Wheel is usually a delta per-frame:
+                mouse.axes[axisIndex] += e.value;
+            }
+        }
+        break;
+
+        // ---------------- MOUSE MOVE ----------------
+        case ERawInputType::MouseMove:
+        {
+            FInputDeviceState& mouse =
+                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Mouse, /*index*/ 0,
+                                  MOUSE_BUTTONS, MOUSE_AXES);
+
+            // Convention: backend sends two events:
+            //   - one with code=2, value=deltaX
+            //   - one with code=3, value=deltaY
+            uint32_t axisIndex = e.code;
+            if (axisIndex < mouse.axes.size())
+            {
+                mouse.axes[axisIndex] += e.value; // accumulate per frame
+            }
+        }
+        break;
+
+        // ---------------- GAMEPAD BUTTONS ----------------
+        case ERawInputType::GamepadButtonDown:
+        case ERawInputType::GamepadButtonUp:
+        {
+            // deviceID here can be GLFW joystick index
+            FInputDeviceState& pad =
+                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Gamepad, e.deviceID,
+                                  GAMEPAD_BUTTONS, GAMEPAD_AXES);
+
+            uint32_t btn = e.code;
+            if (btn < pad.buttons.size())
+                pad.buttons[btn] = (e.type == ERawInputType::GamepadButtonDown) ? 1.0f : 0.0f;
+        }
+        break;
+
+        // ---------------- GAMEPAD AXES ----------------
+        case ERawInputType::GamepadAxis:
+        {
+            FInputDeviceState& pad =
+                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Gamepad, e.deviceID,
+                                  GAMEPAD_BUTTONS, GAMEPAD_AXES);
+
+            uint32_t axisIndex = e.code;
+            if (axisIndex < pad.axes.size())
+                pad.axes[axisIndex] = e.value; // Expected normalized -1..1 or 0..1
+        }
+        break;
+
+        // ---------------- TEXT INPUT ----------------
+        case ERawInputType::TextInput:
+            // Usually handled by UI/text system; ignore for devices.
+            break;
+        }
     }
 }
 
@@ -163,6 +310,12 @@ void JInputSystem::SetMappingStyle(TUniquePtr<IInputMappingStyle> style)
 
 void JInputSystem::Tick(float deltaTime)
 {
+    if (!m_Backend)
+    {
+        std::cerr << "[JInputSystem]: no backend provided, cannot tick." << std::endl;
+        return;
+    }
+
     // 1) Get raw events from OS
     m_Events.clear();
     m_Backend->FetchEvents(m_Events);

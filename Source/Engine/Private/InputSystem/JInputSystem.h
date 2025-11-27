@@ -34,7 +34,7 @@ public:
 private:
     JInputSystem();
 
-    void Initialize(IInputBackend* backend);
+    bool Initialize(IInputBackend* backend);
     void Shutdown();
 
     void SetMappingStyle(TUniquePtr<IInputMappingStyle> style);

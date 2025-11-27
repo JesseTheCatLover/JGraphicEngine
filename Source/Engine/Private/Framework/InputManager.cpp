@@ -15,10 +15,6 @@ bool InputManager::Initialize(JInputSystem *system)
     return true;
 }
 
-void InputManager::Tick(float deltaTime)
-{
-}
-
 InputChannelHandle InputManager::GetChannelHandle(const std::string &name)
 {
     // 1) If channels changed, clear cache

@@ -14,7 +14,7 @@ enum class EInputDeviceType : uint8_t
 struct FInputDeviceState
 {
     EInputDeviceType type;
-    int index;
-    std::vector<float> buttons;  // 0 or 1 (or trigger value)
+    int index; // e.g. which gamepad, keyboard, ...
+    std::vector<float> buttons;  // 0..1 pressed amount
     std::vector<float> axes; // -1..1 / 0..1 etc.
 };

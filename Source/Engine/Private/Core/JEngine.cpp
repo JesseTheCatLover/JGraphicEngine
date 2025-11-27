@@ -10,6 +10,7 @@
 #include "Framework/InputManager.h"
 #include "Framework/PostProcessManager.h"
 #include "GLFW/glfw3.h"
+#include "InputSystem/InputBackendFactory.h"
 #include "InputSystem/JInputSystem.h"
 
 #include "Rendering/BackendFactory.h"
@@ -59,9 +60,9 @@ bool JEngine::Initialize()
         std::cerr << "[JEngine]: Failed to initialize platform surface" << std::endl;
         return false;
     }
-    if (!RenderBackendInitialize())
+    if (!InitializeBackends())
     {
-        std::cerr << "[JEngine]: Failed to initialize rendering backend" << std::endl;
+        std::cerr << "[JEngine]: Failed to initialize backends" << std::endl;
         return false;
     }
 
@@ -133,7 +134,7 @@ bool JEngine::SurfaceInitialize()
     return true;
 }
 
-bool JEngine::RenderBackendInitialize()
+bool JEngine::InitializeBackends()
 {
     EGraphicsAPI renderingAPI = EGraphicsAPI::OpenGL;
     m_RenderBackend = BackendFactory::MakeRenderBackend(renderingAPI);
@@ -145,6 +146,13 @@ bool JEngine::RenderBackendInitialize()
     if (!m_RenderBackend->Initialize(m_PlatformSurface.get()))
     {
         std::cerr << "[JEngine]: Failed to initialize rendering backend" << std::endl;
+        return false;
+    }
+
+    m_InputBackend = InputBackendFactory::MakeInputBackend(m_PlatformSurface.get());
+    if (!m_InputBackend)
+    {
+        std::cerr << "[JEngine]: No input backend available for the os/platform" << std::endl;
         return false;
     }
 
@@ -175,6 +183,7 @@ bool JEngine::InitializeSubsystems()
         std::cerr << "[JEngine]: Failed to initialize input subsystem" << std::endl;
         return false;
     }
+    m_InputSystem->Initialize(m_InputBackend.get());
 
     return true;
 }
@@ -250,8 +259,8 @@ void JEngine::Tick()
     if (GetSceneManager())
         GetSceneManager()->Tick(deltaTime);
 
-    if (GetInputManager())
-        GetInputManager()->Tick(deltaTime);
+    if (m_InputSystem)
+        m_InputSystem->Tick(deltaTime);
 
     if (m_EditorBridge)
         m_EditorBridge->OnTick(deltaTime);

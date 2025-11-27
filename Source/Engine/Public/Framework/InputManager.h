@@ -39,8 +39,6 @@ private:
 
     bool Initialize(JInputSystem* system);
 
-    void Tick(float deltaTime);
-
     /// Non-owning pointer to the engine input subsystem.
     JInputSystem* m_InputSystem = nullptr;
 

@@ -6,6 +6,14 @@ include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
+if(APPLE)
+    add_compile_definitions(JENGINE_PLATFORM_MACOS=1)
+elseif(WIN32)
+    add_compile_definitions(JENGINE_PLATFORM_WINDOWS=1)
+elseif(UNIX)
+    add_compile_definitions(JENGINE_PLATFORM_LINUX=1)
+endif()
+
 # Fetch Dependencies
 FetchContent_Declare(
         glfw
