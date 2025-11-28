@@ -106,12 +106,11 @@ void ActionAxisStyle::UpdateChannels(float deltaTime, const std::vector<FInputDe
         }
     }
 }
-
 float ActionAxisStyle::GetBindingValue(const FInputBinding& binding, const std::vector<FInputDeviceState>& devices) const
 {
-    // find matching device
+    // 1) Find the device
     const FInputDeviceState* dev = nullptr;
-    for (auto& d : devices)
+    for (const auto& d : devices)
     {
         if (d.type == binding.deviceType && d.index == binding.deviceIndex)
         {
@@ -122,30 +121,14 @@ float ActionAxisStyle::GetBindingValue(const FInputBinding& binding, const std::
     if (!dev)
         return 0.0f;
 
-    float raw = 0.0f;
+    // 2) Look up the physical input on that device
+    auto it = dev->values.find(binding.input);
+    if (it == dev->values.end())
+        return 0.0f;
 
-    switch (dev->type)
-    {
-        case EInputDeviceType::Keyboard:
-        case EInputDeviceType::Gamepad:
-            if (binding.code >= 0 &&
-                static_cast<size_t>(binding.code) < dev->buttons.size())
-            {
-                raw = dev->buttons[binding.code];
-            }
-            break;
+    float raw = it->second;
 
-        case EInputDeviceType::Mouse:
-            // For now: mouse bindings use AXES (wheel, delta, etc.)
-            if (binding.code >= 0 &&
-                static_cast<size_t>(binding.code) < dev->axes.size())
-            {
-                raw = dev->axes[binding.code];
-            }
-            break;
-    }
-
-    // dead zone
+    // 3) Apply dead zone / invert / scale
     if (std::abs(raw) < binding.deadZone)
         raw = 0.0f;
 

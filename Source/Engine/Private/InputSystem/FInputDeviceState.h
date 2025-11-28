@@ -2,19 +2,27 @@
 
 #pragma once
 #include <cstdint>
-#include <vector>
+#include <unordered_map>
+#include "InputSystem/EPhysicalInput.h"
 
 enum class EInputDeviceType : uint8_t
 {
     Keyboard,
     Mouse,
-    Gamepad
+    Gamepad,
+    Touchpad
 };
 
 struct FInputDeviceState
 {
     EInputDeviceType type;
     int index; // e.g. which gamepad, keyboard, ...
-    std::vector<float> buttons;  // 0..1 pressed amount
-    std::vector<float> axes; // -1..1 / 0..1 etc.
+
+    // Unified per-physical-input value:
+    //  - Keyboard_W, Keyboard_Space  -> 0 or 1
+    //  - Mouse_AxisX            -> dx this frame
+    //  - Mouse_WheelY                -> wheel delta
+    //  - Gamepad_ButtonSouth         -> 0 or 1
+    //  - Gamepad_LeftStickX          -> -1..1
+    std::unordered_map<EPhysicalInput, float> values;
 };

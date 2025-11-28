@@ -9,7 +9,6 @@
 #include "Core/TServiceContainer.h"
 #include "Framework/InputManager.h"
 #include "Framework/PostProcessManager.h"
-#include "GLFW/glfw3.h"
 #include "InputSystem/InputBackendFactory.h"
 #include "InputSystem/JInputSystem.h"
 
@@ -21,6 +20,8 @@
 #include "Resources/GpuResources/JModelResource.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
+
+#include "GLFW/glfw3.h"
 
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
@@ -195,7 +196,7 @@ bool JEngine::InitializeSubsystems()
     // --------- Default action/axis mapping ---------
     FActionAxisMap map;
 
-    auto addButton = [&](const char* name, int glfwKey)
+    auto addButton = [&](const char* name, EPhysicalInput input)
     {
         FActionAxisSlot slot;
         slot.name = name;
@@ -204,7 +205,7 @@ bool JEngine::InitializeSubsystems()
         FInputBinding bind{};
         bind.deviceType  = EInputDeviceType::Keyboard;
         bind.deviceIndex = 0;
-        bind.code        = glfwKey;   // GLFW keycode
+        bind.input       = input;
         bind.scale       = 1.0f;
         bind.deadZone    = 0.0f;
         bind.invert      = false;
@@ -214,11 +215,11 @@ bool JEngine::InitializeSubsystems()
     };
 
     // ESC -> Quit
-    addButton("Quit", GLFW_KEY_ESCAPE);
+    addButton("Quit", EPhysicalInput::Key_Escape);
     // F   -> Toggle wireframe
-    addButton("ToggleWireframe", GLFW_KEY_F);
+    addButton("ToggleWireframe", EPhysicalInput::Key_F);
     // J   -> Toggle view mode (Scene/UI)
-    addButton("ToggleViewMode", GLFW_KEY_J);
+    addButton("ToggleViewMode", EPhysicalInput::Key_J);
 
     // Mouse look: Axis2D
     {
@@ -226,20 +227,20 @@ bool JEngine::InitializeSubsystems()
         look.name = "Look";
         look.type = EInputChannelType::Axis2D;
 
-        // X = mouse delta X (matches ProcessEvents axis index 2)
+        // X = mouse delta X
         FInputBinding bx{};
         bx.deviceType  = EInputDeviceType::Mouse;
         bx.deviceIndex = 0;
-        bx.code        = 2;          // engine's convention: axis 2 = deltaX
+        bx.input       = EPhysicalInput::Mouse_DeltaX;
         bx.scale       = 0.0038f;    // sensitivity
         bx.deadZone    = 0.0f;
         bx.invert      = false;
 
-        // Y = mouse delta Y (axis index 3)
+        // Y = mouse delta Y
         FInputBinding by{};
         by.deviceType  = EInputDeviceType::Mouse;
         by.deviceIndex = 0;
-        by.code        = 3;          // axis 3 = deltaY
+        by.input       = EPhysicalInput::Mouse_DeltaY;
         by.scale       = 0.0038f;
         by.deadZone    = 0.0f;
         by.invert      = false;       // invert so moving mouse up is positive pitch

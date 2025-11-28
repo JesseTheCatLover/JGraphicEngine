@@ -1,6 +1,9 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Framework/InputManager.h"
+
+#include <iostream>
+
 #include "InputSystem/JInputSystem.h"
 
 bool InputManager::Initialize(JInputSystem *system)
@@ -17,15 +20,18 @@ bool InputManager::Initialize(JInputSystem *system)
 
 InputChannelHandle InputManager::GetChannelHandle(const std::string &name)
 {
-    // 1) If channels changed, clear cache
-    if (m_InputSystem)
+    if (!m_InputSystem)
     {
-        uint32_t currentVersion = m_InputSystem->GetChannelVersion();
-        if (currentVersion != m_LastChannelVersion)
-        {
-            m_Cache.clear();
-            m_LastChannelVersion = currentVersion;
-        }
+        std::cerr << "[InputManager]: Cannot return channel handle, input system pointer is invalid." << std::endl;
+        return INVALID_CHANNEL_HANDLE;
+    }
+
+    // 1) If channels changed, clear cache
+    uint32_t currentVersion = m_InputSystem->GetChannelVersion();
+    if (currentVersion != m_LastChannelVersion)
+    {
+        m_Cache.clear();
+        m_LastChannelVersion = currentVersion;
     }
 
     // 2) Normal cached lookup

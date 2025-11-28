@@ -2,6 +2,7 @@
 
 #include "GLFWInputBackend.h"
 #include <cmath>
+#include "GLFWInputMapping.h"
 
 GLFWInputBackend::GLFWInputBackend(GLFWwindow* window)
     : m_Window(window)
@@ -101,13 +102,16 @@ void GLFWInputBackend::CharCallback(GLFWwindow* window, unsigned int codepoint)
 
 void GLFWInputBackend::OnKey(int key, int scancode, int action, int mods)
 {
-    // Ignore unknown keys
     if (key == GLFW_KEY_UNKNOWN)
+        return;
+
+    EPhysicalInput phys = MapGlfwKeyToEngine(key);
+    if (phys == EPhysicalInput::Unknown)
         return;
 
     FRawInputEvent ev{};
     ev.deviceID  = 0; // single keyboard for now
-    ev.code      = static_cast<uint32_t>(key);
+    ev.code      = static_cast<uint32_t>(phys);
     ev.timestamp = glfwGetTime();
 
     if (action == GLFW_PRESS)
@@ -122,7 +126,6 @@ void GLFWInputBackend::OnKey(int key, int scancode, int action, int mods)
     }
     else if (action == GLFW_REPEAT)
     {
-        // Option 1: treat repeat as another KeyDown
         ev.type  = ERawInputType::KeyDown;
         ev.value = 1.0f;
     }
@@ -133,12 +136,15 @@ void GLFWInputBackend::OnKey(int key, int scancode, int action, int mods)
 
     m_PendingEvents.push_back(ev);
 }
-
 void GLFWInputBackend::OnMouseButton(int button, int action, int mods)
 {
+    EPhysicalInput phys = MapGlfwMouseButtonToEngine(button);
+    if (phys == EPhysicalInput::Unknown)
+        return;
+
     FRawInputEvent ev{};
-    ev.deviceID  = 0; // single mouse
-    ev.code      = static_cast<uint32_t>(button);
+    ev.deviceID  = 0;
+    ev.code      = static_cast<uint32_t>(phys);
     ev.timestamp = glfwGetTime();
 
     if (action == GLFW_PRESS)
@@ -163,25 +169,23 @@ void GLFWInputBackend::OnScroll(double xoffset, double yoffset)
 {
     const double time = glfwGetTime();
 
-    // Vertical scroll (wheel up/down) -> axis 0
     if (yoffset != 0.0)
     {
         FRawInputEvent ev{};
         ev.deviceID  = 0;
         ev.type      = ERawInputType::MouseWheel;
-        ev.code      = 0; // axis 0 = vertical
+        ev.code      = static_cast<uint32_t>(EPhysicalInput::Mouse_WheelY);
         ev.value     = static_cast<float>(yoffset);
         ev.timestamp = time;
         m_PendingEvents.push_back(ev);
     }
 
-    // Horizontal scroll -> MouseWheel axis 1
     if (xoffset != 0.0)
     {
         FRawInputEvent ev{};
         ev.deviceID  = 0;
         ev.type      = ERawInputType::MouseWheel;
-        ev.code      = 1; // axis 1 = horizontal
+        ev.code      = static_cast<uint32_t>(EPhysicalInput::Mouse_WheelX);
         ev.value     = static_cast<float>(xoffset);
         ev.timestamp = time;
         m_PendingEvents.push_back(ev);
@@ -198,13 +202,12 @@ void GLFWInputBackend::OnCursorPos(double xpos, double ypos)
     m_LastMouseX = xpos;
     m_LastMouseY = ypos;
 
-    // If there's no movement, don't spam events
     if (dx != 0.0)
     {
         FRawInputEvent ev{};
         ev.deviceID  = 0;
         ev.type      = ERawInputType::MouseMove;
-        ev.code      = 2; // axis 2 = deltaX (matches ProcessEvents)
+        ev.code      = static_cast<uint32_t>(EPhysicalInput::Mouse_DeltaX);
         ev.value     = static_cast<float>(dx);
         ev.timestamp = time;
         m_PendingEvents.push_back(ev);
@@ -215,7 +218,7 @@ void GLFWInputBackend::OnCursorPos(double xpos, double ypos)
         FRawInputEvent ev{};
         ev.deviceID  = 0;
         ev.type      = ERawInputType::MouseMove;
-        ev.code      = 3; // axis 3 = deltaY (matches ProcessEvents)
+        ev.code      = static_cast<uint32_t>(EPhysicalInput::Mouse_DeltaY);
         ev.value     = static_cast<float>(dy);
         ev.timestamp = time;
         m_PendingEvents.push_back(ev);
@@ -315,9 +318,13 @@ void GLFWInputBackend::PollGamepads()
             if (curr == prev)
                 continue;
 
+            EPhysicalInput phys = MapGlfwGamepadButtonToEngine(b);
+            if (phys == EPhysicalInput::Unknown)
+                continue;
+
             FRawInputEvent ev{};
             ev.deviceID  = deviceID;
-            ev.code      = static_cast<uint32_t>(b); // button index
+            ev.code      = static_cast<uint32_t>(phys);
             ev.timestamp = time;
 
             if (curr == GLFW_PRESS)
@@ -348,11 +355,15 @@ void GLFWInputBackend::PollGamepads()
             if (std::abs(curr - prev) < AxisEpsilon)
                 continue;
 
+            EPhysicalInput phys = MapGlfwGamepadAxisToEngine(a);
+            if (phys == EPhysicalInput::Unknown)
+                continue;
+
             FRawInputEvent ev{};
             ev.deviceID  = deviceID;
             ev.type      = ERawInputType::GamepadAxis;
-            ev.code      = static_cast<uint32_t>(a);   // axis index
-            ev.value     = curr;                       // -1..1
+            ev.code      = static_cast<uint32_t>(phys);
+            ev.value     = curr;
             ev.timestamp = time;
 
             m_PendingEvents.push_back(ev);

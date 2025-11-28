@@ -19,7 +19,7 @@ struct FRawInputEvent
     ERawInputType type;
 
     int deviceID; ///< Which keyboard/mouse/gamepad
-    uint32_t code; ///< keycode / button / axis index
+    uint32_t code; ///< underlying EPhysicalInput (casted)
     float value;  ///< axis value, wheel delta, etc.
     double timestamp; ///< in seconds
 };

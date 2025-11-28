@@ -10,9 +10,7 @@ namespace
     FInputDeviceState& GetOrCreateDevice(
         std::vector<FInputDeviceState>& devices,
         EInputDeviceType type,
-        int index,
-        size_t buttonCount,
-        size_t axisCount)
+        int index)
     {
         for (auto& d : devices)
         {
@@ -20,40 +18,36 @@ namespace
                 return d;
         }
 
-        FInputDeviceState dev;
-        dev.type = type;
+        FInputDeviceState dev{};
+        dev.type  = type;
         dev.index = index;
-        dev.buttons.assign(buttonCount, 0.0f);
-        dev.axes.assign(axisCount, 0.0f);
 
         devices.push_back(std::move(dev));
         return devices.back();
     }
-
-    constexpr size_t KEYBOARD_BUTTONS   = 512;
-    constexpr size_t MOUSE_BUTTONS      = 8;
-    constexpr size_t MOUSE_AXES         = 4;  // e.g. [0]=wheelY, [1]=wheelX, [2]=deltaX, [3]=deltaY
-    constexpr size_t GAMEPAD_BUTTONS    = 32;
-    constexpr size_t GAMEPAD_AXES       = 8;
 }
 
-JInputSystem::JInputSystem()
-{
-}
+JInputSystem::JInputSystem() = default;
 
-bool JInputSystem::Initialize(IInputBackend *backend)
+bool JInputSystem::Initialize(IInputBackend* backend)
 {
     if (!backend)
     {
-        std::cerr << "[JInputSystem]: failed to initialize input backend." << std::endl;
+        std::cerr << "[JInputSystem]: failed to initialize input backend.\n";
         return false;
     }
+
     m_Backend = backend;
     m_Events.clear();
     m_DevicesState.clear();
     m_PrevDevicesState.clear();
-    m_KeyCurrent.assign(512, 0);
-    m_KeyPrevious.assign(512, 0);
+    m_Channels.clear();
+    m_NameToHandle.clear();
+    m_BoolCallbacks.clear();
+    m_Axis1DCallbacks.clear();
+    m_Axis2DCallbacks.clear();
+    m_NextCallbackHandle = 1;
+
     return true;
 }
 
@@ -72,6 +66,8 @@ void JInputSystem::Shutdown()
     m_NextCallbackHandle = 1;
 }
 
+// ---------- Callback registration ----------
+
 InputCallbackHandle JInputSystem::RegisterBoolCallback(
     const std::string& channelName,
     EInputEventPhase phase,
@@ -82,14 +78,14 @@ InputCallbackHandle JInputSystem::RegisterBoolCallback(
 
     InputChannelHandle handle = FindChannelIdByName(channelName);
     if (handle == INVALID_CHANNEL_HANDLE)
-        return INVALID_INPUT_CALLBACK; // or allow and resolve later; your call
+        return INVALID_INPUT_CALLBACK;
 
     FBoolCallbackEntry entry;
-    entry.handle       = m_NextCallbackHandle++;
-    entry.channelName  = channelName;
+    entry.handle        = m_NextCallbackHandle++;
+    entry.channelName   = channelName;
     entry.channelHandle = handle;
-    entry.phase        = phase;
-    entry.callback     = std::move(cb);
+    entry.phase         = phase;
+    entry.callback      = std::move(cb);
 
     m_BoolCallbacks.push_back(std::move(entry));
     return entry.handle;
@@ -159,144 +155,71 @@ void JInputSystem::UnregisterCallback(InputCallbackHandle handle)
     removeByHandle(m_Axis2DCallbacks);
 }
 
-bool JInputSystem::IsKeyDown(uint32_t keyCode) const
-{
-    if (keyCode >= static_cast<uint32_t>(m_KeyCurrent.size()))
-        return false;
-    return m_KeyCurrent[keyCode] != 0;
-}
-
-bool JInputSystem::WasKeyPressed(uint32_t keyCode) const
-{
-    if (keyCode >= static_cast<uint32_t>(m_KeyCurrent.size()))
-        return false;
-    return m_KeyCurrent[keyCode] != 0 && m_KeyPrevious[keyCode] == 0;
-}
-
-bool JInputSystem::WasKeyReleased(uint32_t keyCode) const
-{
-    if (keyCode >= static_cast<uint32_t>(m_KeyCurrent.size()))
-        return false;
-    return m_KeyCurrent[keyCode] == 0 && m_KeyPrevious[keyCode] != 0;
-}
+// ---------- Core processing ----------
 
 void JInputSystem::ProcessEvents()
 {
-    // 1) Copy keys
-    m_KeyPrevious = m_KeyCurrent;
-
-    // 2) Clear per-frame mouse axes
-    for (auto& dev : m_DevicesState)
+    // 1) Clear per-frame mouse deltas (delta-style inputs)
+    for (auto& mouse : m_DevicesState)
     {
-        if (dev.type == EInputDeviceType::Mouse)
+        if (mouse.type == EInputDeviceType::Mouse)
         {
-            for (float& a : dev.axes)
-                a = 0.0f;
+            mouse.values[EPhysicalInput::Mouse_DeltaX]   = 0.0f;
+            mouse.values[EPhysicalInput::Mouse_DeltaY]   = 0.0f;
+            mouse.values[EPhysicalInput::Mouse_WheelX]  = 0.0f;
+            mouse.values[EPhysicalInput::Mouse_WheelY]  = 0.0f;
         }
     }
 
-    // 3) Apply raw events to device state + key arrays
+    // 2) Apply raw events to device state
     for (const FRawInputEvent& e : m_Events)
     {
+        const EPhysicalInput phys = static_cast<EPhysicalInput>(e.code);
+
         switch (e.type)
         {
-        // ---------------- KEYBOARD ----------------
+        // ---------- KEYBOARD ----------
         case ERawInputType::KeyDown:
         case ERawInputType::KeyUp:
         {
-            // Update key arrays (keyboard only)
-            uint32_t key = e.code;
-            if (key < m_KeyCurrent.size())
-                m_KeyCurrent[key] = (e.type == ERawInputType::KeyDown) ? 1u : 0u;
+            FInputDeviceState& kb =
+                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Keyboard, /*index*/ 0);
 
-            // Update keyboard device 0
-            FInputDeviceState& kb = GetOrCreateDevice(m_DevicesState, EInputDeviceType::Keyboard, /*index*/ 0,
-                                  KEYBOARD_BUTTONS, /*axes*/ 0);
-
-            if (key < kb.buttons.size())
-                kb.buttons[key] = (e.type == ERawInputType::KeyDown) ? 1.0f : 0.0f;
+            // 1.0 = pressed, 0.0 = released
+            kb.values[phys] = (e.type == ERawInputType::KeyDown) ? 1.0f : 0.0f;
         }
         break;
 
-        // ---------------- MOUSE BUTTONS ----------------
+        // ---------- MOUSE (buttons + move + wheel) ----------
         case ERawInputType::MouseButtonDown:
         case ERawInputType::MouseButtonUp:
-        {
-            FInputDeviceState& mouse = GetOrCreateDevice(m_DevicesState, EInputDeviceType::Mouse, /*index*/ 0,
-                                  MOUSE_BUTTONS, MOUSE_AXES);
-
-            uint32_t btn = e.code; // backend: 0=left,1=right,2=middle,...
-            if (btn < mouse.buttons.size())
-                mouse.buttons[btn] = (e.type == ERawInputType::MouseButtonDown) ? 1.0f : 0.0f;
-        }
-        break;
-
-        // ---------------- MOUSE WHEEL ----------------
+        case ERawInputType::MouseMove:
         case ERawInputType::MouseWheel:
         {
             FInputDeviceState& mouse =
-                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Mouse, /*index*/ 0,
-                                  MOUSE_BUTTONS, MOUSE_AXES);
+                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Mouse, /*index*/ 0);
 
-            // Convention: e.code = axis index (0 = vertical, 1 = horizontal)
-            uint32_t axisIndex = e.code;
-            if (axisIndex < mouse.axes.size())
-            {
-                // Wheel is usually a delta per-frame:
-                mouse.axes[axisIndex] += e.value;
-            }
+            // For buttons, we generally send 0 or 1,
+            // for move/wheel we send per-frame deltas; accumulate.
+            mouse.values[phys] += e.value;
         }
         break;
 
-        // ---------------- MOUSE MOVE ----------------
-        case ERawInputType::MouseMove:
-        {
-            FInputDeviceState& mouse =
-                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Mouse, /*index*/ 0,
-                                  MOUSE_BUTTONS, MOUSE_AXES);
-
-            // Convention: backend sends two events:
-            //   - one with code=2, value=deltaX
-            //   - one with code=3, value=deltaY
-            uint32_t axisIndex = e.code;
-            if (axisIndex < mouse.axes.size())
-            {
-                mouse.axes[axisIndex] += e.value; // accumulate per frame
-            }
-        }
-        break;
-
-        // ---------------- GAMEPAD BUTTONS ----------------
+        // ---------- GAMEPAD ----------
         case ERawInputType::GamepadButtonDown:
         case ERawInputType::GamepadButtonUp:
-        {
-            // deviceID here can be GLFW joystick index
-            FInputDeviceState& pad =
-                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Gamepad, e.deviceID,
-                                  GAMEPAD_BUTTONS, GAMEPAD_AXES);
-
-            uint32_t btn = e.code;
-            if (btn < pad.buttons.size())
-                pad.buttons[btn] = (e.type == ERawInputType::GamepadButtonDown) ? 1.0f : 0.0f;
-        }
-        break;
-
-        // ---------------- GAMEPAD AXES ----------------
         case ERawInputType::GamepadAxis:
         {
             FInputDeviceState& pad =
-                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Gamepad, e.deviceID,
-                                  GAMEPAD_BUTTONS, GAMEPAD_AXES);
+                GetOrCreateDevice(m_DevicesState, EInputDeviceType::Gamepad, e.deviceID);
 
-            uint32_t axisIndex = e.code;
-            if (axisIndex < pad.axes.size())
-                pad.axes[axisIndex] = e.value; // Expected normalized -1..1 or 0..1
+            // 0/1 for buttons, -1..1 for axes
+            pad.values[phys] = e.value;
         }
         break;
 
-        // ---------------- TEXT INPUT ----------------
         case ERawInputType::TextInput:
-            // Usually handled by UI/text system; ignore for devices.
+            // UI / text system can read from m_Events directly if needed.
             break;
         }
     }
@@ -312,28 +235,31 @@ void JInputSystem::Tick(float deltaTime)
 {
     if (!m_Backend)
     {
-        std::cerr << "[JInputSystem]: no backend provided, cannot tick." << std::endl;
+        std::cerr << "[JInputSystem]: no backend provided, cannot tick.\n";
         return;
     }
 
-    // 1) Get raw events from OS
+    // 1) Get raw events from backend
     m_Events.clear();
     m_Backend->FetchEvents(m_Events);
 
-    // 2) Save previous device states
+    // 2) Save previous device states (for future mapping styles if needed)
     m_PrevDevicesState = m_DevicesState;
 
-    // 3) Apply events to produce current device state
+    // 3) Apply events -> current device state
     ProcessEvents();
 
-    // 4) Let mapping style turn devices into channelData
+    // 4) Let mapping style produce channel states
     if (m_MappingStyle)
         m_MappingStyle->UpdateChannels(deltaTime, m_DevicesState, m_ChannelData);
 
-    // 5) Fire callbacks
+    // 5) Dispatch callbacks
     if (m_MappingStyle)
         DispatchCallbacks();
 }
+
+// ---------- Callback dispatch ----------
+
 void JInputSystem::DispatchCallbacks()
 {
     if (!m_MappingStyle)
@@ -344,7 +270,7 @@ void JInputSystem::DispatchCallbacks()
     for (size_t i = 0; i < channelCount; ++i)
     {
         const FInputChannelDesc& desc = m_Channels[i];
-        InputChannelHandle handle = desc.handle;
+        InputChannelHandle handle     = desc.handle;
 
         switch (desc.type)
         {
@@ -354,7 +280,6 @@ void JInputSystem::DispatchCallbacks()
 
             for (const auto& entry : m_BoolCallbacks)
             {
-                // skip callbacks not bound to this channel, or invalid
                 if (entry.channelHandle != handle ||
                     entry.channelHandle == INVALID_CHANNEL_HANDLE)
                     continue;
@@ -437,6 +362,8 @@ void JInputSystem::DispatchCallbacks()
     }
 }
 
+// ---------- Channel queries ----------
+
 FActionStateBool JInputSystem::GetBoolChannel(InputChannelHandle handle) const
 {
     if (!m_MappingStyle)
@@ -457,6 +384,8 @@ FActionStateAxis2D JInputSystem::GetAxis2DChannel(InputChannelHandle handle) con
         return FActionStateAxis2D{};
     return m_MappingStyle->GetAxis2DState(handle);
 }
+
+// ---------- Channels / mapping ----------
 
 InputChannelHandle JInputSystem::FindChannelIdByName(const std::string& name) const
 {
@@ -482,16 +411,12 @@ void JInputSystem::RebuildChannels()
         m_NameToHandle[desc.name] = desc.handle;
     }
 
-    // Channels changed – bump version
     ++m_ChannelVersion;
 
-    // Update callback entries to match new handles
     for (auto& entry : m_BoolCallbacks)
         entry.channelHandle = FindChannelIdByName(entry.channelName);
-
     for (auto& entry : m_Axis1DCallbacks)
         entry.channelHandle = FindChannelIdByName(entry.channelName);
-
     for (auto& entry : m_Axis2DCallbacks)
         entry.channelHandle = FindChannelIdByName(entry.channelName);
 }

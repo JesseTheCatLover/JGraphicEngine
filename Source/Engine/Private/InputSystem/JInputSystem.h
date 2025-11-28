@@ -11,11 +11,11 @@
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisStates.h"
 #include "InputSystem/InputCallbacks.h"
 #include "InputSystem/MappingStyles/IInputMappingStyle.h"
+#include "InputSystem/FInputDeviceState.h"
 
 /**
  * @class JInputSystem
- * @brief Engine-internal subsystem responsible for collecting raw input events,
- *        tracking device state, and evaluating logical input channels.
+ * @brief Engine-internal subsystem that converts raw OS events -> device state -> logical channels.
  */
 class JInputSystem
 {
@@ -37,36 +37,45 @@ private:
     bool Initialize(IInputBackend* backend);
     void Shutdown();
 
+    // Set the mapping style
     void SetMappingStyle(TUniquePtr<IInputMappingStyle> style);
 
+    // Called once per engine frame
     void Tick(float deltaTime);
 
+    // Turn channel states into callback invocations
     void DispatchCallbacks();
 
+    // Backend providing raw OS events
     IInputBackend* m_Backend = nullptr;
+
+    // Mapping style (ActionAxisStyle or future ones)
     TUniquePtr<IInputMappingStyle> m_MappingStyle;
 
+    // Per-frame raw events
     std::vector<FRawInputEvent> m_Events;
 
+    // Current + previous device state (per keyboard/mouse/gamepad)
     std::vector<FInputDeviceState> m_DevicesState;
     std::vector<FInputDeviceState> m_PrevDevicesState;
 
+    // Active logical channels
     std::vector<FInputChannelDesc> m_Channels;
-    std::vector<float> m_ChannelData; // Packed
+
+    // Optional packed channel data (unused currently but useful for future patterns)
+    std::vector<float> m_ChannelData;
     uint32_t m_ChannelVersion = 0;
 
+    // Fast lookup: "Jump" -> channel handle
     std::unordered_map<std::string, InputChannelHandle> m_NameToHandle;
 
-    // Key arrays for quick check
-    std::vector<uint8_t> m_KeyCurrent;
-    std::vector<uint8_t> m_KeyPrevious;
-
+    // ---- Callback storage ----
     struct FBoolCallbackEntry
     {
         InputCallbackHandle handle{};
         std::string channelName;
         InputChannelHandle channelHandle{ INVALID_CHANNEL_HANDLE };
-        EInputEventPhase phase;
+        EInputEventPhase phase{};
         FBoolActionCallback callback{};
     };
 
@@ -75,7 +84,7 @@ private:
         InputCallbackHandle handle{};
         std::string channelName;
         InputChannelHandle channelHandle{ INVALID_CHANNEL_HANDLE };
-        EInputEventPhase phase;
+        EInputEventPhase phase{};
         FAxis1DActionCallback callback{};
     };
 
@@ -84,47 +93,43 @@ private:
         InputCallbackHandle handle{};
         std::string channelName;
         InputChannelHandle channelHandle{ INVALID_CHANNEL_HANDLE };
-        EInputEventPhase phase;
+        EInputEventPhase phase{};
         FAxis2DActionCallback callback{};
     };
 
-    std::vector<FBoolCallbackEntry> m_BoolCallbacks;
+    std::vector<FBoolCallbackEntry>  m_BoolCallbacks;
     std::vector<FAxis1DCallbackEntry> m_Axis1DCallbacks;
     std::vector<FAxis2DCallbackEntry> m_Axis2DCallbacks;
 
     InputCallbackHandle m_NextCallbackHandle = 1;
 
+    // ---- Callback Registration API ----
     InputCallbackHandle RegisterBoolCallback(
-    const std::string& channelName,
-    EInputEventPhase phase,
-    FBoolActionCallback cb);
+        const std::string& channelName,
+        EInputEventPhase phase,
+        FBoolActionCallback cb);
 
     InputCallbackHandle RegisterAxis1DCallback(
-    const std::string& channelName,
+        const std::string& channelName,
         EInputEventPhase phase,
         FAxis1DActionCallback cb);
 
     InputCallbackHandle RegisterAxis2DCallback(
-    const std::string& channelName,
+        const std::string& channelName,
         EInputEventPhase phase,
         FAxis2DActionCallback cb);
 
     void UnregisterCallback(InputCallbackHandle handle);
 
-    // ---- Engine-level / low-level ----
-    [[nodiscard]] bool IsKeyDown(uint32_t keyCode) const;
-    [[nodiscard]] bool WasKeyPressed(uint32_t keyCode) const;
-    [[nodiscard]] bool WasKeyReleased(uint32_t keyCode) const;
-
-    // ---- Channel queries (used by InputManager) ----
-    [[nodiscard]] FActionStateBool GetBoolChannel (InputChannelHandle handle) const;
+    // ---- Channel Queries ----
+    [[nodiscard]] FActionStateBool  GetBoolChannel (InputChannelHandle handle) const;
     [[nodiscard]] FActionStateAxis1D GetAxis1DChannel(InputChannelHandle handle) const;
     [[nodiscard]] FActionStateAxis2D GetAxis2DChannel(InputChannelHandle handle) const;
 
     [[nodiscard]] uint32_t GetChannelVersion() const { return m_ChannelVersion; }
     [[nodiscard]] InputChannelHandle FindChannelIdByName(const std::string& name) const;
 
-    // Helpers
-    void ProcessEvents(); // RawInputEvent -> m_devices & key arrays
-    void RebuildChannels(); // ask style -> build m_channels + nameToId
+    // ---- Low-level pipeline ----
+    void ProcessEvents();
+    void RebuildChannels();
 };

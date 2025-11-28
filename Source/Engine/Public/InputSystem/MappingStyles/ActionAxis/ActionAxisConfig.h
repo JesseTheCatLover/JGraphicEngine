@@ -4,14 +4,16 @@
 #include <string>
 #include <vector>
 
+#include "InputSystem/EPhysicalInput.h"
 #include "InputSystem/FInputDeviceState.h"
 #include "InputSystem/InputChannels.h"
 
 struct FInputBinding
 {
     EInputDeviceType deviceType; // Keyboard / Mouse / Gamepad
-    int deviceIndex{}; // usually 0
-    int code{}; // keycode / button index / axis index
+    int deviceIndex = 0;
+
+    EPhysicalInput input = EPhysicalInput::Unknown;
 
     float scale = 1.0f;
     float deadZone = 0.0f;
