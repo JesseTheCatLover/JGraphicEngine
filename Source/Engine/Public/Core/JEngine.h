@@ -90,14 +90,6 @@ private:
 
     // GLFW input forwarders | TODO: These all should be moved into a dedicated InputSystem for future
     void ProcessInputs(GLFWwindow* window, float deltaTime);
-    void OnMouseMove(double xPosIn, double yPosIn);
-    void OnScroll(double xOffset, double yOffset);
-    void OnKeyboardAction(GLFWwindow* window, int key, int scancode, int action, int mods);
-
-    // --- Static callbacks for GLFW ---
-    static void MouseCallback(GLFWwindow* window, double xpos, double ypos);
-    static void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-    static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 };
 
 #include "JEngine.inl"

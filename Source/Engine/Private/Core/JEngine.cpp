@@ -22,6 +22,16 @@
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
 
+#include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
+#include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
+
+namespace
+{
+    bool  gLookInitialized = false;
+    float gYaw   = 0.0f; // radians
+    float gPitch = 0.0f; // radians
+}
+
 class JModelResource;
 
 JEngine::JEngine()
@@ -127,9 +137,6 @@ bool JEngine::SurfaceInitialize()
         std::cerr << "Win is null. (temp)" << std::endl;
         return false;
     }
-    glfwSetCursorPosCallback(win, MouseCallback); // TODO: Make an input system to handle these callbacks
-    glfwSetScrollCallback(win, ScrollCallback);
-    glfwSetKeyCallback(win, KeyCallback);
 
     return true;
 }
@@ -185,6 +192,68 @@ bool JEngine::InitializeSubsystems()
     }
     m_InputSystem->Initialize(m_InputBackend.get());
 
+    // --------- Default action/axis mapping ---------
+    FActionAxisMap map;
+
+    auto addButton = [&](const char* name, int glfwKey)
+    {
+        FActionAxisSlot slot;
+        slot.name = name;
+        slot.type = EInputChannelType::Bool;
+
+        FInputBinding bind{};
+        bind.deviceType  = EInputDeviceType::Keyboard;
+        bind.deviceIndex = 0;
+        bind.code        = glfwKey;   // GLFW keycode
+        bind.scale       = 1.0f;
+        bind.deadZone    = 0.0f;
+        bind.invert      = false;
+
+        slot.bindings.push_back(bind);
+        map.actions.push_back(std::move(slot));
+    };
+
+    // ESC -> Quit
+    addButton("Quit", GLFW_KEY_ESCAPE);
+    // F   -> Toggle wireframe
+    addButton("ToggleWireframe", GLFW_KEY_F);
+    // J   -> Toggle view mode (Scene/UI)
+    addButton("ToggleViewMode", GLFW_KEY_J);
+
+    // Mouse look: Axis2D
+    {
+        FActionAxisSlot look{};
+        look.name = "Look";
+        look.type = EInputChannelType::Axis2D;
+
+        // X = mouse delta X (matches ProcessEvents axis index 2)
+        FInputBinding bx{};
+        bx.deviceType  = EInputDeviceType::Mouse;
+        bx.deviceIndex = 0;
+        bx.code        = 2;          // engine's convention: axis 2 = deltaX
+        bx.scale       = 0.0038f;    // sensitivity
+        bx.deadZone    = 0.0f;
+        bx.invert      = false;
+
+        // Y = mouse delta Y (axis index 3)
+        FInputBinding by{};
+        by.deviceType  = EInputDeviceType::Mouse;
+        by.deviceIndex = 0;
+        by.code        = 3;          // axis 3 = deltaY
+        by.scale       = 0.0038f;
+        by.deadZone    = 0.0f;
+        by.invert      = false;       // invert so moving mouse up is positive pitch
+
+        look.bindings.push_back(bx);
+        look.bindings.push_back(by);
+        map.actions.push_back(std::move(look));
+    }
+
+    // Install mapping style
+    m_InputSystem->SetMappingStyle(MakeUnique<ActionAxisStyle>(map));
+    // ----------------------------------------------------
+
+
     return true;
 }
 
@@ -195,6 +264,50 @@ bool JEngine::InitializeManagers()
         std::cerr << "[JEngine]: Failed to initialize InputManager" << std::endl;
         return false;
     }
+
+    // ---- Bind a few test callbacks ----
+    InputManager* input = GetInputManager();
+    if (!input)
+        return false;
+
+    // ESC -> stop main loop
+    input->BindAction("Quit", EInputEventPhase::Pressed,
+        [this](InputChannelHandle, const FActionStateBool&)
+        {
+            std::cout << "[Input] Quit pressed -> stopping engine\n";
+            m_State.SetRunning(false);
+        });
+
+    // F -> toggle wireframe
+    input->BindAction("ToggleWireframe", EInputEventPhase::Pressed,
+        [this](InputChannelHandle, const FActionStateBool&)
+        {
+            bool wf = !m_State.GetWireframeMode();
+            m_State.SetWireframeMode(wf);
+            std::cout << "[Input] ToggleWireframe -> " << (wf ? "ON" : "OFF") << "\n";
+        });
+
+    // J -> toggle view mode + cursor
+    input->BindAction("ToggleViewMode", EInputEventPhase::Pressed,
+        [this](InputChannelHandle, const FActionStateBool&)
+        {
+            if (!m_PlatformSurface)
+                return;
+
+            if (m_State.GetViewMode() == EViewMode::Scene)
+            {
+                m_State.SetViewMode(EViewMode::UI);
+                m_PlatformSurface->SetCursorMode(ECursorMode::Visible);
+                std::cout << "[Input] ViewMode -> UI\n";
+            }
+            else
+            {
+                m_State.SetViewMode(EViewMode::Scene);
+                m_PlatformSurface->SetCursorMode(ECursorMode::Disabled);
+                std::cout << "[Input] ViewMode -> Scene\n";
+            }
+        });
+
 
     return true;
 }
@@ -262,6 +375,52 @@ void JEngine::Tick()
     if (m_InputSystem)
         m_InputSystem->Tick(deltaTime);
 
+    // --- Apply look axis to camera ---
+    auto* sceneMgr = GetSceneManager();
+    if (sceneMgr && m_State.GetViewMode() == EViewMode::Scene)
+    {
+        auto* scene = sceneMgr->GetActiveScene();
+        if (scene)
+        {
+            auto* camera = scene->GetCameraComponent();
+            if (camera)
+            {
+                JActor* camActor = camera->GetOwnerActor();
+                if (camActor)
+                {
+                    // Initialize yaw/pitch from current camera rotation once
+                    if (!gLookInitialized)
+                    {
+                        FTransform world = camera->GetWorldTransform();
+                        FEuler rotation = world.GetRotation().ToEuler();
+
+                        gPitch = rotation.Pitch;
+                        gYaw   = rotation.Yaw;
+                        gLookInitialized = true;
+                    }
+
+                    FVector2 lookDelta = GetInputManager()->GetAxis2D("Look");
+                    float dx = lookDelta.x;
+                    float dy = lookDelta.y;
+
+                    if (dx != 0.0f || dy != 0.0f)
+                    {
+                        gYaw   += dx;
+                        gPitch -= dy;
+
+                        gPitch = FMath::Radians(
+                            FMath::Clamp(FMath::Degrees(gPitch), -90.f, 90.f));
+
+                        FEuler euler(-gPitch, gYaw, 0.f);
+                        FQuat newRot = euler.ToQuat();
+                        camera->SetWorldRotation(newRot);
+                    }
+                }
+            }
+        }
+    }
+    // --------------------------------------
+
     if (m_EditorBridge)
         m_EditorBridge->OnTick(deltaTime);
 }
@@ -319,89 +478,11 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
     }
 }
 
-void JEngine::OnMouseMove(double xPosIn, double yPosIn)
-{
-    if (m_State.GetViewMode() != EViewMode::Scene)
-        return;
-
-    float xPos = static_cast<float>(xPosIn);
-    float yPos = static_cast<float>(yPosIn);
-
-    static bool  sInitialized = false;
-    static float sYaw   = 0.0f;   // radians
-    static float sPitch = 0.0f;   // radians
-
-    auto* sceneMgr = GetSceneManager();
-    if (!sceneMgr) return;
-    auto* scene = sceneMgr->GetActiveScene();
-    if (!scene) return;
-    auto* camera = scene->GetCameraComponent();
-    if (!camera) return;
-
-    if (!sInitialized)
-    {
-        FTransform world = camera->GetWorldTransform();
-        FEuler rotation = world.GetRotation().ToEuler();
-
-        sPitch = rotation.Pitch;
-        sYaw = rotation.Yaw;
-
-        m_State.SetLastMouseX(xPos);
-        m_State.SetLastMouseY(yPos);
-
-        sInitialized = true;
-        return;    // skip applying deltas on this first event
-    }
-
-    float dx = xPos - m_State.GetLastMouseX();
-    float dy = yPos - m_State.GetLastMouseY();
-
-    m_State.SetLastMouseX(xPos);
-    m_State.SetLastMouseY(yPos);
-
-    const float sensitivity = 0.0038f;
-    dx *= sensitivity;
-    dy *= sensitivity;
-
-    sYaw += dx;
-    sPitch -= dy;
-
-    sPitch = FMath::Radians(FMath::Clamp(FMath::Degrees(sPitch), -90.f, 90.f));
-
-    FEuler euler(-sPitch, sYaw, 0.f);
-    FQuat newRot = euler.ToQuat();
-
-    camera->SetWorldRotation(newRot);
-}
-
-void JEngine::OnScroll(double xOffset, double yOffset)
-{
-    // m_State.GetCamera()->ProcessMouseScroll(static_cast<float>(yOffset),
-        // m_State.GetCameraSettings()->GetMaxFOV());
-}
-
-void JEngine::OnKeyboardAction(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        m_PlatformSurface->SetShouldClose(true);
-
-    if (key == GLFW_KEY_J && action == GLFW_PRESS)
-    {
-        if (m_State.GetViewMode() == EViewMode::Scene)
-        {
-            glfwSetCursorPos(window, m_State.GetLastMouseX(), m_State.GetLastMouseY());
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            m_State.SetViewMode(EViewMode::UI);
-        } else if (m_State.GetViewMode() == EViewMode::UI) {
-            glfwSetCursorPos(window, m_State.GetLastMouseX(), m_State.GetLastMouseY());
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            m_State.SetViewMode(EViewMode::Scene);
-        }
-    }
-
-    if (key == GLFW_KEY_F && action == GLFW_PRESS)
-        m_State.SetWireframeMode(!m_State.GetWireframeMode()); // Toggling the wireframe mode
-}
+// void JEngine::OnScroll(double xOffset, double yOffset)
+// {
+//     // m_State.GetCamera()->ProcessMouseScroll(static_cast<float>(yOffset),
+//         // m_State.GetCameraSettings()->GetMaxFOV());
+// }
 
 IPlatformSurface * JEngine::GetPlatformSurface()
 {
@@ -572,20 +653,4 @@ void JEngine::UpdateFramebufferSizeContext()
     m_PlatformSurface->GetFramebufferSize(fbW, fbH);
     m_State.SetFramebufferWidth(fbW);
     m_State.SetFramebufferHeight(fbH);
-}
-
-// --- Static Callbacks ---
-void JEngine::MouseCallback(GLFWwindow* window, double xpos, double ypos)
-{
-    Get().OnMouseMove(xpos, ypos);
-}
-
-void JEngine::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    Get().OnScroll(xoffset, yoffset);
-}
-
-void JEngine::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    Get().OnKeyboardAction(window, key, scancode, action, mods);
 }

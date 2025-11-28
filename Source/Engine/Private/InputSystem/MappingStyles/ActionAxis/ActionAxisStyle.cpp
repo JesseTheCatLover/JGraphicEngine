@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "../../../../Public/InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
+#include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
 
 ActionAxisStyle::ActionAxisStyle(const FActionAxisMap &configMap)
 : m_ConfigMap(configMap)
@@ -136,12 +136,11 @@ float ActionAxisStyle::GetBindingValue(const FInputBinding& binding, const std::
             break;
 
         case EInputDeviceType::Mouse:
-            // for now, assume mouse buttons use `buttons`,
-            // axes (wheel, delta) use `axes`, you can refine this later
+            // For now: mouse bindings use AXES (wheel, delta, etc.)
             if (binding.code >= 0 &&
-                static_cast<size_t>(binding.code) < dev->buttons.size())
+                static_cast<size_t>(binding.code) < dev->axes.size())
             {
-                raw = dev->buttons[binding.code];
+                raw = dev->axes[binding.code];
             }
             break;
     }
