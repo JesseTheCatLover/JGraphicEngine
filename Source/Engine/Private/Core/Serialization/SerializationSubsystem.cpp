@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Core/Serialization/JSerializeManager.h"
+#include "Core/Serialization/SerializationSubsystem.h"
 #include "Core/Serialization/SerializeUtilities.h"
 #include "Core/JCoreObject.h"
 
@@ -8,7 +8,7 @@
 #include "Scene/ActorComponents/JActorComponent.h"
 #include "Scene/SceneComponents/JSceneComponent.h"
 
-bool JSerializeManager::SaveScene(const FSceneSaveInfo& info, const std::string& filePath)
+bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::string& filePath)
 {
     JsonWriter writer;
 
@@ -91,7 +91,7 @@ bool JSerializeManager::SaveScene(const FSceneSaveInfo& info, const std::string&
     return writer.SaveToFile(filePath);
 }
 
-bool JSerializeManager::LoadScene(const std::string& filePath, FSceneLoadResult& outResult)
+bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadResult& outResult)
 {
     JsonReader reader;
     if (!reader.LoadFromFile(filePath))
@@ -132,7 +132,7 @@ bool JSerializeManager::LoadScene(const std::string& filePath, FSceneLoadResult&
         if (!obj)
             continue;
 
-        // JSerializeManager is friend of JCoreObject, so this is allowed:
+        // SerializationSubsystem is friend of JCoreObject, so this is allowed:
         obj->m_UUID = uuid;
 
         // --------- Deserialize data ---------
@@ -165,7 +165,7 @@ bool JSerializeManager::LoadScene(const std::string& filePath, FSceneLoadResult&
     return true;
 }
 
-JCoreObject* JSerializeManager::CreateObjectByTypeName(const char* typeName)
+JCoreObject* SerializationSubsystem::CreateObjectByTypeName(const char* typeName)
 {
     return RETypeRegistry::CreateInstanceByTypeName(typeName);
 }

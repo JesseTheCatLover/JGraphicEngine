@@ -1,6 +1,6 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "JRenderer.h"
+#include "RendererSubsystem.h"
 
 #include "IRenderBackend.h"
 #include "RRenderProxies.h"
@@ -10,18 +10,18 @@
 #include <iostream>
 #include "Scene/SceneComponents/JCameraComponent.h"
 
-JRenderer::JRenderer(IRenderBackend *backend)
+RendererSubsystem::RendererSubsystem(IRenderBackend *backend)
 {
     m_Backend = backend;
     BuildDefaultShader();
     m_CoordAdaptor = BuildCoordAdapter(m_Backend->GetCoordConvention());
 }
 
-void JRenderer::BeginScene()
+void RendererSubsystem::BeginScene()
 {
     if (!m_PPM)
     {
-        std::cerr << "[JRenderer] PostProcessManager is null, cannot render" << std::endl;
+        std::cerr << "[RendererSubsystem] PostProcessManager is null, cannot render" << std::endl;
         return;
     }
 
@@ -47,12 +47,12 @@ void JRenderer::BeginScene()
     m_Backend->ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
 }
 
-void JRenderer::EndScene()
+void RendererSubsystem::EndScene()
 {
     auto camera = JEngine::Get().GetState().GetCamera();
     if (!camera)
     {
-        std::cerr << "[JRenderer]: EndScene called with null camera" << std::endl;
+        std::cerr << "[RendererSubsystem]: EndScene called with null camera" << std::endl;
         return;
     }
     m_ViewMat = camera->GetViewMatrix();
@@ -82,12 +82,12 @@ void JRenderer::EndScene()
     m_Backend->EndFrame();
 }
 
-void JRenderer::Shutdown()
+void RendererSubsystem::Shutdown()
 {
     m_Backend->Shutdown();
 }
 
-void JRenderer::FlushCommandBuffer()
+void RendererSubsystem::FlushCommandBuffer()
 {
     if (!m_CommandBuffer.GetLights().empty())
         m_Backend->UploadLights(m_CommandBuffer.GetLights().data(),
@@ -206,7 +206,7 @@ void JRenderer::FlushCommandBuffer()
     drawList(m_CommandBuffer.overlay.GetDrawCommands(), ERenderLayer::Overlay);
 }
 
-void JRenderer::BuildDefaultShader()
+void RendererSubsystem::BuildDefaultShader()
 {
     if (m_DefaultShader.IsValid())
         return;
@@ -283,7 +283,7 @@ void JRenderer::BuildDefaultShader()
     m_DefaultShader = m_Backend->CreateShader(sh);
 }
 
-void JRenderer::EnsureTargets(int w, int h, int samples)
+void RendererSubsystem::EnsureTargets(int w, int h, int samples)
 {
     // (Re)build on first run or size/sample change
     auto need = [&](const FTarget& t){ return t.w!=w || t.h!=h || t.samples!=samples || !t.fbo.IsValid(); };
@@ -310,13 +310,13 @@ void JRenderer::EnsureTargets(int w, int h, int samples)
     }
 }
 
-void JRenderer::DestroyTarget(FTarget &t)
+void RendererSubsystem::DestroyTarget(FTarget &t)
 {
     if (t.fbo.IsValid()) m_Backend->DestroyFramebuffer(t.fbo);
     t = {}; // backend should have invalidated the exported handles
 }
 
-void JRenderer::BuildTarget(FTarget &t, int w, int h, int samples, bool withDepth, bool hdr, bool srgb)
+void RendererSubsystem::BuildTarget(FTarget &t, int w, int h, int samples, bool withDepth, bool hdr, bool srgb)
 {
     // Describe FBO you want; backend owns attachments
     RFramebuffer fb{};
@@ -337,7 +337,7 @@ void JRenderer::BuildTarget(FTarget &t, int w, int h, int samples, bool withDept
     t.w = w; t.h = h; t.samples = fb.samples;
 }
 
-void JRenderer::RunPostProcessChain(RTextureHandle sceneColor, int w, int h)
+void RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor, int w, int h)
 {
     // Sync shaders with UI/gameplay changes
     RebuildKernelsIfDirty();
@@ -388,7 +388,7 @@ void JRenderer::RunPostProcessChain(RTextureHandle sceneColor, int w, int h)
     BlitFullscreen(m_CopyShader, current, w, h);
 }
 
-void JRenderer::EnsureFullscreenQuad()
+void RendererSubsystem::EnsureFullscreenQuad()
 {
     if (!m_FSQuad.IsValid())
     {
@@ -429,7 +429,7 @@ void JRenderer::EnsureFullscreenQuad()
     }
 }
 
-void JRenderer::BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h)
+void RendererSubsystem::BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h)
 {
     EnsureFullscreenQuad();
 
@@ -441,7 +441,7 @@ void JRenderer::BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w,
     m_Backend->SubmitMesh(m_FSQuad, shaderToUse, FMatrix4::Identity());
 }
 
-void JRenderer::RebuildKernelsIfDirty()
+void RendererSubsystem::RebuildKernelsIfDirty()
 {
     if (!m_PPM) return;
     if (!m_PPM->IsDirtyAndClear()) return;
@@ -468,7 +468,7 @@ void JRenderer::RebuildKernelsIfDirty()
     m_Kernels.swap(newKernels);
 }
 
-FCoordAdapter JRenderer::BuildCoordAdapter(const FBackendCoordDesc& d)
+FCoordAdapter RendererSubsystem::BuildCoordAdapter(const FBackendCoordDesc& d)
 {
     // d.X, d.Y, d.Z are backend basis expressed in ENGINE coordinates.
 
@@ -495,7 +495,7 @@ FCoordAdapter JRenderer::BuildCoordAdapter(const FBackendCoordDesc& d)
     return adapter;
 }
 
-void JRenderer::ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& viewEngine, const FMatrix4& projEngine)
+void RendererSubsystem::ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& viewEngine, const FMatrix4& projEngine)
 {
     // Convert from engine space to backend space
     FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * viewEngine * m_CoordAdaptor.BackendToEngine;
@@ -511,7 +511,7 @@ void JRenderer::ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& vi
     m_Backend->SetUniformMat4(shaderToUse, "u_Proj", projRaw);
 }
 
-void JRenderer::DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle &shaderToUse, const FMatrix4 &modelEngine)
+void RendererSubsystem::DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle &shaderToUse, const FMatrix4 &modelEngine)
 {
     FMatrix4 modelBackend = m_CoordAdaptor.EngineToBackend * modelEngine * m_CoordAdaptor.BackendToEngine;
     float modelRaw[16];
@@ -521,37 +521,37 @@ void JRenderer::DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle &sha
     m_Backend->SubmitMesh(meshHandle, shaderToUse, modelBackend);
 }
 
-RMeshHandle JRenderer::CreateMesh(const RMesh &data)
+RMeshHandle RendererSubsystem::CreateMesh(const RMesh &data)
 {
     return m_Backend->CreateMesh(data);
 }
 
-void JRenderer::DestroyMesh(RMeshHandle h)
+void RendererSubsystem::DestroyMesh(RMeshHandle h)
 {
     m_Backend->DestroyMesh(h);
 }
 
-RTextureHandle JRenderer::CreateTexture(const RTexture &data)
+RTextureHandle RendererSubsystem::CreateTexture(const RTexture &data)
 {
     return m_Backend->CreateTexture(data);
 }
 
-void JRenderer::DestroyTexture(RTextureHandle h)
+void RendererSubsystem::DestroyTexture(RTextureHandle h)
 {
     m_Backend->DestroyTexture(h);
 }
 
-RShaderHandle JRenderer::CreateShader(const RShader &data)
+RShaderHandle RendererSubsystem::CreateShader(const RShader &data)
 {
     return m_Backend->CreateShader(data);
 }
 
-void JRenderer::DestroyShader(RShaderHandle h)
+void RendererSubsystem::DestroyShader(RShaderHandle h)
 {
     m_Backend->DestroyShader(h);
 }
 
-RMaterialHandle JRenderer::CreateMaterial(const FSurfaceDesc &surface)
+RMaterialHandle RendererSubsystem::CreateMaterial(const FSurfaceDesc &surface)
 {
     // Generate a new handle id
     const Rint id = m_NextMaterialId++;
@@ -559,7 +559,7 @@ RMaterialHandle JRenderer::CreateMaterial(const FSurfaceDesc &surface)
     return RMaterialHandle{ id };
 }
 
-void JRenderer::DestroyMaterial(RMaterialHandle h)
+void RendererSubsystem::DestroyMaterial(RMaterialHandle h)
 {
     if (!h.IsValid()) return;
     m_Materials.erase(h.id);
@@ -569,14 +569,14 @@ void JRenderer::DestroyMaterial(RMaterialHandle h)
     }
 }
 
-const FSurfaceDesc* JRenderer::GetMaterialSurface(RMaterialHandle h) const
+const FSurfaceDesc* RendererSubsystem::GetMaterialSurface(RMaterialHandle h) const
 {
     if (!h.IsValid()) return nullptr;
     auto it = m_Materials.find(h.id);
     return (it == m_Materials.end()) ? nullptr : &it->second.surface;
 }
 
-void JRenderer::EnqueueRenderTask(std::function<void()> fn)
+void RendererSubsystem::EnqueueRenderTask(std::function<void()> fn)
 {
     // TODO: later, push into a lock-free queue drained in BeginFrame/EndFrame
     fn();

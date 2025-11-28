@@ -22,12 +22,12 @@ class PostProcessManager;
 struct RRenderProxy;
 class IRenderBackend;
 
-class JRenderer : public IRenderDevice
+class RendererSubsystem : public IRenderDevice
 {
     friend class JEngine;
 
 private:
-    explicit JRenderer(IRenderBackend* backend);
+    explicit RendererSubsystem(IRenderBackend* backend);
 
     void BeginScene();
     void EndScene();
@@ -100,7 +100,7 @@ private:
     void DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle& shaderToUse, const FMatrix4& modelEngine);
 
 public:
-    ~JRenderer() = default;
+    ~RendererSubsystem() = default;
 
     void SetPostProcessManager(PostProcessManager* ppm) { m_PPM = ppm;}
 

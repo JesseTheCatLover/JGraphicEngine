@@ -19,10 +19,10 @@
 class IRenderDevice;
 
 /**
- * @class JResourceSystem
+ * @class ResourceSubsystem
  * @brief Centralized internal system for loading, caching, and managing runtime resources keyed by asset UUID.
  *
- * JResourceSystem guarantees that each asset UUID maps to exactly one runtime
+ * ResourceSubsystem guarantees that each asset UUID maps to exactly one runtime
  * resource instance (e.g., mesh data, textures, audio buffers). The system owns
  * a single TSharedPtr for each resource and hands out additional TSharedPtr
  * references to engine systems and components.
@@ -34,17 +34,17 @@ class IRenderDevice;
  * A resource is considered unused when its TSharedPtr use count is equal to 1
  * (only stored in the system) and may be reclaimed by UnloadUnused().
  */
-class JResourceSystem
+class ResourceSubsystem
 {
     friend class JEngine;
 
 public:
     using JAssetID = std::string;
 
-    ~JResourceSystem() = default;
+    ~ResourceSubsystem() = default;
 
 private:
-    JResourceSystem() = default;
+    ResourceSubsystem() = default;
 
     /** @brief Shared pointer to the base resource type. */
     using BasePtr = TSharedPtr<JCoreObject>;
@@ -63,10 +63,10 @@ private:
 public:
 
     // Disable copy/move
-    JResourceSystem(const JResourceSystem&) = delete;
-    JResourceSystem& operator=(const JResourceSystem&) = delete;
-    JResourceSystem(JResourceSystem&&) = delete;
-    JResourceSystem& operator=(JResourceSystem&&) = delete;
+    ResourceSubsystem(const ResourceSubsystem&) = delete;
+    ResourceSubsystem& operator=(const ResourceSubsystem&) = delete;
+    ResourceSubsystem(ResourceSubsystem&&) = delete;
+    ResourceSubsystem& operator=(ResourceSubsystem&&) = delete;
 
     void Shutdown();
 
@@ -123,7 +123,7 @@ public:
             }
             else
             {
-                std::cerr << "[JResourceSystem]: Failed to create gpu resource, RenderDevice is null\n";
+                std::cerr << "[ResourceSubsystem]: Failed to create gpu resource, RenderDevice is null\n";
             }
         }
 

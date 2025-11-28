@@ -33,7 +33,7 @@ struct FSceneLoadResult
 {
     std::vector<JCoreObject*> objects;
 
-    // Helper tables (internal to SceneManager/JSerializeManager)
+    // Helper tables (internal to SceneManager/SerializationSubsystem)
     std::unordered_map<std::string, JCoreObject*> uuidMap;
     std::vector<FSceneObjectRelation> relations;
 
@@ -44,12 +44,12 @@ struct FSceneLoadResult
     std::string lastModified;
 };
 
-class JSerializeManager
+class SerializationSubsystem
 {
 public:
-    static JSerializeManager& Get()
+    static SerializationSubsystem& Get()
     {
-        static JSerializeManager instance;
+        static SerializationSubsystem instance;
         return instance;
     }
 

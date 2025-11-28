@@ -11,9 +11,9 @@ class IInputBackend;
 class InputManager;
 class PostProcessManager;
 class SceneManager;
-class JInputSystem;
-class JResourceSystem;
-class JRenderer;
+class InputSubsystem;
+class ResourceSubsystem;
+class RendererSubsystem;
 class IRenderBackend;
 class IPlatformSurface;
 class JRendererLegacy;
@@ -44,7 +44,7 @@ public:
 
     // Syntactic sugar manager accessors
     IPlatformSurface* GetPlatformSurface();
-    JResourceSystem* GetResourceSystem();
+    ResourceSubsystem* GetResourceSystem();
 
     SceneManager* GetSceneManager();
     PostProcessManager* GetPostProcessManager();
@@ -63,10 +63,10 @@ private:
 
     TUniquePtr<IPlatformSurface> m_PlatformSurface;
     TUniquePtr<IRenderBackend> m_RenderBackend;
-    TUniquePtr<JRenderer> m_Renderer;
-    TUniquePtr<JResourceSystem> m_ResourceSystem;
+    TUniquePtr<RendererSubsystem> m_Renderer;
+    TUniquePtr<ResourceSubsystem> m_ResourceSystem;
     TUniquePtr<IInputBackend> m_InputBackend;
-    TUniquePtr<JInputSystem> m_InputSystem;
+    TUniquePtr<InputSubsystem> m_InputSystem;
 
     TUniquePtr<TServiceContainer> m_Services;
 

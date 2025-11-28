@@ -14,25 +14,25 @@
 #include "InputSystem/FInputDeviceState.h"
 
 /**
- * @class JInputSystem
+ * @class InputSubsystem
  * @brief Engine-internal subsystem that converts raw OS events -> device state -> logical channels.
  */
-class JInputSystem
+class InputSubsystem
 {
     friend class JEngine;
     friend class InputManager;
 
 public:
-    ~JInputSystem() = default;
+    ~InputSubsystem() = default;
 
     // Non-copyable / non-movable
-    JInputSystem(const JInputSystem&) = delete;
-    JInputSystem& operator=(const JInputSystem&) = delete;
-    JInputSystem(JInputSystem&&) = delete;
-    JInputSystem& operator=(JInputSystem&&) = delete;
+    InputSubsystem(const InputSubsystem&) = delete;
+    InputSubsystem& operator=(const InputSubsystem&) = delete;
+    InputSubsystem(InputSubsystem&&) = delete;
+    InputSubsystem& operator=(InputSubsystem&&) = delete;
 
 private:
-    JInputSystem();
+    InputSubsystem();
 
     bool Initialize(IInputBackend* backend);
     void Shutdown();

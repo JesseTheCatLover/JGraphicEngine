@@ -4,9 +4,9 @@
 
 #include <iostream>
 
-#include "InputSystem/JInputSystem.h"
+#include "InputSystem/InputSubsystem.h"
 
-bool InputManager::Initialize(JInputSystem *system)
+bool InputManager::Initialize(InputSubsystem *system)
 {
     if (!system)
         return false;

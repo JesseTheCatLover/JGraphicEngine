@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "JInputSystem.h"
+#include "InputSubsystem.h"
 #include <algorithm>
 #include <iostream>
 
@@ -27,13 +27,13 @@ namespace
     }
 }
 
-JInputSystem::JInputSystem() = default;
+InputSubsystem::InputSubsystem() = default;
 
-bool JInputSystem::Initialize(IInputBackend* backend)
+bool InputSubsystem::Initialize(IInputBackend* backend)
 {
     if (!backend)
     {
-        std::cerr << "[JInputSystem]: failed to initialize input backend.\n";
+        std::cerr << "[InputSubsystem]: failed to initialize input backend.\n";
         return false;
     }
 
@@ -51,7 +51,7 @@ bool JInputSystem::Initialize(IInputBackend* backend)
     return true;
 }
 
-void JInputSystem::Shutdown()
+void InputSubsystem::Shutdown()
 {
     m_Backend = nullptr;
     m_MappingStyle.reset();
@@ -68,7 +68,7 @@ void JInputSystem::Shutdown()
 
 // ---------- Callback registration ----------
 
-InputCallbackHandle JInputSystem::RegisterBoolCallback(
+InputCallbackHandle InputSubsystem::RegisterBoolCallback(
     const std::string& channelName,
     EInputEventPhase phase,
     FBoolActionCallback cb)
@@ -91,7 +91,7 @@ InputCallbackHandle JInputSystem::RegisterBoolCallback(
     return entry.handle;
 }
 
-InputCallbackHandle JInputSystem::RegisterAxis1DCallback(
+InputCallbackHandle InputSubsystem::RegisterAxis1DCallback(
     const std::string& channelName,
     EInputEventPhase phase,
     FAxis1DActionCallback cb)
@@ -114,7 +114,7 @@ InputCallbackHandle JInputSystem::RegisterAxis1DCallback(
     return entry.handle;
 }
 
-InputCallbackHandle JInputSystem::RegisterAxis2DCallback(
+InputCallbackHandle InputSubsystem::RegisterAxis2DCallback(
     const std::string& channelName,
     EInputEventPhase phase,
     FAxis2DActionCallback cb)
@@ -137,7 +137,7 @@ InputCallbackHandle JInputSystem::RegisterAxis2DCallback(
     return entry.handle;
 }
 
-void JInputSystem::UnregisterCallback(InputCallbackHandle handle)
+void InputSubsystem::UnregisterCallback(InputCallbackHandle handle)
 {
     if (handle == INVALID_INPUT_CALLBACK)
         return;
@@ -157,7 +157,7 @@ void JInputSystem::UnregisterCallback(InputCallbackHandle handle)
 
 // ---------- Core processing ----------
 
-void JInputSystem::ProcessEvents()
+void InputSubsystem::ProcessEvents()
 {
     // 1) Clear per-frame mouse deltas (delta-style inputs)
     for (auto& mouse : m_DevicesState)
@@ -225,17 +225,17 @@ void JInputSystem::ProcessEvents()
     }
 }
 
-void JInputSystem::SetMappingStyle(TUniquePtr<IInputMappingStyle> style)
+void InputSubsystem::SetMappingStyle(TUniquePtr<IInputMappingStyle> style)
 {
     m_MappingStyle = std::move(style);
     RebuildChannels();
 }
 
-void JInputSystem::Tick(float deltaTime)
+void InputSubsystem::Tick(float deltaTime)
 {
     if (!m_Backend)
     {
-        std::cerr << "[JInputSystem]: no backend provided, cannot tick.\n";
+        std::cerr << "[InputSubsystem]: no backend provided, cannot tick.\n";
         return;
     }
 
@@ -260,7 +260,7 @@ void JInputSystem::Tick(float deltaTime)
 
 // ---------- Callback dispatch ----------
 
-void JInputSystem::DispatchCallbacks()
+void InputSubsystem::DispatchCallbacks()
 {
     if (!m_MappingStyle)
         return;
@@ -364,21 +364,21 @@ void JInputSystem::DispatchCallbacks()
 
 // ---------- Channel queries ----------
 
-FActionStateBool JInputSystem::GetBoolChannel(InputChannelHandle handle) const
+FActionStateBool InputSubsystem::GetBoolChannel(InputChannelHandle handle) const
 {
     if (!m_MappingStyle)
         return FActionStateBool{};
     return m_MappingStyle->GetBoolState(handle);
 }
 
-FActionStateAxis1D JInputSystem::GetAxis1DChannel(InputChannelHandle handle) const
+FActionStateAxis1D InputSubsystem::GetAxis1DChannel(InputChannelHandle handle) const
 {
     if (!m_MappingStyle)
         return FActionStateAxis1D{};
     return m_MappingStyle->GetAxis1DState(handle);
 }
 
-FActionStateAxis2D JInputSystem::GetAxis2DChannel(InputChannelHandle handle) const
+FActionStateAxis2D InputSubsystem::GetAxis2DChannel(InputChannelHandle handle) const
 {
     if (!m_MappingStyle)
         return FActionStateAxis2D{};
@@ -387,7 +387,7 @@ FActionStateAxis2D JInputSystem::GetAxis2DChannel(InputChannelHandle handle) con
 
 // ---------- Channels / mapping ----------
 
-InputChannelHandle JInputSystem::FindChannelIdByName(const std::string& name) const
+InputChannelHandle InputSubsystem::FindChannelIdByName(const std::string& name) const
 {
     auto it = m_NameToHandle.find(name);
     if (it == m_NameToHandle.end())
@@ -395,7 +395,7 @@ InputChannelHandle JInputSystem::FindChannelIdByName(const std::string& name) co
     return it->second;
 }
 
-void JInputSystem::RebuildChannels()
+void InputSubsystem::RebuildChannels()
 {
     m_Channels.clear();
     m_NameToHandle.clear();

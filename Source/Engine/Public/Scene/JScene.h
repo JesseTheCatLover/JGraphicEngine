@@ -82,7 +82,7 @@ private:
      */
     void AddActorToList(std::unique_ptr<JActor> actor);
 
-    // Used by SceneManager to take ownership of a raw actor allocated by JSerializeManager (via new)
+    // Used by SceneManager to take ownership of a raw actor allocated by SerializationSubsystem (via new)
     void TakeActorOwnershipFromLoad(JActor* actor)
     {
         if (!actor) return;

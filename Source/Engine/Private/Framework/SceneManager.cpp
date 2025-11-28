@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-#include "Core/Serialization/JSerializeManager.h"
+#include "Core/Serialization/SerializationSubsystem.h"
 #include "Scene/JActor.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPathFinder.h"
@@ -233,7 +233,7 @@ JScene* SceneManager::LoadSceneFile(const std::string &filename)
         return nullptr;
 
     FSceneLoadResult loadResult;
-    if (!JSerializeManager::Get().LoadScene(scenePath, loadResult))
+    if (!SerializationSubsystem::Get().LoadScene(scenePath, loadResult))
         return nullptr;
 
     std::string sceneName = loadResult.sceneName.empty()
@@ -263,7 +263,7 @@ bool SceneManager::SaveSceneFile(const JScene *scene, const std::string &filenam
     FSceneSaveInfo info;
     BuildSaveInfoFromScene(scene, info);
 
-    if (!JSerializeManager::Get().SaveScene(info, scenePath))
+    if (!SerializationSubsystem::Get().SaveScene(info, scenePath))
         return false;
 
     if (OnSceneSaved)

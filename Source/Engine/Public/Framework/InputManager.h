@@ -15,7 +15,7 @@ using FBoolActionCallback = ::FBoolActionCallback;
 using FAxis1DActionCallback = ::FAxis1DActionCallback;
 using FAxis2DActionCallback = ::FAxis2DActionCallback;
 
-class JInputSystem;
+class InputSubsystem;
 
 /**
  * @class InputManager
@@ -37,10 +37,10 @@ public:
 private:
     explicit InputManager() = default;
 
-    bool Initialize(JInputSystem* system);
+    bool Initialize(InputSubsystem* system);
 
     /// Non-owning pointer to the engine input subsystem.
-    JInputSystem* m_InputSystem = nullptr;
+    InputSubsystem* m_InputSystem = nullptr;
 
     /// Cache: name -> channel handle.
     std::unordered_map<std::string, InputChannelHandle> m_Cache;

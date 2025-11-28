@@ -10,13 +10,13 @@
 #include "Framework/InputManager.h"
 #include "Framework/PostProcessManager.h"
 #include "InputSystem/InputBackendFactory.h"
-#include "InputSystem/JInputSystem.h"
+#include "InputSystem/InputSubsystem.h"
 
 #include "Rendering/BackendFactory.h"
 #include "Rendering/EGraphicsAPI.h"
 #include "Rendering/IPlatformSurface.h"
-#include "Rendering/JRenderer.h"
-#include "Resources/JResourceSystem.h"
+#include "Rendering/RendererSubsystem.h"
+#include "Resources/ResourceSubsystem.h"
 #include "Resources/GpuResources/ModelResource.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
@@ -169,7 +169,7 @@ bool JEngine::InitializeBackends()
 
 bool JEngine::InitializeSubsystems()
 {
-    m_Renderer = TUniquePtr<JRenderer>(new JRenderer(m_RenderBackend.get()));
+    m_Renderer = TUniquePtr<RendererSubsystem>(new RendererSubsystem(m_RenderBackend.get()));
     if (!m_Renderer)
     {
         std::cerr << "[JEngine]: Failed to initialize renderer" << std::endl;
@@ -177,7 +177,7 @@ bool JEngine::InitializeSubsystems()
     }
     m_Renderer->SetPostProcessManager(GetPostProcessManager());
 
-    m_ResourceSystem = TUniquePtr<JResourceSystem>(new JResourceSystem());
+    m_ResourceSystem = TUniquePtr<ResourceSubsystem>(new ResourceSubsystem());
     if (!m_ResourceSystem)
     {
         std::cerr << "[JEngine]: Failed to initialize resource subsystem" << std::endl;
@@ -185,7 +185,7 @@ bool JEngine::InitializeSubsystems()
     }
     m_ResourceSystem->SetRenderDevice(m_Renderer.get());
 
-    m_InputSystem = TUniquePtr<JInputSystem>(new JInputSystem());
+    m_InputSystem = TUniquePtr<InputSubsystem>(new InputSubsystem());
     if (!m_InputSystem)
     {
         std::cerr << "[JEngine]: Failed to initialize input subsystem" << std::endl;
@@ -490,7 +490,7 @@ IPlatformSurface * JEngine::GetPlatformSurface()
     return m_PlatformSurface.get();
 }
 
-JResourceSystem* JEngine::GetResourceSystem()
+ResourceSubsystem* JEngine::GetResourceSystem()
 {
     return m_ResourceSystem.get();
 }

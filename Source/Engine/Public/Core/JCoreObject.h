@@ -47,7 +47,7 @@ private:
  */
 class JCoreObject
 {
-    friend class JSerializeManager;
+    friend class SerializationSubsystem;
     friend class SceneManager;
 
 public:

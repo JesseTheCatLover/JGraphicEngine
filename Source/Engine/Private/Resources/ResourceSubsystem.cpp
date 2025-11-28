@@ -1,26 +1,26 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Resources/JResourceSystem.h"
+#include "Resources/ResourceSubsystem.h"
 
-void JResourceSystem::Shutdown()
+void ResourceSubsystem::Shutdown()
 {
     UnloadAll();
 }
 
-std::shared_ptr<JCoreObject> JResourceSystem::Get(const JAssetID& assetId) const
+std::shared_ptr<JCoreObject> ResourceSubsystem::Get(const JAssetID& assetId) const
 {
     std::shared_lock rlock(m_Mutex);
     auto it = m_ByAsset.find(assetId);
     return it == m_ByAsset.end() ? nullptr : it->second.ptr;
 }
 
-bool JResourceSystem::Has(const JAssetID& assetId) const
+bool ResourceSubsystem::Has(const JAssetID& assetId) const
 {
     std::shared_lock rlock(m_Mutex);
     return m_ByAsset.find(assetId) != m_ByAsset.end();
 }
 
-bool JResourceSystem::Unload(const JAssetID& assetId)
+bool ResourceSubsystem::Unload(const JAssetID& assetId)
 {
     BasePtr ptr;
     bool lastOwner = false;
@@ -46,7 +46,7 @@ bool JResourceSystem::Unload(const JAssetID& assetId)
     return true;
 }
 
-size_t JResourceSystem::UnloadUnused()
+size_t ResourceSubsystem::UnloadUnused()
 {
     std::vector<BasePtr> toDestroy;
 
@@ -75,7 +75,7 @@ size_t JResourceSystem::UnloadUnused()
     return toDestroy.size();
 }
 
-void JResourceSystem::UnloadAll()
+void ResourceSubsystem::UnloadAll()
 {
     std::vector<BasePtr> toDestroy;
     {
@@ -91,10 +91,10 @@ void JResourceSystem::UnloadAll()
             gpu->DestroyGpuResources(m_Device);
 }
 
-void JResourceSystem::DebugDump() const
+void ResourceSubsystem::DebugDump() const
 {
     std::shared_lock rlock(m_Mutex);
-    std::cout << "[JResourceSystem]: Cache list:\n";
+    std::cout << "[ResourceSubsystem]: Cache list:\n";
     for (const auto& [id, entry] : m_ByAsset)
     {
         if (!entry.ptr) continue;

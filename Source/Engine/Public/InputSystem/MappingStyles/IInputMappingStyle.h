@@ -17,7 +17,7 @@ public:
 
     // Called every frame after devices are updated
     virtual void UpdateChannels(float dt, const std::vector<FInputDeviceState>& devices,
-        std::vector<float>& channelData /* raw storage managed by JInputSystem */) = 0;
+        std::vector<float>& channelData /* raw storage managed by InputSubsystem */) = 0;
 
     [[nodiscard]] virtual FActionStateBool GetBoolState (InputChannelHandle handle) const = 0;
     [[nodiscard]] virtual FActionStateAxis1D GetAxis1DState(InputChannelHandle handle) const = 0;

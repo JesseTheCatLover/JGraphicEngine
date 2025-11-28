@@ -2,14 +2,14 @@
 
 #pragma once
 
-class JRenderer;
+class RendererSubsystem;
 
 /**
  * @brief Interface providing view/projection matrices and required parameters for rendering a view.
  */
 class ICameraViewSource
 {
-    friend JRenderer;
+    friend RendererSubsystem;
 
 public:
     virtual ~ICameraViewSource() = default;

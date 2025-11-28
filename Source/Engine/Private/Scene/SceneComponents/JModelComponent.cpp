@@ -5,7 +5,7 @@
 #include "Core/JEngine.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
-#include "Resources/JResourceSystem.h"
+#include "Resources/ResourceSubsystem.h"
 #include "Resources/GpuResources/ModelResource.h"
 #include "Rendering/RCommandQueue.h"
 
