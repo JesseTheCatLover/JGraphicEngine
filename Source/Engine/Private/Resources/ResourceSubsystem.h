@@ -12,8 +12,8 @@
 #include <ostream>
 #include <vector>
 
+#include "ICpuResource.h"
 #include "IGpuResource.h"
-#include "Core/JCoreObject.h"
 #include "Core/Memory/SmartPointers.h"
 
 class IRenderDevice;
@@ -47,7 +47,7 @@ private:
     ResourceSubsystem() = default;
 
     /** @brief Shared pointer to the base resource type. */
-    using BasePtr = TSharedPtr<JCoreObject>;
+    using BasePtr = TSharedPtr<ICpuResource>;
 
     /** @brief Internal cache entry. */
     struct Entry
@@ -74,8 +74,8 @@ public:
     // Render Device
     //======================================================================
 
-    void SetRenderDevice(IRenderDevice* device) { m_Device = device; }
-    [[nodiscard]] IRenderDevice* GetRenderDevice() const { return m_Device; }
+    void SetRenderDevice(IRenderDevice *device) { m_Device = device; }
+    [[nodiscard]] IRenderDevice *GetRenderDevice() const { return m_Device; }
 
     //======================================================================
     // Load / Creation
@@ -90,15 +90,15 @@ public:
      *       - SetRenderDevice(IRenderDevice*)
      *       - CreateGpuResources(IRenderDevice*)
      *
-     * @tparam T Resource type (must derive from JCoreObject).
+     * @tparam T Resource type.
      * @tparam Args Constructor argument types.
      * @param assetId Unique asset UUID string.
      * @param args Forwarded constructor arguments (typically asset-specific info).
      */
     template<class T, class... Args>
-    TSharedPtr<T> Load(const JAssetID& assetId, Args&&... args)
+    TSharedPtr<T> Load(const JAssetID &assetId, Args &&... args)
     {
-        static_assert(std::is_base_of<JCoreObject, T>::value, "T must derive from JCoreObject");
+        static_assert(std::is_base_of<ICpuResource, T>::value, "T must derive from ICpuResource");
 
         // Fast path read
         {
@@ -109,7 +109,8 @@ public:
 
         // Create new instance
         auto createdResource = CreateInstance<T>(
-            std::integral_constant<bool, std::is_constructible<T, IRenderDevice*, Args...>::value>{},
+            std::integral_constant<bool, std::is_constructible<T, IRenderDevice *, Args...>::value
+            >{},
             std::forward<Args>(args)...
         );
 
@@ -127,10 +128,8 @@ public:
             }
         }
 
-        {
-            std::unique_lock wlock(m_Mutex);
-            m_ByAsset[assetId] = Entry{ createdResource, std::type_index(typeid(T)) };
-        }
+        std::unique_lock wlock(m_Mutex);
+        m_ByAsset[assetId] = Entry{createdResource, std::type_index(typeid(T))};
 
         return createdResource;
     }
@@ -144,7 +143,7 @@ public:
      * @param key UUID Identifier key.
      * @return Shared pointer or nullptr if not found.
      */
-    [[nodiscard]] TSharedPtr<JCoreObject> Get(const JAssetID& assetId) const;
+    [[nodiscard]] TSharedPtr<ICpuResource> Get(const JAssetID& assetId) const;
 
     /**
      * @brief Retrieves a typed resource by UUID key.
@@ -154,6 +153,7 @@ public:
     template<class T>
     [[nodiscard]] TSharedPtr<T> GetAs(const JAssetID& assetId) const
     {
+        static_assert(std::is_base_of_v<ICpuResource, T>, "T must derive from ICpuResource");
         return std::dynamic_pointer_cast<T>(Get(assetId));
     }
 

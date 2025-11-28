@@ -7,7 +7,7 @@ void ResourceSubsystem::Shutdown()
     UnloadAll();
 }
 
-std::shared_ptr<JCoreObject> ResourceSubsystem::Get(const JAssetID& assetId) const
+std::shared_ptr<ICpuResource> ResourceSubsystem::Get(const JAssetID& assetId) const
 {
     std::shared_lock rlock(m_Mutex);
     auto it = m_ByAsset.find(assetId);

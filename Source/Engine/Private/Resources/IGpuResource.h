@@ -1,9 +1,11 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include "ICpuResource.h"
+
 class IRenderDevice;
 
-class IGpuResource {
+class IGpuResource : public virtual ICpuResource {
 public:
     virtual ~IGpuResource() = default;
 
