@@ -17,7 +17,7 @@
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/JRenderer.h"
 #include "Resources/JResourceSystem.h"
-#include "Resources/GpuResources/JModelResource.h"
+#include "Resources/GpuResources/ModelResource.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
 
@@ -33,7 +33,7 @@ namespace
     float gPitch = 0.0f; // radians
 }
 
-class JModelResource;
+class ModelResource;
 
 JEngine::JEngine()
     : m_Services(MakeUnique<TServiceContainer>())
@@ -556,8 +556,8 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     // 1) (Optional) Preload a few heavy assets to smooth first-frame stutter
     //    Keys should be the same strings you’ll use from components.
     // ---------------------------------------------------------------------
-    m_ResourceSystem->Load<JModelResource>("Dio Brando/DioMansion.obj",      "Dio Brando/DioMansion.obj");
-    m_ResourceSystem->Load<JModelResource>("MedievalWindow/MedievalWindow.obj","MedievalWindow/MedievalWindow.obj");
+    m_ResourceSystem->Load<ModelResource>("Dio Brando/DioMansion.obj",      "Dio Brando/DioMansion.obj");
+    m_ResourceSystem->Load<ModelResource>("MedievalWindow/MedievalWindow.obj","MedievalWindow/MedievalWindow.obj");
 
     // ---------------------------------------------------------------------
     // 2) Load or create the startup scene asset

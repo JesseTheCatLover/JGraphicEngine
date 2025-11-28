@@ -8,7 +8,7 @@
 #include "Scene/SceneComponents/JRenderableComponent.h"
 #include "Rendering/IRenderSubmission.h"
 
-class JModelResource;
+class ModelResource;
 
 class JModelComponent : public JRenderableComponent
 {
@@ -24,14 +24,14 @@ public:
     /// Optional: allow overriding the shader used for this model.
     void SetShader(RShaderHandle shader) { m_Shader = shader; }
 
-    TSharedPtr<JModelResource> GetModel() const { return m_Model; }
+    TSharedPtr<ModelResource> GetModel() const { return m_Model; }
 
     // JRenderableComponent
     void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const override;
 
 private:
     std::string m_ModelKey;
-    TSharedPtr<JModelResource> m_Model;
+    TSharedPtr<ModelResource> m_Model;
     RShaderHandle m_Shader{}; // shader used for all submeshes (for now)
 
 protected:

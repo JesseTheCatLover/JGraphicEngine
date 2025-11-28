@@ -6,13 +6,13 @@
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 #include "Resources/JResourceSystem.h"
-#include "Resources/GpuResources/JModelResource.h"
+#include "Resources/GpuResources/ModelResource.h"
 #include "Rendering/RCommandQueue.h"
 
 void JModelComponent::SetModel(const std::string& assetID)
 {
     m_ModelKey = assetID;
-    m_Model = JEngine::Get().GetResourceSystem()->Load<JModelResource>(assetID, assetID);
+    m_Model = JEngine::Get().GetResourceSystem()->Load<ModelResource>(assetID, assetID);
 }
 
 void JModelComponent::GatherProxies(IRenderSubmission& submission,

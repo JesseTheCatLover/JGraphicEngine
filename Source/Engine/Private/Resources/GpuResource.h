@@ -1,20 +1,17 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-#include "Core/JCoreObject.h"
 #include "IGpuResource.h"
 
-class JGpuResource : public JCoreObject, public IGpuResource
+class GpuResource : public IGpuResource
 {
-    DECLARE_JOBJECT(JGpuResource, JCoreObject)
-
 private:
     IRenderDevice* m_Device = nullptr;
     bool m_GpuCacheCreated = false;
 
 public:
-    JGpuResource() = default;
-    ~JGpuResource() override { /* NOTE: Manager should call DestroyGpuResources() before destructor */ }
+    GpuResource() = default;
+    ~GpuResource() override { /* NOTE: Manager should call DestroyGpuResources() before destructor */ }
 
     // IGpuResource
     void SetRenderDevice(IRenderDevice* device) override { m_Device = device; }

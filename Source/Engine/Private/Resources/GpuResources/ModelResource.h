@@ -7,14 +7,14 @@
 #include <unordered_map>
 
 #include "Core/JCoreObject.h"
-#include "Resources/JGpuResource.h"
+#include "Resources/GpuResource.h"
 #include "Rendering/RObjects.h"
 #include "Rendering/RHandles.h"
 
 class IRenderDevice;
 
 /**
- * @class JModelResource
+ * @class ModelResource
  * @brief Loads a 3D model (Assimp), stages CPU data, builds GPU meshes/textures/materials.
  *
  * Design:
@@ -22,14 +22,12 @@ class IRenderDevice;
  *  - UploadGPU(): create RTextureHandle(s), RMaterialHandle(s), RMeshHandle(s).
  *  - ReleaseCPU(): optional step to drop CPU staging memory after upload.
  */
-class JModelResource : public JGpuResource // TODO: Temp
+class ModelResource : public GpuResource // TODO: Temp
 {
-    DECLARE_JOBJECT(JModelResource, JGpuResource)
-
 public:
-    explicit JModelResource(std::string sourcePath);
+    explicit ModelResource(std::string sourcePath);
 
-    // JGpuResource
+    // GpuResource
     void OnCreateGpuResources() override;
     void OnDestroyGpuResources() override;
 

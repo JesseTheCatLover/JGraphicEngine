@@ -1,6 +1,6 @@
 // Copyright 2025 JesseTheCatLover
 
-#include "Resources/GpuResources/JModelResource.h"
+#include "Resources/GpuResources/ModelResource.h"
 
 #include <cassert>
 #include <cstring>
@@ -20,15 +20,15 @@
 
 // ====== construction ======
 
-JModelResource::JModelResource(std::string sourcePath)
+ModelResource::ModelResource(std::string sourcePath)
     : m_Source(std::move(sourcePath))
 {
     stbi_set_flip_vertically_on_load(true);
 }
 
-// ====== JGpuResource hooks ======
+// ====== GpuResource hooks ======
 
-void JModelResource::OnCreateGpuResources()
+void ModelResource::OnCreateGpuResources()
 {
     if (!m_CpuReady)
         LoadCPU();
@@ -37,7 +37,7 @@ void JModelResource::OnCreateGpuResources()
     ReleaseCPU(); // keep RAM usage low; comment out if you want CPU copy in editor.
 }
 
-void JModelResource::OnDestroyGpuResources()
+void ModelResource::OnDestroyGpuResources()
 {
     IRenderDevice* dev = GetDevice();
     if (!dev) return;
@@ -56,7 +56,7 @@ void JModelResource::OnDestroyGpuResources()
 
 static inline bool HasTexCoords0(const aiMesh* m) { return m->mTextureCoords[0] != nullptr; }
 
-void JModelResource::LoadCPU()
+void ModelResource::LoadCPU()
 {
     m_MeshesCPU.clear();
     m_TexturesCPU.clear();
@@ -83,7 +83,7 @@ void JModelResource::LoadCPU()
 
     if (!sc || (sc->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !sc->mRootNode)
     {
-        std::cerr << "[JModelResource] Assimp error: " << importer.GetErrorString() << "\n";
+        std::cerr << "[ModelResource] Assimp error: " << importer.GetErrorString() << "\n";
         return;
     }
 
@@ -185,7 +185,7 @@ void JModelResource::LoadCPU()
     m_CpuReady = true;
 }
 
-int JModelResource::AcquireTexture(const std::string& absPath, bool srgb)
+int ModelResource::AcquireTexture(const std::string& absPath, bool srgb)
 {
     auto it = m_TexIndexByPath.find(absPath);
     if (it != m_TexIndexByPath.end())
@@ -195,7 +195,7 @@ int JModelResource::AcquireTexture(const std::string& absPath, bool srgb)
     int w = 0, h = 0, comp = 0;
     unsigned char* data = stbi_load(absPath.c_str(), &w, &h, &comp, 4);
     if (!data) {
-        std::cerr << "[JModelResource] Failed to load texture: " << absPath << "\n";
+        std::cerr << "[ModelResource] Failed to load texture: " << absPath << "\n";
         m_TexIndexByPath[absPath] = -1;
         return -1;
     }
@@ -226,7 +226,7 @@ int JModelResource::AcquireTexture(const std::string& absPath, bool srgb)
     return index;
 }
 
-void JModelResource::FillMeshUploadDesc(FMeshCPU& out, bool hasNormals, bool hasUVs, bool hasTangents)
+void ModelResource::FillMeshUploadDesc(FMeshCPU& out, bool hasNormals, bool hasUVs, bool hasTangents)
 {
     RMesh& ro = out.ro;
     ro.vertices = out.vtx;
@@ -261,11 +261,11 @@ void JModelResource::FillMeshUploadDesc(FMeshCPU& out, bool hasNormals, bool has
     ro.vertexStride = offset;
 }
 
-void JModelResource::UploadGPU()
+void ModelResource::UploadGPU()
 {
     IRenderDevice* dev = GetDevice();
     if (!dev) {
-        std::cerr << "[JModelResource] UploadGPU failed: device is null.\n";
+        std::cerr << "[ModelResource] UploadGPU failed: device is null.\n";
         return;
     }
 
@@ -300,7 +300,7 @@ void JModelResource::UploadGPU()
     }
 }
 
-void JModelResource::ReleaseCPU()
+void ModelResource::ReleaseCPU()
 {
     // Free CPU staging after GPU upload to save memory.
     m_MeshesCPU.clear();
