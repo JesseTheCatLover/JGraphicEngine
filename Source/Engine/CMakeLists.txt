@@ -16,13 +16,11 @@ target_include_directories(Engine
 )
 
 # Define available surface backends
-# (You can toggle these on/off depending on platform or build type)
 target_compile_definitions(Engine PRIVATE
         HAVE_GLFW          # Enable GLFW backend
 )
 
 # Define available rendering backends
-# (You can toggle these on/off depending on platform or build type)
 target_compile_definitions(Engine PRIVATE
         HAVE_OPENGL          # Enable OpenGL backend
         # HAVE_VULKAN         # Enable Vulkan backend
