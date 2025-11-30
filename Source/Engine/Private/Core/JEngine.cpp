@@ -4,8 +4,9 @@
 
 #include "Framework/SceneManager.h"
 #include "Core/EngineGlobals.h"
-#include "Core/Contexts/FViewportContext.h"
 #include <iostream>
+
+#include "EngineContext.h"
 #include "Core/TServiceContainer.h"
 #include "Framework/InputManager.h"
 #include "Framework/PostProcessManager.h"
@@ -66,6 +67,8 @@ bool JEngine::Run()
 
 bool JEngine::Initialize()
 {
+    m_Context = TUniquePtr<EngineContext>(new EngineContext());
+
     if (!SurfaceInitialize())
     {
         std::cerr << "[JEngine]: Failed to initialize platform surface" << std::endl;
@@ -94,13 +97,7 @@ bool JEngine::Initialize()
 
     if (m_EditorBridge)
     {
-        // Get the SAME window created by GLFWSurface TODO: Temp test here
-        auto* win = static_cast<GLFWwindow*>(m_PlatformSurface->GetNativeHandle());
-        if (!win) {
-            std::cerr << "[JEngine]: Native GLFWwindow* is null!\n";
-            return false;
-        }
-        m_EditorBridge->OnEngineInitialized(win);
+        m_EditorBridge->OnEngineInitialized(m_PlatformSurface.get());
     }
 
     return true;
@@ -109,8 +106,8 @@ bool JEngine::Initialize()
 bool JEngine::SurfaceInitialize()
 {
     FSurfaceState surfaceState;
-    surfaceState.width = m_State.GetFramebufferWidth();
-    surfaceState.height = m_State.GetFramebufferHeight();
+    surfaceState.width = m_Context->GetFramebufferWidth();
+    surfaceState.height = m_Context->GetFramebufferHeight();
     surfaceState.windowState = EWindowState::Maximized;
     surfaceState.title = "JGraphicEngine";
 
@@ -127,17 +124,8 @@ bool JEngine::SurfaceInitialize()
         return false;
     }
 
-    m_State.SetFramebufferWidth(m_PlatformSurface->GetWidth());
-    m_State.SetFramebufferHeight(m_PlatformSurface->GetHeight());
-
-    auto* win = static_cast<GLFWwindow*>(m_PlatformSurface
-                                             ? m_PlatformSurface->GetNativeHandle()
-                                             : nullptr);
-    if (!win)
-    {
-        std::cerr << "Win is null. (temp)" << std::endl;
-        return false;
-    }
+    m_Context->SetFramebufferWidth(m_PlatformSurface->GetWidth());
+    m_Context->SetFramebufferHeight(m_PlatformSurface->GetHeight());
 
     return true;
 }
@@ -169,7 +157,7 @@ bool JEngine::InitializeBackends()
 
 bool JEngine::InitializeSubsystems()
 {
-    m_Renderer = TUniquePtr<RendererSubsystem>(new RendererSubsystem(m_RenderBackend.get()));
+    m_Renderer = TUniquePtr<RendererSubsystem>(new RendererSubsystem(m_RenderBackend.get(), *m_Context));
     if (!m_Renderer)
     {
         std::cerr << "[JEngine]: Failed to initialize renderer" << std::endl;
@@ -276,15 +264,15 @@ bool JEngine::InitializeManagers()
         [this](InputChannelHandle, const FActionStateBool&)
         {
             std::cout << "[Input] Quit pressed -> stopping engine\n";
-            m_State.SetRunning(false);
+            m_Context->SetRunning(false);
         });
 
     // F -> toggle wireframe
     input->BindAction("ToggleWireframe", EInputEventPhase::Pressed,
         [this](InputChannelHandle, const FActionStateBool&)
         {
-            bool wf = !m_State.GetWireframeMode();
-            m_State.SetWireframeMode(wf);
+            bool wf = !m_Context->GetWireframeMode();
+            m_Context->SetWireframeMode(wf);
             std::cout << "[Input] ToggleWireframe -> " << (wf ? "ON" : "OFF") << "\n";
         });
 
@@ -294,19 +282,6 @@ bool JEngine::InitializeManagers()
         {
             if (!m_PlatformSurface)
                 return;
-
-            if (m_State.GetViewMode() == EViewMode::Scene)
-            {
-                m_State.SetViewMode(EViewMode::UI);
-                m_PlatformSurface->SetCursorMode(ECursorMode::Visible);
-                std::cout << "[Input] ViewMode -> UI\n";
-            }
-            else
-            {
-                m_State.SetViewMode(EViewMode::Scene);
-                m_PlatformSurface->SetCursorMode(ECursorMode::Disabled);
-                std::cout << "[Input] ViewMode -> Scene\n";
-            }
         });
 
 
@@ -323,12 +298,12 @@ void JEngine::RunMainLoop()
         return;
     }
 
-    while (!m_PlatformSurface->ShouldClose() && m_State.GetIsRunning())
+    while (!m_PlatformSurface->ShouldClose() && m_Context->GetIsRunning())
     {
         CalculateDeltaTime();
         UpdateFramebufferSizeContext();
 
-        ProcessInputs(win, m_State.GetDeltaTime());
+        ProcessInputs(win, m_Context->GetDeltaTime());
         Tick();
         m_Renderer->BeginScene();
         FRenderContext ctx{};
@@ -341,7 +316,7 @@ void JEngine::RunMainLoop()
             auto camera = scene->GetCameraComponent();
             if (camera)
             {
-                m_State.SetCamera(camera);
+                m_Context->SetCamera(camera);
             }
         }
         m_Renderer->EndScene();
@@ -368,7 +343,7 @@ void JEngine::Shutdown()
 
 void JEngine::Tick()
 {
-    auto& deltaTime = m_State.GetDeltaTime();
+    auto& deltaTime = m_Context->GetDeltaTime();
 
     if (GetSceneManager())
         GetSceneManager()->Tick(deltaTime);
@@ -378,7 +353,7 @@ void JEngine::Tick()
 
     // --- Apply look axis to camera ---
     auto* sceneMgr = GetSceneManager();
-    if (sceneMgr && m_State.GetViewMode() == EViewMode::Scene)
+    if (true)
     {
         auto* scene = sceneMgr->GetActiveScene();
         if (scene)
@@ -431,7 +406,7 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
     // Close engine if ESC is pressed
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
-        m_State.SetRunning(false);
+        m_Context->SetRunning(false);
     }
 
     //  TODO: TEMP: drive active camera with WASD/Space/Shift
@@ -474,8 +449,8 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
         FVector3 pos = camActor->GetActorLocation();
         camActor->SetActorLocation(pos + movement);
 
-        camera->RecalculateViewMatrix();
-        camera->RecalculateProjectionMatrix();
+        camera->RecalculateViewMatrix(m_Context->GetAspectRatio());
+        camera->RecalculateProjectionMatrix(m_Context->GetAspectRatio());
     }
 }
 
@@ -644,14 +619,14 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
 void JEngine::CalculateDeltaTime()
 {
     auto currentFrame = static_cast<float>(glfwGetTime());
-    m_State.SetDeltaTime(currentFrame - m_State.GetLastFrameTime());
-    m_State.SetLastFrameTime(currentFrame);
+    m_Context->SetDeltaTime(currentFrame - m_Context->GetLastFrameTime());
+    m_Context->SetLastFrameTime(currentFrame);
 }
 
 void JEngine::UpdateFramebufferSizeContext()
 {
     int fbW = 0, fbH = 0;
     m_PlatformSurface->GetFramebufferSize(fbW, fbH);
-    m_State.SetFramebufferWidth(fbW);
-    m_State.SetFramebufferHeight(fbH);
+    m_Context->SetFramebufferWidth(fbW);
+    m_Context->SetFramebufferHeight(fbH);
 }

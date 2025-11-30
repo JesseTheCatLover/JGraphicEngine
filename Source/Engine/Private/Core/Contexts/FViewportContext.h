@@ -7,10 +7,9 @@ class ICameraViewSource;
 struct FViewportContext
 {
 private:
-    friend class EngineState;
+    friend class EngineContext;
 
     bool bWireframe = false;
-    EViewMode viewMode = EViewMode::Scene;
 
     ICameraViewSource* camera;
     float xSensitivity = 0.1f;

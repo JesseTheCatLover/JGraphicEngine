@@ -6,7 +6,6 @@
 #include <vector>
 #include <unordered_map>
 
-#include "Core/JCoreObject.h"
 #include "Resources/GpuResource.h"
 #include "Rendering/RObjects.h"
 #include "Rendering/RHandles.h"

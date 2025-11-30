@@ -8,11 +8,13 @@
 #include "Framework/PostProcessManager.h"
 #include <algorithm>
 #include <iostream>
+#include "Core/EngineContext.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 
-RendererSubsystem::RendererSubsystem(IRenderBackend *backend)
+RendererSubsystem::RendererSubsystem(IRenderBackend *backend, EngineContext& ctx):
+m_Context(ctx),
+m_Backend(backend)
 {
-    m_Backend = backend;
     BuildDefaultShader();
     m_CoordAdaptor = BuildCoordAdapter(m_Backend->GetCoordConvention());
 }
@@ -29,7 +31,7 @@ void RendererSubsystem::BeginScene()
     m_GPUStateCache = {};
 
     // Determine desired size from surface/window
-    int fbW = JEngine::Get().GetState().GetFramebufferWidth(), fbH = JEngine::Get().GetState().GetFramebufferHeight();
+    int fbW = m_Context.GetFramebufferWidth(), fbH = m_Context.GetFramebufferHeight();
 
     int samples = 4; // TODO: Hardcoded for now; Expose a setting for samples
     EnsureTargets(fbW, fbH, samples);
@@ -49,14 +51,14 @@ void RendererSubsystem::BeginScene()
 
 void RendererSubsystem::EndScene()
 {
-    auto camera = JEngine::Get().GetState().GetCamera();
+    auto camera = m_Context.GetCamera();
     if (!camera)
     {
         std::cerr << "[RendererSubsystem]: EndScene called with null camera" << std::endl;
         return;
     }
-    m_ViewMat = camera->GetViewMatrix();
-    m_ProjMat = camera->GetProjectionMatrix();
+    m_ViewMat = camera->GetViewMatrix(m_Context.GetAspectRatio());
+    m_ProjMat = camera->GetProjectionMatrix(m_Context.GetAspectRatio());
     RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.opaque, m_ViewMat, camera->GetNearPlane(), camera->GetFarPlane());
     RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.alpha,  m_ViewMat, camera->GetNearPlane(), camera->GetFarPlane());
 
@@ -71,7 +73,7 @@ void RendererSubsystem::EndScene()
             IRenderBackend::EResolveFilter::Nearest); // TODO: for future: when scaling during blit, use Linear for color masks; keep Nearest when depth is involved.
     }
 
-    int fbW = JEngine::Get().GetState().GetFramebufferWidth(), fbH = JEngine::Get().GetState().GetFramebufferHeight();
+    int fbW = m_Context.GetFramebufferWidth(), fbH = m_Context.GetFramebufferHeight();
 
     m_Backend->UnbindFramebuffer();
     m_Backend->SetViewport(0, 0, fbW, fbH);

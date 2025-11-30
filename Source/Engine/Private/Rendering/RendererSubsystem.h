@@ -6,9 +6,10 @@
 
 #include "FSurfaceDesc.h"
 #include "IRenderDevice.h"
-#include "RHandles.h"
+#include "Rendering/RHandles.h"
 #include "RCommandBuffer.h"
 
+class EngineContext;
 struct FBackendCoordDesc;
 
 struct FCoordAdapter
@@ -24,15 +25,17 @@ class IRenderBackend;
 
 class RendererSubsystem : public IRenderDevice
 {
+private:
     friend class JEngine;
 
 private:
-    explicit RendererSubsystem(IRenderBackend* backend);
+    explicit RendererSubsystem(IRenderBackend* backend, EngineContext& ctx);
 
     void BeginScene();
     void EndScene();
     void Shutdown();
 
+    EngineContext& m_Context;
     IRenderBackend* m_Backend = nullptr;
     PostProcessManager* m_PPM = nullptr;
 
@@ -105,6 +108,8 @@ public:
     void SetPostProcessManager(PostProcessManager* ppm) { m_PPM = ppm;}
 
     IRenderSubmission& GetSubmission() override { return m_CommandBuffer; }
+
+    [[nodiscard]] RTextureHandle GetSceneColorTarget() const override { return m_Scene.color; }
 
     RMeshHandle CreateMesh(const RMesh &data) override;
     void DestroyMesh(RMeshHandle h) override;

@@ -1,8 +1,12 @@
 #pragma once
-#include <memory>
+#include <vector>
 
 #include "Core/IEditorBridge.h"
+#include "Core/Memory/SmartPointers.h"
 
+class IEditorPanel;
+class DockSpace;
+class EditorCore;
 struct GLFWwindow;
 class EditorContext;
 class ImGuiLayer;
@@ -19,7 +23,7 @@ public:
     void EndFrame();
     void Shutdown();
 
-    void OnEngineInitialized(GLFWwindow* window) override;
+    void OnEngineInitialized(IPlatformSurface* surface) override;
     void OnSceneLoaded(const std::string &sceneName) override;
     void OnRenderOverlay() override;
     void OnTick(float deltaTime) override;
@@ -27,7 +31,11 @@ public:
 private:
     GLFWwindow* m_Window;
 
-    std::unique_ptr<EditorContext> m_Context;
-    std::unique_ptr<ImGuiLayer> m_ImGuiLayer;
-    std::unique_ptr<SceneHierarchyPanel> m_SceneHierarchyPanel;
+    TUniquePtr<EditorContext> m_Context;
+    TUniquePtr<EditorCore> m_Core;
+    TUniquePtr<ImGuiLayer> m_ImGuiLayer;
+
+    TUniquePtr<DockSpace> m_DockSpace;
+
+    std::vector<TUniquePtr<IEditorPanel>> m_Panels;
 };

@@ -49,6 +49,7 @@ FetchContent_MakeAvailable(glfw assimp glm json)
 add_subdirectory(ThirdParty)
 # --- Engine modules
 add_subdirectory(Source/Engine)
+add_subdirectory(Source/EngineEditor)
 add_subdirectory(Source/Editor)
 add_subdirectory(Source/Launch) # Executable is defined in this module
 

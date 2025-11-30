@@ -2,7 +2,7 @@
 
 #pragma once
 #include <functional>
-#include "RHandles.h"
+#include "Rendering/RHandles.h"
 
 class IRenderSubmission;
 struct FSurfaceDesc;
@@ -13,7 +13,7 @@ struct RMesh;
 class IRenderDevice
 {
 public:
-    virtual ~IRenderDevice() = default;
+    virtual ~IRenderDevice();
 
     virtual RMeshHandle CreateMesh (const RMesh& data) = 0;
     virtual void DestroyMesh (RMeshHandle h) = 0;
@@ -30,7 +30,11 @@ public:
 
     virtual IRenderSubmission& GetSubmission() = 0;
 
+    [[nodiscard]] virtual RTextureHandle GetSceneColorTarget() const = 0;
+
     // virtual RMaterialHandle CreateMaterial(const RMaterialDesc& d) = 0;
     // Queue a lambda to run on the render thread.
     virtual void EnqueueRenderTask(std::function<void()> fn) = 0;
 };
+
+inline IRenderDevice::~IRenderDevice() = default;

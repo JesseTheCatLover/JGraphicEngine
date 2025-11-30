@@ -3,10 +3,12 @@
 #pragma once
 #include <functional>
 
-#include "EngineState.h"
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+
+class GLFWwindow;
+class EngineContext;
 class IInputBackend;
 class InputManager;
 class PostProcessManager;
@@ -34,8 +36,6 @@ public:
     JEngine(const JEngine&) = delete;
     JEngine& operator=(const JEngine&) = delete;
 
-    EngineState& GetState() { return m_State; }
-
     template<typename T>
     std::shared_ptr<T> GetService();
 
@@ -58,7 +58,7 @@ private:
 
     void SetEditorBridge(IEditorBridge* bridge) { m_EditorBridge = bridge; }
 
-    EngineState m_State;
+    TUniquePtr<EngineContext> m_Context;
     IEditorBridge* m_EditorBridge = nullptr;
 
     TUniquePtr<IPlatformSurface> m_PlatformSurface;

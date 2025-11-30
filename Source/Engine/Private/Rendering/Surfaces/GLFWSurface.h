@@ -1,7 +1,7 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-#include "../IPlatformSurface.h"
+#include "Rendering/IPlatformSurface.h"
 
 struct GLFWwindow;
 

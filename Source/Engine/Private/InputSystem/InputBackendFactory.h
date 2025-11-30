@@ -3,7 +3,7 @@
 #pragma once
 #include "Core/Memory/SmartPointers.h"
 #include "IInputBackend.h"
-#include "../Rendering/IPlatformSurface.h"
+#include "../../Public/Rendering/IPlatformSurface.h"
 
 class InputBackendFactory
 {

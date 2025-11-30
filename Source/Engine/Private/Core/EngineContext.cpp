@@ -1,13 +1,13 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Core/EngineState.h"
+#include "EngineContext.h"
 #include "Core/Contexts/FInputContext.h"
-#include "Core/Contexts/FViewportContext.h"
+#include "Contexts/FViewportContext.h"
 #include "Core/Contexts/FFrameContext.h"
 #include "Core/Contexts/FSurfaceContext.h"
 #include "GLFW/glfw3.h"
 
-EngineState::EngineState()
+EngineContext::EngineContext()
 {
     m_FrameContext = MakeUnique<FFrameContext>();
     // Initialize LastFrameTime
@@ -21,119 +21,109 @@ EngineState::EngineState()
 
 }
 
-EngineState::~EngineState() = default;
+EngineContext::~EngineContext() = default;
 
-const float& EngineState::GetDeltaTime() const
+const float& EngineContext::GetDeltaTime() const
 {
     return m_FrameContext->DeltaTime;
 }
 
-void EngineState::SetDeltaTime(float dt)
+void EngineContext::SetDeltaTime(float dt)
 {
     m_FrameContext->DeltaTime = dt;
 }
 
-int EngineState::GetFramebufferWidth() const
+int EngineContext::GetFramebufferWidth() const
 {
     return m_SurfaceContext->width;
 }
 
-void EngineState::SetFramebufferWidth(int w)
+void EngineContext::SetFramebufferWidth(int w)
 {
     m_SurfaceContext->width = w;
 }
 
-int EngineState::GetFramebufferHeight() const
+int EngineContext::GetFramebufferHeight() const
 {
     return m_SurfaceContext->height;
 }
 
-void EngineState::SetFramebufferHeight(int h)
+void EngineContext::SetFramebufferHeight(int h)
 {
     m_SurfaceContext->height = h;
 }
 
-float EngineState::GetAspectRatio() const
+float EngineContext::GetAspectRatio() const
 {
     return m_SurfaceContext->aspectRatio;
 }
 
-bool EngineState::GetIsSurfaceFullscreen()
+bool EngineContext::GetIsSurfaceFullscreen()
 {
     return m_SurfaceContext->bFullscreen;
 }
 
-bool EngineState::GetWireframeMode()
+bool EngineContext::GetWireframeMode()
 {
     return m_ViewportContext->bWireframe;
 }
 
-void EngineState::SetWireframeMode(bool bWireMode)
+void EngineContext::SetWireframeMode(bool bWireMode)
 {
     m_ViewportContext->bWireframe = bWireMode;
 }
 
-EViewMode EngineState::GetViewMode() const
-{
-    return m_ViewportContext->viewMode;
-}
-
-void EngineState::SetViewMode(EViewMode mode)
-{
-    m_ViewportContext->viewMode = mode;
-}
-
-float EngineState::GetLastFrameTime() const
+float EngineContext::GetLastFrameTime() const
 {
     return m_FrameContext->LastFrameTime;
 }
 
-void EngineState::SetLastFrameTime(float lft)
+void EngineContext::SetLastFrameTime(float lft)
 {
     m_FrameContext->LastFrameTime = lft;
 }
 
-bool EngineState::GetIsFirstMouse()
+bool EngineContext::GetIsFirstMouse()
 {
     return m_InputContext->bFirstMouse;
 }
 
-void EngineState::SetIsFirstMouse(bool bIsFirst)
+void EngineContext::SetIsFirstMouse(bool bIsFirst)
 {
     m_InputContext->bFirstMouse = bIsFirst;
 }
 
-float EngineState::GetLastMouseX()
+float EngineContext::GetLastMouseX()
 {
     return m_InputContext->lastMouseX;
 }
 
-void EngineState::SetLastMouseX(float x)
+void EngineContext::SetLastMouseX(float x)
 {
     m_InputContext->lastMouseX = x;
 }
 
-float EngineState::GetLastMouseY()
+float EngineContext::GetLastMouseY()
 {
     return m_InputContext->lastMouseY;
 }
 
-void EngineState::SetLastMouseY(float y)
+void EngineContext::SetLastMouseY(float y)
 {
     m_InputContext->lastMouseY = y;
 }
 
-ICameraViewSource* EngineState::GetCamera() const
+ICameraViewSource* EngineContext::GetCamera() const
 {
     return m_ViewportContext->camera;
 }
 
-void EngineState::SetCamera(ICameraViewSource *camera)
+void EngineContext::SetCamera(ICameraViewSource *camera)
 {
     m_ViewportContext->camera = camera;
 }
 
-FViewportContext* EngineState::GetCameraSettings() const
+FViewportContext* EngineContext::GetCameraSettings() const
 {
     return m_ViewportContext.get();
 }

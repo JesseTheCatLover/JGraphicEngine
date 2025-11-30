@@ -2,8 +2,6 @@
 #pragma once
 
 #include "Scene/SceneComponents/JSceneComponent.h"
-#include "Core/Serialization/JsonWriter.h"
-#include "Core/Serialization/JsonReader.h"
 #include "Core/Math/FMatrix4.h"
 #include "Core/Math/FVector3.h"
 
@@ -24,7 +22,6 @@ protected:
 
     // Perspective
     float m_FOV = 60.0f;
-    float m_AspectRatio = 16.0f / 9.0f;
     float m_NearClip = 0.01f;
     float m_FarClip = 1000.0f;
 
@@ -45,8 +42,8 @@ protected:
     void Initialize() override;
 
     // Matrices
-    [[nodiscard]] const FMatrix4& GetViewMatrix() const override;
-    [[nodiscard]] const FMatrix4& GetProjectionMatrix() const override;
+    [[nodiscard]] const FMatrix4& GetViewMatrix(float aspectRatio) const override;
+    [[nodiscard]] const FMatrix4& GetProjectionMatrix(float aspectRatio) const override;
 
     float GetNearPlane() const override { return m_NearClip; }
     float GetFarPlane() const override { return m_FarClip; }
@@ -56,26 +53,22 @@ public:
     // Getters
     EProjectionType GetProjectionType() const { return m_ProjectionType; }
     float GetFOV() const { return m_FOV; }
-    float GetAspectRatio() const { return m_AspectRatio; }
 
     // Settters
     void SetProjectionType(EProjectionType type) { m_ProjectionType = type; m_bProjDirty = true; }
-    void SetPerspective(float fovDegrees, float aspect, float nearPlane, float farPlane)
+    void SetPerspective(float fovDegrees, float nearPlane, float farPlane)
     {
         m_FOV = fovDegrees;
-        m_AspectRatio = aspect;
         m_NearClip = nearPlane;
         m_FarClip = farPlane;
         m_bProjDirty = true;
     }
     void SetPerspectiveFOV(float fovDegrees) { m_FOV = fovDegrees; m_bProjDirty = true; }
-    void SetAspect(float aspect) { m_AspectRatio = aspect; m_bProjDirty = true; }
     void SetNearFar(float nearPlane, float farPlane) { m_NearClip = nearPlane; m_FarClip = farPlane; m_bProjDirty = true; }
 
-    void SetOrthographic(float halfHeight, float aspect, float nearPlane, float farPlane)
+    void SetOrthographic(float halfHeight, float nearPlane, float farPlane)
     {
         m_OrthoHalfHeight = halfHeight;
-        m_AspectRatio = aspect;
         m_NearClip = nearPlane;
         m_FarClip = farPlane;
         m_bProjDirty = true;
@@ -83,9 +76,10 @@ public:
     void SetOrthoHalfHeight(float halfHeight) { m_OrthoHalfHeight = halfHeight; m_bProjDirty = true; }
 
     // Recalculate both explicitly
-    void RecalculateViewMatrix() const;
-    void RecalculateProjectionMatrix() const;
-    void RecalculateMatrices() const { RecalculateViewMatrix(); RecalculateProjectionMatrix(); }
+    void RecalculateViewMatrix(float aspectRatio) const;
+    void RecalculateProjectionMatrix(float aspectRatio) const;
+    void RecalculateMatrices(float aspectRatio) const
+    { RecalculateViewMatrix(aspectRatio); RecalculateProjectionMatrix(aspectRatio); }
 
     // Utility
     FVector3 GetForwardVector() const;

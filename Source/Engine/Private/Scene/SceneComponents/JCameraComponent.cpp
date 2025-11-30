@@ -7,7 +7,6 @@
 
 JCameraComponent::JCameraComponent()
 {
-    m_AspectRatio = JEngine::Get().GetState().GetAspectRatio();
 }
 
 void JCameraComponent::Initialize()
@@ -15,28 +14,28 @@ void JCameraComponent::Initialize()
     Super::Initialize();
 }
 
-const FMatrix4& JCameraComponent::GetViewMatrix() const
+const FMatrix4& JCameraComponent::GetViewMatrix(float aspectRatio) const
 {
     if (m_bViewDirty)
-        RecalculateViewMatrix();
+        RecalculateViewMatrix(aspectRatio);
     return m_ViewMatrix;
 }
 
-const FMatrix4& JCameraComponent::GetProjectionMatrix() const
+const FMatrix4& JCameraComponent::GetProjectionMatrix(float aspectRatio) const
 {
     if (m_bProjDirty)
-        RecalculateProjectionMatrix();
+        RecalculateProjectionMatrix(aspectRatio);
     return m_ProjectionMatrix;
 }
 
-void JCameraComponent::RecalculateViewMatrix() const
+void JCameraComponent::RecalculateViewMatrix(float aspectRatio) const
 {
     const FMatrix4 worldMat = GetWorldTransform().ToMatrix();
     m_ViewMatrix = worldMat.Inverse();
     m_bViewDirty = false;
 }
 
-void JCameraComponent::RecalculateProjectionMatrix() const
+void JCameraComponent::RecalculateProjectionMatrix(float aspectRatio) const
 {
     // clamp safe values
     const float nearP = std::max(1e-6f, m_NearClip);
@@ -44,12 +43,12 @@ void JCameraComponent::RecalculateProjectionMatrix() const
 
     if (m_ProjectionType == EProjectionType::Perspective)
     {
-        m_ProjectionMatrix = FMath::Perspective(m_FOV, m_AspectRatio, nearP, farP);
+        m_ProjectionMatrix = FMath::Perspective(m_FOV, aspectRatio, nearP, farP);
     }
     else // Orthographic
     {
         const float halfH = m_OrthoHalfHeight;
-        const float halfW = halfH * m_AspectRatio;
+        const float halfW = halfH * aspectRatio;
 
         const float left = -halfW;
         const float right = halfW;
@@ -102,7 +101,6 @@ void JCameraComponent::LookAt(const FVector3& worldTarget, const FVector3& world
 JREFLECT_TYPE(JCameraComponent)
 {
     JPROPERTY(m_FOV);
-    JPROPERTY(m_AspectRatio);
     JPROPERTY(m_NearClip);
     JPROPERTY(m_FarClip);
     JPROPERTY(m_ProjectionType);
