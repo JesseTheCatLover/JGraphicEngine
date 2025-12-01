@@ -32,8 +32,6 @@ public:
     EditorContext& GetContext() { return m_Context; }
     [[nodiscard]] const EditorContext& GetContext() const { return m_Context; }
 
-    [[nodiscard]] const EngineEditor& GetEngine() const { return m_EngineEditor; }
-
     // Called every frame from EditorApp::OnTick
     void Update(float deltaTime);
 
@@ -54,6 +52,8 @@ public:
     EGizmoMode GetGizmoMode() const;
 
     const std::vector<FEditorActorSnapshot>& GetHierarchySnapshot() const { return m_HierarchySnapshot; }
+
+    void* GetViewportTextureHandle() const;
 
     // Command pipeline
     void ExecuteCommand(TUniquePtr<IEditorCommand> cmd);

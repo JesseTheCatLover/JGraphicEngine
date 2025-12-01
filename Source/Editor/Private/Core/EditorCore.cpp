@@ -140,6 +140,12 @@ EGizmoMode EditorCore::GetGizmoMode() const
 }
 
 
+void* EditorCore::GetViewportTextureHandle() const
+{
+    auto& viewport = m_EngineEditor.GetViewport();
+    return viewport.GetNativeTextureHandle(viewport.GetViewportColor());
+}
+
 void EditorCore::ExecuteCommand(TUniquePtr<IEditorCommand> cmd)
 {
     if (!cmd)

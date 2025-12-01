@@ -23,13 +23,13 @@ private:
     EditorViewportAPI m_ViewportAPI;
 
 public:
-    // ---- PUBLIC: what panels can use ----
-    // Panels get *const* access to the sub-APIs
+    // Read-only engine view for external tools
+    // Users get *const* access to the sub-APIs
     [[nodiscard]] const EditorSceneAPI& GetScene() const { return m_SceneAPI; }
     [[nodiscard]] const EditorViewportAPI& GetViewport() const { return m_ViewportAPI; }
 
 private:
-    // ---- PRIVATE: mutating operations – ONLY EditorCore may call them ----
+    // Mutating operations – ONLY EditorCore may call the
     [[nodiscard]] EditorSceneAPI& GetScene() { return m_SceneAPI; }
     [[nodiscard]] EditorViewportAPI& GetViewport() { return m_ViewportAPI; }
 };

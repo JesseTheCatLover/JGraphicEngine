@@ -22,7 +22,7 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
     m_Width  = size.x;
     m_Height = size.y;
 
-    void* native = core.GetEngine().GetViewport().GetNativeTextureHandle(core.GetEngine().GetViewport().GetViewportColor());
+    void* native = core.GetViewportTextureHandle();
     if (!native)
     {
         ImGui::TextUnformatted("No valid scene texture available.");
