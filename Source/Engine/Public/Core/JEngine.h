@@ -42,8 +42,10 @@ public:
     template<typename T>
     void RegisterFactory(std::function<std::shared_ptr<T>()> factory);
 
-    // Syntactic sugar manager accessors
+    [[nodiscard]] EngineContext& GetEngineContext();
+
     IPlatformSurface* GetPlatformSurface();
+    RendererSubsystem* GetRenderer();
     ResourceSubsystem* GetResourceSystem();
 
     SceneManager* GetSceneManager();

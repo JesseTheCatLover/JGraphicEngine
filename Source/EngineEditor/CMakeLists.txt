@@ -12,6 +12,8 @@ add_library(EngineEditor STATIC ${ENGINE_EDITOR_SRC})
 target_include_directories(EngineEditor
         PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/Public
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Private
+        ${CMAKE_SOURCE_DIR}/Source/Engine/Public
+        ${CMAKE_SOURCE_DIR}/Source/Engine/Private
 )
 
 # EngineEditor depends on Engine

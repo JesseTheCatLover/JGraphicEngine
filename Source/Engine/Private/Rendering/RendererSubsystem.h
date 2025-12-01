@@ -111,6 +111,8 @@ public:
 
     [[nodiscard]] RTextureHandle GetSceneColorTarget() const override { return m_Scene.color; }
 
+    [[nodiscard]] void* GetNativeTextureHandle(RTextureHandle handle) const;
+
     RMeshHandle CreateMesh(const RMesh &data) override;
     void DestroyMesh(RMeshHandle h) override;
 

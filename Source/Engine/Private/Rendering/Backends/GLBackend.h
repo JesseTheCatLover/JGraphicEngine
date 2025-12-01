@@ -106,6 +106,8 @@ public:
     void SetViewport(int x, int y, int width, int height) override;
     void ClearColorDepth(float r, float g, float b, float a, bool clearDepth) override;
 
+    [[nodiscard]] void* GetNativeTextureHandle(RTextureHandle handle) const override;
+
     void SetDepthState(bool bTestEnable, bool bWriteEnable, ECompareFunc func) override;
 
     void SetBlendState(bool bEnable, EBlendFactor src, EBlendFactor dst) override;

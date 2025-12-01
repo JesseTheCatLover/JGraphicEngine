@@ -176,7 +176,7 @@ void EditorApp::RenderPanels()
             // if (panel->GetName() == std::string("Asset Browser") && !m_ShowAssetBrowser)
             //     continue;
 
-            panel->Draw(*m_Context);
+            panel->Draw(*m_Context, *m_Core);
         }
     }
 
@@ -226,13 +226,25 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
         return;
     }
 
+    // Retrieve native GLFW window
     m_Window = window;
+    if (!m_Window)
+    {
+        std::cerr << "[EditorApp]: Native surface handle is not a GLFWwindow " << std::endl;
+        return;
+    }
+
 
     // Initialize ImGui backend
     m_ImGuiLayer = MakeUnique<ImGuiLayer>(window);
 
+    m_Context = MakeUnique<EditorContext>();
+
+    // EngineEditor (safe bridge API)
+    m_EngineEditor = TUniquePtr<EngineEditor>(new EngineEditor());
+
     // Create EditorCore to drive context & commands
-    //m_Core = MakeUnique<EditorCore>(*m_Context);
+    m_Core = MakeUnique<EditorCore>(*m_Context, *m_EngineEditor);
 
     // Register panels
     m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
@@ -248,7 +260,7 @@ void EditorApp::OnSceneLoaded(const std::string &sceneName)
 void EditorApp::OnRenderOverlay()
 {
     BeginFrame();
-    //RenderPanels();
+    RenderPanels();
     EndFrame();
 }
 

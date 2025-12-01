@@ -523,6 +523,11 @@ void RendererSubsystem::DrawMesh(const RMeshHandle& meshHandle, const RShaderHan
     m_Backend->SubmitMesh(meshHandle, shaderToUse, modelBackend);
 }
 
+void* RendererSubsystem::GetNativeTextureHandle(RTextureHandle handle) const
+{
+    return m_Backend->GetNativeTextureHandle(handle);
+}
+
 RMeshHandle RendererSubsystem::CreateMesh(const RMesh &data)
 {
     return m_Backend->CreateMesh(data);

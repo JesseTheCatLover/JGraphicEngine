@@ -2,59 +2,70 @@
 
 #pragma once
 #include <vector>
-#include <cstdint>
+#include "Scene/FEditorActoSnapshot.h"
+#include "Viewport/FEditorFrameSnapshot.h"
 
-using ActorID = uint64_t;
+enum class EGizmoMode
+{
+    Select,
+    Translate,
+    Rotate,
+    Scale
+};
 
 class EngineContext;
 class EditorCore;
 
 class EditorContext
 {
+    friend class EditorCore;
 private:
-    EngineContext& m_EngineState;
-
     std::vector<ActorID> m_SelectedActors;
-    bool m_IsUIActive = false;
+    EGizmoMode m_GizmoMode = EGizmoMode::Select;
 
-    EditorCore* m_Core = nullptr; // Non-owning pointer
+    bool m_ShowAssetBrowser = true;
+    bool m_ShowInspector = true;
+
+    FEditorFrameSnapshot m_FrameSnapshot{};
+
 public:
-    explicit EditorContext(EngineContext& engineState) : m_EngineState(engineState) {}
+    EditorContext() = default;
 
-    EngineContext& GetState() { return m_EngineState; }
-    [[nodiscard]] const EngineContext& GetState() const { return m_EngineState; }
-
-    // --- Selection ---
-
-    void SetSelectedActor(ActorID actorId)
+    [[nodiscard]] const std::vector<ActorID>& GetSelection() const
     {
-        m_SelectedActors.clear();
-        if (actorId >= 0)
-            m_SelectedActors.push_back(actorId);
+        return m_SelectedActors;
     }
 
-    [[nodiscard]] const std::vector<ActorID>& GetSelectedActors() const { return m_SelectedActors; }
-
-    [[nodiscard]] ActorID GetPrimarySelectedActor() const
+    [[nodiscard]] bool GetIsSelected(ActorID id) const
     {
-        return m_SelectedActors.empty() ? -1 : m_SelectedActors.front();
-    }
-
-    [[nodiscard]] bool IsActorSelected(ActorID id) const
-    {
-        for (auto selected : m_SelectedActors)
-            if (selected == id) return true;
+        for (auto sel : m_SelectedActors)
+            if (sel == id) return true;
         return false;
     }
 
-    // Core linkage
+    [[nodiscard]] EGizmoMode GetGizmoMode() const { return m_GizmoMode; }
 
-    void SetCore(EditorCore* core) { m_Core = core; }
-    EditorCore* GetCore() { return m_Core; }
-    const EditorCore* GetCore() const { return m_Core; }
+    [[nodiscard]] bool GetIsAssetBrowserVisible() const { return m_ShowAssetBrowser; }
 
-    // UI state
+    [[nodiscard]] const FEditorFrameSnapshot& GetFrameSnapshot() const
+    {
+        return m_FrameSnapshot;
+    }
 
-    void SetIsUIActive(bool active) { m_IsUIActive = active; }
-    bool GetIsUIActive() const { return m_IsUIActive; }
+    // add: active viewport ID, play state, etc.
+
+private:
+    void SetSelection(const std::vector<ActorID>& ids)
+    {
+        m_SelectedActors = ids;
+    }
+
+    void SetGizmoMode(EGizmoMode mode) { m_GizmoMode = mode; }
+
+    void SetAssetBrowserVisible(bool visible) { m_ShowAssetBrowser = visible; }
+
+    void SetFrameSnapshot(const FEditorFrameSnapshot& snapshot)
+    {
+        m_FrameSnapshot = snapshot;
+    }
 };

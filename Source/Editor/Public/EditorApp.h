@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 
+#include "EngineEditor.h"
 #include "Core/IEditorBridge.h"
 #include "Core/Memory/SmartPointers.h"
 
@@ -31,10 +32,13 @@ public:
 private:
     GLFWwindow* m_Window;
 
+    // Core components
     TUniquePtr<EditorContext> m_Context;
+    TUniquePtr<EngineEditor> m_EngineEditor;
     TUniquePtr<EditorCore> m_Core;
-    TUniquePtr<ImGuiLayer> m_ImGuiLayer;
 
+    // UI
+    TUniquePtr<ImGuiLayer> m_ImGuiLayer;
     TUniquePtr<DockSpace> m_DockSpace;
 
     std::vector<TUniquePtr<IEditorPanel>> m_Panels;

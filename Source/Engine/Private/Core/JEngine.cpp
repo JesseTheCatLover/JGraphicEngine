@@ -460,9 +460,19 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
 //         // m_State.GetCameraSettings()->GetMaxFOV());
 // }
 
+EngineContext& JEngine::GetEngineContext()
+{
+    return *m_Context;
+}
+
 IPlatformSurface * JEngine::GetPlatformSurface()
 {
     return m_PlatformSurface.get();
+}
+
+RendererSubsystem * JEngine::GetRenderer()
+{
+    return m_Renderer.get();
 }
 
 ResourceSubsystem* JEngine::GetResourceSystem()

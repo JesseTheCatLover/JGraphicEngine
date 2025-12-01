@@ -92,6 +92,17 @@ public:
     }
 
     /**
+     * @brief Gathers all actors in the scene.
+     * @return List of raw JActor pointers.
+     */
+    [[nodiscard]] std::vector<JActor*> ListAllActors() const
+    {
+        if (!m_ActiveScene) return {};
+
+        return m_ActiveScene->ListAllActors();
+    }
+
+    /**
      * @brief Find an actor by ID in the active scene.
      * @param id Unique runtime actor ID
      * @return Pointer to actor, or nullptr if not found or no active scene

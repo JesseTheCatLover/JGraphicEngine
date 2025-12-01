@@ -246,6 +246,20 @@ void GLBackend::ClearColorDepth(float r, float g, float b, float a, bool clearDe
     glClear(mask);
 }
 
+void* GLBackend::GetNativeTextureHandle(RTextureHandle handle) const
+{
+    auto it = m_Textures.find(handle);
+    if (it == m_Textures.end())
+        return nullptr;
+
+    const FGLTexture& tex = it->second;
+    GLuint glTex = tex.handle;
+    if (glTex == 0)
+        return nullptr;
+
+    return reinterpret_cast<void*>(static_cast<uintptr_t>(glTex));
+}
+
 void GLBackend::SetDepthState(bool bTestEnable, bool bWriteEnable, ECompareFunc func)
 {
     if (bTestEnable) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);

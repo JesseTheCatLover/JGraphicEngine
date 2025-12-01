@@ -2,6 +2,8 @@
 
 #pragma once
 #include <cstdint>
+#include <functional>
+
 using Rint = uint32_t;
 
 struct RMeshHandle

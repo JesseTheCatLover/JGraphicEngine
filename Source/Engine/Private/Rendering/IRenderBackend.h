@@ -80,6 +80,8 @@ public:
     virtual RTextureHandle GetFramebufferColorTexture(RFramebufferHandle) = 0;
     virtual RTextureHandle GetFramebufferDepthTexture(RFramebufferHandle) = 0;
 
+    [[nodiscard]] virtual void* GetNativeTextureHandle(RTextureHandle handle) const = 0;
+
     // Rendering
     virtual void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) = 0;
 

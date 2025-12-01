@@ -132,8 +132,16 @@ private:
      */
     bool RemoveActor(uint64_t id);
 
+public:
+    void GatherRenderables(IRenderSubmission& submission, const FRenderContext& baseCtx) const; // TODO: Temp here
+
+    JCameraComponent* GetCameraComponent() const;
+
+    /** @return The scene’s name. */
+    inline const std::string& GetName() const { return m_Name;}
+
     /**
-     * @brief Gathers all actors in the scene, this API is only available to SceneManager.
+     * @brief Gathers all actors in the scene.
      * @return List of raw JActor pointers.
      */
     std::vector<JActor*> ListAllActors() const
@@ -144,14 +152,6 @@ private:
             result.push_back(a.get());
         return result;
     }
-
-public:
-    void GatherRenderables(IRenderSubmission& submission, const FRenderContext& baseCtx) const; // TODO: Temp here
-
-    JCameraComponent* GetCameraComponent() const;
-
-    /** @return The scene’s name. */
-    inline const std::string& GetName() const { return m_Name;}
 
     /**
      * @brief Finds an actor by its unique ID.

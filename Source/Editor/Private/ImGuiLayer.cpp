@@ -12,7 +12,24 @@ ImGuiLayer::ImGuiLayer(GLFWwindow *window):
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    ImGui::StyleColorsDark(); // TODO: Make these parameters adjustable
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    style.WindowMenuButtonPosition = ImGuiDir_None;
+
+    style.WindowRounding = 5.0f;
+    style.FrameRounding  = 3.0f;
+    style.ScrollbarRounding = 3.0f;
+    style.FramePadding = ImVec2(6, 4);
+    style.ItemSpacing  = ImVec2(10, 6);
+
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.10f, 0.10f, 0.2f);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.45f, 0.45f, 0.45f, 0.5f);
+    style.Colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.20f, 0.20f, 0.20f, 0.2f);
+    style.Colors[ImGuiCol_Button]   = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.30f, 0.30f, 0.30f, 1.0f);
+    style.Colors[ImGuiCol_ButtonActive]  = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
 
     ImGui_ImplGlfw_InitForOpenGL(m_Window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
