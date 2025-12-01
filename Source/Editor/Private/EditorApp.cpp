@@ -99,10 +99,9 @@ void EditorApp::RenderPanels()
 
     ImGui::Begin("##Toolbar", nullptr, toolbarFlags);
 
-    // Left: Play/Stop, etc.
-    if (ImGui::Button("◼"))  { /* TODO: Stop/Exit play */ }
+    if (ImGui::Button("Load"))  { /* */ }
     ImGui::SameLine();
-    if (ImGui::Button("▶"))  { /* TODO: Enter play mode */ }
+    if (ImGui::Button("Save"))  { /* */ }
 
     ImGui::SameLine();
     ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);

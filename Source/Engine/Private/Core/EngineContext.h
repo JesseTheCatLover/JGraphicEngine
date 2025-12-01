@@ -31,11 +31,19 @@ public:
     void SetDeltaTime(float dt);
 
     [[nodiscard]] int GetFramebufferWidth() const;
-    void SetFramebufferWidth(int w);
     [[nodiscard]] int GetFramebufferHeight() const;
-    void SetFramebufferHeight(int h);
+    void SetFramebufferSize(int w, int h);
+
+    [[nodiscard]] int GetSceneViewportWidth() const;
+    [[nodiscard]] int GetSceneViewportHeight() const;
+    void SetSceneViewportSize(int w, int h);
+
     [[nodiscard]] float GetAspectRatio() const;
+
     bool GetIsSurfaceFullscreen();
+
+    bool GetShouldRenderToPlatformSurface() const;
+    void SetShouldRenderToPlatformSurface(bool bShould);
 
     bool GetWireframeMode();
     void SetWireframeMode(bool bWireMode);

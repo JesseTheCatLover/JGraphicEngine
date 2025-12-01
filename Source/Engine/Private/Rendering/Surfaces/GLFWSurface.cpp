@@ -137,7 +137,7 @@ void GLFWSurface::GetWindowSize(int &w, int &h) const
     }
 }
 
-void * GLFWSurface::GetNativeHandle() const
+void* GLFWSurface::GetNativeHandle() const
 {
     return reinterpret_cast<void*>(m_Window);
 }

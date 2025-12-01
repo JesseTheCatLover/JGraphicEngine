@@ -23,4 +23,6 @@ public:
 
     [[nodiscard]] void* GetNativeTextureHandle(RTextureHandle handle) const;
 private:
+
+    void SetSceneViewportSize(int &w, int &h);
 };

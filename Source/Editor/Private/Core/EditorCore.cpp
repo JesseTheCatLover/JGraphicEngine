@@ -146,6 +146,11 @@ void* EditorCore::GetViewportTextureHandle() const
     return viewport.GetNativeTextureHandle(viewport.GetViewportColor());
 }
 
+void EditorCore::OnViewportResized(int &w, int &h) const
+{
+    m_EngineEditor.GetViewport().SetSceneViewportSize(w, h);
+}
+
 void EditorCore::ExecuteCommand(TUniquePtr<IEditorCommand> cmd)
 {
     if (!cmd)

@@ -57,8 +57,18 @@ void RendererSubsystem::EndScene()
         std::cerr << "[RendererSubsystem]: EndScene called with null camera" << std::endl;
         return;
     }
-    m_ViewMat = camera->GetViewMatrix(m_Context.GetAspectRatio());
-    m_ProjMat = camera->GetProjectionMatrix(m_Context.GetAspectRatio());
+
+    const float aspect = m_Context.GetAspectRatio();
+
+    // Only update projection if aspect actually changed
+    if (std::abs(aspect - m_LastAspect) > 0.0001f)
+    {
+        camera->RecalculateProjectionMatrix(aspect);
+        m_LastAspect = aspect;
+    }
+
+    m_ViewMat = camera->GetViewMatrix();
+    m_ProjMat = camera->GetProjectionMatrix(aspect);
     RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.opaque, m_ViewMat, camera->GetNearPlane(), camera->GetFarPlane());
     RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.alpha,  m_ViewMat, camera->GetNearPlane(), camera->GetFarPlane());
 
@@ -73,12 +83,35 @@ void RendererSubsystem::EndScene()
             IRenderBackend::EResolveFilter::Nearest); // TODO: for future: when scaling during blit, use Linear for color masks; keep Nearest when depth is involved.
     }
 
-    int fbW = m_Context.GetFramebufferWidth(), fbH = m_Context.GetFramebufferHeight();
+    int fbW, fbH;
+    if (m_Context.GetShouldRenderToPlatformSurface())
+    {
+        fbW = m_Context.GetFramebufferWidth(), fbH = m_Context.GetFramebufferHeight();
+    }
+    else
+    {
+        fbW = m_Context.GetSceneViewportWidth() ? m_Context.GetSceneViewportWidth(): m_Context.GetFramebufferWidth();
+        fbH = m_Context.GetSceneViewportHeight() ? m_Context.GetSceneViewportHeight() : m_Context.GetFramebufferHeight();
+    }
 
     m_Backend->UnbindFramebuffer();
     m_Backend->SetViewport(0, 0, fbW, fbH);
 
-    RunPostProcessChain(m_Scene.color, fbW, fbH);
+    // Get final post-processed texture
+    RTextureHandle postprocessedTex = RunPostProcessChain(m_Scene.color, fbW, fbH);
+
+    // Game mode: actually blit the scene to the platform surface.
+    if (m_Context.GetShouldRenderToPlatformSurface())
+    {
+        // Present to platform surface
+        m_Backend->SetViewport(0, 0, fbW, fbH);
+        BlitFullscreen(m_CopyShader, postprocessedTex, fbW, fbH);
+    }
+    else
+    {
+        // Editor mode: leave default FBO alone for editor backend, just clear it
+        m_Backend->ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
+    }
 
     // DO NOT swap buffers here; Engine loop does it after UI
     m_Backend->EndFrame();
@@ -339,23 +372,28 @@ void RendererSubsystem::BuildTarget(FTarget &t, int w, int h, int samples, bool 
     t.w = w; t.h = h; t.samples = fb.samples;
 }
 
-void RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor, int w, int h)
+RTextureHandle RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor, int w, int h)
 {
     // Sync shaders with UI/gameplay changes
     RebuildKernelsIfDirty();
 
-    // If no PPM or no enabled passes: copy to backbuffer w/ tonemap gamma (or straight copy if LDR)
-    auto copyToBackbuffer = [&](){
-        m_Backend->UnbindFramebuffer(); // Default FBO
-        BlitFullscreen(m_CopyShader, sceneColor, w, h);
-    };
-
-    if (!m_PPM) { copyToBackbuffer(); return; }
+    // If there's no PPM or no active passes, just return the input scene color
+    if (!m_PPM)
+    {
+        m_Scene.color = sceneColor;
+        return m_Scene.color;
+    }
 
     const auto& chain = m_PPM->GetChain();
     bool anyEnabled = false;
-    for (auto& p : chain) if (p.enabled) { anyEnabled = true; break; }
-    if (!anyEnabled) { copyToBackbuffer(); return; }
+    for (auto& p : chain)
+        if (p.enabled) { anyEnabled = true; break; }
+
+    if (!anyEnabled)
+    {
+        m_Scene.color = sceneColor;
+        return m_Scene.color;
+    }
 
     // Ping-pong
     bool usePing = true;
@@ -385,9 +423,11 @@ void RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor, int w, in
         usePing = !usePing;
     }
 
-    // Present last
     m_Backend->UnbindFramebuffer();
-    BlitFullscreen(m_CopyShader, current, w, h);
+
+    // Final texture
+    m_Scene.color = current;
+    return current;
 }
 
 void RendererSubsystem::EnsureFullscreenQuad()

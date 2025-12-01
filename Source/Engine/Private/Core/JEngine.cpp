@@ -124,8 +124,7 @@ bool JEngine::SurfaceInitialize()
         return false;
     }
 
-    m_Context->SetFramebufferWidth(m_PlatformSurface->GetWidth());
-    m_Context->SetFramebufferHeight(m_PlatformSurface->GetHeight());
+    m_Context->SetFramebufferSize(m_PlatformSurface->GetWidth(), m_PlatformSurface->GetHeight()); // TODO: Replace with a fallback from IPlatformSurface
 
     return true;
 }
@@ -320,7 +319,7 @@ void JEngine::RunMainLoop()
             }
         }
         m_Renderer->EndScene();
-        
+
         if (m_EditorBridge)
             m_EditorBridge->OnRenderOverlay();
 
@@ -449,7 +448,7 @@ void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
         FVector3 pos = camActor->GetActorLocation();
         camActor->SetActorLocation(pos + movement);
 
-        camera->RecalculateViewMatrix(m_Context->GetAspectRatio());
+        camera->RecalculateViewMatrix();
         camera->RecalculateProjectionMatrix(m_Context->GetAspectRatio());
     }
 }
@@ -637,6 +636,5 @@ void JEngine::UpdateFramebufferSizeContext()
 {
     int fbW = 0, fbH = 0;
     m_PlatformSurface->GetFramebufferSize(fbW, fbH);
-    m_Context->SetFramebufferWidth(fbW);
-    m_Context->SetFramebufferHeight(fbH);
+    m_Context->SetFramebufferSize(fbW, fbH);
 }

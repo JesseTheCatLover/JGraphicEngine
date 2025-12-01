@@ -8,4 +8,5 @@ struct FSurfaceContext
     int height = 1920;
     float aspectRatio = 16.f/9.f;
     bool bFullscreen = true;
+    bool bRenderToPlatformSurface = true;
 };

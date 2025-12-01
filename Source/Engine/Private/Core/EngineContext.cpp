@@ -38,29 +38,64 @@ int EngineContext::GetFramebufferWidth() const
     return m_SurfaceContext->width;
 }
 
-void EngineContext::SetFramebufferWidth(int w)
-{
-    m_SurfaceContext->width = w;
-}
-
 int EngineContext::GetFramebufferHeight() const
 {
     return m_SurfaceContext->height;
 }
 
-void EngineContext::SetFramebufferHeight(int h)
+int EngineContext::GetSceneViewportWidth() const
 {
+    return m_ViewportContext->sceneViewportWidth;
+}
+
+int EngineContext::GetSceneViewportHeight() const
+{
+    return m_ViewportContext->sceneViewportHeight;
+}
+
+void EngineContext::SetSceneViewportSize(int w, int h)
+{
+    m_ViewportContext->sceneViewportWidth = w;
+    m_ViewportContext->sceneViewportHeight = h;
+}
+
+void EngineContext::SetFramebufferSize(int w, int h)
+{
+    m_SurfaceContext->width = w;
     m_SurfaceContext->height = h;
 }
 
 float EngineContext::GetAspectRatio() const
 {
-    return m_SurfaceContext->aspectRatio;
+    if (m_SurfaceContext->bRenderToPlatformSurface)
+    {
+        if (m_SurfaceContext->height == 0)
+            return 1.0f;
+        return static_cast<float>(m_SurfaceContext->width) / static_cast<float>(m_SurfaceContext->height);
+    }
+
+    int w = (m_ViewportContext->sceneViewportWidth > 0) ?  m_ViewportContext->sceneViewportWidth :
+    m_SurfaceContext->width;
+    int h = (m_ViewportContext->sceneViewportHeight > 0) ? m_ViewportContext->sceneViewportHeight :
+    m_SurfaceContext->height;
+
+    if (h == 0) return 1.0f;
+    return static_cast<float>(w) / static_cast<float>(h);
 }
 
 bool EngineContext::GetIsSurfaceFullscreen()
 {
     return m_SurfaceContext->bFullscreen;
+}
+
+bool EngineContext::GetShouldRenderToPlatformSurface() const
+{
+    return m_SurfaceContext->bRenderToPlatformSurface;
+}
+
+void EngineContext::SetShouldRenderToPlatformSurface(bool bShould)
+{
+    m_SurfaceContext->bRenderToPlatformSurface = bShould;
 }
 
 bool EngineContext::GetWireframeMode()

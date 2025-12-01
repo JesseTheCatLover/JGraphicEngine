@@ -66,7 +66,8 @@ public:
     virtual void SetCursorDisabled() {}
 
     virtual void* GetPlatformSpecificHandle() const { return nullptr; } // optional override
-
+    // TODO: Implement surface resize fallbacks and other common fallbacks and add a GLFW implementation for it.
+    // TODO: (We need to update the framebuffer size in EngineContext)
     using GetProcAddressFunc = void* (*)(const char*);
     // Optional: for OpenGL-style loaders
     virtual GetProcAddressFunc GetProcAddressFunction() const { return nullptr; }

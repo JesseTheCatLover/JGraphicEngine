@@ -54,6 +54,7 @@ public:
     const std::vector<FEditorActorSnapshot>& GetHierarchySnapshot() const { return m_HierarchySnapshot; }
 
     void* GetViewportTextureHandle() const;
+    void OnViewportResized(int &w, int &h) const;
 
     // Command pipeline
     void ExecuteCommand(TUniquePtr<IEditorCommand> cmd);

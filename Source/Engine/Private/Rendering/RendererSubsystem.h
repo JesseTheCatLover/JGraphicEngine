@@ -50,6 +50,7 @@ private:
     FCoordAdapter m_CoordAdaptor;
     FMatrix4 m_ViewMat;
     FMatrix4 m_ProjMat;
+    float m_LastAspect = -1.0f;
 
 private:
     struct FMaterialEntry
@@ -92,7 +93,7 @@ private:
     void EnsureTargets(int w, int h, int samples);
     void DestroyTarget(FTarget& t);
     void BuildTarget(FTarget& t, int w, int h, int samples, bool withDepth = false, bool hdr = false, bool srgb = false);
-    void RunPostProcessChain(RTextureHandle sceneColor, int w, int h);
+    RTextureHandle RunPostProcessChain(RTextureHandle sceneColor, int w, int h);
     void EnsureFullscreenQuad();
     void BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
     void RebuildKernelsIfDirty();

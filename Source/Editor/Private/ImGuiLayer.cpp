@@ -5,6 +5,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "Utilities/UPathFinder.h"
 
 ImGuiLayer::ImGuiLayer(GLFWwindow *window):
     m_Window(window)
@@ -14,22 +15,59 @@ ImGuiLayer::ImGuiLayer(GLFWwindow *window):
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGuiStyle& style = ImGui::GetStyle();
 
+    std::string defaultFontName = "FunnelSans";
+    io.FontDefault = io.Fonts->AddFontFromFileTTF
+    (UPathFinder::ResolvePath(UPathFinder::Join("Assets" ,"Fonts", defaultFontName + ".ttf")).c_str(), 16.0f);
+
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     style.WindowMenuButtonPosition = ImGuiDir_None;
 
-    style.WindowRounding = 5.0f;
+    style.WindowRounding = 3.0f;
     style.FrameRounding  = 3.0f;
     style.ScrollbarRounding = 3.0f;
     style.FramePadding = ImVec2(6, 4);
-    style.ItemSpacing  = ImVec2(10, 6);
+    style.ItemSpacing  = ImVec2(10, 4);
 
-    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.10f, 0.10f, 0.2f);
+    ImVec4* colors = style.Colors;
+
+    // Base gray tones
+    ImVec4 bg_dark   = ImVec4(0.17f, 0.17f, 0.17f, 1.0f); // ~43/255
+    ImVec4 bg_mid    = ImVec4(0.25f, 0.25f, 0.25f, 1.0f); // ~64/255
+    ImVec4 bg_light  = ImVec4(0.31f, 0.31f, 0.31f, 1.0f); // ~80/255
+    ImVec4 text_col  = ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
+
+    // Blue-gray accent (title bars, headers, etc.)
+    ImVec4 accent        = ImVec4(0.43f, 0.51f, 0.59f, 1.0f);  // ~110,129,151
+    ImVec4 accent_hover  = ImVec4(0.50f, 0.58f, 0.66f, 1.0f);
+    ImVec4 accent_active = ImVec4(0.34f, 0.42f, 0.50f, 1.0f);
+
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.10f, 0.10f, 1.0f);
     style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.45f, 0.45f, 0.45f, 0.5f);
     style.Colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.20f, 0.20f, 0.20f, 0.2f);
     style.Colors[ImGuiCol_Button]   = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
     style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.30f, 0.30f, 0.30f, 1.0f);
     style.Colors[ImGuiCol_ButtonActive]  = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
+
+    style.Colors[ImGuiCol_Text]         = text_col;
+    style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.55f, 0.55f, 1.0f);
+    colors[ImGuiCol_WindowBg]         = bg_dark;
+    colors[ImGuiCol_ChildBg]          = bg_dark;
+    colors[ImGuiCol_PopupBg]          = bg_mid;
+    colors[ImGuiCol_Border]           = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);
+    colors[ImGuiCol_BorderShadow]     = ImVec4(0, 0, 0, 0);
+
+    colors[ImGuiCol_TitleBg]          = bg_dark;
+    colors[ImGuiCol_TitleBgActive]    = bg_mid;
+    colors[ImGuiCol_TitleBgCollapsed] = bg_mid;
+
+    colors[ImGuiCol_Tab]                  = bg_mid;
+    colors[ImGuiCol_TabHovered]           = bg_light;
+    colors[ImGuiCol_TabActive]            = bg_light;
+    colors[ImGuiCol_TabUnfocused]         = bg_mid;
+    colors[ImGuiCol_TabUnfocusedActive]   = bg_light;
+
+    style.TabRounding = 3.0f;
 
     ImGui_ImplGlfw_InitForOpenGL(m_Window, true);
     ImGui_ImplOpenGL3_Init("#version 330");

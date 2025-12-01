@@ -14,10 +14,10 @@ void JCameraComponent::Initialize()
     Super::Initialize();
 }
 
-const FMatrix4& JCameraComponent::GetViewMatrix(float aspectRatio) const
+const FMatrix4& JCameraComponent::GetViewMatrix() const
 {
     if (m_bViewDirty)
-        RecalculateViewMatrix(aspectRatio);
+        RecalculateViewMatrix();
     return m_ViewMatrix;
 }
 
@@ -28,7 +28,7 @@ const FMatrix4& JCameraComponent::GetProjectionMatrix(float aspectRatio) const
     return m_ProjectionMatrix;
 }
 
-void JCameraComponent::RecalculateViewMatrix(float aspectRatio) const
+void JCameraComponent::RecalculateViewMatrix() const
 {
     const FMatrix4 worldMat = GetWorldTransform().ToMatrix();
     m_ViewMatrix = worldMat.Inverse();

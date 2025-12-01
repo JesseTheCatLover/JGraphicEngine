@@ -19,8 +19,14 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
     m_IsHovered = ImGui::IsWindowHovered();
 
     ImVec2 size = ImGui::GetContentRegionAvail();
-    m_Width  = size.x;
-    m_Height = size.y;
+
+    if (size.x != m_Width || size.y != m_Height)
+    {
+        m_Width = static_cast<int>(size.x);
+        m_Height = static_cast<int>(size.y);
+        // Notify core so it can update EngineContext
+        core.OnViewportResized(m_Width, m_Height);
+    }
 
     void* native = core.GetViewportTextureHandle();
     if (!native)

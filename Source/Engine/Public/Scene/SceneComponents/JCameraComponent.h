@@ -42,7 +42,7 @@ protected:
     void Initialize() override;
 
     // Matrices
-    [[nodiscard]] const FMatrix4& GetViewMatrix(float aspectRatio) const override;
+    [[nodiscard]] const FMatrix4& GetViewMatrix() const override;
     [[nodiscard]] const FMatrix4& GetProjectionMatrix(float aspectRatio) const override;
 
     float GetNearPlane() const override { return m_NearClip; }
@@ -76,10 +76,10 @@ public:
     void SetOrthoHalfHeight(float halfHeight) { m_OrthoHalfHeight = halfHeight; m_bProjDirty = true; }
 
     // Recalculate both explicitly
-    void RecalculateViewMatrix(float aspectRatio) const;
-    void RecalculateProjectionMatrix(float aspectRatio) const;
+    void RecalculateViewMatrix() const;
+    void RecalculateProjectionMatrix(float aspectRatio) const override;
     void RecalculateMatrices(float aspectRatio) const
-    { RecalculateViewMatrix(aspectRatio); RecalculateProjectionMatrix(aspectRatio); }
+    { RecalculateViewMatrix(); RecalculateProjectionMatrix(aspectRatio); }
 
     // Utility
     FVector3 GetForwardVector() const;

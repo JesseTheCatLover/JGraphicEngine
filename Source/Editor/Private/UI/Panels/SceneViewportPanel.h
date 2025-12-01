@@ -19,8 +19,8 @@ public:
 
 private:
     // Last known viewport size (for future use: camera aspect, RT resize, etc.)
-    float m_Width  = 0.0f;
-    float m_Height = 0.0f;
+    int m_Width = 0.0f;
+    int m_Height = 0.0f; // TODO: Check if we should calculate by float or int
 
     // Focus/hover state if you want to drive editor camera later
     bool m_IsFocused = false;
