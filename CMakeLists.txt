@@ -60,6 +60,12 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_definitions(Engine PUBLIC ENGINE_DIRECTORY="${CMAKE_SOURCE_DIR}")
 endif()
 
+# Engine internals folder
+set_target_properties(JApplication Engine EngineEditor PROPERTIES
+        FOLDER "EngineLibs"
+        EXCLUDE_FROM_ALL TRUE
+)
+
 # Compiler warnings for best portability across compilers
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU")
     target_compile_options(Engine PRIVATE

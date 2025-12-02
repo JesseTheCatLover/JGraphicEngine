@@ -45,6 +45,9 @@ set_target_properties(JEngine PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
+# Executables folder (these should show in the IDE)
+set_property(TARGET JEditor JGame JEngine PROPERTY FOLDER "Executables")
+
 set(JENGINE_EXECUTABLES JEditor JGame JEngine)
 foreach(tgt IN LISTS JENGINE_EXECUTABLES) # TODO: We need a codegen to escape this mess....
     if (MSVC)

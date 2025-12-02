@@ -19,9 +19,15 @@ set(IMGUI_SRC
         "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends/imgui_impl_glfw.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends/imgui_impl_opengl3.cpp"
 )
-add_library(ImGui STATIC ${IMGUI_SRC})
-target_include_directories(ImGui
+add_library(imgui STATIC ${IMGUI_SRC})
+target_include_directories(imgui
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/imgui"
         "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends"
 )
-target_link_libraries(ImGui PUBLIC glfw)
+target_link_libraries(imgui PUBLIC glfw)
+
+# Third party folder
+set_target_properties(glfw stb imgui glm assimp PROPERTIES
+        EXCLUDE_FROM_ALL TRUE
+        FOLDER "ThirdParty"
+)
