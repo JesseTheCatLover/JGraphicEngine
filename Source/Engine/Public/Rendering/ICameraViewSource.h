@@ -2,6 +2,8 @@
 
 #pragma once
 
+enum class EProjectionType { Perspective, Orthographic };
+
 class RendererSubsystem;
 
 /**
@@ -20,5 +22,5 @@ protected:
     [[nodiscard]] virtual float GetNearPlane() const = 0;
     [[nodiscard]] virtual float GetFarPlane() const = 0;
     [[nodiscard]] virtual float GetOrthoHalfHeight() const = 0;
-    virtual void RecalculateProjectionMatrix(float aspectRatio) const = 0;
+    virtual void RebuildProjectionMatrix(float aspectRatio) const = 0;
 };

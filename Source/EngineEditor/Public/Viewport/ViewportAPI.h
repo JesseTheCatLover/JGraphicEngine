@@ -9,7 +9,6 @@ class EngineContext;
 
 class EditorViewportAPI
 {
-    friend class EditorCore;
 private:
     EngineContext& m_Context;
     RendererSubsystem& m_Renderer;
@@ -22,7 +21,6 @@ public:
     [[nodiscard]] RTextureHandle GetViewportColor() const;
 
     [[nodiscard]] void* GetNativeTextureHandle(RTextureHandle handle) const;
-private:
 
-    void SetSceneViewportSize(int &w, int &h);
+    void SetSceneViewportSize(int w, int h);
 };

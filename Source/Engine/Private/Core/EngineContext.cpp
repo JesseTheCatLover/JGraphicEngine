@@ -43,44 +43,10 @@ int EngineContext::GetFramebufferHeight() const
     return m_SurfaceContext->height;
 }
 
-int EngineContext::GetSceneViewportWidth() const
-{
-    return m_ViewportContext->sceneViewportWidth;
-}
-
-int EngineContext::GetSceneViewportHeight() const
-{
-    return m_ViewportContext->sceneViewportHeight;
-}
-
-void EngineContext::SetSceneViewportSize(int w, int h)
-{
-    m_ViewportContext->sceneViewportWidth = w;
-    m_ViewportContext->sceneViewportHeight = h;
-}
-
 void EngineContext::SetFramebufferSize(int w, int h)
 {
     m_SurfaceContext->width = w;
     m_SurfaceContext->height = h;
-}
-
-float EngineContext::GetAspectRatio() const
-{
-    if (m_SurfaceContext->bRenderToPlatformSurface)
-    {
-        if (m_SurfaceContext->height == 0)
-            return 1.0f;
-        return static_cast<float>(m_SurfaceContext->width) / static_cast<float>(m_SurfaceContext->height);
-    }
-
-    int w = (m_ViewportContext->sceneViewportWidth > 0) ?  m_ViewportContext->sceneViewportWidth :
-    m_SurfaceContext->width;
-    int h = (m_ViewportContext->sceneViewportHeight > 0) ? m_ViewportContext->sceneViewportHeight :
-    m_SurfaceContext->height;
-
-    if (h == 0) return 1.0f;
-    return static_cast<float>(w) / static_cast<float>(h);
 }
 
 bool EngineContext::GetIsSurfaceFullscreen()
@@ -107,6 +73,39 @@ void EngineContext::SetWireframeMode(bool bWireMode)
 {
     m_ViewportContext->bWireframe = bWireMode;
 }
+
+void EngineContext::SetCamera(ICameraViewSource* camera, float aspect)
+{
+    m_CurrentCamera = camera;
+    m_CurrentAspect = aspect;
+}
+
+ICameraViewSource* EngineContext::GetCamera() const
+{
+    return m_CurrentCamera;
+}
+
+float EngineContext::GetAspectRatio() const
+{
+    return m_CurrentAspect;
+}
+
+int EngineContext::GetSceneViewportWidth() const
+{
+    return m_ViewportContext->sceneViewportWidth;
+}
+
+int EngineContext::GetSceneViewportHeight() const
+{
+    return m_ViewportContext->sceneViewportHeight;
+}
+
+void EngineContext::SetSceneViewportSize(int w, int h)
+{
+    m_ViewportContext->sceneViewportWidth = w;
+    m_ViewportContext->sceneViewportHeight = h;
+}
+
 
 float EngineContext::GetLastFrameTime() const
 {
@@ -146,19 +145,4 @@ float EngineContext::GetLastMouseY()
 void EngineContext::SetLastMouseY(float y)
 {
     m_InputContext->lastMouseY = y;
-}
-
-ICameraViewSource* EngineContext::GetCamera() const
-{
-    return m_ViewportContext->camera;
-}
-
-void EngineContext::SetCamera(ICameraViewSource *camera)
-{
-    m_ViewportContext->camera = camera;
-}
-
-FViewportContext* EngineContext::GetCameraSettings() const
-{
-    return m_ViewportContext.get();
 }

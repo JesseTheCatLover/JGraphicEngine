@@ -17,10 +17,14 @@ public:
 
     void Draw(EditorContext& context, EditorCore& core) override;
 
+    void OnCreate(EditorContext &context, EditorCore &core) override;
+
+    void OnDestroy(EditorContext &context, EditorCore &core) override;
+
 private:
     // Last known viewport size (for future use: camera aspect, RT resize, etc.)
-    int m_Width = 0.0f;
-    int m_Height = 0.0f; // TODO: Check if we should calculate by float or int
+    float m_Width = 0.f;
+    float m_Height = 0.f;
 
     // Focus/hover state if you want to drive editor camera later
     bool m_IsFocused = false;

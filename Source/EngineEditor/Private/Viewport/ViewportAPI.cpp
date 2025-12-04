@@ -35,7 +35,7 @@ void* EditorViewportAPI::GetNativeTextureHandle(RTextureHandle handle) const
     return m_Renderer.GetNativeTextureHandle(handle);
 }
 
-void EditorViewportAPI::SetSceneViewportSize(int &w, int &h)
+void EditorViewportAPI::SetSceneViewportSize(int w, int h) // TODO: DEPRECATED
 {
     m_Context.SetSceneViewportSize(w, h);
 }

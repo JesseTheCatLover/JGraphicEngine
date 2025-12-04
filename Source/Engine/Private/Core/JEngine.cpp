@@ -27,15 +27,6 @@
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
 
-namespace
-{
-    bool  gLookInitialized = false;
-    float gYaw   = 0.0f; // radians
-    float gPitch = 0.0f; // radians
-}
-
-class ModelResource;
-
 JEngine::JEngine()
     : m_Services(MakeUnique<TServiceContainer>())
 {
@@ -203,44 +194,103 @@ bool JEngine::InitializeSubsystems()
 
     // ESC -> Quit
     addButton("Quit", EPhysicalInput::Key_Escape);
-    // F   -> Toggle wireframe
-    addButton("ToggleWireframe", EPhysicalInput::Key_F);
-    // J   -> Toggle view mode (Scene/UI)
-    addButton("ToggleViewMode", EPhysicalInput::Key_J);
 
-    // Mouse look: Axis2D
+    // ----------------- Editor camera mappings (Temp) ----------------- TODO: we need a special mapping separation for the editor.
+
+    // 1) Editor_Look: mouse delta X/Y (separate from any gameplay look)
     {
         FActionAxisSlot look{};
-        look.name = "Look";
+        look.name = "Editor_Look";
         look.type = EInputChannelType::Axis2D;
 
         // X = mouse delta X
-        FInputBinding bx{};
-        bx.deviceType  = EInputDeviceType::Mouse;
-        bx.deviceIndex = 0;
-        bx.input       = EPhysicalInput::Mouse_DeltaX;
-        bx.scale       = 0.0038f;    // sensitivity
-        bx.deadZone    = 0.0f;
-        bx.invert      = false;
+        FInputBinding mouseX{};
+        mouseX.deviceType    = EInputDeviceType::Mouse;
+        mouseX.deviceIndex   = 0;
+        mouseX.input         = EPhysicalInput::Mouse_DeltaX;
+        mouseX.scale         = 0.0038f;    // sensitivity
+        mouseX.deadZone      = 0.0f;
+        mouseX.invert        = false;
+        mouseX.axisComponent = EAxisComponent::X;
 
         // Y = mouse delta Y
-        FInputBinding by{};
-        by.deviceType  = EInputDeviceType::Mouse;
-        by.deviceIndex = 0;
-        by.input       = EPhysicalInput::Mouse_DeltaY;
-        by.scale       = 0.0038f;
-        by.deadZone    = 0.0f;
-        by.invert      = false;       // invert so moving mouse up is positive pitch
+        FInputBinding mouseY{};
+        mouseY.deviceType    = EInputDeviceType::Mouse;
+        mouseY.deviceIndex   = 0;
+        mouseY.input         = EPhysicalInput::Mouse_DeltaY;
+        mouseY.scale         = 0.0038f;
+        mouseY.deadZone      = 0.0f;
+        mouseY.invert        = false;       // invert so moving mouse up is positive pitch
+        mouseY.axisComponent = EAxisComponent::Y;
 
-        look.bindings.push_back(bx);
-        look.bindings.push_back(by);
+        look.bindings.push_back(mouseX);
+        look.bindings.push_back(mouseY);
         map.actions.push_back(std::move(look));
+    }
+
+    // 2) Editor_Move (XY plane): WASD
+    {
+        FActionAxisSlot move{};
+        move.name = "Editor_Move";
+        move.type = EInputChannelType::Axis2D;
+
+        // X component = A / D
+        FInputBinding right{};
+        right.deviceType    = EInputDeviceType::Keyboard;
+        right.deviceIndex   = 0;
+        right.input         = EPhysicalInput::Key_D;
+        right.scale         = +1.0f;
+        right.axisComponent = EAxisComponent::X;
+
+        FInputBinding left = right;
+        left.input  = EPhysicalInput::Key_A;
+        left.scale  = -1.0f;
+
+        // Y component = W / S
+        FInputBinding forward{};
+        forward.deviceType    = EInputDeviceType::Keyboard;
+        forward.deviceIndex   = 0;
+        forward.input         = EPhysicalInput::Key_W;
+        forward.scale         = +1.0f;
+        forward.axisComponent = EAxisComponent::Y;
+
+        FInputBinding back = forward;
+        back.input = EPhysicalInput::Key_S;
+        back.scale = -1.0f;
+
+        move.bindings.push_back(right);
+        move.bindings.push_back(left);
+        move.bindings.push_back(forward);
+        move.bindings.push_back(back);
+
+        map.actions.push_back(std::move(move));
+    }
+
+    // 3) Editor_MoveUpDown: Space / Shift
+    {
+        FActionAxisSlot moveY{};
+        moveY.name = "Editor_MoveUpDown";
+        moveY.type = EInputChannelType::Axis1D;
+
+        FInputBinding up{};
+        up.deviceType  = EInputDeviceType::Keyboard;
+        up.deviceIndex = 0;
+        up.input       = EPhysicalInput::Key_Space;
+        up.scale       = +1.0f;
+
+        FInputBinding down = up;
+        down.input = EPhysicalInput::Key_LeftShift;
+        down.scale = -1.0f;
+
+        moveY.bindings.push_back(up);
+        moveY.bindings.push_back(down);
+
+        map.actions.push_back(std::move(moveY));
     }
 
     // Install mapping style
     m_InputSystem->SetMappingStyle(MakeUnique<ActionAxisStyle>(map));
     // ----------------------------------------------------
-
 
     return true;
 }
@@ -266,58 +316,151 @@ bool JEngine::InitializeManagers()
             m_Context->SetRunning(false);
         });
 
-    // F -> toggle wireframe
-    input->BindAction("ToggleWireframe", EInputEventPhase::Pressed,
-        [this](InputChannelHandle, const FActionStateBool&)
-        {
-            bool wf = !m_Context->GetWireframeMode();
-            m_Context->SetWireframeMode(wf);
-            std::cout << "[Input] ToggleWireframe -> " << (wf ? "ON" : "OFF") << "\n";
-        });
 
-    // J -> toggle view mode + cursor
-    input->BindAction("ToggleViewMode", EInputEventPhase::Pressed,
-        [this](InputChannelHandle, const FActionStateBool&)
+    if (!m_EditorBridge)
+    {
+        // Small helper to fetch active camera + actor
+        auto getActiveCameraAndActor = [this]() -> std::pair<JCameraComponent*, JActor*>
         {
-            if (!m_PlatformSurface)
-                return;
-        });
+            auto* sceneMgr = GetSceneManager();
+            if (!sceneMgr) return { nullptr, nullptr };
 
+            auto* scene = sceneMgr->GetActiveScene();
+            if (!scene) return { nullptr, nullptr };
+
+            auto* camera = scene->GetCameraComponent();
+            if (!camera) return { nullptr, nullptr };
+
+            JActor* camActor = camera->GetOwnerActor();
+            if (!camActor) return { nullptr, nullptr };
+
+            return { camera, camActor };
+        };
+
+        // ----------------- LOOK (Editor_Look) -----------------
+        static bool  gLookInitialized = false;
+        static float gYaw   = 0.0f;
+        static float gPitch = 0.0f;
+
+        input->BindAxis2D("Editor_Look", EInputEventPhase::AxisChanged,
+                          [this, getActiveCameraAndActor](InputChannelHandle, const FActionStateAxis2D& state)
+                          {
+                              auto [camera, camActor] = getActiveCameraAndActor();
+                              (void)camActor;
+                              if (!camera) return;
+
+                              // Initialize yaw/pitch from current camera rotation once
+                              if (!gLookInitialized)
+                              {
+                                  FTransform world = camera->GetWorldTransform();
+                                  FEuler rotation = world.GetRotation().ToEuler();
+
+                                  gPitch = rotation.Pitch;
+                                  gYaw   = rotation.Yaw;
+                                  gLookInitialized = true;
+                              }
+
+                              float dx = state.x;
+                              float dy = state.y;
+
+                              if (dx == 0.0f && dy == 0.0f)
+                                  return;
+
+                              gYaw += dx;
+                              gPitch -= dy;
+
+                              gPitch = FMath::Radians(FMath::Clamp(FMath::Degrees(gPitch), -90.f, 90.f));
+
+                              FEuler euler(-gPitch, gYaw, 0.f);
+                              FQuat newRot = euler.ToQuat();
+                              camera->SetWorldRotation(newRot);
+                              camera->RebuildMatrices(m_Context->GetAspectRatio());
+                          });
+
+        // ----------------- MOVE (Editor_Move) -----------------
+        input->BindAxis2D("Editor_Move", EInputEventPhase::Held,
+                          [this, getActiveCameraAndActor](InputChannelHandle, const FActionStateAxis2D& state)
+                          {
+                              auto [camera, camActor] = getActiveCameraAndActor();
+                              if (!camera || !camActor) return;
+
+                              const float moveSpeed = 15.0f;
+                              float deltaTime = m_Context->GetDeltaTime();
+
+                              // state.value.x = A/D, state.value.y = W/S
+                              FVector2 moveXY = {state.x, state.y};
+
+                              FVector3 movement(0.f, 0.f, 0.f);
+                              movement += camera->GetForwardVector() * moveXY.y; // W/S
+                              movement += camera->GetRightVector()  * moveXY.x; // A/D
+
+                              if (movement.Length() <= 0.0f)
+                                  return;
+
+                              movement = movement.Normalized() * moveSpeed * deltaTime;
+
+                              FVector3 pos = camActor->GetActorLocation();
+                              camActor->SetActorLocation(pos + movement);
+
+                              camera->RebuildMatrices(m_Context->GetAspectRatio());
+                          });
+
+        // ----------------- MOVE UP/DOWN (Editor_MoveUpDown) -----------------
+        input->BindAxis1D("Editor_MoveUpDown", EInputEventPhase::Held,
+                          [this, getActiveCameraAndActor](InputChannelHandle, const FActionStateAxis1D& state)
+                          {
+                              auto [camera, camActor] = getActiveCameraAndActor();
+                              if (!camera || !camActor) return;
+
+                              const float moveSpeed = 15.0f;
+                              float deltaTime = m_Context->GetDeltaTime();
+
+                              float moveZ = state.value; // +1 = Space, -1 = Shift
+
+                              if (moveZ == 0.0f)
+                                  return;
+
+                              FVector3 movement = FVector3::Up() * moveZ * moveSpeed * deltaTime;
+
+                              FVector3 pos = camActor->GetActorLocation();
+                              camActor->SetActorLocation(pos + movement);
+
+                              camera->RebuildMatrices(m_Context->GetAspectRatio());
+                          });
+    }
 
     return true;
 }
 
 void JEngine::RunMainLoop()
 {
-    auto* win = static_cast<GLFWwindow*>(m_PlatformSurface // TODO: Temporarily here until InputSystem is defined
-                                             ? m_PlatformSurface->GetNativeHandle()
-                                             : nullptr);
-    if (!win) {
-        std::cerr << "[JEngine]: No glfw window was found to run the main loop" << std::endl;
-        return;
-    }
-
     while (!m_PlatformSurface->ShouldClose() && m_Context->GetIsRunning())
     {
         CalculateDeltaTime();
-        UpdateFramebufferSizeContext();
+        UpdateFramebufferSizeContext(); // TODO: Should be replaced by a callback from IPlatformSurface
 
-        ProcessInputs(win, m_Context->GetDeltaTime());
         Tick();
+
         m_Renderer->BeginScene();
+
         FRenderContext ctx{};
         if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
         {
             scene->GatherRenderables(m_Renderer->GetSubmission(), ctx);
         }
-        if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
+
+        if (!m_EditorBridge)
         {
-            auto camera = scene->GetCameraComponent();
-            if (camera)
+            if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
             {
-                m_Context->SetCamera(camera);
+                auto camera = scene->GetCameraComponent();
+                if (camera)
+                {
+                    m_Context->SetCamera(camera, GetPlatformSurface()->GetAspectRatio());
+                }
             }
         }
+
         m_Renderer->EndScene();
 
         if (m_EditorBridge)
@@ -350,107 +493,8 @@ void JEngine::Tick()
     if (m_InputSystem)
         m_InputSystem->Tick(deltaTime);
 
-    // --- Apply look axis to camera ---
-    auto* sceneMgr = GetSceneManager();
-    if (true)
-    {
-        auto* scene = sceneMgr->GetActiveScene();
-        if (scene)
-        {
-            auto* camera = scene->GetCameraComponent();
-            if (camera)
-            {
-                JActor* camActor = camera->GetOwnerActor();
-                if (camActor)
-                {
-                    // Initialize yaw/pitch from current camera rotation once
-                    if (!gLookInitialized)
-                    {
-                        FTransform world = camera->GetWorldTransform();
-                        FEuler rotation = world.GetRotation().ToEuler();
-
-                        gPitch = rotation.Pitch;
-                        gYaw   = rotation.Yaw;
-                        gLookInitialized = true;
-                    }
-
-                    FVector2 lookDelta = GetInputManager()->GetAxis2D("Look");
-                    float dx = lookDelta.x;
-                    float dy = lookDelta.y;
-
-                    if (dx != 0.0f || dy != 0.0f)
-                    {
-                        gYaw   += dx;
-                        gPitch -= dy;
-
-                        gPitch = FMath::Radians(
-                            FMath::Clamp(FMath::Degrees(gPitch), -90.f, 90.f));
-
-                        FEuler euler(-gPitch, gYaw, 0.f);
-                        FQuat newRot = euler.ToQuat();
-                        camera->SetWorldRotation(newRot);
-                    }
-                }
-            }
-        }
-    }
-    // --------------------------------------
-
     if (m_EditorBridge)
         m_EditorBridge->OnTick(deltaTime);
-}
-
-void JEngine::ProcessInputs(GLFWwindow* window, float deltaTime)
-{
-    // Close engine if ESC is pressed
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
-        m_Context->SetRunning(false);
-    }
-
-    //  TODO: TEMP: drive active camera with WASD/Space/Shift
-
-    auto* sceneMgr = GetSceneManager();
-    if (!sceneMgr) return;
-
-    auto* scene = sceneMgr->GetActiveScene();
-    if (!scene) return;
-
-    auto* camera = scene->GetCameraComponent();
-    if (!camera) return;
-
-    JActor* camActor = camera->GetOwnerActor();
-    if (!camActor) return;
-
-    const float moveSpeed = 15.0f;
-    FVector3 movement(0.f, 0.f, 0.f);
-
-    // Move along camera local axes
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        movement += camera->GetForwardVector();
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        GetSceneManager()->SaveSceneFile(GetSceneManager()->GetActiveScene(),"StartupScene");
-    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        movement -= camera->GetForwardVector();
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        movement += camera->GetRightVector();
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        movement -= camera->GetRightVector();
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        movement += FVector3::Up();
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        movement -= FVector3::Up();
-
-    if (movement.Length() > 0.0f)
-    {
-        movement = movement.Normalized() * moveSpeed * deltaTime;
-
-        FVector3 pos = camActor->GetActorLocation();
-        camActor->SetActorLocation(pos + movement);
-
-        camera->RecalculateViewMatrix();
-        camera->RecalculateProjectionMatrix(m_Context->GetAspectRatio());
-    }
 }
 
 // void JEngine::OnScroll(double xOffset, double yOffset)

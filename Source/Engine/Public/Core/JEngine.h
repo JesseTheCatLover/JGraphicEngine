@@ -6,8 +6,6 @@
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
-
-class GLFWwindow;
 class EngineContext;
 class IInputBackend;
 class InputManager;
@@ -89,9 +87,6 @@ private:
 
     void CalculateDeltaTime();
     void UpdateFramebufferSizeContext();
-
-    // GLFW input forwarders | TODO: These all should be moved into a dedicated InputSystem for future
-    void ProcessInputs(GLFWwindow* window, float deltaTime);
 };
 
 #include "JEngine.inl"

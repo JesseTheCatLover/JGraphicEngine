@@ -10,7 +10,6 @@ class EngineContext;
 
 class EditorSceneAPI
 {
-    friend class EditorCore;
 private:
     EngineContext& m_Context;
     SceneManager& m_SceneManager;
@@ -20,12 +19,8 @@ private:
 public:
     EditorSceneAPI(EngineContext& ctx, SceneManager& scene);
 
-    // ---- Read-only for panels ----
     [[nodiscard]] std::vector<FEditorActorSnapshot>
         BuildHierarchySnapshot() const;
-
-private:
-    // ---- Mutating ops (EditorCore only) ----
     void SetSelectedActors(const std::vector<ActorID>& ids);
     void DeleteActors(const std::vector<ActorID>& ids);
     void DuplicateActors(const std::vector<ActorID>& ids);

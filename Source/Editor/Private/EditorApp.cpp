@@ -249,6 +249,13 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
     m_Panels.emplace_back(MakeUnique<SceneViewportPanel>());
 
+    // Call OnCreate for all panels now that Context/Core exist
+    for (auto& panel : m_Panels)
+    {
+        if (panel)
+            panel->OnCreate(*m_Context, *m_Core);
+    }
+
     m_DockSpace = MakeUnique<DockSpace>();
 }
 
@@ -266,5 +273,5 @@ void EditorApp::OnRenderOverlay()
 void EditorApp::OnTick(float deltaTime)
 {
     if (m_Core)
-        m_Core->Update(deltaTime);
+        m_Core->Tick(deltaTime);
 }

@@ -13,10 +13,6 @@
 class JCameraComponent : public JSceneComponent, public ICameraViewSource
 {
     DECLARE_JOBJECT(JCameraComponent, JSceneComponent)
-
-public:
-    enum class EProjectionType { Perspective, Orthographic };
-
 protected:
     EProjectionType m_ProjectionType = EProjectionType::Perspective;
 
@@ -54,7 +50,7 @@ public:
     EProjectionType GetProjectionType() const { return m_ProjectionType; }
     float GetFOV() const { return m_FOV; }
 
-    // Settters
+    // Setters
     void SetProjectionType(EProjectionType type) { m_ProjectionType = type; m_bProjDirty = true; }
     void SetPerspective(float fovDegrees, float nearPlane, float farPlane)
     {
@@ -75,11 +71,11 @@ public:
     }
     void SetOrthoHalfHeight(float halfHeight) { m_OrthoHalfHeight = halfHeight; m_bProjDirty = true; }
 
-    // Recalculate both explicitly
-    void RecalculateViewMatrix() const;
-    void RecalculateProjectionMatrix(float aspectRatio) const override;
-    void RecalculateMatrices(float aspectRatio) const
-    { RecalculateViewMatrix(); RecalculateProjectionMatrix(aspectRatio); }
+    // RebuildMatrices
+    void RebuildViewMatrix() const;
+    void RebuildProjectionMatrix(float aspectRatio) const override;
+    void RebuildMatrices(float aspectRatio) const
+    { RebuildViewMatrix(); RebuildProjectionMatrix(aspectRatio); }
 
     // Utility
     FVector3 GetForwardVector() const;

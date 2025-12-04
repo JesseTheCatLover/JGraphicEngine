@@ -21,6 +21,10 @@ private:
     TUniquePtr<FViewportContext> m_ViewportContext;
     TUniquePtr<FInputContext> m_InputContext;
 
+    // TODO: TEMP
+    ICameraViewSource* m_CurrentCamera   = nullptr;
+    float              m_CurrentAspect   = 16.0f / 9.0f;
+
 public:
     ~EngineContext();
 
@@ -33,13 +37,6 @@ public:
     [[nodiscard]] int GetFramebufferWidth() const;
     [[nodiscard]] int GetFramebufferHeight() const;
     void SetFramebufferSize(int w, int h);
-
-    [[nodiscard]] int GetSceneViewportWidth() const;
-    [[nodiscard]] int GetSceneViewportHeight() const;
-    void SetSceneViewportSize(int w, int h);
-
-    [[nodiscard]] float GetAspectRatio() const;
-
     bool GetIsSurfaceFullscreen();
 
     bool GetShouldRenderToPlatformSurface() const;
@@ -47,9 +44,15 @@ public:
 
     bool GetWireframeMode();
     void SetWireframeMode(bool bWireMode);
+
+    // TODO: TEMP
+    void SetCamera(ICameraViewSource* camera, float aspect);
     [[nodiscard]] ICameraViewSource* GetCamera() const;
-    void SetCamera(ICameraViewSource* camera);
-    [[nodiscard]] FViewportContext* GetCameraSettings() const;
+    [[nodiscard]] float GetAspectRatio() const;
+
+    [[nodiscard]] int GetSceneViewportWidth() const;
+    [[nodiscard]] int GetSceneViewportHeight() const;
+    void SetSceneViewportSize(int w, int h);
 
 private:
     void SetRunning(bool bIsRunning) { m_bRunning = bIsRunning; }

@@ -63,7 +63,7 @@ void RendererSubsystem::EndScene()
     // Only update projection if aspect actually changed
     if (std::abs(aspect - m_LastAspect) > 0.0001f)
     {
-        camera->RecalculateProjectionMatrix(aspect);
+        camera->RebuildProjectionMatrix(aspect);
         m_LastAspect = aspect;
     }
 

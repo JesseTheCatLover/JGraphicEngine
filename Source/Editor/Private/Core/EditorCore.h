@@ -8,6 +8,7 @@
 #include "IEditorCommand.h"
 #include "Core/Memory/SmartPointers.h"
 
+class IEditorPanel;
 class EditorContext;
 
 class EditorCore
@@ -22,9 +23,26 @@ private:
     std::stack<TUniquePtr<IEditorCommand>> m_UndoStack;
     std::stack<TUniquePtr<IEditorCommand>> m_RedoStack;
 
-    // Internal helper to sync selection to EngineEditor
-    void SyncSelectionToEngine();
-    void UpdateSelectionFlagsInHierarchy();
+    // One editor camera per viewport panel for now
+    std::unordered_map<const IEditorPanel*, UDynamicID::IDType> m_PanelToCameraMap;
+
+    // Which panel currently owns editor camera input
+    const IEditorPanel* m_ActiveViewportPanel = nullptr;
+    std::unordered_map<UDynamicID::IDType, float> m_CameraAspectMap;
+
+    // // Internal helper to sync selection to EngineEditor
+    // void SyncSelectionToEngine();
+    // void UpdateSelectionFlagsInHierarchy();
+
+    // Helpers:
+    void PushFrameInfoToEditorContext();
+    void TickEditorTools(float deltaTime);
+    void SubmitEditorViewSources();
+    void ClearFrameStates();
+
+    // Tools
+    void ActivateCameraForPanel(const IEditorPanel* panel);
+    void DeactivateCameraForPanel(const IEditorPanel* panel);
 
 public:
     explicit EditorCore(EditorContext& context, EngineEditor& engineEditor);
@@ -33,7 +51,7 @@ public:
     [[nodiscard]] const EditorContext& GetContext() const { return m_Context; }
 
     // Called every frame from EditorApp::OnTick
-    void Update(float deltaTime);
+    void Tick(float deltaTime);
 
     // -------- Selection API (used by panels) --------
     void SelectSingle(ActorID id);          // replace selection with this actor
@@ -53,8 +71,16 @@ public:
 
     const std::vector<FEditorActorSnapshot>& GetHierarchySnapshot() const { return m_HierarchySnapshot; }
 
-    void* GetViewportTextureHandle() const;
-    void OnViewportResized(int &w, int &h) const;
+    // Viewport section
+    [[nodiscard]] void* GetViewportTextureHandle() const;
+
+    // Called by panels that want an editor camera
+    void CreateCameraForPanel(const IEditorPanel* panel);
+    void DestroyCameraForPanel(const IEditorPanel* panel);
+    void SetViewportFocused(const IEditorPanel* panel, bool bFocused);
+    // Called by panel to update its camera's aspect ratio
+    void OnViewportResized(const IEditorPanel* panel, float aspectRatio);
+    void SetSizeTemp(float width, float height);
 
     // Command pipeline
     void ExecuteCommand(TUniquePtr<IEditorCommand> cmd);

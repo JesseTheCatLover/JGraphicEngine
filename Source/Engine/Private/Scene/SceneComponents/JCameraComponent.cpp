@@ -17,25 +17,25 @@ void JCameraComponent::Initialize()
 const FMatrix4& JCameraComponent::GetViewMatrix() const
 {
     if (m_bViewDirty)
-        RecalculateViewMatrix();
+        RebuildViewMatrix();
     return m_ViewMatrix;
 }
 
 const FMatrix4& JCameraComponent::GetProjectionMatrix(float aspectRatio) const
 {
     if (m_bProjDirty)
-        RecalculateProjectionMatrix(aspectRatio);
+        RebuildProjectionMatrix(aspectRatio);
     return m_ProjectionMatrix;
 }
 
-void JCameraComponent::RecalculateViewMatrix() const
+void JCameraComponent::RebuildViewMatrix() const
 {
     const FMatrix4 worldMat = GetWorldTransform().ToMatrix();
     m_ViewMatrix = worldMat.Inverse();
     m_bViewDirty = false;
 }
 
-void JCameraComponent::RecalculateProjectionMatrix(float aspectRatio) const
+void JCameraComponent::RebuildProjectionMatrix(float aspectRatio) const
 {
     // clamp safe values
     const float nearP = std::max(1e-6f, m_NearClip);

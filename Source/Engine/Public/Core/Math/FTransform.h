@@ -33,6 +33,7 @@ public:
     [[nodiscard]] FVector3 GetScale() const { return m_Scale; }
 
     void SetPosition(const FVector3& position) { m_Position = position; }
+    void SetPosition(const float &x, const float &y, const float &z) { m_Position = {x, y , z}; }
     void SetRotation(const FQuat& rotation) { m_Rotation = rotation; }
     void SetRotation(const FEuler& euler);
     void SetRotation(const FRotator& rotator) { SetRotation(FQuat::MakeFromRotator(rotator)); }

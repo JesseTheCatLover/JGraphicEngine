@@ -147,6 +147,11 @@ namespace FMath
      */
     inline float Sign(float Value) { return (Value >= 0) ? 1.0f : -1.0f; }
 
+    inline bool IsNearlyEqual(float A, float B, float Epsilon = 1e-6f)
+    {
+        return FMath::Abs(A - B) <= Epsilon;
+    }
+
     /////////////////////
     // Vector Utilities
     /////////////////////
@@ -225,6 +230,27 @@ namespace FMath
         return glm::acos(FMath::Clamp(FMath::Dot(A.Normalized(), B.Normalized()), -1.0f, 1.0f));
     }
 
+    inline bool IsNearlyEqual(const FVector2& A, const FVector2& B, float Epsilon = 1e-6f)
+    {
+        return IsNearlyEqual(A.x, B.x, Epsilon) &&
+               IsNearlyEqual(A.y, B.y, Epsilon);
+    }
+
+    inline bool IsNearlyEqual(const FVector3& A, const FVector3& B, float Epsilon = 1e-6f)
+    {
+        return IsNearlyEqual(A.x, B.x, Epsilon) &&
+               IsNearlyEqual(A.y, B.y, Epsilon) &&
+               IsNearlyEqual(A.z, B.z, Epsilon);
+    }
+
+    inline bool IsNearlyEqual(const FVector4& A, const FVector4& B, float Epsilon = 1e-6f)
+    {
+        return IsNearlyEqual(A.x, B.x, Epsilon) &&
+               IsNearlyEqual(A.y, B.y, Epsilon) &&
+               IsNearlyEqual(A.z, B.z, Epsilon) &&
+               IsNearlyEqual(A.w, B.w, Epsilon);
+    }
+
     /////////////////////
     // Matrix Utilities
     /////////////////////
@@ -277,6 +303,16 @@ namespace FMath
     */
     FMatrix4 LookAt(const FVector3& Eye, const FVector3& Target, const FVector3& Up);
 
+    inline bool IsNearlyEqual(const FMatrix4& A, const FMatrix4& B, float Epsilon = 1e-6f)
+    {
+        for (int r = 0; r < 4; r++)
+            for (int c = 0; c < 4; c++)
+                if (!IsNearlyEqual(A.GetMat4()[r][c], B.GetMat4()[r][c], Epsilon))
+                    return false;
+
+        return true;
+    }
+
     /////////////////////
     // Quaternion Utilities
     /////////////////////
@@ -310,7 +346,6 @@ namespace FMath
                       FMath::Lerp(A.Yaw,   B.Yaw,   Alpha),
                       FMath::Lerp(A.Roll,  B.Roll,  Alpha));
     }
-
 
     /////////////////////
     // Transform Utilities

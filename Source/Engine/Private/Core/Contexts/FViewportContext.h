@@ -9,11 +9,9 @@ struct FViewportContext
 private:
     friend class EngineContext;
 
-    bool bWireframe = false;
-
-    ICameraViewSource* camera;
     int sceneViewportWidth = 0;
     int sceneViewportHeight = 0;
+    bool bWireframe = false;
     float xSensitivity = 0.1f;
     float ySensitivity = 0.1f;
     float MaxFOV = 45.f;
