@@ -85,20 +85,20 @@ void ActionAxisStyle::UpdateChannels(float deltaTime, const std::vector<FInputDe
             const float prevX = state.x;
             const float prevY = state.y;
 
-            // Simple version:
-            // - assume first binding contributes to X
-            // - second binding contributes to Y
-            // You can refine this later with an explicit “component” in FInputBinding.
             float xNow = 0.0f;
             float yNow = 0.0f;
 
-            if (!slot.bindings.empty())
-                xNow = GetBindingValue(slot.bindings[0], devices);
-            if (slot.bindings.size() > 1)
-                yNow = GetBindingValue(slot.bindings[1], devices);
+            for (const FInputBinding& binding : slot.bindings)
+            {
+                float value = GetBindingValue(binding, devices);
+                if (binding.axisComponent == EAxisComponent::X)
+                    xNow += value;
+                else
+                    yNow += value;
+            }
 
-            state.x  = xNow;
-            state.y  = yNow;
+            state.x = xNow;
+            state.y = yNow;
             state.dx = xNow - prevX;
             state.dy = yNow - prevY;
         }

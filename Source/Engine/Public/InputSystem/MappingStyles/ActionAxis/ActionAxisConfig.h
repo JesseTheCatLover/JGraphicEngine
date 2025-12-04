@@ -8,12 +8,20 @@
 #include "InputSystem/FInputDeviceState.h"
 #include "InputSystem/InputChannels.h"
 
+enum class EAxisComponent : uint8_t
+{
+    X,
+    Y
+};
+
 struct FInputBinding
 {
     EInputDeviceType deviceType; // Keyboard / Mouse / Gamepad
     int deviceIndex = 0;
 
     EPhysicalInput input = EPhysicalInput::Unknown;
+
+    EAxisComponent axisComponent = EAxisComponent::X; ///< Meant for multi-dimensional axes
 
     float scale = 1.0f;
     float deadZone = 0.0f;

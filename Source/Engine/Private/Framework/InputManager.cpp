@@ -114,7 +114,7 @@ bool InputManager::GetActionHeld(const std::string& name)
     return st.held;
 }
 
-float InputManager::GetAxis(const std::string& name)
+float InputManager::GetAxis1D(const std::string& name)
 {
     InputChannelHandle handle = GetChannelHandle(name);
     if (handle == INVALID_CHANNEL_HANDLE)

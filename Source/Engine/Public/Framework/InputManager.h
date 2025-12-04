@@ -65,6 +65,6 @@ public:
     [[nodiscard]] bool GetActionUp (const std::string& name);
     [[nodiscard]] bool GetActionHeld (const std::string& name);
 
-    [[nodiscard]] float GetAxis (const std::string& name);
+    [[nodiscard]] float GetAxis1D (const std::string& name);
     [[nodiscard]] FVector2 GetAxis2D(const std::string& name);
 };
