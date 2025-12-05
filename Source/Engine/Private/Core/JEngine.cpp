@@ -234,34 +234,34 @@ bool JEngine::InitializeSubsystems()
         move.name = "Editor_Move";
         move.type = EInputChannelType::Axis2D;
 
-        // X component = A / D
-        FInputBinding right{};
-        right.deviceType    = EInputDeviceType::Keyboard;
-        right.deviceIndex   = 0;
-        right.input         = EPhysicalInput::Key_D;
-        right.scale         = +1.0f;
-        right.axisComponent = EAxisComponent::X;
+        // X component = W / S
+        FInputBinding forwardX{};
+        forwardX.deviceType    = EInputDeviceType::Keyboard;
+        forwardX.deviceIndex   = 0;
+        forwardX.input         = EPhysicalInput::Key_W;
+        forwardX.scale         = +1.0f;
+        forwardX.axisComponent = EAxisComponent::X;
 
-        FInputBinding left = right;
-        left.input  = EPhysicalInput::Key_A;
-        left.scale  = -1.0f;
+        FInputBinding backwardX = forwardX;
+        backwardX.input  = EPhysicalInput::Key_S;
+        backwardX.scale  = -1.0f;
 
-        // Y component = W / S
-        FInputBinding forward{};
-        forward.deviceType    = EInputDeviceType::Keyboard;
-        forward.deviceIndex   = 0;
-        forward.input         = EPhysicalInput::Key_W;
-        forward.scale         = +1.0f;
-        forward.axisComponent = EAxisComponent::Y;
+        // Y component = A / D
+        FInputBinding rightY{};
+        rightY.deviceType    = EInputDeviceType::Keyboard;
+        rightY.deviceIndex   = 0;
+        rightY.input         = EPhysicalInput::Key_D;
+        rightY.scale         = +1.0f;
+        rightY.axisComponent = EAxisComponent::Y;
 
-        FInputBinding back = forward;
-        back.input = EPhysicalInput::Key_S;
-        back.scale = -1.0f;
+        FInputBinding leftY = rightY;
+        leftY.input = EPhysicalInput::Key_A;
+        leftY.scale = -1.0f;
 
-        move.bindings.push_back(right);
-        move.bindings.push_back(left);
-        move.bindings.push_back(forward);
-        move.bindings.push_back(back);
+        move.bindings.push_back(forwardX);
+        move.bindings.push_back(backwardX);
+        move.bindings.push_back(rightY);
+        move.bindings.push_back(leftY);
 
         map.actions.push_back(std::move(move));
     }
@@ -387,12 +387,12 @@ bool JEngine::InitializeManagers()
                               const float moveSpeed = 15.0f;
                               float deltaTime = m_Context->GetDeltaTime();
 
-                              // state.value.x = A/D, state.value.y = W/S
+                              // state.value.x = W/S, state.value.y = A/D
                               FVector2 moveXY = {state.x, state.y};
 
                               FVector3 movement(0.f, 0.f, 0.f);
-                              movement += camera->GetForwardVector() * moveXY.y; // W/S
-                              movement += camera->GetRightVector()  * moveXY.x; // A/D
+                              movement += camera->GetForwardVector() * moveXY.x; // W/S
+                              movement += camera->GetRightVector()  * moveXY.y; // A/D
 
                               if (movement.Length() <= 0.0f)
                                   return;

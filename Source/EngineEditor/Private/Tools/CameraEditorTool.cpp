@@ -71,12 +71,12 @@ void CameraEditorTool::Tick(float deltaTime, bool bActive, float viewportAspect)
     FVector3 move(0.f, 0.f, 0.f);
 
     // WASD movement
-    FVector2 moveInput = input->GetAxis2D("Editor_Move");   // X = A/D, Y = W/S
-    float moveY = input->GetAxis1D("Editor_MoveUpDown"); // Space / Shift
+    FVector2 moveInput = input->GetAxis2D("Editor_Move");   // X = W/S, Y = A/D
+    float moveZ = input->GetAxis1D("Editor_MoveUpDown"); // Space / Shift
 
-    move += forward * moveInput.y;      // W/S -> forward/back
-    move += right   * moveInput.x;      // A/D -> strafe right/left
-    move += up * moveY;     // Space/Shift -> up/down
+    move += forward * moveInput.x;      // W/S -> forward/back
+    move += right   * moveInput.y;      // A/D -> strafe right/left
+    move += up * moveZ;     // Space/Shift -> up/down
 
     if (move.Length() > 0.f)
     {
