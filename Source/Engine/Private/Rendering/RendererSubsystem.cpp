@@ -105,7 +105,7 @@ void RendererSubsystem::EndScene()
     {
         // Present to platform surface
         m_Backend->SetViewport(0, 0, fbW, fbH);
-        BlitFullscreen(m_CopyShader, postprocessedTex, fbW, fbH);
+        BlitFullscreen(m_PresentShader, postprocessedTex, fbW, fbH);
     }
     else
     {
@@ -293,7 +293,6 @@ void RendererSubsystem::BuildDefaultShader()
     uniform int       u_UseBaseColorMap;  // 0 or 1
 
     // Simple hemisphere lighting so there's always something visible.
-    // You can drive these as uniforms later if you want.
     const vec3 SKY_COLOR    = vec3(0.6, 0.7, 0.9);
     const vec3 GROUND_COLOR = vec3(0.3, 0.25, 0.2);
     const float AMBIENT     = 0.15;
@@ -304,12 +303,16 @@ void RendererSubsystem::BuildDefaultShader()
         vec4 baseColor    = (u_UseBaseColorMap == 1) ? baseColorTex : u_BaseColorFactor;
 
         // Hemisphere term (y-up)
-        float hemiT = clamp(vWorldNormal.y * 0.5 + 0.5, 0.0, 1.0);
-        vec3 hemi   = mix(GROUND_COLOR, SKY_COLOR, hemiT);
+        // float hemiT = clamp(vWorldNormal.y * 0.5 + 0.5, 0.0, 1.0);
+        // vec3 hemi   = mix(GROUND_COLOR, SKY_COLOR, hemiT);
 
-        vec3 lit = baseColor.rgb * (AMBIENT + hemi);
-        FragColor = vec4(lit, baseColor.a);
+        // vec3 lit = baseColor.rgb * (AMBIENT + hemi);
+        // FragColor = vec4(lit, baseColor.a);
+
+        // DEBUG: UNLIT, NO LIGHTING
+        FragColor = baseColor;
     }
+
 )";
 
     RShader sh{};
@@ -452,22 +455,73 @@ void RendererSubsystem::EnsureFullscreenQuad()
         m_FSQuad = m_Backend->CreateMesh(m);
     }
 
-    if (!m_CopyShader.IsValid()) //TODO: Future work: Tone/Gamma policty: either do it in the final shader (keep sRGB off) or enable sRGB and keep shader linear
+    // Linear copy shader (no tone/gamma)
+    if (!m_LinearCopyShader.IsValid())
     {
         RShader s{};
         s.vertexSource = R"(#version 330 core
             layout(location=0) in vec3 aPos;
             layout(location=2) in vec2 aUV;
             out vec2 vUV;
-            void main(){ vUV=aUV; gl_Position = vec4(aPos, 1.0); }
+            void main()
+            {
+                vUV = aUV;
+                gl_Position = vec4(aPos, 1.0);
+            }
         )";
+
         s.fragmentSource = R"(#version 330 core
             in vec2 vUV;
             out vec4 FragColor;
             uniform sampler2D u_Input;
-            void main(){ FragColor = texture(u_Input, vUV); }
+
+            void main()
+            {
+                // Pure linear copy, no tone/gamma
+                FragColor = texture(u_Input, vUV);
+            }
         )";
-        m_CopyShader = m_Backend->CreateShader(s);
+
+        m_LinearCopyShader = m_Backend->CreateShader(s);
+    }
+
+    // Present shader: tone map + gamma
+    if (!m_PresentShader.IsValid())
+    {
+        RShader s{};
+        s.vertexSource = R"(#version 330 core
+            layout(location=0) in vec3 aPos;
+            layout(location=2) in vec2 aUV;
+            out vec2 vUV;
+            void main()
+            {
+                vUV = aUV;
+                gl_Position = vec4(aPos, 1.0);
+            }
+        )";
+
+        s.fragmentSource = R"(
+            #version 330 core
+            in vec2 vUV;
+            out vec4 FragColor;
+
+            uniform sampler2D u_Input;
+
+            void main()
+            {
+                vec3 color = texture(u_Input, vUV).rgb;
+
+                // No tone map, just clamp for safety
+                color = clamp(color, 0.0, 1.0);
+
+                // Single gamma encode to sRGB
+                color = pow(color, vec3(1.0 / 2.2));
+
+                FragColor = vec4(color, 1.0);
+            }
+        )";
+
+        m_PresentShader = m_Backend->CreateShader(s);
     }
 }
 
@@ -475,7 +529,10 @@ void RendererSubsystem::BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex
 {
     EnsureFullscreenQuad();
 
-    RShaderHandle shaderToUse = sh.IsValid() ? sh : m_CopyShader;
+    RShaderHandle shaderToUse = sh; // must be valid
+    if (!shaderToUse.IsValid())
+        shaderToUse = m_LinearCopyShader; // safe fallback
+
     m_Backend->SetViewport(0, 0, w, h);
     m_Backend->BindShader(shaderToUse);
     m_Backend->SetUniformInt(shaderToUse, "u_Input", 0);
@@ -498,10 +555,9 @@ void RendererSubsystem::RebuildKernelsIfDirty()
         }
         else
         {
-            // Minimal bootstrap: unknown names fall back to copy shader
             EnsureFullscreenQuad();
             FPassKernel k{};
-            k.shader = m_CopyShader;
+            k.shader = m_LinearCopyShader; // linear copy, NO gamma
             k.BindParams = nullptr;
             newKernels.emplace(pass.name, k);
         }

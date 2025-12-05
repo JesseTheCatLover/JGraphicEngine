@@ -78,7 +78,8 @@ private:
 
     // Fullscreen quad/tri
     RMeshHandle   m_FSQuad{};
-    RShaderHandle m_CopyShader{}; // Simple “texture copy” (or tonemap)
+    RShaderHandle m_LinearCopyShader; // raw linear copy
+    RShaderHandle m_PresentShader;    // tone map + gamma
 
     // Pass kernels
     struct FPassKernel

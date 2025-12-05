@@ -748,24 +748,19 @@ void GLBackend::DestroyFramebuffer(RFramebufferHandle handle)
 void GLBackend::BindFramebuffer(RFramebufferHandle handle)
 {
     auto it = m_Framebuffers.find(handle);
-    if (it == m_Framebuffers.end()) {
-        // binding default/backbuffer
-        glDisable(GL_FRAMEBUFFER_SRGB);
+    if (it == m_Framebuffers.end())
+    {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;
     }
 
     const FGLFramebuffer& fb = it->second;
-    if (fb.IsSRGBColor()) glEnable(GL_FRAMEBUFFER_SRGB);
-    else glDisable(GL_FRAMEBUFFER_SRGB);
-
     glBindFramebuffer(GL_FRAMEBUFFER, fb.fbo);
     glViewport(0, 0, fb.width, fb.height);
 }
 
 void GLBackend::UnbindFramebuffer()
 {
-    glDisable(GL_FRAMEBUFFER_SRGB);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
