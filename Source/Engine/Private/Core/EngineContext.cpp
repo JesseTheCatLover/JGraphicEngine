@@ -18,7 +18,6 @@ EngineContext::EngineContext()
     m_ViewportContext = MakeUnique<FViewportContext>();
 
     m_InputContext = MakeUnique<FInputContext>();
-
 }
 
 EngineContext::~EngineContext() = default;
@@ -73,39 +72,6 @@ void EngineContext::SetWireframeMode(bool bWireMode)
 {
     m_ViewportContext->bWireframe = bWireMode;
 }
-
-void EngineContext::SetCamera(ICameraViewSource* camera, float aspect)
-{
-    m_CurrentCamera = camera;
-    m_CurrentAspect = aspect;
-}
-
-ICameraViewSource* EngineContext::GetCamera() const
-{
-    return m_CurrentCamera;
-}
-
-float EngineContext::GetAspectRatio() const
-{
-    return m_CurrentAspect;
-}
-
-int EngineContext::GetSceneViewportWidth() const
-{
-    return m_ViewportContext->sceneViewportWidth;
-}
-
-int EngineContext::GetSceneViewportHeight() const
-{
-    return m_ViewportContext->sceneViewportHeight;
-}
-
-void EngineContext::SetSceneViewportSize(int w, int h)
-{
-    m_ViewportContext->sceneViewportWidth = w;
-    m_ViewportContext->sceneViewportHeight = h;
-}
-
 
 float EngineContext::GetLastFrameTime() const
 {

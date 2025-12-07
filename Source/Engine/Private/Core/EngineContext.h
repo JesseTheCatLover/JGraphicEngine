@@ -1,5 +1,7 @@
 #pragma once
+#include <vector>
 #include "Core/Memory/SmartPointers.h"
+#include "Rendering/FRenderView.h"
 
 class ICameraViewSource;
 struct FInputContext;
@@ -15,15 +17,12 @@ private:
     EngineContext();
 
     bool m_bRunning = true;
+    std::vector<FRenderView> m_ViewSources;
 
     TUniquePtr<FFrameContext> m_FrameContext;
     TUniquePtr<FSurfaceContext> m_SurfaceContext;
     TUniquePtr<FViewportContext> m_ViewportContext;
     TUniquePtr<FInputContext> m_InputContext;
-
-    // TODO: TEMP
-    ICameraViewSource* m_CurrentCamera   = nullptr;
-    float              m_CurrentAspect   = 16.0f / 9.0f;
 
 public:
     ~EngineContext();
@@ -45,18 +44,14 @@ public:
     bool GetWireframeMode();
     void SetWireframeMode(bool bWireMode);
 
-    // TODO: TEMP
-    void SetCamera(ICameraViewSource* camera, float aspect);
-    [[nodiscard]] ICameraViewSource* GetCamera() const;
-    [[nodiscard]] float GetAspectRatio() const;
-
-    [[nodiscard]] int GetSceneViewportWidth() const;
-    [[nodiscard]] int GetSceneViewportHeight() const;
-    void SetSceneViewportSize(int w, int h);
+    void AddViewSource(const FRenderView& view) { m_ViewSources.push_back(view); }
 
 private:
     void SetRunning(bool bIsRunning) { m_bRunning = bIsRunning; }
     [[nodiscard]] bool GetIsRunning() const { return m_bRunning; }
+
+    [[nodiscard]] const std::vector<FRenderView>& GetViewSources() const { return m_ViewSources; }
+    void ClearViewSources() { m_ViewSources.clear(); }
 
     [[nodiscard]] float GetLastFrameTime() const;
     void SetLastFrameTime(float lft);

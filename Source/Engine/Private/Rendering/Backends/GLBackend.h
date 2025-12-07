@@ -104,7 +104,8 @@ public:
     void EndFrame() override;
 
     void SetViewport(int x, int y, int width, int height) override;
-    void ClearColorDepth(float r, float g, float b, float a, bool clearDepth) override;
+    void ClearColorDepth(float r, float g, float b, float a, bool bClearDepth) override;
+    void ClearDepthOnly(bool bClearDepth) override;
 
     [[nodiscard]] void* GetNativeTextureHandle(RTextureHandle handle) const override;
 

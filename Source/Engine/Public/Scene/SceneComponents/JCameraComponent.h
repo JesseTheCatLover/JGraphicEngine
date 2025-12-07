@@ -29,6 +29,7 @@ protected:
     mutable FMatrix4 m_ProjectionMatrix = FMatrix4::Identity();
     mutable bool m_bViewDirty = true;
     mutable bool m_bProjDirty = true;
+    mutable float m_LastAspect = -1.0f;
 
 public:
     JCameraComponent();
@@ -99,5 +100,6 @@ protected:
         Super::OnAttachment();
         m_bViewDirty = true;
         m_bProjDirty = true;
+        m_LastAspect  = -1.0f; // Force reprojection on next GetProjectionMatrix()
     }
 };

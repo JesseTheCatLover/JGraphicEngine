@@ -50,7 +50,8 @@ public:
     virtual void BeginFrame() = 0;
     virtual void EndFrame() = 0;
     virtual void SetViewport(int x, int y, int w, int h) = 0;
-    virtual void ClearColorDepth(float r, float g, float b, float a, bool clearDepth=true) = 0;
+    virtual void ClearColorDepth(float r, float g, float b, float a, bool bClearDepth = true) = 0;
+    virtual void ClearDepthOnly(bool bClearDepth = true) = 0;
 
     // State control
     virtual void SetDepthState(bool bTestEnable, bool bWriteEnable, ECompareFunc func) = 0;

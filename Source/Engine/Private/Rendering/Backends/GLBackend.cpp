@@ -238,11 +238,18 @@ void GLBackend::SetViewport(int x, int y, int width, int height)
     glViewport(x, y, width, height);
 }
 
-void GLBackend::ClearColorDepth(float r, float g, float b, float a, bool clearDepth)
+void GLBackend::ClearColorDepth(float r, float g, float b, float a, bool bClearDepth)
 {
     glClearColor(r, g, b, a);
     GLbitfield mask = GL_COLOR_BUFFER_BIT;
-    if (clearDepth) mask |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+    if (bClearDepth) mask |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+    glClear(mask);
+}
+
+void GLBackend::ClearDepthOnly(bool bClearDepth)
+{
+    GLbitfield mask = GL_COLOR_BUFFER_BIT;
+    if (bClearDepth) mask |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
     glClear(mask);
 }
 

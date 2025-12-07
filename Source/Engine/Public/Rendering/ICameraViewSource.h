@@ -5,6 +5,7 @@
 enum class EProjectionType { Perspective, Orthographic };
 
 class RendererSubsystem;
+struct FMatrix4;
 
 /**
  * @brief Interface providing view/projection matrices and required parameters for rendering a view.

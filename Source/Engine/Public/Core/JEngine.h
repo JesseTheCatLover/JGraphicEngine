@@ -2,10 +2,12 @@
 
 #pragma once
 #include <functional>
+#include <vector>
 
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+struct FRenderView;
 class EngineContext;
 class IInputBackend;
 class InputManager;
@@ -79,6 +81,7 @@ private:
     void Shutdown();
 
     void Tick();
+    void BuildGameViews();
 
     void RegisterServices();
 

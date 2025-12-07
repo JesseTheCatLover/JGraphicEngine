@@ -1,11 +1,12 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-
+#include <vector>
 #include <string>
 
 class IRenderBackend;
 class IPlatformSurface;
+class FRenderView;
 
 class IEditorBridge
 {

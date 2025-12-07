@@ -9,6 +9,7 @@
 #include "Rendering/RHandles.h"
 #include "RCommandBuffer.h"
 
+struct FRenderView;
 class EngineContext;
 struct FBackendCoordDesc;
 
@@ -31,16 +32,13 @@ private:
 private:
     explicit RendererSubsystem(IRenderBackend* backend, EngineContext& ctx);
 
-    void BeginScene();
-    void EndScene();
+    void RenderFrame(const std::vector<FRenderView> &views);
+
     void Shutdown();
 
     EngineContext& m_Context;
     IRenderBackend* m_Backend = nullptr;
     PostProcessManager* m_PPM = nullptr;
-
-    RCommandBuffer m_CommandBuffer;
-    void FlushCommandBuffer();
 
     FGPUStateCache m_GPUStateCache;
 
@@ -50,7 +48,6 @@ private:
     FCoordAdapter m_CoordAdaptor;
     FMatrix4 m_ViewMat;
     FMatrix4 m_ProjMat;
-    float m_LastAspect = -1.0f;
 
 private:
     struct FMaterialEntry
@@ -94,10 +91,11 @@ private:
     void EnsureTargets(int w, int h, int samples);
     void DestroyTarget(FTarget& t);
     void BuildTarget(FTarget& t, int w, int h, int samples, bool withDepth = false, bool hdr = false, bool srgb = false);
-    RTextureHandle RunPostProcessChain(RTextureHandle sceneColor, int w, int h);
+    RTextureHandle RunPostProcessChain(RTextureHandle sceneColor, int w, int h, uint32_t profileId);
     void EnsureFullscreenQuad();
     void BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
-    void RebuildKernelsIfDirty();
+    void RebuildKernelsIfDirty(uint32_t profileId);
+    void DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4& viewMat, const FMatrix4& projMat);
 
     FCoordAdapter BuildCoordAdapter(const FBackendCoordDesc& d);
 
@@ -108,8 +106,6 @@ public:
     ~RendererSubsystem() = default;
 
     void SetPostProcessManager(PostProcessManager* ppm) { m_PPM = ppm;}
-
-    IRenderSubmission& GetSubmission() override { return m_CommandBuffer; }
 
     [[nodiscard]] RTextureHandle GetSceneColorTarget() const override { return m_Scene.color; }
 

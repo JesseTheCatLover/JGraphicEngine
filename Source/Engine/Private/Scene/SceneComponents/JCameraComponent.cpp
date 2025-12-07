@@ -3,7 +3,7 @@
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include <algorithm>
 
-#include "Core/JEngine.h"
+#include "Core/Math/FMath.h"
 
 JCameraComponent::JCameraComponent()
 {
@@ -23,8 +23,12 @@ const FMatrix4& JCameraComponent::GetViewMatrix() const
 
 const FMatrix4& JCameraComponent::GetProjectionMatrix(float aspectRatio) const
 {
-    if (m_bProjDirty)
+    // Rebuild if params changed OR aspect changed meaningfully
+    if (m_bProjDirty || !FMath::IsNearlyEqual(aspectRatio, m_LastAspect))
+    {
         RebuildProjectionMatrix(aspectRatio);
+        m_LastAspect = aspectRatio;
+    }
     return m_ProjectionMatrix;
 }
 
@@ -103,6 +107,6 @@ JREFLECT_TYPE(JCameraComponent)
     JPROPERTY(m_FOV);
     JPROPERTY(m_NearClip);
     JPROPERTY(m_FarClip);
-    JPROPERTY(m_ProjectionType);
+    JPROPERTY(m_ProjectionType); // TODO: implement enum reflection support + structs for future
     JPROPERTY(m_OrthoHalfHeight);
 }}

@@ -19,7 +19,7 @@ CameraEditorTool::CameraEditorTool()
     m_Near = 0.1f;
     m_Far = 10000.f;
     m_OrthoHalfHeight = 10.f;
-    m_MoveSpeed = 15.f;
+    m_MoveSpeed = 20.f;
     m_ProjectionType = EProjectionType::Perspective;
 
     m_bViewDirty = true;

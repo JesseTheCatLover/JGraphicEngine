@@ -28,7 +28,7 @@ private:
 
     mutable bool m_bViewDirty = true;
     mutable bool m_bProjDirty = true;
-    mutable float m_LastAspect = 16.f / 9.f;
+    mutable float m_LastAspect = -1.0f;
 
     void RebuildView() const;
     void RebuildProj(float aspect) const;

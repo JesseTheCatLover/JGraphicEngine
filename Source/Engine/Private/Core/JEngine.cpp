@@ -18,7 +18,7 @@
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/RendererSubsystem.h"
 #include "Resources/ResourceSubsystem.h"
-#include "Resources/GpuResources/ModelResource.h"
+#include "Core/Math/FMath.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
 
@@ -26,6 +26,7 @@
 
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
+#include "Rendering/FRenderView.h"
 
 JEngine::JEngine()
     : m_Services(MakeUnique<TServiceContainer>())
@@ -374,7 +375,6 @@ bool JEngine::InitializeManagers()
                               FEuler euler(-gPitch, gYaw, 0.f);
                               FQuat newRot = euler.ToQuat();
                               camera->SetWorldRotation(newRot);
-                              camera->RebuildMatrices(m_Context->GetAspectRatio());
                           });
 
         // ----------------- MOVE (Editor_Move) -----------------
@@ -401,8 +401,6 @@ bool JEngine::InitializeManagers()
 
                               FVector3 pos = camActor->GetActorLocation();
                               camActor->SetActorLocation(pos + movement);
-
-                              camera->RebuildMatrices(m_Context->GetAspectRatio());
                           });
 
         // ----------------- MOVE UP/DOWN (Editor_MoveUpDown) -----------------
@@ -424,8 +422,6 @@ bool JEngine::InitializeManagers()
 
                               FVector3 pos = camActor->GetActorLocation();
                               camActor->SetActorLocation(pos + movement);
-
-                              camera->RebuildMatrices(m_Context->GetAspectRatio());
                           });
     }
 
@@ -439,30 +435,21 @@ void JEngine::RunMainLoop()
         CalculateDeltaTime();
         UpdateFramebufferSizeContext(); // TODO: Should be replaced by a callback from IPlatformSurface
 
+        // Per-frame views reset
+        m_Context->ClearViewSources();
+
+        // Game/editor logic tick
         Tick();
 
-        m_Renderer->BeginScene();
-
-        FRenderContext ctx{};
-        if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
+        if (!m_EditorBridge) // Build game views when we are in game mode
         {
-            scene->GatherRenderables(m_Renderer->GetSubmission(), ctx);
+            BuildGameViews();
         }
 
-        if (!m_EditorBridge)
-        {
-            if (auto* scene = JEngine::Get().GetSceneManager()->GetActiveScene())
-            {
-                auto camera = scene->GetCameraComponent();
-                if (camera)
-                {
-                    m_Context->SetCamera(camera, GetPlatformSurface()->GetAspectRatio());
-                }
-            }
-        }
+        // Render all assigned views in the context
+        m_Renderer->RenderFrame(m_Context->GetViewSources());
 
-        m_Renderer->EndScene();
-
+        // Editor overlay after 3D views being rendered
         if (m_EditorBridge)
             m_EditorBridge->OnRenderOverlay();
 
@@ -495,6 +482,45 @@ void JEngine::Tick()
 
     if (m_EditorBridge)
         m_EditorBridge->OnTick(deltaTime);
+}
+
+void JEngine::BuildGameViews()
+{
+    auto* scene = GetSceneManager() ? GetSceneManager()->GetActiveScene() : nullptr;
+    if (!scene)
+        return;
+
+    auto* cameraComp = scene->GetCameraComponent();
+    if (!cameraComp)
+        return;
+
+    const int fbW = m_PlatformSurface->GetWidth();
+    const int fbH = m_PlatformSurface->GetHeight();
+
+    FRenderView view{};
+    view.scene     = scene;
+    view.camera    = cameraComp;
+    view.viewType  = EViewType::GameView;
+    view.viewIndex = 0;
+
+    // GAME: back buffer -> invalid FBO handle
+    view.targetFBO = RFramebufferHandle{};
+
+    view.viewportX = 0;
+    view.viewportY = 0;
+    view.viewportW = fbW;
+    view.viewportH = fbH;
+
+    // MSAA / post process profile
+    view.sampleCount       = 4;
+    view.bClearColor       = true;
+    view.bClearDepth       = true;
+    view.clearColorValue   = {0.1f, 0.1f, 0.1f, 1.0f};
+    view.renderMask        = 0xFFFFFFFFu;
+    view.bEnablePostProcess = true;
+    view.postProfileId      = 0; // default profile
+
+    m_Context->AddViewSource(view);
 }
 
 // void JEngine::OnScroll(double xOffset, double yOffset)
@@ -569,10 +595,10 @@ bool JEngine::BootstrapScene()
     return true;
 }
 
-void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper scene loading
+void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by proper scene loading
 {
-    constexpr const char* kSceneKey  = "StartupScene";
-    constexpr const char* kSceneName = "StartupScene";
+    constexpr const char* kSceneKey  = "ScannedScene";
+    constexpr const char* kSceneName = "ScannedScene";
 
     if (!GetSceneManager())
     {
@@ -584,9 +610,6 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     // 1) (Optional) Preload a few heavy assets to smooth first-frame stutter
     //    Keys should be the same strings you’ll use from components.
     // ---------------------------------------------------------------------
-    m_ResourceSystem->Load<ModelResource>("Dio Brando/DioMansion.obj",      "Dio Brando/DioMansion.obj");
-    m_ResourceSystem->Load<ModelResource>("MedievalWindow/MedievalWindow.obj","MedievalWindow/MedievalWindow.obj");
-
     // ---------------------------------------------------------------------
     // 2) Load or create the startup scene asset
     // ---------------------------------------------------------------------
@@ -629,39 +652,20 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
     // ---------------------------------------------------------------------
     JActor* actor1 = GetSceneManager()->SpawnActor<JActor>();
 
-    actor1->SetName("DioMansion");
+    actor1->SetName("TheArmoury");
 
     // Attach a model component at runtime to the actor’s root (uses route rendering)
-    auto* modelCompDio = actor1->AddRuntimeComponent<JModelComponent>();
-    modelCompDio->SetModel("Dio Brando/DioMansion.obj");
+    auto* modelArmoury = actor1->AddRuntimeComponent<JModelComponent>();
+    modelArmoury->SetModel("TheArmoury/model.obj");
 
-    auto actor2 = spawnModelActor("MedievalWindow", "MedievalWindow/MedievalWindow.obj");
-    actor1->SetActorLocation(-5.f, 10.f, 0.f);
-    actor2->SetActorLocation(0.f, -10.f, 0.f);
-
-    auto* modelComp = actor1->AddRuntimeComponent<JModelComponent>();
-    modelComp->SetModel("MedievalWindow/MedievalWindow.obj");
-
-    modelComp->AttachToComponent(modelCompDio);
-    modelComp->SetWorldPosition(10.f, 0.f, 2.f);
+    auto actor2 = spawnModelActor("Tape", "Tape/Tape.obj");
+    actor2->SetActorLocation(5.f, 0.f, 5.f);
+    actor2->SetActorScale(FVector3(0.9f));
 
     JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
     cameraActor->SetName("CameraActor");
     cameraActor->AddRuntimeComponent<JCameraComponent>();
     cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
-
-    auto* sceneMgr = JEngine::Get().GetSceneManager();
-    JActor* parent = sceneMgr->SpawnActor<JActor>();
-    JActor* child  = sceneMgr->SpawnActor<JActor>();
-
-    parent->SetName("ParentActor");
-    child->SetName("ChildActor");
-
-    parent->SetActorLocation(10.f, 0.f, 20.f);
-    child->AttachToActor(parent);
-    child->SetActorRelativeLocation(0.f, 5.f, 0.f); // relative to parent
-    std::cout << child->GetActorLocation().ToString() << std::endl;
-
 
     // ---------------------------------------------------------------------
     // 5) Save the scene so next launch restores this layout
@@ -671,7 +675,7 @@ void JEngine::CreateDefaultScene() // TEMP bootstrap; will be replaced by proper
 
 void JEngine::CalculateDeltaTime()
 {
-    auto currentFrame = static_cast<float>(glfwGetTime());
+    auto currentFrame = static_cast<float>(glfwGetTime()); // TODO: get the time from the surface interface
     m_Context->SetDeltaTime(currentFrame - m_Context->GetLastFrameTime());
     m_Context->SetLastFrameTime(currentFrame);
 }

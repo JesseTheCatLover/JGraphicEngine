@@ -8,6 +8,7 @@
 
 #include "Core/Math/FMatrix4.h"
 #include "Core/Math/FVector3.h"
+#include "Rendering/FViewParams.h"
 
 class IRenderSubmission;
 
@@ -15,6 +16,9 @@ struct FRenderContext
 {
     ERenderLayer layer = ERenderLayer::Opaque;
     uint16_t depthBucket{0};
+
+    // The view source that currently rendering this
+    const FViewParams* view = nullptr;
 };
 
 class RRenderProxy

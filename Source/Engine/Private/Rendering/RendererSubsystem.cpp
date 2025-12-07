@@ -9,111 +9,153 @@
 #include <algorithm>
 #include <iostream>
 #include "Core/EngineContext.h"
+#include "Rendering/FRenderView.h"
+#include "Scene/JScene.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 
 RendererSubsystem::RendererSubsystem(IRenderBackend *backend, EngineContext& ctx):
 m_Context(ctx),
 m_Backend(backend)
 {
-    BuildDefaultShader();
+    BuildDefaultShader();x
     m_CoordAdaptor = BuildCoordAdapter(m_Backend->GetCoordConvention());
 }
 
-void RendererSubsystem::BeginScene()
+void RendererSubsystem::RenderFrame(const std::vector<FRenderView> &views) // TODO: Maybe for future make the renderer do shared objects supporting between views for optimization
 {
-    if (!m_PPM)
-    {
-        std::cerr << "[RendererSubsystem] PostProcessManager is null, cannot render" << std::endl;
-        return;
-    }
-
-    m_CommandBuffer.Clear();
-    m_GPUStateCache = {};
-
-    // Determine desired size from surface/window
-    int fbW = m_Context.GetFramebufferWidth(), fbH = m_Context.GetFramebufferHeight();
-
-    int samples = 4; // TODO: Hardcoded for now; Expose a setting for samples
-    EnsureTargets(fbW, fbH, samples);
-
-    // Bind scene target for world rendering (MSAA if >1)
-    if (m_SceneMSAA.fbo.IsValid()) m_Backend->BindFramebuffer(m_SceneMSAA.fbo);
-    else m_Backend->BindFramebuffer(m_Scene.fbo);
-
-    // Match viewport to the render target
-    const FTarget& rt = m_SceneMSAA.fbo.IsValid() ? m_SceneMSAA : m_Scene;
-    m_Backend->SetViewport(0, 0, rt.w, rt.h);
-
-    // Clear
     m_Backend->BeginFrame();
-    m_Backend->ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
-}
 
-void RendererSubsystem::EndScene()
-{
-    auto camera = m_Context.GetCamera();
-    if (!camera)
+    // Even if there are no views, it's nice to at least clear the platform surface
+    if (views.empty())
     {
-        std::cerr << "[RendererSubsystem]: EndScene called with null camera" << std::endl;
+        // Fallback: clear default framebuffer to something neutral
+        m_Backend->BindFramebuffer(RFramebufferHandle{});
+        m_Backend->SetViewport(0, 0,
+                               m_Context.GetFramebufferWidth(),
+                               m_Context.GetFramebufferHeight());
+        m_Backend->ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
+        m_Backend->EndFrame();
         return;
     }
 
-    const float aspect = m_Context.GetAspectRatio();
-
-    // Only update projection if aspect actually changed
-    if (std::abs(aspect - m_LastAspect) > 0.0001f)
+    for (const FRenderView& view : views)
     {
-        camera->RebuildProjectionMatrix(aspect);
-        m_LastAspect = aspect;
+        if (!view.camera || view.viewportW <= 0 || view.viewportH <= 0)
+            continue;
+
+        // Reset GPU state cache per view so state doesn't leak between views
+        m_GPUStateCache = {};
+
+        // 1) Build per-view targets ( Size + Samples per view)
+        EnsureTargets(view.viewportW, view.viewportH, view.sampleCount);
+
+        FTarget& sceneRT = (view.sampleCount > 1 && m_SceneMSAA.fbo.IsValid()) ? m_SceneMSAA : m_Scene;
+
+        m_Backend->BindFramebuffer(sceneRT.fbo);
+        m_Backend->SetViewport(0, 0, sceneRT.w, sceneRT.h);
+
+        // 2) Clear Color/Depth if requested
+        if (view.bClearColor)
+        {
+            m_Backend->ClearColorDepth(
+                view.clearColorValue.x,
+                view.clearColorValue.y,
+                view.clearColorValue.z,
+                view.clearColorValue.w,
+                view.bClearDepth);
+        }
+        else
+        {
+            m_Backend->ClearDepthOnly(view.bClearDepth);
+        }
+
+        // 3) Build camera matrices
+        const float aspect = (sceneRT.h > 0) ? static_cast<float>(sceneRT.w) / static_cast<float>(sceneRT.h)
+        : 1.f;
+
+        FMatrix4 viewMat = view.camera->GetViewMatrix();
+        FMatrix4 projMat = view.camera->GetProjectionMatrix(aspect);
+
+        // 4) Gather renderables for this view into a local command buffer
+        RCommandBuffer cmd;
+
+        if (view.scene)
+        {
+            FRenderContext ctx{};
+
+            FViewParams viewParams{};
+            viewParams.viewType = view.viewType;
+            viewParams.viewIndex = view.viewIndex;
+            viewParams.camera = view.camera;
+            viewParams.viewMatrix = viewMat;
+            viewParams.projMatrix = projMat;
+            viewParams.nearPlane = view.camera->GetNearPlane();
+            viewParams.farPlane = view.camera->GetFarPlane();
+            viewParams.renderMask = view.renderMask;
+
+            ctx.view = &viewParams;
+
+            // Scene populates proxies into cmd buffer
+            view.scene->GatherRenderables(cmd, ctx);
+        }
+
+        // 5) Depth buckets + sorting
+        if (view.scene)
+        {
+            const float nearPlane = view.camera->GetNearPlane();
+            const float farPlane = view.camera->GetFarPlane();
+
+            RCommandQueue::ComputeDepthBucketsFor(
+                cmd.opaque, viewMat, nearPlane, farPlane);
+            RCommandQueue::ComputeDepthBucketsFor(
+                cmd.alpha,  viewMat, nearPlane, farPlane);
+
+            cmd.SortAllQueues(); // We do this after depth computation
+        }
+
+        // 6) Draw this view into sceneRenderTarget
+        DrawCommandBuffer(cmd, viewMat, projMat);
+
+        // 7) Resolve MSAA if needed
+        if (view.sampleCount > 1 && m_SceneMSAA.fbo.IsValid())
+        {
+            m_Backend->ResolveFramebuffer(
+                m_SceneMSAA.fbo, m_Scene.fbo,
+                IRenderBackend::EResolveMask::Color,
+                IRenderBackend::EResolveFilter::Nearest); // TODO: for future: when scaling during blit, use Linear for color masks; keep Nearest when depth is involved.
+        }
+
+        RTextureHandle finalColor = m_Scene.color;
+
+        // 8) Apply post process chain if enabled
+        if (view.bEnablePostProcess)
+        {
+            finalColor = RunPostProcessChain(finalColor, sceneRT.w, sceneRT.h, view.postProfileId);
+        }
+
+        // 9) Present this view to its target
+        // Editor vs game is just: does targetFBO exist or not?
+        if (view.targetFBO.IsValid()) // Editor
+        {
+            m_Backend->BindFramebuffer(view.targetFBO);
+        }
+        else // Game
+        {
+            m_Backend->UnbindFramebuffer();  // If it doesn't exist, it's a back-buffer
+        }
+
+        m_Backend->SetViewport(view.viewportX, view.viewportY, view.viewportW, view.viewportH);
+
+        // Uses PresentShader by default (tone+gamma)
+        BlitFullscreen(m_PresentShader, finalColor, view.viewportW, view.viewportH);
     }
 
-    m_ViewMat = camera->GetViewMatrix();
-    m_ProjMat = camera->GetProjectionMatrix(aspect);
-    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.opaque, m_ViewMat, camera->GetNearPlane(), camera->GetFarPlane());
-    RCommandQueue::ComputeDepthBucketsFor(m_CommandBuffer.alpha,  m_ViewMat, camera->GetNearPlane(), camera->GetFarPlane());
+    // Restore default framebuffer + viewport for UI/editor
+    m_Backend->BindFramebuffer(RFramebufferHandle{});
+    m_Backend->SetViewport(0, 0,
+                           m_Context.GetFramebufferWidth(),
+                           m_Context.GetFramebufferHeight());
 
-    m_CommandBuffer.SortAllQueues();
-    FlushCommandBuffer();
-
-    // Resolve MSAA to m_Scene if needed
-    if (m_SceneMSAA.fbo.IsValid()) {
-        m_Backend->ResolveFramebuffer(
-            m_SceneMSAA.fbo, m_Scene.fbo,
-            IRenderBackend::EResolveMask::Color,
-            IRenderBackend::EResolveFilter::Nearest); // TODO: for future: when scaling during blit, use Linear for color masks; keep Nearest when depth is involved.
-    }
-
-    int fbW, fbH;
-    if (m_Context.GetShouldRenderToPlatformSurface())
-    {
-        fbW = m_Context.GetFramebufferWidth(), fbH = m_Context.GetFramebufferHeight();
-    }
-    else
-    {
-        fbW = m_Context.GetSceneViewportWidth() ? m_Context.GetSceneViewportWidth(): m_Context.GetFramebufferWidth();
-        fbH = m_Context.GetSceneViewportHeight() ? m_Context.GetSceneViewportHeight() : m_Context.GetFramebufferHeight();
-    }
-
-    m_Backend->UnbindFramebuffer();
-    m_Backend->SetViewport(0, 0, fbW, fbH);
-
-    // Get final post-processed texture
-    RTextureHandle postprocessedTex = RunPostProcessChain(m_Scene.color, fbW, fbH);
-
-    // Game mode: actually blit the scene to the platform surface.
-    if (m_Context.GetShouldRenderToPlatformSurface())
-    {
-        // Present to platform surface
-        m_Backend->SetViewport(0, 0, fbW, fbH);
-        BlitFullscreen(m_PresentShader, postprocessedTex, fbW, fbH);
-    }
-    else
-    {
-        // Editor mode: leave default FBO alone for editor backend, just clear it
-        m_Backend->ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
-    }
-
-    // DO NOT swap buffers here; Engine loop does it after UI
     m_Backend->EndFrame();
 }
 
@@ -122,73 +164,88 @@ void RendererSubsystem::Shutdown()
     m_Backend->Shutdown();
 }
 
-void RendererSubsystem::FlushCommandBuffer()
+void RendererSubsystem::DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4& viewMat, const FMatrix4& projMat)
 {
-    if (!m_CommandBuffer.GetLights().empty())
-        m_Backend->UploadLights(m_CommandBuffer.GetLights().data(),
-            static_cast<uint32_t>(m_CommandBuffer.GetLights().size()));
+    // Upload lights for this buffer
+    if (!buffer.GetLights().empty())
+    {
+        m_Backend->UploadLights(
+            buffer.GetLights().data(),
+            static_cast<uint32_t>(buffer.GetLights().size())
+        );
+    }
 
     // Local lambda for state changes
-    auto setLayerState = [&](ERenderLayer layer) {
+    auto setLayerState = [&](ERenderLayer layer)
+    {
         switch (layer)
         {
             case ERenderLayer::Opaque:
                 m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
                 m_Backend->SetDepthState(true, true, IRenderBackend::ECompareFunc::LessEqual);
-                m_Backend->SetBlendState(false, IRenderBackend::EBlendFactor::One, IRenderBackend::EBlendFactor::Zero);
+                m_Backend->SetBlendState(false,
+                    IRenderBackend::EBlendFactor::One,
+                    IRenderBackend::EBlendFactor::Zero);
                 break;
 
             case ERenderLayer::Alpha:
                 m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
                 m_Backend->SetDepthState(true, false, IRenderBackend::ECompareFunc::LessEqual);
-                m_Backend->SetBlendState(true, IRenderBackend::EBlendFactor::SrcAlpha,
-                                         IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+                m_Backend->SetBlendState(true,
+                    IRenderBackend::EBlendFactor::SrcAlpha,
+                    IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
                 break;
 
             case ERenderLayer::Overlay:
                 m_Backend->SetCullMode(IRenderBackend::ECullMode::None);
                 m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
-                m_Backend->SetBlendState(true, IRenderBackend::EBlendFactor::SrcAlpha,
-                                         IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+                m_Backend->SetBlendState(true,
+                    IRenderBackend::EBlendFactor::SrcAlpha,
+                    IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
                 break;
         }
     };
 
-    auto drawList = [&](const std::vector<RDrawCommand> &cmds, ERenderLayer L) {
+    auto drawList = [&](const std::vector<RDrawCommand>& cmds, ERenderLayer L)
+    {
         if (cmds.empty()) return;
         setLayerState(L);
 
-        for (const auto &c: cmds)
+        for (const auto& c : cmds)
         {
-            // choose shader handle (use model shader if valid, otherwise fallback)
-            RShaderHandle shaderToUse = c.state.shader.IsValid() ? c.state.shader : m_DefaultShader;
+            // Choose shader handle (use model shader if valid, otherwise fallback)
+            RShaderHandle shaderToUse = c.state.shader.IsValid()
+                ? c.state.shader
+                : m_DefaultShader;
+
             if (!shaderToUse.IsValid())
             {
                 BuildDefaultShader();
                 shaderToUse = m_DefaultShader;
             }
 
-            // only re-bind when shader actually changed
+            // Only re-bind when shader actually changed
             if (shaderToUse.id != m_GPUStateCache.shader.id)
             {
-                m_GPUStateCache.shader = shaderToUse; // cache the actual shader handle
+                m_GPUStateCache.shader = shaderToUse;
                 m_Backend->BindShader(shaderToUse);
 
-                // upload camera matrices to the shader we just bound
-                ApplyCamera(shaderToUse, m_ViewMat, m_ProjMat);
+                // Upload camera matrices to the shader we just bound
+                ApplyCamera(shaderToUse, viewMat, projMat);
 
                 // Set light count once per shader bind
-                const int lightCount = (int) std::min<size_t>(m_CommandBuffer.GetLights().size(),
-                                                              IRenderBackend::kMaxLights);
+                const int lightCount =
+                    (int)std::min<size_t>(buffer.GetLights().size(),
+                                          IRenderBackend::kMaxLights);
                 m_Backend->SetUniformInt(shaderToUse, "u_LightCount", lightCount);
             }
 
-            // material cache update (use shaderToUse for uniform calls)
+            // Material cache update
             if (c.state.material != m_GPUStateCache.material)
             {
                 m_GPUStateCache.material = c.state.material;
 
-                if (const FSurfaceDesc *surf = GetMaterialSurface(c.state.material))
+                if (const FSurfaceDesc* surf = GetMaterialSurface(c.state.material))
                 {
                     int unit = 0;
 
@@ -201,7 +258,8 @@ void RendererSubsystem::FlushCommandBuffer()
                     }
                     else
                     {
-                        m_Backend->SetUniformVec4(shaderToUse, "u_BaseColorFactor", surf->params.baseColorFactor);
+                        m_Backend->SetUniformVec4(shaderToUse,
+                            "u_BaseColorFactor", surf->params.baseColorFactor);
                         m_Backend->SetUniformInt(shaderToUse, "u_UseBaseColorMap", 0);
                     }
 
@@ -217,8 +275,11 @@ void RendererSubsystem::FlushCommandBuffer()
                         m_Backend->BindTexture(surf->metallicRoughness, unit);
                         m_Backend->SetUniformInt(shaderToUse, "u_MetalRoughMap", unit);
                         ++unit;
-                        m_Backend->SetUniformFloat(shaderToUse, "u_MetallicFactor", surf->params.metallicFactor);
-                        m_Backend->SetUniformFloat(shaderToUse, "u_RoughnessFactor", surf->params.roughnessFactor);
+
+                        m_Backend->SetUniformFloat(shaderToUse,
+                            "u_MetallicFactor",  surf->params.metallicFactor);
+                        m_Backend->SetUniformFloat(shaderToUse,
+                            "u_RoughnessFactor", surf->params.roughnessFactor);
                     }
 
                     if (surf->emissive.IsValid())
@@ -228,7 +289,8 @@ void RendererSubsystem::FlushCommandBuffer()
                         ++unit;
                     }
 
-                    m_Backend->SetUniformVec2(shaderToUse, "u_UVTiling", surf->params.uvTiling);
+                    m_Backend->SetUniformVec2(shaderToUse,
+                        "u_UVTiling", surf->params.uvTiling);
                 }
             }
 
@@ -236,9 +298,10 @@ void RendererSubsystem::FlushCommandBuffer()
         }
     };
 
-    drawList(m_CommandBuffer.opaque.GetDrawCommands(), ERenderLayer::Opaque);
-    drawList(m_CommandBuffer.alpha.GetDrawCommands(), ERenderLayer::Alpha);
-    drawList(m_CommandBuffer.overlay.GetDrawCommands(), ERenderLayer::Overlay);
+    // Now draw for each layer
+    drawList(buffer.opaque.GetDrawCommands(),   ERenderLayer::Opaque);
+    drawList(buffer.alpha.GetDrawCommands(),    ERenderLayer::Alpha);
+    drawList(buffer.overlay.GetDrawCommands(),  ERenderLayer::Overlay);
 }
 
 void RendererSubsystem::BuildDefaultShader()
@@ -375,41 +438,41 @@ void RendererSubsystem::BuildTarget(FTarget &t, int w, int h, int samples, bool 
     t.w = w; t.h = h; t.samples = fb.samples;
 }
 
-RTextureHandle RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor, int w, int h)
+RTextureHandle RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor, int w, int h, uint32_t profileId)
 {
-    // Sync shaders with UI/gameplay changes
-    RebuildKernelsIfDirty();
-
     // If there's no PPM or no active passes, just return the input scene color
     if (!m_PPM)
     {
-        m_Scene.color = sceneColor;
-        return m_Scene.color;
+        return sceneColor;
     }
 
-    const auto& chain = m_PPM->GetChain();
-    bool anyEnabled = false;
-    for (auto& p : chain)
-        if (p.enabled) { anyEnabled = true; break; }
+    // Sync shaders with UI/gameplay changes
+    RebuildKernelsIfDirty(profileId);
 
-    if (!anyEnabled)
+    const auto& chain = m_PPM->GetChain(profileId);
+
+    bool bAnyEnabled = false;
+    for (auto& p : chain)
+        if (p.bEnabled)
+            { bAnyEnabled = true; break; }
+
+    if (!bAnyEnabled)
     {
-        m_Scene.color = sceneColor;
-        return m_Scene.color;
+        return sceneColor;
     }
 
     // Ping-pong
-    bool usePing = true;
+    bool bUsePing = true;
     RTextureHandle current = sceneColor;
 
     for (const auto& pass : chain)
     {
-        if (!pass.enabled) continue;
+        if (!pass.bEnabled) continue;
 
         auto it = m_Kernels.find(pass.name);
         if (it == m_Kernels.end()) continue; // unknown pass; skip
 
-        FTarget& dst = usePing ? m_Ping : m_Pong;
+        FTarget& dst = bUsePing ? m_Ping : m_Pong;
         m_Backend->BindFramebuffer(dst.fbo);
 
         // Set viewport
@@ -418,18 +481,19 @@ RTextureHandle RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor,
         // Bind shader + params and draw
         m_Backend->BindShader(it->second.shader);
         if (it->second.BindParams) it->second.BindParams(m_Backend, it->second.shader, pass.params);
+
         m_Backend->BindTexture(current, 0);
         BlitFullscreen(it->second.shader, current, dst.w, dst.h);
 
         m_Backend->UnbindFramebuffer();
+
         current = dst.color;
-        usePing = !usePing;
+        bUsePing = !bUsePing;
     }
 
     m_Backend->UnbindFramebuffer();
 
     // Final texture
-    m_Scene.color = current;
     return current;
 }
 
@@ -540,14 +604,14 @@ void RendererSubsystem::BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex
     m_Backend->SubmitMesh(m_FSQuad, shaderToUse, FMatrix4::Identity());
 }
 
-void RendererSubsystem::RebuildKernelsIfDirty()
+void RendererSubsystem::RebuildKernelsIfDirty(uint32_t profileId)
 {
     if (!m_PPM) return;
-    if (!m_PPM->IsDirtyAndClear()) return;
+    if (!m_PPM->IsDirtyAndClear(profileId)) return;
 
     std::unordered_map<std::string, FPassKernel> newKernels;
 
-    for (const auto& pass : m_PPM->GetChain())
+    for (const auto& pass : m_PPM->GetChain(profileId))
     {
         if (auto it = m_Kernels.find(pass.name); it != m_Kernels.end())
         {
@@ -556,9 +620,11 @@ void RendererSubsystem::RebuildKernelsIfDirty()
         else
         {
             EnsureFullscreenQuad();
+
             FPassKernel k{};
             k.shader = m_LinearCopyShader; // linear copy, NO gamma
-            k.BindParams = nullptr;
+            k.BindParams = nullptr; // can be specialized later
+
             newKernels.emplace(pass.name, k);
         }
     }
@@ -681,6 +747,6 @@ const FSurfaceDesc* RendererSubsystem::GetMaterialSurface(RMaterialHandle h) con
 
 void RendererSubsystem::EnqueueRenderTask(std::function<void()> fn)
 {
-    // TODO: later, push into a lock-free queue drained in BeginFrame/EndFrame
+    // TODO: later, push into a lock-free queue
     fn();
 }

@@ -28,8 +28,6 @@ public:
     virtual RMaterialHandle CreateMaterial(const FSurfaceDesc& surface) = 0;
     virtual void DestroyMaterial(RMaterialHandle h) = 0;
 
-    virtual IRenderSubmission& GetSubmission() = 0;
-
     [[nodiscard]] virtual RTextureHandle GetSceneColorTarget() const = 0;
 
     // virtual RMaterialHandle CreateMaterial(const RMaterialDesc& d) = 0;
