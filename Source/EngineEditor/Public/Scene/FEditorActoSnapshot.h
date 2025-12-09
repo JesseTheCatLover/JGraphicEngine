@@ -2,6 +2,7 @@
 
 #pragma once
 #include <cstdint>
+#include <string>
 
 using ActorID = std::uint64_t;
 

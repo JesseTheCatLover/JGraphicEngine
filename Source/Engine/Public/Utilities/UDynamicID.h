@@ -30,7 +30,7 @@
 class UDynamicID
 {
 public:
-    using IDType = u_int32_t; ///< Underlying integral ID type.
+    using IDType = uint32_t; ///< Underlying integral ID type.
 
     static constexpr IDType InvalidID = 0; ///< Sentinel value representing an invalid or uninitialized ID.
 

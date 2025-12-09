@@ -7,10 +7,9 @@
 #include <string>
 #include <typeindex>
 #include <type_traits>
-#include <cstdint>
 #include <iostream>
+#include <mutex>
 #include <ostream>
-#include <vector>
 
 #include "ICpuResource.h"
 #include "IGpuResource.h"

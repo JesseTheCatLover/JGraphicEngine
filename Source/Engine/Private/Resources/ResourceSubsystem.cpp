@@ -1,6 +1,7 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Resources/ResourceSubsystem.h"
+#include <vector>
 
 void ResourceSubsystem::Shutdown()
 {

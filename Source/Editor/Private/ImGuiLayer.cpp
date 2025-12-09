@@ -17,7 +17,7 @@ ImGuiLayer::ImGuiLayer(GLFWwindow *window):
 
     std::string defaultFontName = "FunnelSans";
     io.FontDefault = io.Fonts->AddFontFromFileTTF
-    (UPathFinder::ResolvePath(UPathFinder::Join("Assets" ,"Fonts", defaultFontName + ".ttf")).c_str(), 16.0f);
+    (UPathFinder::ResolvePath(UPathFinder::Join("Assets" ,"Fonts", defaultFontName + ".ttf")).string().c_str(), 16.0f);
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 

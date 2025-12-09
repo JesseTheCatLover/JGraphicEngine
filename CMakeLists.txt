@@ -28,6 +28,7 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE
         GIT_REPOSITORY https://github.com/assimp/assimp.git
 )
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Treat warnings as errors" FORCE)
 
 FetchContent_Declare(
         glm

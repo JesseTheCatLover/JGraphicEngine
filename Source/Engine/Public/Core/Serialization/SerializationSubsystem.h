@@ -1,6 +1,7 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include <string>
 #include <unordered_map>
 #include <vector>
 
