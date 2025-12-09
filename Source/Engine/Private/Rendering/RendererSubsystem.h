@@ -9,6 +9,7 @@
 #include "Rendering/RHandles.h"
 #include "RCommandBuffer.h"
 
+class JScene;
 struct FRenderView;
 class EngineContext;
 struct FBackendCoordDesc;
@@ -17,6 +18,12 @@ struct FCoordAdapter
 {
     FMatrix4 EngineToBackend;
     FMatrix4 BackendToEngine;
+};
+
+struct FSceneBatch
+{
+    JScene* scene = nullptr;
+    std::vector<const FRenderView*> views;
 };
 
 struct FPassParam;
@@ -73,6 +80,9 @@ private:
     FTarget m_Ping{};
     FTarget m_Pong{};
 
+    // Command buffer for scene-gather stage
+    RCommandBuffer m_SceneCmd;
+
     // Fullscreen quad/tri
     RMeshHandle   m_FSQuad{};
     RShaderHandle m_LinearCopyShader; // raw linear copy
@@ -92,6 +102,7 @@ private:
     void DestroyTarget(FTarget& t);
     void BuildTarget(FTarget& t, int w, int h, int samples, bool withDepth = false, bool hdr = false, bool srgb = false);
     RTextureHandle RunPostProcessChain(RTextureHandle sceneColor, int w, int h, uint32_t profileId);
+    void RenderSceneBatch(const FSceneBatch& batch);
     void EnsureFullscreenQuad();
     void BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
     void RebuildKernelsIfDirty(uint32_t profileId);

@@ -16,6 +16,22 @@ struct FGPUStateCache
     RShaderHandle shader{};
     RMeshHandle mesh{};
     RMaterialHandle material{};
+
+    // Called once per frame
+    void ResetForFrame()
+    {
+        // Full reset
+        shader = RShaderHandle{};
+        mesh = RMeshHandle{};
+        material = RMaterialHandle{};
+    }
+
+    // Called once per view
+    void ResetForView()
+    {
+        // We MUST force a shader rebind so we can upload new view/proj.
+        shader = RShaderHandle{};
+    }
 };
 
 struct RDrawCommand

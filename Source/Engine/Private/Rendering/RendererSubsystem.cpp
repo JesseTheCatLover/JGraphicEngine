@@ -7,6 +7,7 @@
 #include "Core/EngineGlobals.h"
 #include "Framework/PostProcessManager.h"
 #include <algorithm>
+#include <unordered_map>
 #include <iostream>
 #include "Core/EngineContext.h"
 #include "Rendering/FRenderView.h"
@@ -21,7 +22,7 @@ m_Backend(backend)
     m_CoordAdaptor = BuildCoordAdapter(m_Backend->GetCoordConvention());
 }
 
-void RendererSubsystem::RenderFrame(const std::vector<FRenderView> &views) // TODO: Maybe for future make the renderer do shared objects supporting between views for optimization
+void RendererSubsystem::RenderFrame(const std::vector<FRenderView> &views)
 {
     m_Backend->BeginFrame();
 
@@ -38,124 +39,30 @@ void RendererSubsystem::RenderFrame(const std::vector<FRenderView> &views) // TO
         return;
     }
 
+    // 0) Group all views by scene pointer
+    std::unordered_map<JScene*, FSceneBatch> sceneBatches;
+    sceneBatches.reserve(views.size());
+
     for (const FRenderView& view : views)
     {
-        if (!view.camera || view.viewportW <= 0 || view.viewportH <= 0)
+        if (!view.scene || !view.camera || view.viewportW <= 0 || view.viewportH <= 0)
             continue;
 
-        // Reset GPU state cache per view so state doesn't leak between views
-        m_GPUStateCache = {};
-
-        // 1) Build per-view targets ( Size + Samples per view)
-        EnsureTargets(view.viewportW, view.viewportH, view.sampleCount);
-
-        FTarget& sceneRT = (view.sampleCount > 1 && m_SceneMSAA.fbo.IsValid()) ? m_SceneMSAA : m_Scene;
-
-        m_Backend->BindFramebuffer(sceneRT.fbo);
-        m_Backend->SetViewport(0, 0, sceneRT.w, sceneRT.h);
-
-        // 2) Clear Color/Depth if requested
-        if (view.bClearColor)
-        {
-            m_Backend->ClearColorDepth(
-                view.clearColorValue.x,
-                view.clearColorValue.y,
-                view.clearColorValue.z,
-                view.clearColorValue.w,
-                view.bClearDepth);
-        }
-        else
-        {
-            m_Backend->ClearDepthOnly(view.bClearDepth);
-        }
-
-        // 3) Build camera matrices
-        const float aspect = (sceneRT.h > 0) ? static_cast<float>(sceneRT.w) / static_cast<float>(sceneRT.h)
-        : 1.f;
-
-        FMatrix4 viewMat = view.camera->GetViewMatrix();
-        FMatrix4 projMat = view.camera->GetProjectionMatrix(aspect);
-
-        // 4) Gather renderables for this view into a local command buffer
-        RCommandBuffer cmd;
-
-        if (view.scene)
-        {
-            FRenderContext ctx{};
-
-            FViewParams viewParams{};
-            viewParams.viewType = view.viewType;
-            viewParams.viewIndex = view.viewIndex;
-            viewParams.camera = view.camera;
-            viewParams.viewMatrix = viewMat;
-            viewParams.projMatrix = projMat;
-            viewParams.nearPlane = view.camera->GetNearPlane();
-            viewParams.farPlane = view.camera->GetFarPlane();
-            viewParams.renderMask = view.renderMask;
-
-            ctx.view = &viewParams;
-
-            // Scene populates proxies into cmd buffer
-            view.scene->GatherRenderables(cmd, ctx);
-        }
-
-        // 5) Depth buckets + sorting
-        if (view.scene)
-        {
-            const float nearPlane = view.camera->GetNearPlane();
-            const float farPlane = view.camera->GetFarPlane();
-
-            RCommandQueue::ComputeDepthBucketsFor(
-                cmd.opaque, viewMat, nearPlane, farPlane);
-            RCommandQueue::ComputeDepthBucketsFor(
-                cmd.alpha,  viewMat, nearPlane, farPlane);
-
-            cmd.SortAllQueues(); // We do this after depth computation
-        }
-
-        // 6) Draw this view into sceneRenderTarget
-        DrawCommandBuffer(cmd, viewMat, projMat);
-
-        // 7) Resolve MSAA if needed
-        if (view.sampleCount > 1 && m_SceneMSAA.fbo.IsValid())
-        {
-            m_Backend->ResolveFramebuffer(
-                m_SceneMSAA.fbo, m_Scene.fbo,
-                IRenderBackend::EResolveMask::Color,
-                IRenderBackend::EResolveFilter::Nearest); // TODO: for future: when scaling during blit, use Linear for color masks; keep Nearest when depth is involved.
-        }
-
-        RTextureHandle finalColor = m_Scene.color;
-
-        // 8) Apply post process chain if enabled
-        if (view.bEnablePostProcess)
-        {
-            finalColor = RunPostProcessChain(finalColor, sceneRT.w, sceneRT.h, view.postProfileId);
-        }
-
-        // 9) Present this view to its target
-        // Editor vs game is just: does targetFBO exist or not?
-        if (view.targetFBO.IsValid()) // Editor
-        {
-            m_Backend->BindFramebuffer(view.targetFBO);
-        }
-        else // Game
-        {
-            m_Backend->UnbindFramebuffer();  // If it doesn't exist, it's a back-buffer
-        }
-
-        m_Backend->SetViewport(view.viewportX, view.viewportY, view.viewportW, view.viewportH);
-
-        // Choose present shader based on view flag
-        RShaderHandle presentShader = view.bApplyPostGamma
-            ? m_PresentShader    // tone + gamma
-            : m_LinearCopyShader; // pure linear copy, no tone/gamma
-
-        // Uses PresentShader by default (tone+gamma)
-        BlitFullscreen(presentShader, finalColor, view.viewportW, view.viewportH);
+        auto& batch = sceneBatches[view.scene];
+        batch.scene = view.scene;
+        batch.views.push_back(&view);
     }
 
-    // Restore default framebuffer + viewport for UI/editor
+    // Reset per-frame cache
+    m_GPUStateCache.ResetForFrame();
+
+    // 1) Render each scene batch
+    for (auto& [scenePtr, batch] : sceneBatches)
+    {
+        RenderSceneBatch(batch);
+    }
+
+    // 2) Restore default framebuffer + viewport for UI/editor
     m_Backend->BindFramebuffer(RFramebufferHandle{});
     m_Backend->SetViewport(0, 0,
                            m_Context.GetFramebufferWidth(),
@@ -500,6 +407,116 @@ RTextureHandle RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor,
 
     // Final texture
     return current;
+}
+
+void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
+{
+    if (!batch.scene || batch.views.empty())
+        return;
+
+    // Gather renderables once for this scene
+    m_SceneCmd.Clear();
+    {
+        FRenderContext ctx{};
+        // TODO: With scene batching we have this trade off. We can make GatherRenderables view-agnostic. anything else
+        // is done after gather, per-view. just like the depthbuckets.
+        ctx.view = nullptr;
+
+        batch.scene->GatherRenderables(m_SceneCmd, ctx);
+    }
+
+    // 2) For each view, do per-view depth buckets, sort, draw, post, present.
+    for (const FRenderView* viewPtr : batch.views)
+    {
+        const FRenderView& view = *viewPtr;
+
+        if (!view.camera || view.viewportW <= 0 || view.viewportH <= 0)
+            continue;
+
+        // Reset GPU states per view
+        m_GPUStateCache.ResetForView();
+
+        // 1) Build per-view targets (size + samples)
+        EnsureTargets(view.viewportW, view.viewportH, view.sampleCount);
+
+        FTarget& sceneRT = (view.sampleCount > 1 && m_SceneMSAA.fbo.IsValid())
+            ? m_SceneMSAA
+            : m_Scene;
+
+        m_Backend->BindFramebuffer(sceneRT.fbo);
+        m_Backend->SetViewport(0, 0, sceneRT.w, sceneRT.h);
+
+        // 2) Clear Color/Depth if requested
+        if (view.bClearColor)
+        {
+            m_Backend->ClearColorDepth(
+                view.clearColorValue.x,
+                view.clearColorValue.y,
+                view.clearColorValue.z,
+                view.clearColorValue.w,
+                view.bClearDepth);
+        }
+        else
+        {
+            m_Backend->ClearDepthOnly(view.bClearDepth);
+        }
+
+        // 3) Build camera matrices
+        const float aspect = (sceneRT.h > 0)
+            ? static_cast<float>(sceneRT.w) / static_cast<float>(sceneRT.h)
+            : 1.f;
+
+        FMatrix4 viewMat = view.camera->GetViewMatrix();
+        FMatrix4 projMat = view.camera->GetProjectionMatrix(aspect);
+
+        // 4) Build a per-view command buffer from the scene-wide one
+        // TODO: For now we just copy it; later we can optimize this to avoid full copy.
+        RCommandBuffer viewCmd = m_SceneCmd;
+
+        const float nearPlane = view.camera->GetNearPlane();
+        const float farPlane  = view.camera->GetFarPlane();
+
+        RCommandQueue::ComputeDepthBucketsFor(
+            viewCmd.opaque, viewMat, nearPlane, farPlane);
+        RCommandQueue::ComputeDepthBucketsFor(
+            viewCmd.alpha,  viewMat, nearPlane, farPlane);
+
+        viewCmd.SortAllQueues();
+
+        // 5) Draw this view into sceneRT
+        DrawCommandBuffer(viewCmd, viewMat, projMat);
+
+        // 6) Resolve MSAA if needed
+        if (view.sampleCount > 1 && m_SceneMSAA.fbo.IsValid())
+        {
+            m_Backend->ResolveFramebuffer(
+                m_SceneMSAA.fbo, m_Scene.fbo,
+                IRenderBackend::EResolveMask::Color,
+                IRenderBackend::EResolveFilter::Nearest);
+        }
+
+        RTextureHandle finalColor = m_Scene.color;
+
+        // 7) Post-process
+        if (view.bEnablePostProcess)
+        {
+            finalColor = RunPostProcessChain(finalColor, sceneRT.w, sceneRT.h, view.postProfileId);
+        }
+
+        // 8) Present this view
+        if (view.targetFBO.IsValid())  // Editor/RT
+            m_Backend->BindFramebuffer(view.targetFBO);
+        else                           // Game = backbuffer
+            m_Backend->UnbindFramebuffer();
+
+        m_Backend->SetViewport(view.viewportX, view.viewportY, view.viewportW, view.viewportH);
+
+        RShaderHandle presentShader = view.bApplyPostGamma
+            ? m_PresentShader       // tone + gamma
+            : m_LinearCopyShader;   // pure linear copy
+
+        BlitFullscreen(presentShader, finalColor, view.viewportW, view.viewportH);
+    }
 }
 
 void RendererSubsystem::EnsureFullscreenQuad()
