@@ -35,20 +35,22 @@ public:
     ~EngineEditor();
 
     // Mutating operations – ONLY EditorCore may call them
-    [[nodiscard]] EditorSceneAPI& GetScene() { return m_SceneAPI; }
-    [[nodiscard]] EditorViewportAPI& GetViewport() { return m_ViewportAPI; }
-    [[nodiscard]] EditorSurfaceAPI& GetSurface() { return m_SurfaceAPI; }
+    [[nodiscard]] EditorSceneAPI& GetSceneAPI() { return m_SceneAPI; }
+    [[nodiscard]] EditorViewportAPI& GetViewportAPI() { return m_ViewportAPI; }
+    [[nodiscard]] EditorSurfaceAPI& GetSurfaceAPI() { return m_SurfaceAPI; }
 
     void TickAllTools(float deltaTime, const FEditorToolFrameState& state);
-    void SubmitEditorViewSources(const FEditorToolFrameState& state);
+    void SubmitEditorViewSources(const FCameraToolState& state);
 
     // Camera Tool
     UDynamicID::IDType CreateCameraEditorTool();
     bool DestroyCameraEditorTool(UDynamicID::IDType cameraID);
     CameraEditorTool* GetCameraEditorTool(UDynamicID::IDType cameraID);
+    // Viewport textures for ImGui
+    RTextureHandle GetViewportColorHandle(UDynamicID::IDType cameraID);
+    void* GetNativeTextureHandle(RTextureHandle handle) const;
 
 private:
     // Helpers:
-    [[nodiscard]] std::vector<ICameraViewSource*> CollectEditorCameraViews() const;
-    void TickCameraTools(float deltaTime, const FEditorToolFrameState& state);
+    void TickCameraTools(float deltaTime, const FCameraToolState& state);
 };

@@ -239,15 +239,18 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
 
     m_Context = MakeUnique<EditorContext>();
 
-    // EngineEditor (safe bridge API)
+    // EngineEditor (safe bridge API to Engine)
     m_EngineEditor = TUniquePtr<EngineEditor>(new EngineEditor());
 
     // Create EditorCore to drive context & commands
-    m_Core = MakeUnique<EditorCore>(*m_Context, *m_EngineEditor);
+    m_Core = TUniquePtr<EditorCore>(new EditorCore(*m_Context, *m_EngineEditor));
+
+    int viewportIndex = 0;
 
     // Register panels
     m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
-    m_Panels.emplace_back(MakeUnique<SceneViewportPanel>());
+    m_Panels.emplace_back(MakeUnique<SceneViewportPanel>(viewportIndex++));
+    m_Panels.emplace_back(MakeUnique<SceneViewportPanel>(viewportIndex++)); // Second viewport
 
     // Call OnCreate for all panels now that Context/Core exist
     for (auto& panel : m_Panels)

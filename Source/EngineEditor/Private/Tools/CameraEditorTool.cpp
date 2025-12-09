@@ -10,7 +10,7 @@
 
 CameraEditorTool::CameraEditorTool()
 {
-    m_WorldTransform.SetPosition(-20.f, 0.f, 15.f);
+    m_WorldTransform.SetPosition(0.f, 0.f, 15.f);
 
     m_Pitch = 0.f;
     m_Yaw = 0.f;

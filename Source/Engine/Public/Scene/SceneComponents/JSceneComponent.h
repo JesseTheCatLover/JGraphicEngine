@@ -160,6 +160,8 @@ protected:
         MarkWorldDirty();
     }
 
+    virtual void OnWorldTransformChanged() {}
+
     void BeginPlay() override;
 
     void EndPlay() override;

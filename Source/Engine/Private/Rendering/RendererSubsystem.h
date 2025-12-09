@@ -123,6 +123,9 @@ public:
     RMaterialHandle CreateMaterial(const FSurfaceDesc &surface) override;
     void DestroyMaterial(RMaterialHandle h) override;
 
+    RFramebufferHandle CreateColorTarget(int width, int height, RTextureHandle& outColor);
+    void DestroyColorTarget(RFramebufferHandle fbo);
+
     void SetDefaultShader(RShaderHandle h) { m_DefaultShader = h; }
     [[nodiscard]] RShaderHandle GetDefaultShader() const { return m_DefaultShader; }
 

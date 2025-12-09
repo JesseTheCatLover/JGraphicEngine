@@ -82,6 +82,7 @@ private:
 
     void Tick();
     void BuildGameViews();
+    void TickGameFreeCamera(float deltaTime);
 
     void RegisterServices();
 

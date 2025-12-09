@@ -6,6 +6,10 @@
 #include <unordered_map>
 #include "Core/EngineContext.h"
 #include "Core/JEngine.h"
+#include "Framework/SceneManager.h"
+#include "Rendering/FRenderView.h"
+#include "Rendering/IPlatformSurface.h"
+#include "Rendering/RendererSubsystem.h"
 #include "Tools/CameraEditorTool.h"
 
 EngineEditor::EngineEditor()
@@ -28,41 +32,105 @@ EngineEditor::~EngineEditor()
 
 void EngineEditor::TickAllTools(float deltaTime, const FEditorToolFrameState& state)
 {
-    TickCameraTools(deltaTime, state);
+    TickCameraTools(deltaTime, state.camera);
 }
 
-void EngineEditor::SubmitEditorViewSources(const FEditorToolFrameState& state) // TODO: TEMP
+void EngineEditor::TickCameraTools(float deltaTime, const FCameraToolState& state)
 {
-    ICameraViewSource* camera = nullptr;
-    float aspect = 16.f / 9.f;
-
-    if (state.activeCameraId != UDynamicID::InvalidID)
-    {
-        if (CameraEditorTool* tool = m_CameraTools.Get(state.activeCameraId))
+    m_CameraTools.ForEach(
+        [&](UDynamicID::IDType id, CameraEditorTool& tool)
         {
-            camera = tool;
+            const bool isActive = (id == state.activeCameraId);
 
-            auto it = state.cameraAspectMap.find(state.activeCameraId);
-            if (it != state.cameraAspectMap.end())
-                aspect = it->second;
-        }
-    }
+            float aspect = 16.f / 9.f;
+            if (auto itVS = state.viewstateMap.find(id); itVS != state.viewstateMap.end())
+            {
+                aspect = itVS->second.aspect;
+            }
 
-    // Fallback: if no active camera, either:
-    // - leave camera as nullptr (renderer logs and bails), or
-    // - pick the first camera tool as a default.
-    if (!camera)
+            tool.Tick(deltaTime, isActive, aspect);
+        });
+}
+
+void EngineEditor::SubmitEditorViewSources(const FCameraToolState& state)
+{
+    auto* scene = m_SceneManager.GetActiveScene();
+    if (!scene)
+        return;
+
+    // One FRenderView per camera entry in the state
+    for (const auto& [cameraId, viewState] : state.viewstateMap)
     {
-        auto views = CollectEditorCameraViews();
-        if (!views.empty())
-        {
-            camera = views.front();
-            // aspect stays default or you can guess something better.
-        }
-    }
+        CameraEditorTool* tool = m_CameraTools.Get(cameraId);
+        if (!tool)
+            continue;
 
-    // Push the result into EngineContext so RendererSubsystem can use it.
-    m_Context.SetCamera(camera, aspect);
+        if (viewState.width <= 0.f || viewState.height <= 0.f)
+            continue;
+
+        const int vpW = static_cast<int>(viewState.width);
+        const int vpH = static_cast<int>(viewState.height);
+
+        // Per-camera MSAA sample count (for scene RT)
+        int samples = 1;
+        if (auto itSamples = state.cameraSampleMap.find(cameraId);
+            itSamples != state.cameraSampleMap.end())
+        {
+            samples = itSamples->second;
+        }
+
+        // Ensure this camera has a viewport RT of the right size
+        FViewportRT& rt = tool->GetRT();
+        if (!rt.fbo.IsValid() || rt.width != vpW || rt.height != vpH)
+        {
+            // Destroy old
+            if (rt.fbo.IsValid())
+            {
+                m_Renderer.DestroyColorTarget(rt.fbo);
+                rt.fbo   = {};
+                rt.color = {};
+                rt.width = 0;
+                rt.height = 0;
+            }
+
+            // Create new
+            RTextureHandle colorTex{};
+            RFramebufferHandle fbo = m_Renderer.CreateColorTarget(vpW, vpH, colorTex);
+
+            rt.fbo   = fbo;
+            rt.color = colorTex;
+            rt.width = vpW;
+            rt.height = vpH;
+        }
+
+        if (!rt.fbo.IsValid() || !rt.color.IsValid())
+            continue;
+
+        // Build the view for this editor camera
+        FRenderView view{};
+        view.scene     = scene;
+        view.camera    = tool;
+        view.viewType  = EViewType::GameView;   // or EViewType::EditorScene if you add it
+        view.viewIndex = viewState.viewIndex;
+
+        view.targetFBO = rt.fbo;     // blit final scene into this FBO
+
+        view.viewportX = 0;
+        view.viewportY = 0;
+        view.viewportW = vpW;
+        view.viewportH = vpH;
+
+        view.sampleCount        = samples;
+        view.bClearColor        = true;
+        view.bClearDepth        = true;
+        view.clearColorValue    = {0.1f, 0.1f, 0.1f, 1.0f};
+        view.renderMask         = 0xFFFFFFFFu;
+        view.bApplyPostGamma    = false; // TODO: check this later
+        view.bEnablePostProcess = true;
+        view.postProfileId      = 0;
+
+        m_Context.AddViewSource(view);
+    }
 }
 
 UDynamicID::IDType EngineEditor::CreateCameraEditorTool()
@@ -72,6 +140,16 @@ UDynamicID::IDType EngineEditor::CreateCameraEditorTool()
 
 bool EngineEditor::DestroyCameraEditorTool(UDynamicID::IDType cameraID)
 {
+    // Destroy its RT before removing
+    if (CameraEditorTool* tool = m_CameraTools.Get(cameraID))
+    {
+        FViewportRT& rt = tool->GetRT();
+        if (rt.fbo.IsValid())
+        {
+            m_Renderer.DestroyColorTarget(rt.fbo);
+            rt = {};
+        }
+    }
     return m_CameraTools.Destroy(cameraID);
 }
 
@@ -80,29 +158,14 @@ CameraEditorTool* EngineEditor::GetCameraEditorTool(UDynamicID::IDType cameraID)
     return m_CameraTools.Get(cameraID);
 }
 
-void EngineEditor::TickCameraTools(float deltaTime, const FEditorToolFrameState& state)
+RTextureHandle EngineEditor::GetViewportColorHandle(UDynamicID::IDType cameraID)
 {
-    m_CameraTools.ForEach(
-        [&](UDynamicID::IDType id, CameraEditorTool& tool)
-        {
-            const bool isActive = (id == state.activeCameraId);
-            float aspect = 16.f / 9.f;
-
-            if (auto it = state.cameraAspectMap.find(id); it != state.cameraAspectMap.end())
-                aspect = it->second;
-
-            tool.Tick(deltaTime, isActive, aspect);
-        });
+    if (CameraEditorTool* tool = m_CameraTools.Get(cameraID))
+        return tool->GetRT().color;
+    return {};
 }
 
-std::vector<ICameraViewSource*> EngineEditor::CollectEditorCameraViews() const
+void* EngineEditor::GetNativeTextureHandle(RTextureHandle handle) const
 {
-    std::vector<ICameraViewSource*> outViews;
-    m_CameraTools.ForEach(
-        [&](UDynamicID::IDType id, const CameraEditorTool& tool)
-        {
-            // CameraEditorTool is an ICameraViewSource
-            outViews.push_back(const_cast<CameraEditorTool*>(&tool));
-        });
-    return outViews;
+    return m_Renderer.GetNativeTextureHandle(handle);
 }

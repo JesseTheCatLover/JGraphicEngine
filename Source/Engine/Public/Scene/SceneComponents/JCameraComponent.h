@@ -40,7 +40,10 @@ protected:
 
     // Matrices
     [[nodiscard]] const FMatrix4& GetViewMatrix() const override;
+
     [[nodiscard]] const FMatrix4& GetProjectionMatrix(float aspectRatio) const override;
+
+    void OnWorldTransformChanged() override;
 
     float GetNearPlane() const override { return m_NearClip; }
     float GetFarPlane() const override { return m_FarClip; }

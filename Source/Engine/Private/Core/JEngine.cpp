@@ -317,114 +317,6 @@ bool JEngine::InitializeManagers()
             m_Context->SetRunning(false);
         });
 
-
-    if (!m_EditorBridge)
-    {
-        // Small helper to fetch active camera + actor
-        auto getActiveCameraAndActor = [this]() -> std::pair<JCameraComponent*, JActor*>
-        {
-            auto* sceneMgr = GetSceneManager();
-            if (!sceneMgr) return { nullptr, nullptr };
-
-            auto* scene = sceneMgr->GetActiveScene();
-            if (!scene) return { nullptr, nullptr };
-
-            auto* camera = scene->GetCameraComponent();
-            if (!camera) return { nullptr, nullptr };
-
-            JActor* camActor = camera->GetOwnerActor();
-            if (!camActor) return { nullptr, nullptr };
-
-            return { camera, camActor };
-        };
-
-        // ----------------- LOOK (Editor_Look) -----------------
-        static bool  gLookInitialized = false;
-        static float gYaw   = 0.0f;
-        static float gPitch = 0.0f;
-
-        input->BindAxis2D("Editor_Look", EInputEventPhase::AxisChanged,
-                          [this, getActiveCameraAndActor](InputChannelHandle, const FActionStateAxis2D& state)
-                          {
-                              auto [camera, camActor] = getActiveCameraAndActor();
-                              (void)camActor;
-                              if (!camera) return;
-
-                              // Initialize yaw/pitch from current camera rotation once
-                              if (!gLookInitialized)
-                              {
-                                  FTransform world = camera->GetWorldTransform();
-                                  FEuler rotation = world.GetRotation().ToEuler();
-
-                                  gPitch = rotation.Pitch;
-                                  gYaw   = rotation.Yaw;
-                                  gLookInitialized = true;
-                              }
-
-                              float dx = state.x;
-                              float dy = state.y;
-
-                              if (dx == 0.0f && dy == 0.0f)
-                                  return;
-
-                              gYaw += dx;
-                              gPitch -= dy;
-
-                              gPitch = FMath::Radians(FMath::Clamp(FMath::Degrees(gPitch), -90.f, 90.f));
-
-                              FEuler euler(-gPitch, gYaw, 0.f);
-                              FQuat newRot = euler.ToQuat();
-                              camera->SetWorldRotation(newRot);
-                          });
-
-        // ----------------- MOVE (Editor_Move) -----------------
-        input->BindAxis2D("Editor_Move", EInputEventPhase::Held,
-                          [this, getActiveCameraAndActor](InputChannelHandle, const FActionStateAxis2D& state)
-                          {
-                              auto [camera, camActor] = getActiveCameraAndActor();
-                              if (!camera || !camActor) return;
-
-                              const float moveSpeed = 15.0f;
-                              float deltaTime = m_Context->GetDeltaTime();
-
-                              // state.value.x = W/S, state.value.y = A/D
-                              FVector2 moveXY = {state.x, state.y};
-
-                              FVector3 movement(0.f, 0.f, 0.f);
-                              movement += camera->GetForwardVector() * moveXY.x; // W/S
-                              movement += camera->GetRightVector()  * moveXY.y; // A/D
-
-                              if (movement.Length() <= 0.0f)
-                                  return;
-
-                              movement = movement.Normalized() * moveSpeed * deltaTime;
-
-                              FVector3 pos = camActor->GetActorLocation();
-                              camActor->SetActorLocation(pos + movement);
-                          });
-
-        // ----------------- MOVE UP/DOWN (Editor_MoveUpDown) -----------------
-        input->BindAxis1D("Editor_MoveUpDown", EInputEventPhase::Held,
-                          [this, getActiveCameraAndActor](InputChannelHandle, const FActionStateAxis1D& state)
-                          {
-                              auto [camera, camActor] = getActiveCameraAndActor();
-                              if (!camera || !camActor) return;
-
-                              const float moveSpeed = 15.0f;
-                              float deltaTime = m_Context->GetDeltaTime();
-
-                              float moveZ = state.value; // +1 = Space, -1 = Shift
-
-                              if (moveZ == 0.0f)
-                                  return;
-
-                              FVector3 movement = FVector3::Up() * moveZ * moveSpeed * deltaTime;
-
-                              FVector3 pos = camActor->GetActorLocation();
-                              camActor->SetActorLocation(pos + movement);
-                          });
-    }
-
     return true;
 }
 
@@ -482,9 +374,14 @@ void JEngine::Tick()
 
     if (m_EditorBridge)
         m_EditorBridge->OnTick(deltaTime);
+    else
+    {
+        // Game-mode free camera tick
+        TickGameFreeCamera(deltaTime);
+    }
 }
 
-void JEngine::BuildGameViews()
+void JEngine::BuildGameViews() // TODO: this responsibility will be placed in a dedicated framework (SplitScreenManager)
 {
     auto* scene = GetSceneManager() ? GetSceneManager()->GetActiveScene() : nullptr;
     if (!scene)
@@ -494,8 +391,8 @@ void JEngine::BuildGameViews()
     if (!cameraComp)
         return;
 
-    const int fbW = m_PlatformSurface->GetWidth();
-    const int fbH = m_PlatformSurface->GetHeight();
+    const int fbW = m_Context->GetFramebufferWidth();
+    const int fbH = m_Context->GetFramebufferHeight();
 
     FRenderView view{};
     view.scene     = scene;
@@ -521,6 +418,81 @@ void JEngine::BuildGameViews()
     view.postProfileId      = 0; // default profile
 
     m_Context->AddViewSource(view);
+}
+
+void JEngine::TickGameFreeCamera(float deltaTime)
+{
+    // No editor: we assume main camera is the gameplay camera.
+    auto* sceneMgr = GetSceneManager();
+    if (!sceneMgr) return;
+
+    auto* scene = sceneMgr->GetActiveScene();
+    if (!scene) return;
+
+    auto* camera = scene->GetCameraComponent();
+    if (!camera) return;
+
+    InputManager* input = GetInputManager();
+    if (!input) return;
+
+    // --- Mouse look (same scale as editor camera tool) ---
+    FVector2 lookDelta = input->GetAxis2D("Editor_Look");
+    if (lookDelta.x != 0.f || lookDelta.y != 0.f)
+    {
+        static bool sLookInitialized = false;
+        static float sYaw   = 0.f;
+        static float sPitch = 0.f;
+
+        if (!sLookInitialized)
+        {
+            FTransform world = camera->GetWorldTransform();
+            FEuler rotation  = world.GetRotation().ToEuler();
+            sPitch = rotation.Pitch;
+            sYaw  = rotation.Yaw;
+            sLookInitialized = true;
+        }
+
+        sYaw += lookDelta.x;
+        sPitch -= lookDelta.y;
+
+        sPitch = FMath::Radians(
+            FMath::Clamp(FMath::Degrees(sPitch), -90.f, 90.f)
+        );
+
+        FEuler euler(-sPitch, sYaw, 0.f);
+        FQuat newRot = euler.ToQuat();
+        camera->SetWorldRotation(newRot);
+    }
+
+    // --- WASD + Space/Shift movement (poll axes) ---
+    FVector2 moveInput = input->GetAxis2D("Editor_Move");      // X = W/S, Y = A/D
+    float moveZ = input->GetAxis1D("Editor_MoveUpDown");// Space / Shift
+
+    if (moveInput.x == 0.f && moveInput.y == 0.f && moveZ == 0.f)
+        return;
+
+    // Build basis from camera rotation
+    FQuat rot = camera->GetWorldTransform().GetRotation();
+    FVector3 forward = rot.RotateVector(FVector3::Forward()).Normalized();
+    FVector3 right = rot.RotateVector(FVector3::Right())  .Normalized();
+    FVector3 up = FVector3::Up();
+
+    FVector3 move(0.f, 0.f, 0.f);
+    move += forward * moveInput.x;   // W/S
+    move += right   * moveInput.y;   // A/D
+    move += up      * moveZ;         // Space/Shift
+
+    if (move.Length() <= 0.f)
+        return;
+
+    const float moveSpeed = 15.0f; // or expose/cfg
+    move = move.Normalized() * moveSpeed * deltaTime;
+
+    JActor* camActor = camera->GetOwnerActor();
+    if (!camActor) return;
+
+    FVector3 pos = camActor->GetActorLocation();
+    camActor->SetActorLocation(pos + move);
 }
 
 // void JEngine::OnScroll(double xOffset, double yOffset)

@@ -22,6 +22,7 @@ public:
     void BeginFrame();
     void RenderPanels();
     void EndFrame();
+
     void Shutdown();
 
     void OnEngineInitialized(IPlatformSurface* surface) override;

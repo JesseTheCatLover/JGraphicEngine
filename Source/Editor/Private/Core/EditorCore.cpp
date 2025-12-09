@@ -19,172 +19,88 @@ void EditorCore::Tick(float deltaTime)
 
     TickEditorTools(deltaTime);
 
-    SubmitEditorViewSources();
-
     ClearFrameStates();
-
-    // // Pull a fresh snapshot of the scene hierarchy
-    // m_HierarchySnapshot = m_EngineEditor.GetScene().BuildHierarchySnapshot();
-
-    // // Mark which actors are selected in the snapshot
-    // UpdateSelectionFlagsInHierarchy();
-    //
-    // // Push selection state down to EngineEditor for rendering overlays, gizmos, etc.
-    // SyncSelectionToEngine();
-    //
-    // // Later: tools, camera update, background jobs, etc.
-
 }
 
 void EditorCore::PushFrameInfoToEditorContext()
 {
     // Pull frame info to EditorContext
-    m_FrameSnapshot = m_EngineEditor.GetViewport().GetFrameSnapshot();
+    m_FrameSnapshot = m_EngineEditor.GetViewportAPI().GetFrameSnapshot();
     m_Context.SetFrameSnapshot(m_FrameSnapshot);
 }
 
 void EditorCore::TickEditorTools(float deltaTime)
 {
-    // Build tool frame states
     FEditorToolFrameState toolState;
-    // Determine which camera ID is active, if any
-    if (m_ActiveViewportPanel)
-    {
-        auto it = m_PanelToCameraMap.find(m_ActiveViewportPanel);
-        if (it != m_PanelToCameraMap.end())
-            toolState.activeCameraId = it->second;
-    }
-    toolState.cameraAspectMap = m_CameraAspectMap;
 
-    // Let EngineEditor tick all tools
+    TickCameraTools(toolState.camera);
+
+    // Tick tools in engine editor
     m_EngineEditor.TickAllTools(deltaTime, toolState);
-    m_EngineEditor.SubmitEditorViewSources(toolState);
+
+    // Build views
+    m_EngineEditor.SubmitEditorViewSources(toolState.camera);
 }
 
-void EditorCore::SubmitEditorViewSources()
+void EditorCore::TickCameraTools(FCameraToolState& cameraState)
 {
-    //m_EngineEditor.SubmitEditorViewSources();
+    // 1) Active camera (panel with mouse capture)
+    if (m_ActiveViewportPanel)
+    {
+        auto itCam = m_PanelToCameraMap.find(m_ActiveViewportPanel);
+        if (itCam != m_PanelToCameraMap.end())
+        {
+            cameraState.activeCameraId = itCam->second;
+        }
+    }
+
+    // 2) Build viewstateMap from per-panel size
+    int viewIndex = 0;
+    for (const auto& [panel, camId] : m_PanelToCameraMap)
+    {
+        auto itVp = m_CameraStateMap.find(panel);
+        if (itVp == m_CameraStateMap.end())
+            continue;
+
+        const auto& vp = itVp->second;
+        if (vp.width <= 0.f || vp.height <= 0.f)
+            continue;
+
+        FCameraViewState vs{};
+        vs.width  = vp.width;
+        vs.height = vp.height;
+        vs.aspect = (vp.height > 0.f)
+                        ? (vp.width / vp.height)
+                        : 16.f / 9.f;
+        vs.viewIndex = viewIndex++;
+
+        cameraState.viewstateMap[camId] = vs;
+    }
+
+    // 3) Propagate MSAA samples
+    for (const auto& [camId, samples] : m_CameraSampleMap)
+    {
+        cameraState.cameraSampleMap[camId] = samples;
+    }
 }
 
 void EditorCore::ClearFrameStates()
 {
-    m_CameraAspectMap.clear();
 }
 
-// ---------------- Selection ----------------
-//
-// void EditorCore::SelectSingle(ActorID id)
-// {
-//     std::vector<ActorID> sel;
-//     if (id != 0)
-//         sel.push_back(id);
-//
-//     m_Context.SetSelection(sel);
-//     SyncSelectionToEngine();
-// }
-//
-// void EditorCore::AddToSelection(ActorID id)
-// {
-//     if (id == 0)
-//         return;
-//
-//     auto selection = m_Context.GetSelection();
-//     if (std::find(selection.begin(), selection.end(), id) == selection.end())
-//     {
-//         selection.push_back(id);
-//         m_Context.SetSelection(selection);
-//         SyncSelectionToEngine();
-//     }
-// }
-//
-// void EditorCore::ToggleSelection(ActorID id)
-// {
-//     if (id == 0)
-//         return;
-//
-//     auto selection = m_Context.GetSelection();
-//     auto it = std::find(selection.begin(), selection.end(), id);
-//
-//     if (it != selection.end())
-//     {
-//         // remove it
-//         selection.erase(it);
-//     }
-//     else
-//     {
-//         selection.push_back(id);
-//     }
-//
-//     m_Context.SetSelection(selection);
-//     SyncSelectionToEngine();
-// }
-//
-// void EditorCore::ClearSelection()
-// {
-//     std::vector<ActorID> empty;
-//     m_Context.SetSelection(empty);
-//     SyncSelectionToEngine();
-// }
-//
-// const std::vector<ActorID>& EditorCore::GetSelection() const
-// {
-//     return m_Context.GetSelection();
-// }
-//
-// void EditorCore::SyncSelectionToEngine()
-// {
-//     m_EngineEditor.GetScene().SetSelectedActors(m_Context.GetSelection());
-// }
-//
-// void EditorCore::UpdateSelectionFlagsInHierarchy()
-// {
-//     const auto& selection = m_Context.GetSelection();
-//
-//     for (auto& node : m_HierarchySnapshot)
-//     {
-//         node.isSelected = std::find(selection.begin(), selection.end(), node.id)
-//                           != selection.end();
-//     }
-// }
-//
-//
-// // ---------------- Scene operations ----------------
-//
-// void EditorCore::DeleteSelectedActors()
-// {
-//     const auto& selection = m_Context.GetSelection();
-//     if (selection.empty())
-//         return;
-//
-//     // Call into EngineEditor to actually remove actors from the scene
-//     m_EngineEditor.GetScene().DeleteActors(selection);
-//
-//     // Clear editor selection (they're gone now)
-//     ClearSelection();
-//
-//     // Optionally: you might want to refresh hierarchy snapshot explicitly,
-//     // but next Update() will do it anyway.
-// }
-
-
-// ---------------- Gizmo/tools ----------------
-//
-// void EditorCore::SetGizmoMode(EGizmoMode mode)
-// {
-//     m_Context.SetGizmoMode(mode);
-//     // Later: tell EngineEditor or Gizmo system about this mode if needed
-// }
-//
-// EGizmoMode EditorCore::GetGizmoMode() const
-// {
-//     return m_Context.GetGizmoMode();
-// }
-
-
-void* EditorCore::GetViewportTextureHandle() const
+void* EditorCore::GetViewportTextureHandle(const IEditorPanel* panel) const
 {
-    auto& viewport = m_EngineEditor.GetViewport();
-    return viewport.GetNativeTextureHandle(viewport.GetViewportColor());
+    auto itCam = m_PanelToCameraMap.find(panel);
+    if (itCam == m_PanelToCameraMap.end())
+        return nullptr;
+
+    UDynamicID::IDType camId = itCam->second;
+
+    RTextureHandle color = m_EngineEditor.GetViewportColorHandle(camId);
+    if (!color.IsValid())
+        return nullptr;
+
+    return m_EngineEditor.GetNativeTextureHandle(color);
 }
 
 void EditorCore::CreateCameraForPanel(const IEditorPanel* panel)
@@ -204,13 +120,11 @@ void EditorCore::DestroyCameraForPanel(const IEditorPanel* panel)
 
     UDynamicID::IDType id = it->second;
 
-    // 1) destroy in EngineEditor
     m_EngineEditor.DestroyCameraEditorTool(id);
 
-    // 2) remove mappings
     m_PanelToCameraMap.erase(it);
+    m_CameraStateMap.erase(panel);
     DeactivateCameraForPanel(panel);
-    m_CameraAspectMap.erase(id);
 }
 
 void EditorCore::SetViewportFocused(const IEditorPanel *panel, bool bFocused)
@@ -243,22 +157,38 @@ void EditorCore::DeactivateCameraForPanel(const IEditorPanel *panel)
         m_ActiveViewportPanel = nullptr;
 }
 
-void EditorCore::OnViewportResized(const IEditorPanel *panel, float aspectRatio)
+void EditorCore::OnViewportResized(const IEditorPanel *panel, float width, float height)
 {
     auto it = m_PanelToCameraMap.find(panel);
     if (it == m_PanelToCameraMap.end())
     {
+        // If panel somehow resized before OnCreate, make a camera now.
         CreateCameraForPanel(panel);
         it = m_PanelToCameraMap.find(panel);
+        if (it == m_PanelToCameraMap.end())
+            return;
     }
 
-    const auto id = it->second;
-    m_CameraAspectMap[id] = aspectRatio;
+    FViewportPanelState vp{};
+    vp.width = width;
+    vp.height = height;
+
+    m_CameraStateMap[panel] = vp;
 }
 
-void EditorCore::SetSizeTemp(float width, float height)
+void EditorCore::SetViewportMSAASamples(const IEditorPanel *panel, int samples)
 {
-    m_EngineEditor.GetViewport().SetSceneViewportSize(width, height);
+    auto it = m_PanelToCameraMap.find(panel);
+    if (it == m_PanelToCameraMap.end())
+        return;
+
+    const auto id = it->second;
+
+    // Clamp to sane values
+    if (samples < 1) samples = 1;
+    if (samples > 8) samples = 8;
+
+    m_CameraSampleMap[id] = samples;
 }
 
 void EditorCore::ExecuteCommand(TUniquePtr<IEditorCommand> cmd)

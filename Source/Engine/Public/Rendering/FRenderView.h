@@ -41,6 +41,8 @@ struct FRenderView
 
     uint32_t renderMask = 0xFFFFFFFFu;
 
+    bool bApplyPostGamma = true;
+
     // Post-processing profile
     bool bEnablePostProcess = true;
     uint32_t postProfileId = 0; // 0 = default

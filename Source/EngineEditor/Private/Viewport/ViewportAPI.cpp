@@ -24,18 +24,3 @@ FEditorFrameSnapshot EditorViewportAPI::GetFrameSnapshot() const
 
     return info;
 }
-
-RTextureHandle EditorViewportAPI::GetViewportColor() const
-{
-    return m_Renderer.GetSceneColorTarget();
-}
-
-void* EditorViewportAPI::GetNativeTextureHandle(RTextureHandle handle) const
-{
-    return m_Renderer.GetNativeTextureHandle(handle);
-}
-
-void EditorViewportAPI::SetSceneViewportSize(int w, int h) // TODO: DEPRECATED
-{
-    m_Context.SetSceneViewportSize(w, h);
-}

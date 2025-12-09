@@ -32,6 +32,12 @@ const FMatrix4& JCameraComponent::GetProjectionMatrix(float aspectRatio) const
     return m_ProjectionMatrix;
 }
 
+void JCameraComponent::OnWorldTransformChanged()
+{
+    JSceneComponent::OnWorldTransformChanged();
+    m_bViewDirty = true;
+}
+
 void JCameraComponent::RebuildViewMatrix() const
 {
     const FMatrix4 worldMat = GetWorldTransform().ToMatrix();

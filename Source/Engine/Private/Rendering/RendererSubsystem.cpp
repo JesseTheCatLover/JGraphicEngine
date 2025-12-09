@@ -17,7 +17,7 @@ RendererSubsystem::RendererSubsystem(IRenderBackend *backend, EngineContext& ctx
 m_Context(ctx),
 m_Backend(backend)
 {
-    BuildDefaultShader();x
+    BuildDefaultShader();
     m_CoordAdaptor = BuildCoordAdapter(m_Backend->GetCoordConvention());
 }
 
@@ -146,8 +146,13 @@ void RendererSubsystem::RenderFrame(const std::vector<FRenderView> &views) // TO
 
         m_Backend->SetViewport(view.viewportX, view.viewportY, view.viewportW, view.viewportH);
 
+        // Choose present shader based on view flag
+        RShaderHandle presentShader = view.bApplyPostGamma
+            ? m_PresentShader    // tone + gamma
+            : m_LinearCopyShader; // pure linear copy, no tone/gamma
+
         // Uses PresentShader by default (tone+gamma)
-        BlitFullscreen(m_PresentShader, finalColor, view.viewportW, view.viewportH);
+        BlitFullscreen(presentShader, finalColor, view.viewportW, view.viewportH);
     }
 
     // Restore default framebuffer + viewport for UI/editor
@@ -735,6 +740,30 @@ void RendererSubsystem::DestroyMaterial(RMaterialHandle h)
     if (m_GPUStateCache.material == h)
         {
         m_GPUStateCache.material = RMaterialHandle::Invalid();
+    }
+}
+
+RFramebufferHandle RendererSubsystem::CreateColorTarget(int w, int h, RTextureHandle& outColor)
+{
+    RFramebuffer fb{};
+    fb.width         = w;
+    fb.height        = h;
+    fb.samples       = 1;
+    fb.colorAsTexture = true;
+    fb.depthAsTexture = false;  // no depth; we just blit into it
+    fb.colorMode     = EColorMode::HDR16F;
+    fb.depthMode     = EDepthMode::None;
+
+    RFramebufferHandle fbo = m_Backend->CreateFramebuffer(fb);
+    outColor = m_Backend->GetFramebufferColorTexture(fbo);
+    return fbo;
+}
+
+void RendererSubsystem::DestroyColorTarget(RFramebufferHandle fbo)
+{
+    if (fbo.IsValid())
+    {
+        m_Backend->DestroyFramebuffer(fbo);
     }
 }
 

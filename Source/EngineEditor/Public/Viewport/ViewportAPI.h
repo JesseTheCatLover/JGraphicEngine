@@ -3,6 +3,7 @@
 #pragma once
 #include "FEditorFrameSnapshot.h"
 #include "Rendering/RHandles.h"
+#include "Utilities/UDynamicID.h"
 
 class RendererSubsystem;
 class EngineContext;
@@ -17,10 +18,4 @@ public:
     EditorViewportAPI(EngineContext& ctx, RendererSubsystem& renderer);
 
     [[nodiscard]] FEditorFrameSnapshot GetFrameSnapshot() const;
-
-    [[nodiscard]] RTextureHandle GetViewportColor() const;
-
-    [[nodiscard]] void* GetNativeTextureHandle(RTextureHandle handle) const;
-
-    void SetSceneViewportSize(int w, int h);
 };

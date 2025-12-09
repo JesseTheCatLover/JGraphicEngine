@@ -8,6 +8,7 @@
 void SceneViewportPanel::OnCreate(EditorContext &context, EditorCore &core)
 {
     core.CreateCameraForPanel(this);
+    core.SetViewportMSAASamples(this, 4);
 }
 
 void SceneViewportPanel::OnDestroy(EditorContext &context, EditorCore &core)
@@ -34,14 +35,12 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
     {
         m_Width = size.x;
         m_Height = size.y;
-        float aspect = (m_Height > 0) ? m_Width / m_Height : 16.0f / 9.0f;
 
         // Notify core so it can update the camera aspect
-        core.OnViewportResized(this, aspect);
-        core.SetSizeTemp(m_Width, m_Height);
+        core.OnViewportResized(this, m_Width, m_Height);
     }
 
-    void* native = core.GetViewportTextureHandle();
+    void* native = core.GetViewportTextureHandle(this);
     if (!native)
     {
         ImGui::TextUnformatted("No valid scene texture available.");
@@ -59,21 +58,27 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
 
      // The last item (the Image) is the viewport area.
     bool overViewport = ImGui::IsItemHovered(ImGuiHoveredFlags_None);
-    bool leftDown     = ImGui::IsMouseDown(ImGuiMouseButton_Left);
     bool leftClicked  = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
     bool leftReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
 
-    // Activate when you click and hold inside the viewport
-    if (overViewport && leftClicked && m_IsFocused)
+    // Start capture: click inside the image
+    if (overViewport && leftClicked)
     {
+        m_HasMouseCapture = true;
         core.SetViewportFocused(this, true);
     }
 
-    // Deactivate when:
-    //  - Left mouse is released, OR
-    //  - Window lost focus
-    if (leftReleased || !m_IsFocused)
+    // End capture when left is released
+    if (m_HasMouseCapture && leftReleased)
     {
+        m_HasMouseCapture = false;
+        core.SetViewportFocused(this, false);
+    }
+
+    // Safety check: if the window is not visible anymore, drop capture
+    if (!ImGui::IsWindowAppearing() && !ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && m_HasMouseCapture)
+    {
+        m_HasMouseCapture = false;
         core.SetViewportFocused(this, false);
     }
 

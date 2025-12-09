@@ -17,10 +17,19 @@ void JSceneComponent::UnlinkFromParent()
 
 void JSceneComponent::MarkWorldDirty()
 {
-    if (!m_WorldDirty)
+    // Already dirty? Don't spam notifications or recurse.
+    if (m_WorldDirty)
+        return;
+
+    m_WorldDirty = true;
+
+    // Let derived components react to "world transform changed"
+    OnWorldTransformChanged();
+
+    // Propagate to children so their world transforms are also considered dirty.
+    for (auto* child : m_Children)
     {
-        m_WorldDirty = true;
-        for (auto* child : m_Children)
+        if (child)
             child->MarkWorldDirty();
     }
 }
