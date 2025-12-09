@@ -133,7 +133,7 @@ private:
     bool RemoveActor(uint64_t id);
 
 public:
-    void GatherRenderables(IRenderSubmission& submission, const FRenderContext& baseCtx) const; // TODO: Temp here
+    void GatherRenderables(IRenderSubmission& submission, const FRenderContext& baseCtx) const;
 
     JCameraComponent* GetCameraComponent() const;
 

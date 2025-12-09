@@ -509,7 +509,7 @@ public:
 
     // -------------------- Rendering --------------------
 
-    void GatherRenderables(IRenderSubmission& submission, const FRenderContext& ctx) const; // TODO: This is temporarily here
+    void GatherRenderables(IRenderSubmission& submission, const FRenderContext& ctx) const;
 
     JCameraComponent* GetCameraComponent();
 

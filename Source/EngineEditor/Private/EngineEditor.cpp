@@ -125,7 +125,7 @@ void EngineEditor::SubmitEditorViewSources(const FCameraToolState& state)
         view.bClearDepth        = true;
         view.clearColorValue    = {0.1f, 0.1f, 0.1f, 1.0f};
         view.renderMask         = 0xFFFFFFFFu;
-        view.bApplyPostGamma    = false; // TODO: check this later
+        view.bApplyPostGamma    = false; // TODO: Make this configurable for future
         view.bEnablePostProcess = true;
         view.postProfileId      = 0;
 

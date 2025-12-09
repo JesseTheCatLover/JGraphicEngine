@@ -219,14 +219,14 @@ void JActor::FlushDestroyedComponents()
     }
 }
 
-void JActor::GatherRenderables(IRenderSubmission &submission, const FRenderContext &ctx) const // TODO: This is temp
+void JActor::GatherRenderables(IRenderSubmission &submission, const FRenderContext &ctx) const
 {
     // Actor-level culling / conditions can go here later:
     // if (!bIsVisible || IsTooFarFromCamera(...)) return;
 
     for (auto& comp : m_SceneComponents)
     {
-        if (auto* renderable = dynamic_cast<JRenderableComponent*>(comp.get()))
+        if (auto* renderable = dynamic_cast<JRenderableComponent*>(comp.get())) // TODO: Should make a custom cast for future
         {
             // Let the component turn itself into proxies / draw commands
             renderable->GatherProxies(submission, ctx);
@@ -238,7 +238,7 @@ JCameraComponent* JActor::GetCameraComponent()
 {
     for (auto& comp : m_SceneComponents)
     {
-        if (auto* camera = dynamic_cast<JCameraComponent*>(comp.get()))
+        if (auto* camera = dynamic_cast<JCameraComponent*>(comp.get())) // TODO: Also a custom RTTI for future
         {
             return camera;
         }
