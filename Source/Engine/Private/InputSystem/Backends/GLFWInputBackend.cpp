@@ -4,11 +4,13 @@
 #include <cmath>
 #include "GLFWInputMapping.h"
 
+static std::unordered_map<GLFWwindow*, GLFWInputBackend*> s_WindowToBackend;
+
 GLFWInputBackend::GLFWInputBackend(GLFWwindow* window)
     : m_Window(window)
 {
-    // Store this backend instance on the window so static callbacks can find it
-    glfwSetWindowUserPointer(m_Window, this);
+    // Register this backend for this window
+    s_WindowToBackend[m_Window] = this;
 
     // Register GLFW callbacks
     glfwSetKeyCallback (m_Window, &GLFWInputBackend::KeyCallback);
@@ -19,6 +21,11 @@ GLFWInputBackend::GLFWInputBackend(GLFWwindow* window)
 
     // Initialize last mouse position
     glfwGetCursorPos(m_Window, &m_LastMouseX, &m_LastMouseY);
+}
+
+GLFWInputBackend::~GLFWInputBackend()
+{
+    s_WindowToBackend.erase(m_Window);
 }
 
 void GLFWInputBackend::FetchEvents(std::vector<FRawInputEvent>& outEvents)
@@ -50,7 +57,10 @@ void GLFWInputBackend::GetMousePosition(float& outX, float& outY)
 
 GLFWInputBackend* GLFWInputBackend::GetBackend(GLFWwindow* window)
 {
-    return static_cast<GLFWInputBackend*>(glfwGetWindowUserPointer(window));
+    auto it = s_WindowToBackend.find(window);
+    if (it == s_WindowToBackend.end())
+        return nullptr;
+    return it->second;
 }
 
 void GLFWInputBackend::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)

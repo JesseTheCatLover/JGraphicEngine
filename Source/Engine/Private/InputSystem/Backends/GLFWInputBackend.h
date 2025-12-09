@@ -1,6 +1,7 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include <unordered_map>
 #include <vector>
 #include <GLFW/glfw3.h>
 #include "../IInputBackend.h"
@@ -9,7 +10,7 @@ class GLFWInputBackend : public IInputBackend
 {
 public:
     explicit GLFWInputBackend(GLFWwindow* window);
-    ~GLFWInputBackend() override = default;
+    ~GLFWInputBackend();
 
     void FetchEvents(std::vector<FRawInputEvent>& outEvents) override;
     void GetMousePosition(float& outX, float& outY) override;

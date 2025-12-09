@@ -12,6 +12,8 @@ private:
     FSurfaceState m_State{};
     ECursorMode m_CursorMode = ECursorMode::Visible;
 
+    FResizeCallback m_FramebufferResizeCallback;
+
 public:
     GLFWSurface() = default;
     ~GLFWSurface() override;
@@ -63,6 +65,13 @@ public:
     void SetTitle(const std::string &title) override;
 
     void SetVSync(bool vSync) override;
+
+    void SetFramebufferResizeCallback(FResizeCallback callback) override
+    {
+        m_FramebufferResizeCallback = std::move(callback);
+    }
+
+    float GetTimeSeconds() override;
 
 private:
     void UpdateCursor();

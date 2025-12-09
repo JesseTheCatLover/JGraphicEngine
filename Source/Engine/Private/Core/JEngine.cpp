@@ -22,8 +22,6 @@
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
 
-#include "GLFW/glfw3.h"
-
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
 #include "Rendering/FRenderView.h"
@@ -116,7 +114,22 @@ bool JEngine::SurfaceInitialize()
         return false;
     }
 
-    m_Context->SetFramebufferSize(m_PlatformSurface->GetWidth(), m_PlatformSurface->GetHeight()); // TODO: Replace with a fallback from IPlatformSurface
+    // Ensure initial framebuffer size is correct
+    {
+        int fbW = 0, fbH = 0;
+        m_PlatformSurface->GetFramebufferSize(fbW, fbH);
+        m_Context->SetFramebufferSize(fbW, fbH);
+    }
+
+    // --- Register callbacks ---
+
+    // Framebuffer callback
+    m_PlatformSurface->SetFramebufferResizeCallback(
+        [this](int fbWidth, int fbHeight)
+        {
+            m_Context->SetFramebufferSize(fbWidth, fbHeight);
+        }
+    );
 
     return true;
 }
@@ -325,7 +338,6 @@ void JEngine::RunMainLoop()
     while (!m_PlatformSurface->ShouldClose() && m_Context->GetIsRunning())
     {
         CalculateDeltaTime();
-        UpdateFramebufferSizeContext(); // TODO: Should be replaced by a callback from IPlatformSurface
 
         // Per-frame views reset
         m_Context->ClearViewSources();
@@ -647,14 +659,7 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
 
 void JEngine::CalculateDeltaTime()
 {
-    auto currentFrame = static_cast<float>(glfwGetTime()); // TODO: get the time from the surface interface
+    auto currentFrame = m_PlatformSurface->GetTimeSeconds();
     m_Context->SetDeltaTime(currentFrame - m_Context->GetLastFrameTime());
     m_Context->SetLastFrameTime(currentFrame);
-}
-
-void JEngine::UpdateFramebufferSizeContext()
-{
-    int fbW = 0, fbH = 0;
-    m_PlatformSurface->GetFramebufferSize(fbW, fbH);
-    m_Context->SetFramebufferSize(fbW, fbH);
 }

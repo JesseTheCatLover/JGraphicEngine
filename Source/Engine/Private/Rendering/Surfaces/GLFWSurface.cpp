@@ -66,6 +66,20 @@ bool GLFWSurface::Initialize(const FSurfaceState &state)
     m_State.nativeHandle = m_Window;
     m_State.monitorHandle = monitor;
 
+    // Make glfw allow binding to c++ objects
+    glfwSetWindowUserPointer(m_Window, this);
+
+    // Framebuffer callback (often fires at end / on DPI changes)
+    glfwSetFramebufferSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
+    {
+        auto* surface = static_cast<GLFWSurface*>(glfwGetWindowUserPointer(window));
+        if (!surface)
+            return;
+
+        if (surface->m_FramebufferResizeCallback)
+            surface->m_FramebufferResizeCallback(width, height);
+    });
+
     // Make context current (for OpenGL)
     glfwMakeContextCurrent(m_Window); // TODO: Check only if using OpenGL with a macro or smth else.
 
@@ -215,6 +229,11 @@ void GLFWSurface::SetVSync(bool vSync)
 {
     m_State.bvSync = vSync;
     if (m_Window) glfwSwapInterval(vSync ? 1 : 0);
+}
+
+float GLFWSurface::GetTimeSeconds()
+{
+    return static_cast<float>(glfwGetTime());
 }
 
 void GLFWSurface::UpdateCursor()

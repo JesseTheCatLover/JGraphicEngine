@@ -90,7 +90,6 @@ private:
     void CreateDefaultScene();
 
     void CalculateDeltaTime();
-    void UpdateFramebufferSizeContext();
 };
 
 #include "JEngine.inl"

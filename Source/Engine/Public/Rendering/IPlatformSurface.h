@@ -2,6 +2,7 @@
 
 #pragma once
 #include <string>
+#include <functional>
 
 enum class EWindowState
 {
@@ -34,6 +35,9 @@ enum class ECursorMode
 class IPlatformSurface
 {
 public:
+    using FResizeCallback = std::function<void(int width, int height)>;
+
+public:
     virtual ~IPlatformSurface() = default;
 
     virtual bool Initialize(const FSurfaceState& state) = 0;
@@ -65,9 +69,13 @@ public:
     virtual void SetCursorHidden() {}
     virtual void SetCursorDisabled() {}
 
+    virtual float GetTimeSeconds() = 0;
+
     virtual void* GetPlatformSpecificHandle() const { return nullptr; } // optional override
-    // TODO: Implement surface resize fallbacks and other common fallbacks and add a GLFW implementation for it.
-    // TODO: (We need to update the framebuffer size in EngineContext)
+
+    virtual void SetFramebufferResizeCallback(FResizeCallback callback) {}
+    virtual void SetWindowResizeCallback(FResizeCallback callback) {}
+
     using GetProcAddressFunc = void* (*)(const char*);
     // Optional: for OpenGL-style loaders
     virtual GetProcAddressFunc GetProcAddressFunction() const { return nullptr; }
