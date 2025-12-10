@@ -6,6 +6,7 @@
 #include "Core/Contexts/FFrameContext.h"
 #include "Core/Contexts/FSurfaceContext.h"
 #include "GLFW/glfw3.h"
+#include <algorithm>
 
 EngineContext::EngineContext()
 {
@@ -44,8 +45,9 @@ int EngineContext::GetFramebufferHeight() const
 
 void EngineContext::SetFramebufferSize(int w, int h)
 {
-    m_SurfaceContext->width = w;
-    m_SurfaceContext->height = h;
+    // Clamp to a minimum of 1 to avoid zero-sized framebuffers (aspect-ratio divisions)
+    m_SurfaceContext->width = std::max(1, w);
+    m_SurfaceContext->height = std::max(1, h);
 }
 
 bool EngineContext::GetIsSurfaceFullscreen()

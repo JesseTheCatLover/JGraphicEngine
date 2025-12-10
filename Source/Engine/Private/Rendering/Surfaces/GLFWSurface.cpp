@@ -173,8 +173,8 @@ int GLFWSurface::GetHeight() const
 
 float GLFWSurface::GetAspectRatio() const
 {
-    if (m_State.height == 0)
-        return 0.0f;
+    if (m_State.height <= 0 || m_State.width <= 0)
+        return 1.0f;
     return static_cast<float>(m_State.width) / static_cast<float>(m_State.height);
 }
 
