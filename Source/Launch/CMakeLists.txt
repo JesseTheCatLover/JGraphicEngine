@@ -53,7 +53,7 @@ foreach(tgt IN LISTS JENGINE_EXECUTABLES) # TODO: We need a codegen to escape th
     if (MSVC)
         # Force link all object files from Engine.lib
         target_link_libraries(${tgt} PRIVATE Engine)
-        target_link_options(${tgt} PRIVATE "/WHOLEARCHIVE:Engine")
+        target_link_options(${tgt} PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE_NAME:Engine>")
     elseif (APPLE)
         # On macOS/Clang: force_load the static lib produced by target Engine
         target_link_options(${tgt} PRIVATE
