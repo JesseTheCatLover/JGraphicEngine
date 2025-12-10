@@ -1,9 +1,9 @@
-<!-- SPDX-License-Identifier: JGEL-1.0 -->
+<!-- SPDX-License-Identifier: JGEL-1.1 -->
 
 ### About This File
 > *This is a Markdown-formatted copy of the official LICENSE file for better readability.*
 
-# JGraphicEngine License 1.0 (JGEL-1.0)
+# JGraphicEngine License 1.1 (JGEL-1.1)
 **Short Name:** *JEngine License (JEL)*  
 **Copyright © 2025  
 JesseTheCatLover*
@@ -12,11 +12,12 @@ JesseTheCatLover*
 
 ---
 
-## 1. Permission and Open-Source Grant
+## 1. License Grant and Permissions
 
 This software (“**JGraphicEngine**”, also referred to as “**JEngine**”) is provided **free of charge**.
 
-Permission is granted to any person obtaining a copy of the Software to:
+Permission is hereby granted, subject to the terms and conditions of this entire License,
+to any person obtaining a copy of the Software to:
 
 - **use** the Software for any purpose, commercial or non-commercial;  
 - **modify** the Software;  
@@ -176,4 +177,4 @@ Rights may be reinstated upon correction of the violation.
 
 ---
 
-# **END OF LICENSE — JGEL-1.0**
+# **END OF LICENSE — JGEL-1.1**
