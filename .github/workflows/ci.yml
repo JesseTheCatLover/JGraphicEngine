@@ -32,8 +32,12 @@ jobs:
             compiler: clang
 
     steps:
-    - name: Checkout repository
+    - name: Checkout repository (with submodules)
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
 
     # ---------------------------
     # macOS SETUP
