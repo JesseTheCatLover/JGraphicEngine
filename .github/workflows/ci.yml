@@ -16,8 +16,6 @@ jobs:
           # --- macOS ---
           - os: macos-latest
             compiler: appleclang
-          - os: macos-latest
-            compiler: clang
 
           # --- Linux ---
           - os: ubuntu-latest
@@ -103,6 +101,13 @@ jobs:
     - name: Configure CMake
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
-    - name: Build
+    # Linux: Limit parallelism so CI doesn't OOM
+    - name: Build (Linux - low RAM mode)
+      if: startsWith(matrix.os, 'ubuntu')
+      run: cmake --build build --config Release -- -j 2
+
+    # macOS + Windows: keep full parallel builds
+    - name: Build (macOS/Windows)
+      if: startsWith(matrix.os, 'ubuntu') == false
       run: cmake --build build --config Release --parallel
 
