@@ -39,6 +39,8 @@ private:
     std::vector<TSharedPtr<JSceneComponent>> m_SceneComponents; ///< Scene components attached to this actor
     std::vector<TSharedPtr<JActorComponent>> m_ActorComponents; ///< Actor components attached to this actor
 
+    bool m_bIsVisible = true;
+
     bool m_bPendingDestroy = false;
     JScene* m_OwningScene = nullptr; // Set by JScene when adding actor
 
@@ -520,6 +522,9 @@ public:
 
     [[nodiscard]] size_t GetVectorIndex() const { return m_VectorIndex; }
     void SetVectorIndex(size_t index) { m_VectorIndex = index; }
+
+    [[nodiscard]] bool IsVisible() const { return m_bIsVisible; }
+    void SetVisible(bool bIsVisible) { m_bIsVisible = bIsVisible; }
 
     [[nodiscard]] JScene* GetOwningScene() const { return m_OwningScene; }
 

@@ -70,6 +70,7 @@ public:
 
     // Viewport section
     [[nodiscard]] void* GetViewportTextureHandle(const IEditorPanel* panel) const;
+    void PickActorAtViewportPos(const IEditorPanel* panel, float x, float y);
 
     // Called by panels that want an editor camera
     void CreateCameraForPanel(const IEditorPanel* panel);

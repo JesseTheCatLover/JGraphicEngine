@@ -2,7 +2,7 @@
 
 #pragma once
 #include <vector>
-#include "Scene/FEditorActoSnapshot.h"
+#include "Scene/FEditorActorSnapshot.h"
 #include "Viewport/FEditorFrameSnapshot.h"
 
 enum class EGizmoMode

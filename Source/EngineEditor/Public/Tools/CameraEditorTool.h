@@ -63,7 +63,6 @@ public:
 
      FViewportRT& GetRT() { return m_RT; }
 
-protected:
     // ICameraViewSource
     FMatrix4& GetViewMatrix() const override;
     FMatrix4& GetProjectionMatrix(float aspectRatio) const override;

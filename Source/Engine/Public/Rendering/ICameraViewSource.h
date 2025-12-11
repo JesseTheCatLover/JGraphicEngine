@@ -12,12 +12,9 @@ struct FMatrix4;
  */
 class ICameraViewSource
 {
-    friend RendererSubsystem;
-
 public:
     virtual ~ICameraViewSource() = default;
 
-protected:
     [[nodiscard]] virtual const FMatrix4& GetViewMatrix() const = 0;
     [[nodiscard]] virtual const FMatrix4& GetProjectionMatrix(float aspectRatio) const = 0;
     [[nodiscard]] virtual float GetNearPlane() const = 0;

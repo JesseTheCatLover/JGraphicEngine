@@ -571,7 +571,7 @@ void JEngine::RegisterServices()
 
 bool JEngine::BootstrapScene()
 {
-    auto* startupScene = GetSceneManager()->LoadSceneFile("StartupScene");
+    auto* startupScene = GetSceneManager()->LoadSceneFile("ScannedScene");
     if (!startupScene)
     {
         CreateDefaultScene();

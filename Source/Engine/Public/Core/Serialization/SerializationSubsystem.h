@@ -15,6 +15,7 @@ struct FSceneObjectRelation
     JCoreObject* object = nullptr;
 
     std::string parentActorUUID;     // for JActor
+    std::string rootComponentUUID;   // for JActor
     std::string ownerActorUUID;      // for components
     std::string parentComponentUUID; // for scene components
 };

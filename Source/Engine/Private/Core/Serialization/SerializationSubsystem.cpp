@@ -48,7 +48,11 @@ bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::st
             {
                 writer.Write("parent_actor", parent->GetUUID());
             }
-            // If root: we just omit "parent_actor".
+
+            if (JSceneComponent* root = actor->GetRootComponent())
+            {
+                writer.Write("root_component", root->GetUUID());
+            }
         }
 
         // Scene component hierarchy
@@ -155,6 +159,7 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
             rel.parentActorUUID = relReader.Read<std::string>("parent_actor", "");
             rel.ownerActorUUID = relReader.Read<std::string>("owner_actor", "");
             rel.parentComponentUUID = relReader.Read<std::string>("parent_component", "");
+            rel.rootComponentUUID = relReader.Read<std::string>("root_component", "");
         }
 
         outResult.relations.push_back(std::move(rel));

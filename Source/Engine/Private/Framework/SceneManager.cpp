@@ -206,7 +206,38 @@ void SceneManager::ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, 
         }
     }
 
-    // 4) Now that the graph is fully wired, call PostLoad for every object
+    // 4) Fix up root components from explicit rootComponentUUID
+    for (const FSceneObjectRelation& rel : loadResult.relations)
+    {
+        auto* actor = dynamic_cast<JActor*>(rel.object);
+        if (!actor)
+            continue;
+
+        if (rel.rootComponentUUID.empty())
+            continue; // this actor didn't serialize a root
+
+        // Look up the root component object via the global uuidMap
+        auto itRootObj = loadResult.uuidMap.find(rel.rootComponentUUID);
+        if (itRootObj == loadResult.uuidMap.end())
+            continue;
+
+        auto* rootComp = dynamic_cast<JSceneComponent*>(itRootObj->second);
+        if (!rootComp)
+            continue;
+
+        // Find the shared_ptr that owns this raw pointer inside this actor
+        // SceneManager is a friend of JActor, so this is allowed.
+        for (auto& compPtr : actor->m_SceneComponents)
+        {
+            if (compPtr.get() == rootComp)
+            {
+                actor->m_RootComponent = compPtr;
+                break;
+            }
+        }
+    }
+
+    // 5) Now that the graph is fully wired, call PostLoad for every object
     for (JCoreObject* obj : loadResult.objects)
     {
         if (obj)
@@ -216,7 +247,7 @@ void SceneManager::ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, 
 
 bool SceneManager::CreateSceneFile(const std::string &name, const std::string &filename, bool bOverwrite) const
 {
-    std::string scenePath = UPathFinder::ResolvePath(UPathFinder::Join("Assets", "Scenes", filename + ".jscene")).string();
+    std::string scenePath = UPathFinder::ResolvePath(UPathFinder::Join("Assets", "Scenes", filename + ".jscene"));
 
     if (UFileSystem::FileExists(scenePath) && !bOverwrite)
         return false;

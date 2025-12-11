@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include "FVector3.h"
+#include "FVector4.h"
 #include "glm/matrix.hpp"
 #include "glm/gtc/type_ptr.inl"
 #include "glm/gtx/quaternion.hpp"
@@ -44,6 +45,16 @@ public:
     /** Matrix multiplication */
     FMatrix4 operator*(const FMatrix4& other) const { return FMatrix4(M * other.M); }
     FMatrix4& operator*=(const FMatrix4& other) { M *= other.M; return *this; }
+
+    /**
+     * @brief Multiplies this matrix by a 4D vector (M * v).
+     */
+    [[nodiscard]] FVector4 operator*(const FVector4& v) const
+    {
+        glm::vec4 gv(v.x, v.y, v.z, v.w);
+        glm::vec4 r = M * gv;
+        return FVector4(r.x, r.y, r.z, r.w);
+    }
 
     /** Comparison operators */
     bool operator==(const FMatrix4& other) const { return M == other.M; }

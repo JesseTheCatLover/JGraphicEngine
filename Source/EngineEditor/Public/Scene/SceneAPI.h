@@ -3,7 +3,8 @@
 #pragma once
 #include <vector>
 
-#include "FEditorActoSnapshot.h"
+#include "FEditorActorSnapshot.h"
+#include "FRaycast.h"
 
 class SceneManager;
 class EngineContext;
@@ -24,4 +25,6 @@ public:
     void SetSelectedActors(const std::vector<ActorID>& ids);
     void DeleteActors(const std::vector<ActorID>& ids);
     void DuplicateActors(const std::vector<ActorID>& ids);
+
+    bool Raycast(const FRay& ray, FRaycastHit& outHit);
 };

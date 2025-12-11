@@ -2,7 +2,7 @@
 
 #include "Scene/JActor.h"
 #include "Scene/SceneComponents/JSceneComponent.h"
-
+#include <algorithm>
 #include "Core/JEngine.h"
 
 #include "Scene/SceneComponents/JCameraComponent.h"
@@ -250,4 +250,5 @@ JREFLECT_TYPE(JActor)
 {
     JPROPERTY(m_Name);
     JPROPERTY(m_VectorIndex);
+    JPROPERTY(m_bIsVisible);
 }}

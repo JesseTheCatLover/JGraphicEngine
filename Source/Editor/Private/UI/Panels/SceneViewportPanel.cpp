@@ -3,6 +3,7 @@
 #include "SceneViewportPanel.h"
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "Core/EditorCore.h"
 
 void SceneViewportPanel::OnCreate(EditorContext &context, EditorCore &core)
@@ -59,17 +60,42 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
      // The last item (the Image) is the viewport area.
     bool overViewport = ImGui::IsItemHovered(ImGuiHoveredFlags_None);
     bool leftClicked  = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-    bool leftReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+    bool rightClicked  = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+    bool rightReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Right);
+
+    // Actor picking: single-click selects actor under mouse
+    if (overViewport && leftClicked)
+    {
+        // Mouse in absolute screen coords
+        ImVec2 mousePos = ImGui::GetMousePos();
+
+        // Rect of the Image in screen coords
+        ImVec2 rectMin = ImGui::GetItemRectMin();
+        ImVec2 rectMax = ImGui::GetItemRectMax();
+
+        // Mouse position relative to viewport image
+        ImVec2 local;
+        local.x = mousePos.x - rectMin.x;
+        local.y = mousePos.y - rectMin.y;
+
+        // Clamp defensively into [0, width/height]
+        local.x = ImClamp(local.x, 0.0f, rectMax.x - rectMin.x);
+        local.y = ImClamp(local.y, 0.0f, rectMax.y - rectMin.y);
+
+        // Tell editor core to perform picking in this viewport
+        core.PickActorAtViewportPos(this, local.x, local.y);
+    }
+
 
     // Start capture: click inside the image
-    if (overViewport && leftClicked)
+    if (overViewport && rightClicked)
     {
         m_HasMouseCapture = true;
         core.SetViewportFocused(this, true);
     }
 
     // End capture when left is released
-    if (m_HasMouseCapture && leftReleased)
+    if (m_HasMouseCapture && rightReleased)
     {
         m_HasMouseCapture = false;
         core.SetViewportFocused(this, false);

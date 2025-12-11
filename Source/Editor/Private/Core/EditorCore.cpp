@@ -3,9 +3,15 @@
 #include "EditorCore.h"
 #include "EditorContext.h"
 #include <algorithm>
+#include <iostream>
 
+#include "Core/EngineGlobals.h"
 #include "Core/JEngine.h"
+#include "Core/Math/FMatrix4.h"
+#include "Core/Math/FVector4.h"
+#include "Framework/SceneManager.h"
 #include "Rendering/IPlatformSurface.h"
+#include "Tools/CameraEditorTool.h"
 
 EditorCore::EditorCore(EditorContext &context, EngineEditor& engineEditor):
 m_Context(context),
@@ -101,6 +107,73 @@ void* EditorCore::GetViewportTextureHandle(const IEditorPanel* panel) const
         return nullptr;
 
     return m_EngineEditor.GetNativeTextureHandle(color);
+}
+
+void EditorCore::PickActorAtViewportPos(const IEditorPanel* panel, float x, float y)
+{
+    // 1) Find the camera associated with this panel
+    auto camIt = m_PanelToCameraMap.find(panel);
+    if (camIt == m_PanelToCameraMap.end())
+        return;
+
+    UDynamicID::IDType cameraID = camIt->second;
+    CameraEditorTool* cameraTool = m_EngineEditor.GetCameraEditorTool(cameraID);
+    if (!cameraTool)
+        return;
+
+    // 2) Get viewport size for this panel
+    auto vpIt = m_CameraStateMap.find(panel);
+    if (vpIt == m_CameraStateMap.end())
+        return;
+
+    const float width = vpIt->second.width;
+    const float height = vpIt->second.height;
+    if (width <= 0.f || height <= 0.f)
+        return;
+
+    // 3) Convert local pixel coords -> NDC [-1,1]
+    // x,y are in [0..width],[0..height] with (0,0) at top-left of the Image.
+    const float xNDC = 2.0f * (x / width) - 1.0f;
+    const float yNDC = 1.0f - 2.0f * (y / height); // because (0,0) is top-left in ImGui
+
+    const float aspect = width / height;
+
+    // 4) Build direction in CAMERA space
+    // Engine convention: X = forward, Y = right, Z = up
+    const float verticalFovDeg = cameraTool->GetFOV();
+    const float halfFovRad     = verticalFovDeg * 0.5f * (3.1415926535f / 180.0f);
+    const float tanHalfFov     = std::tan(halfFovRad);
+
+    // Point on a plane 1 unit in front of the camera
+    FVector3 dirCam;
+    dirCam.x = 1.0f;                             // forward in camera space
+    dirCam.y = xNDC * tanHalfFov * aspect;       // right
+    dirCam.z = yNDC * tanHalfFov;                // up
+    dirCam   = dirCam.Normalized();
+
+    // 5) Rotate to WORLD space
+    FQuat camRot = cameraTool->GetRotation();
+    FVector3 dirWorld = camRot.RotateVector(dirCam);
+    dirWorld = dirWorld.Normalized();                   // belt & suspenders
+
+    // 6) Origin = camera world position
+    FVector3 originWorld = cameraTool->GetPosition();
+
+    // 7) Build ray in engine/world space
+    FRay ray;
+    ray.Origin    = originWorld;
+    ray.Direction = dirWorld;
+
+    // 8) Raycast against the scene via EditorSceneAPI
+    FRaycastHit hit{};
+    if (m_EngineEditor.GetSceneAPI().Raycast(ray, hit) && hit.bHit)
+    {
+        SelectActor(hit.ActorID);
+    }
+    else
+    {
+        // Optional: clear selection
+    }
 }
 
 void EditorCore::CreateCameraForPanel(const IEditorPanel* panel)
@@ -233,5 +306,12 @@ void EditorCore::Redo()
 
 void EditorCore::SelectActor(int actorId)
 {
-    // Simple helper for now; no undo. We can later convert this into a command.
+    if (actorId == -1)
+        return;
+
+    if (auto selectedActor = GetSceneManager()->GetActiveScene()->FindActorByID(actorId))
+    {
+        std::cout << actorId << std::endl;
+        std::cout << "Selecting actor " + selectedActor->GetName() << std::endl;
+    }
 }
