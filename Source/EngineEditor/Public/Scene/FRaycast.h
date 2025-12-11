@@ -5,15 +5,15 @@
 
 struct FRay
 {
-    FVector3 Origin;
-    FVector3 Direction; // Should be normalized
+    FVector3 origin;
+    FVector3 direction; // Should be normalized
 };
 
 struct FRaycastHit
 {
-    bool      bHit        = false;
-    int       ActorID     = -1;
-    float     Distance    = 0.0f;
-    FVector3  Position;
-    FVector3  Normal;
+    bool bHit = false;
+    uint64_t actorID = -1;
+    float distance = 0.0f;
+    FVector3 position;
+    FVector3 normal;
 };

@@ -126,49 +126,86 @@ void EditorCore::PickActorAtViewportPos(const IEditorPanel* panel, float x, floa
     if (vpIt == m_CameraStateMap.end())
         return;
 
-    const float width = vpIt->second.width;
+    const float width  = vpIt->second.width;
     const float height = vpIt->second.height;
     if (width <= 0.f || height <= 0.f)
         return;
 
     // 3) Convert local pixel coords -> NDC [-1,1]
     // x,y are in [0..width],[0..height] with (0,0) at top-left of the Image.
-    const float xNDC = 2.0f * (x / width) - 1.0f;
-    const float yNDC = 1.0f - 2.0f * (y / height); // because (0,0) is top-left in ImGui
+    const float xNDC =  2.0f * (x / width)  - 1.0f;
+    const float yNDC =  1.0f - 2.0f * (y / height); // convert top-left to NDC
 
     const float aspect = width / height;
 
-    // 4) Build direction in CAMERA space
-    // Engine convention: X = forward, Y = right, Z = up
-    const float verticalFovDeg = cameraTool->GetFOV();
-    const float halfFovRad     = verticalFovDeg * 0.5f * (3.1415926535f / 180.0f);
-    const float tanHalfFov     = std::tan(halfFovRad);
+    // 4) Common camera data
+    const FQuat camRot = cameraTool->GetRotation();
+    const FVector3 camPos = cameraTool->GetPosition();
 
-    // Point on a plane 1 unit in front of the camera
-    FVector3 dirCam;
-    dirCam.x = 1.0f;                             // forward in camera space
-    dirCam.y = xNDC * tanHalfFov * aspect;       // right
-    dirCam.z = yNDC * tanHalfFov;                // up
-    dirCam   = dirCam.Normalized();
+    FVector3 originWorld;
+    FVector3 dirWorld;
 
-    // 5) Rotate to WORLD space
-    FQuat camRot = cameraTool->GetRotation();
-    FVector3 dirWorld = camRot.RotateVector(dirCam);
-    dirWorld = dirWorld.Normalized();                   // belt & suspenders
+    if (cameraTool->GetProjectionType() == EProjectionType::Perspective)
+    {
+        // ---------------------------
+        // Perspective ray
+        // Left-handed, X = forward, Y = right, Z = up
+        // ---------------------------
+        const float verticalFovDeg = cameraTool->GetFOV();
+        const float halfFovRad = verticalFovDeg * 0.5f * (3.1415926535f / 180.0f);
+        const float tanHalfFov = std::tan(halfFovRad);
 
-    // 6) Origin = camera world position
-    FVector3 originWorld = cameraTool->GetPosition();
+        // Point on a plane 1 unit in front of the camera (camera space)
+        FVector3 dirCam;
+        dirCam.x = 1.0f;                        // forward (X)
+        dirCam.y = xNDC * tanHalfFov * aspect;  // right   (Y)
+        dirCam.z = yNDC * tanHalfFov;           // up      (Z)
+        dirCam   = dirCam.Normalized();
 
-    // 7) Build ray in engine/world space
+        // Rotate into world space
+        dirWorld  = camRot.RotateVector(dirCam).Normalized();
+        originWorld = camPos; // ray starts at camera position
+    }
+    else
+    {
+        // ---------------------------
+        // Orthographic ray
+        // Direction is constant (camera forward), origin slides in the view plane
+        // ---------------------------
+
+        // Ortho volume in camera space:
+        //  - vertical half-size is m_OrthoHalfHeight
+        //  - horizontal half-size = halfHeight * aspect
+        const float halfHeight = cameraTool->GetOrthoHalfHeight();
+        const float halfWidth = halfHeight * aspect;
+
+        // NDC -> camera-space offsets on the view plane
+        // In camera space: X = forward, Y = right, Z = up
+        FVector3 pointCam;
+        pointCam.x = 0.0f;  // on plane through camera, forward handled by dir
+        pointCam.y = xNDC * halfWidth; // right offset
+        pointCam.z = yNDC * halfHeight; // up offset
+
+        // Transform this point into world
+        const FVector3 pointWorld = camRot.RotateVector(pointCam) + camPos;
+
+        // Forward direction in camera space is +X
+        const FVector3 forwardCam(1.0f, 0.0f, 0.0f);
+        dirWorld = camRot.RotateVector(forwardCam).Normalized();
+
+        originWorld = pointWorld;
+    }
+
+    // 5) Build ray
     FRay ray;
-    ray.Origin    = originWorld;
-    ray.Direction = dirWorld;
+    ray.origin = originWorld;
+    ray.direction = dirWorld;
 
-    // 8) Raycast against the scene via EditorSceneAPI
+    // 6) Raycast
     FRaycastHit hit{};
     if (m_EngineEditor.GetSceneAPI().Raycast(ray, hit) && hit.bHit)
     {
-        SelectActor(hit.ActorID);
+        SelectActor(static_cast<int>(hit.actorID));
     }
     else
     {

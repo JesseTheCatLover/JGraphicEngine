@@ -77,7 +77,7 @@ bool EditorSceneAPI::Raycast(const FRay& ray, FRaycastHit& outHit) // TODO: Shou
 
     const float minDistance = 0.01f; // ignore stuff basically at the ray position
 
-    bool found = false;
+    bool bFound = false;
     float bestDistance = std::numeric_limits<float>::max();
 
     for (JActor* actor : actors)
@@ -91,14 +91,14 @@ bool EditorSceneAPI::Raycast(const FRay& ray, FRaycastHit& outHit) // TODO: Shou
         const FVector3 actorPos = actor->GetActorLocation();
 
         // Vector from ray origin to actor
-        const FVector3 toActor = actorPos - ray.Origin;
+        const FVector3 toActor = actorPos - ray.origin;
 
-        // Project onto ray dir to get the closest point parameter t
-        const float t = FMath::Dot(toActor, ray.Direction);
+        // Project onto ray dir to get t of closest point on ray to the actor center
+        const float t = FMath::Dot(toActor, ray.direction);
         if (t < minDistance)
-            continue; // behind the ray or too close
+            continue; // behind or too close
 
-        const FVector3 closestPoint = ray.Origin + ray.Direction * t;
+        const FVector3 closestPoint = ray.origin + ray.direction * t;
 
         // Distance from actor center to ray
         const float distSq = (actorPos - closestPoint).LengthSquared();
@@ -129,18 +129,18 @@ bool EditorSceneAPI::Raycast(const FRay& ray, FRaycastHit& outHit) // TODO: Shou
                       << std::endl;
         }
         // Choose the closest valid hit (smallest t)
-        if (!found || t < bestDistance)
+        if (!bFound || t < bestDistance)
         {
-            found = true;
+            bFound = true;
             bestDistance = t;
 
             outHit.bHit = true;
-            outHit.ActorID  = static_cast<ActorID>(actor->GetRuntimeID());
-            outHit.Distance = t;
-            outHit.Position = closestPoint;
+            outHit.actorID = actor->GetRuntimeID();
+            outHit.distance = t;
+            outHit.position = closestPoint;
             // outHit.Normal   = ... // leave empty for now
         }
     }
 
-    return found;
+    return bFound;
 }
