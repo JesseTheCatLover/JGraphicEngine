@@ -60,11 +60,14 @@ jobs:
     # ---------------------------
     # Linux SETUP
     # ---------------------------
-    - name: Install compilers (Linux)
+    - name: Install compilers & deps (Linux)
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         sudo apt update
-        sudo apt install -y build-essential cmake clang
+        sudo apt install -y \
+          build-essential cmake clang pkg-config \
+          libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
+          libwayland-dev wayland-protocols libxkbcommon-dev
         if [ "${{ matrix.compiler }}" = "gcc" ]; then
           echo "CC=gcc" >> $GITHUB_ENV
           echo "CXX=g++" >> $GITHUB_ENV
@@ -72,6 +75,7 @@ jobs:
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
         fi
+
 
     # ---------------------------
     # Windows SETUP
