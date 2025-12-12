@@ -27,6 +27,7 @@ private:
     std::vector<FEditorActorSnapshot>  m_HierarchySnapshot;
     std::vector<ActorID> m_SelectedActors;
     ActorID m_SelectionAnchor = 0; // last “primary” clicked actor
+    ActorID m_RevealInHierarchy = 0; //
 
     std::stack<TUniquePtr<IEditorCommand>> m_UndoStack;
     std::stack<TUniquePtr<IEditorCommand>> m_RedoStack;
@@ -94,6 +95,8 @@ public:
     bool CanUndo() const { return !m_UndoStack.empty(); }
     bool CanRedo() const { return !m_RedoStack.empty(); }
 
+    // Actor Selection
+
     // TODO: Should be promoted by commands later
     // Single click without modifiers
     void SelectSingleActor(ActorID id);
@@ -104,8 +107,15 @@ public:
     // Shift+click behavior
     void SelectRangeTo(ActorID id);
 
-    // Called by UI panels (ImGui now, Silver Ware later)
+    // Called by UI panels
     void HandleSelectionClick(ActorID id, const FSelectionModifiers& mods);
 
     void ClearSelection();
+
+    ActorID ConsumeRevealRequest()
+    {
+        ActorID id = m_RevealInHierarchy;
+        m_RevealInHierarchy = 0;
+        return id;
+    }
 };

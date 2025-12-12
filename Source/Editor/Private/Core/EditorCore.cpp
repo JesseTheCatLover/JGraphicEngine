@@ -406,6 +406,7 @@ void EditorCore::SelectSingleActor(ActorID id)
     {
         m_SelectedActors.push_back(id);
         m_SelectionAnchor = id;
+        m_RevealInHierarchy = id; // reveal request
     }
     else
     {
@@ -426,6 +427,7 @@ void EditorCore::ToggleActorSelection(ActorID id)
         m_SelectedActors.erase(it);
 
     m_SelectionAnchor = id;
+    m_RevealInHierarchy = id; // last interacted item
     m_EngineEditor.GetSceneAPI().SetSelectedActors(m_SelectedActors);
 }
 
