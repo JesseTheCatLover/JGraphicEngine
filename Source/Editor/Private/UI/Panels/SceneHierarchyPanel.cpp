@@ -4,23 +4,51 @@
 #include "EditorContext.h"
 #include "Core/EditorCore.h"
 #include "imgui.h"
+#include "Core/FSelectionModifiers.h"
 
-// You will replace these with your real scene/actor APIs
-struct Actor
+void SceneHierarchyPanel::DrawActorNode(
+    const FEditorActorSnapshot& node,
+    const std::vector<FEditorActorSnapshot>& allActors,
+    EditorCore& core)
 {
-    int id;
-    const char* name;
-};
+    ImGuiTreeNodeFlags flags =
+        ImGuiTreeNodeFlags_OpenOnArrow |
+        ImGuiTreeNodeFlags_SpanAvailWidth;
 
-static std::vector<Actor> DebugGetActorsFromEngine(EditorContext& ctx)
-{
-    // your scene/actor system. This is just a placeholder.
-    (void)ctx;
-    return {
-            { 0, "Camera" },
-            { 1, "Light" },
-            { 2, "Player" }
-    };
+    if (!node.hasChildren)
+        flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+    if (node.isSelected)
+        flags |= ImGuiTreeNodeFlags_Selected;
+
+    const bool opened = ImGui::TreeNodeEx(
+        (void*)(intptr_t)node.id,
+        flags,
+        "%s", node.name.c_str()
+    );
+
+    // Click selection (ignore clicks that are only toggling open)
+    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+    {
+        bClickedAnyItemThisFrame = true;
+
+        ImGuiIO& io = ImGui::GetIO();
+        FSelectionModifiers mods;
+        mods.bRange = io.KeyShift;
+        mods.bToggle = io.KeyCtrl || io.KeySuper; // Ctrl on Win/Linux, Cmd on mac
+
+        core.HandleSelectionClick(node.id, mods);
+    }
+
+    if (opened && node.hasChildren)
+    {
+        for (const auto& child : allActors)
+        {
+            if (child.parentID == node.id)
+                DrawActorNode(child, allActors, core);
+        }
+        ImGui::TreePop();
+    }
 }
 
 void SceneHierarchyPanel::Draw(EditorContext& context, EditorCore& core)
@@ -30,12 +58,27 @@ void SceneHierarchyPanel::Draw(EditorContext& context, EditorCore& core)
         ImGui::End();
         return;
     }
+    // Later we add toolbar buttons here (add actor, search, filters, etc.)
+    const auto& actors = core.GetHierarchySnapshot();
+    if (actors.empty())
+    {
+        //ImGui::TextUnformatted("No actors in scene.");
+        ImGui::End();
+        return;
+    }
 
-    auto actors = DebugGetActorsFromEngine(context);
+    bClickedAnyItemThisFrame = false;
 
     for (const auto& actor : actors)
-    {
+        if (actor.parentID == 0)
+            DrawActorNode(actor, actors, core);
 
+    // Background click clears selection
+    if (ImGui::IsWindowHovered() &&
+        ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+        !bClickedAnyItemThisFrame)
+    {
+        core.ClearSelection();
     }
 
     ImGui::End();

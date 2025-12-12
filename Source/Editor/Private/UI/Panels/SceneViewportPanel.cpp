@@ -5,6 +5,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "Core/EditorCore.h"
+#include "Core/FSelectionModifiers.h"
 
 void SceneViewportPanel::OnCreate(EditorContext &context, EditorCore &core)
 {
@@ -59,8 +60,8 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
 
      // The last item (the Image) is the viewport area.
     bool overViewport = ImGui::IsItemHovered(ImGuiHoveredFlags_None);
-    bool leftClicked  = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-    bool rightClicked  = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+    bool leftClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    bool rightClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
     bool rightReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Right);
 
     // Actor picking: single-click selects actor under mouse
@@ -82,8 +83,13 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
         local.x = ImClamp(local.x, 0.0f, rectMax.x - rectMin.x);
         local.y = ImClamp(local.y, 0.0f, rectMax.y - rectMin.y);
 
+        ImGuiIO& io = ImGui::GetIO();
+        FSelectionModifiers mods;
+        mods.bRange = io.KeyShift;
+        mods.bToggle = io.KeyCtrl || io.KeySuper;
+
         // Tell editor core to perform picking in this viewport
-        core.PickActorAtViewportPos(this, local.x, local.y);
+        core.PickActorAtViewportPos(this, local.x, local.y, mods);
     }
 
 

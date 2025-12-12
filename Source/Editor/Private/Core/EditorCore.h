@@ -11,6 +11,7 @@
 struct FRenderView;
 class IEditorPanel;
 class EditorContext;
+class FSelectionModifiers;
 
 class EditorCore
 {
@@ -22,7 +23,10 @@ private:
     EngineEditor& m_EngineEditor;
 
     FEditorFrameSnapshot m_FrameSnapshot;
+
     std::vector<FEditorActorSnapshot>  m_HierarchySnapshot;
+    std::vector<ActorID> m_SelectedActors;
+    ActorID m_SelectionAnchor = 0; // last “primary” clicked actor
 
     std::stack<TUniquePtr<IEditorCommand>> m_UndoStack;
     std::stack<TUniquePtr<IEditorCommand>> m_RedoStack;
@@ -66,11 +70,13 @@ public:
     // Called every frame from EditorApp::OnTick
     void Tick(float deltaTime);
 
+    // Scene Hierarchy
+    void UpdateHierarchySnapshot();
     const std::vector<FEditorActorSnapshot>& GetHierarchySnapshot() const { return m_HierarchySnapshot; }
 
     // Viewport section
     [[nodiscard]] void* GetViewportTextureHandle(const IEditorPanel* panel) const;
-    void PickActorAtViewportPos(const IEditorPanel* panel, float x, float y);
+    void PickActorAtViewportPos(const IEditorPanel* panel, float x, float y, const FSelectionModifiers& mods);
 
     // Called by panels that want an editor camera
     void CreateCameraForPanel(const IEditorPanel* panel);
@@ -88,6 +94,18 @@ public:
     bool CanUndo() const { return !m_UndoStack.empty(); }
     bool CanRedo() const { return !m_RedoStack.empty(); }
 
-    // Simple selection helper (can be promoted to command later).
-    void SelectActor(int actorId);
+    // TODO: Should be promoted by commands later
+    // Single click without modifiers
+    void SelectSingleActor(ActorID id);
+
+    // Ctrl/Cmd click -> toggle
+    void ToggleActorSelection(ActorID id);
+
+    // Shift+click behavior
+    void SelectRangeTo(ActorID id);
+
+    // Called by UI panels (ImGui now, Silver Ware later)
+    void HandleSelectionClick(ActorID id, const FSelectionModifiers& mods);
+
+    void ClearSelection();
 };

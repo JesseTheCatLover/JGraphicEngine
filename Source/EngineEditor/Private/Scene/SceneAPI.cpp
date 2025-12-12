@@ -21,7 +21,7 @@ std::vector<FEditorActorSnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
     if (!scene)
         return result;
 
-    const auto& actors = m_SceneManager.ListAllActors();
+    auto actors = m_SceneManager.ListAllActors();
     result.reserve(actors.size());
 
     for (auto* actor : actors)
@@ -105,29 +105,6 @@ bool EditorSceneAPI::Raycast(const FRay& ray, FRaycastHit& outHit) // TODO: Shou
         if (distSq > pickRadiusSq)
             continue; // too far from ray
 
-        if (!actor->GetRootComponent())
-        {
-            std::cout << "Actor " << actor->GetName() << " has NO root component\n";
-        }
-        else
-        {
-            auto rootPos = actor->GetRootComponent()->GetWorldPosition();
-            std::cout << "Actor " << actor->GetName()
-                      << " rootPos=(" << rootPos.x << "," << rootPos.y << "," << rootPos.z << ")\n";
-        }
-
-        if (distSq <= pickRadiusSq)
-        {
-            std::cout << "Candidate: " << actor->GetRuntimeID()
-                      << " name=" << actor->GetName()
-                      << " pos=("
-                      << actorPos.x << ", "
-                      << actorPos.y << ", "
-                      << actorPos.z << ")"
-                      << "  t=" << t
-                      << "  distSq=" << distSq
-                      << std::endl;
-        }
         // Choose the closest valid hit (smallest t)
         if (!bFound || t < bestDistance)
         {
