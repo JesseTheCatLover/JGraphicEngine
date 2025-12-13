@@ -28,6 +28,23 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
         return;
     }
 
+    // Make this window's dock node hide its tab bar (headless viewport)
+    // if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+    // {
+    //     ImGuiID dockId = ImGui::GetWindowDockID();
+    //     if (dockId != 0)
+    //     {
+    //         if (ImGuiDockNode* node = ImGui::DockBuilderGetNode(dockId))
+    //         {
+    //             // Hide tab bar when this node has a single window.
+    //             node->LocalFlags |= ImGuiDockNodeFlags_AutoHideTabBar;
+    //
+    //             // "never show tabs" even if multiple windows get docked here:
+    //             // node->LocalFlags |= ImGuiDockNodeFlags_NoTabBar;
+    //         }
+    //     }
+    // }
+
     m_IsFocused = ImGui::IsWindowFocused();
     m_IsHovered = ImGui::IsWindowHovered();
 
@@ -85,8 +102,8 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
 
         ImGuiIO& io = ImGui::GetIO();
         FSelectionModifiers mods;
-        mods.bRange = io.KeyShift;
-        mods.bToggle = io.KeyCtrl || io.KeySuper;
+        mods.bRange = false;
+        mods.bToggle = io.KeyCtrl || io.KeySuper || io.KeyShift;
 
         // Tell editor core to perform picking in this viewport
         core.PickActorAtViewportPos(this, local.x, local.y, mods);
@@ -96,6 +113,7 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
     // Start capture: click inside the image
     if (overViewport && rightClicked)
     {
+        ImGui::SetWindowFocus(); // TODO: Make the windows lockable to gain focus for future. (Optional setting)
         m_HasMouseCapture = true;
         core.SetViewportFocused(this, true);
     }

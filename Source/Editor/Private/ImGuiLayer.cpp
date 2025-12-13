@@ -50,7 +50,7 @@ ImGuiLayer::ImGuiLayer(GLFWwindow *window):
     style.Colors[ImGuiCol_ButtonActive]  = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
 
     style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.37f, 0.48f, 0.58f, 1.0f);
-    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.37f, 0.48f, 0.58f, 1.0f);
+    style.Colors[ImGuiCol_HeaderActive] = accent_active;
 
 
     style.Colors[ImGuiCol_Text]         = text_col;
