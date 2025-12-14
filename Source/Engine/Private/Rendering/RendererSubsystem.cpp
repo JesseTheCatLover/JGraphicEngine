@@ -14,6 +14,37 @@
 #include "Scene/JScene.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 
+static void BindFrameAndPassParams(
+    IRenderBackend* backend,
+    RShaderHandle shader,
+    const FPassParam& passParams,
+    const FFramePostParams& frameParams,
+    int& texUnit)
+{
+    // Ints: pass first, then frame overrides
+    for (const auto& [k, v] : passParams.ints)
+        backend->SetUniformInt(shader, k.c_str(), v);
+    for (const auto& [k, v] : frameParams.ints)
+        backend->SetUniformInt(shader, k.c_str(), v);
+
+    // Floats
+    for (const auto& [k, v] : passParams.floats)
+        backend->SetUniformFloat(shader, k.c_str(), v);
+    for (const auto& [k, v] : frameParams.floats)
+        backend->SetUniformFloat(shader, k.c_str(), v);
+
+    // Textures (frame-level)
+    for (const auto& [k, tex] : frameParams.textures)
+    {
+        if (k == "u_Input") continue; // reserved, bound by BlitFullscreen
+        if (!tex.IsValid()) continue;
+
+        backend->BindTexture(tex, texUnit);
+        backend->SetUniformInt(shader, k.c_str(), texUnit);
+        ++texUnit;
+    }
+}
+
 RendererSubsystem::RendererSubsystem(IRenderBackend *backend, EngineContext& ctx):
 m_Context(ctx),
 m_Backend(backend)
@@ -216,6 +247,40 @@ void RendererSubsystem::DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4
     drawList(buffer.overlay.GetDrawCommands(),  ERenderLayer::Overlay);
 }
 
+void RendererSubsystem::DrawCustomDepthPass(const RCommandBuffer& cmd, const FMatrix4& viewMat, const FMatrix4& projMat)
+{
+    EnsureCustomDepthShader();
+
+    // State: depth test/write ON, blending OFF
+    m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
+    m_Backend->SetDepthState(true, true, IRenderBackend::ECompareFunc::LessEqual);
+    m_Backend->SetBlendState(false,
+        IRenderBackend::EBlendFactor::One,
+        IRenderBackend::EBlendFactor::Zero);
+
+    m_Backend->BindShader(m_CustomDepthShader);
+    ApplyCamera(m_CustomDepthShader, viewMat, projMat);
+
+    auto drawQueue = [&](const std::vector<RDrawCommand>& cmds)
+    {
+        for (const auto& dc : cmds)
+        {
+            if (!dc.state.mesh.IsValid()) continue;
+            if (!dc.bWriteCustomDepth) continue;
+            if (dc.customStencil == 0) continue;
+
+            const float id01 = (float)dc.customStencil / 255.0f;
+            m_Backend->SetUniformFloat(m_CustomDepthShader, "u_ID01", id01);
+
+            DrawMesh(dc.state.mesh, m_CustomDepthShader, dc.transform);
+        }
+    };
+
+    drawQueue(cmd.opaque.GetDrawCommands());
+    drawQueue(cmd.alpha.GetDrawCommands());
+    drawQueue(cmd.overlay.GetDrawCommands());
+}
+
 void RendererSubsystem::BuildDefaultShader()
 {
     if (m_DefaultShader.IsValid())
@@ -296,6 +361,37 @@ void RendererSubsystem::BuildDefaultShader()
     m_DefaultShader = m_Backend->CreateShader(sh);
 }
 
+void RendererSubsystem::EnsureCustomDepthShader()
+{
+    if (m_CustomDepthShader.IsValid()) return;
+
+    RShader s{};
+    s.vertexSource = R"(
+        #version 330 core
+        layout(location=0) in vec3 aPos;
+        uniform mat4 u_Model;
+        uniform mat4 u_View;
+        uniform mat4 u_Proj;
+        void main()
+        {
+            gl_Position = u_Proj * u_View * u_Model * vec4(aPos, 1.0);
+        }
+    )";
+
+    // ID written into color (R8 or RGBA8)
+    s.fragmentSource = R"(
+        #version 330 core
+        out vec4 FragColor;
+        uniform float u_ID01; // stencil/id normalized [0..1]
+        void main()
+        {
+            FragColor = vec4(u_ID01, 0.0, 0.0, 1.0);
+        }
+    )";
+
+    m_CustomDepthShader = m_Backend->CreateShader(s);
+}
+
 void RendererSubsystem::EnsureTargets(int w, int h, int samples)
 {
     // (Re)build on first run or size/sample change
@@ -321,6 +417,12 @@ void RendererSubsystem::EnsureTargets(int w, int h, int samples)
         BuildTarget(m_Ping, w, h, 1, false, true, false);
         BuildTarget(m_Pong, w, h, 1, false, true, false);
     }
+    if (need(m_Custom))
+    {
+        DestroyTarget(m_Custom);
+        BuildCustomTarget(m_Custom, w, h);
+    }
+
 }
 
 void RendererSubsystem::DestroyTarget(FTarget &t)
@@ -336,8 +438,8 @@ void RendererSubsystem::BuildTarget(FTarget &t, int w, int h, int samples, bool 
     fb.width = w;
     fb.height = h;
     fb.samples = std::max(1, samples);
-    fb.colorAsTexture = true; // we want to sample color
-    fb.depthAsTexture = withDepth && samples==1;  // depth as tex only if single-sample
+    fb.bColorAsTexture = true; // we want to sample color
+    fb.bDepthAsTexture = withDepth && samples==1;  // depth as tex only if single-sample
     fb.colorMode = hdr ? EColorMode::HDR16F : EColorMode::LDR8;
     fb.depthMode = withDepth ? EDepthMode::D24S8 : EDepthMode::None;
 
@@ -350,7 +452,29 @@ void RendererSubsystem::BuildTarget(FTarget &t, int w, int h, int samples, bool 
     t.w = w; t.h = h; t.samples = fb.samples;
 }
 
-RTextureHandle RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor, int w, int h, uint32_t profileId)
+void RendererSubsystem::BuildCustomTarget(FTarget& t, int w, int h)
+{
+    RFramebuffer fb{};
+    fb.width  = w;
+    fb.height = h;
+    fb.samples = 1;
+
+    fb.bHasColor = true;     // (ID is stored in color)
+    fb.bColorAsTexture = true;
+    fb.bDepthAsTexture = true;
+
+    fb.colorMode = EColorMode::LDR8;
+    fb.depthMode = EDepthMode::D24S8; // Custom depth buffer
+
+    t.fbo = m_Backend->CreateFramebuffer(fb);
+    t.color = m_Backend->GetFramebufferColorTexture(t.fbo); // CustomID
+    t.depth = m_Backend->GetFramebufferDepthTexture(t.fbo); // CustomDepth
+    t.w = w; t.h = h; t.samples = 1;
+}
+
+
+RTextureHandle RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor, int w, int h, uint32_t profileId,
+                                                      const FFramePostParams& frameParams)
 {
     // If there's no PPM or no active passes, just return the input scene color
     if (!m_PPM)
@@ -382,19 +506,23 @@ RTextureHandle RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor,
         if (!pass.bEnabled) continue;
 
         auto it = m_Kernels.find(pass.name);
-        if (it == m_Kernels.end()) continue; // unknown pass; skip
+        if (it == m_Kernels.end()) continue;
 
         FTarget& dst = bUsePing ? m_Ping : m_Pong;
         m_Backend->BindFramebuffer(dst.fbo);
+        m_Backend->SetViewport(0, 0, dst.w, dst.h);
 
-        // Set viewport
-        m_Backend->SetViewport(0,0,dst.w,dst.h);
-
-        // Bind shader + params and draw
+        // Bind shader once here (BlitFullscreen will bind again; uniforms persist)
         m_Backend->BindShader(it->second.shader);
-        if (it->second.BindParams) it->second.BindParams(m_Backend, it->second.shader, pass.params);
 
-        m_Backend->BindTexture(current, 0);
+        int texUnit = 1; // 0 reserved for u_Input
+        BindFrameAndPassParams(m_Backend, it->second.shader, pass.params, frameParams, texUnit);
+
+        // Optional kernel-specific param binding (leave for later, or keep if needed)
+        if (it->second.BindParams)
+            it->second.BindParams(m_Backend, it->second.shader, pass.params);
+
+        // Draw (this binds u_Input to unit 0 and current texture to unit 0)
         BlitFullscreen(it->second.shader, current, dst.w, dst.h);
 
         m_Backend->UnbindFramebuffer();
@@ -402,8 +530,6 @@ RTextureHandle RendererSubsystem::RunPostProcessChain(RTextureHandle sceneColor,
         current = dst.color;
         bUsePing = !bUsePing;
     }
-
-    m_Backend->UnbindFramebuffer();
 
     // Final texture
     return current;
@@ -495,15 +621,32 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
                 IRenderBackend::EResolveFilter::Nearest);
         }
 
+
         RTextureHandle finalColor = m_Scene.color;
 
-        // 7) Post-process
-        if (view.bEnablePostProcess)
+        // 7) Custom pass
         {
-            finalColor = RunPostProcessChain(finalColor, sceneRT.w, sceneRT.h, view.postProfileId);
+            m_Backend->BindFramebuffer(m_Custom.fbo);
+            m_Backend->SetViewport(0, 0, m_Custom.w, m_Custom.h);
+
+            // Clear ID(color) + depth + stencil
+            m_Backend->ClearColorDepthStencil(0.f, 0.f, 0.f, 0.f, 1.f, 0);
+
+            DrawCustomDepthPass(viewCmd, viewMat, projMat);
+            m_Backend->UnbindFramebuffer();
         }
 
-        // 8) Present this view
+        // 8) Post-process
+        if (view.bEnablePostProcess)
+        {
+            FFramePostParams frameParams{};
+            frameParams.textures["u_CustomID"]    = m_Custom.color;
+            frameParams.textures["u_CustomDepth"] = m_Custom.depth;
+            frameParams.textures["u_SceneDepth"] = m_Scene.depth;
+            finalColor = RunPostProcessChain(finalColor, sceneRT.w, sceneRT.h, view.postProfileId, frameParams);
+        }
+
+        // 9) Present this view
         if (view.targetFBO.IsValid())  // Editor/RT
             m_Backend->BindFramebuffer(view.targetFBO);
         else                           // Game = backbuffer
@@ -766,8 +909,8 @@ RFramebufferHandle RendererSubsystem::CreateColorTarget(int w, int h, RTextureHa
     fb.width         = w;
     fb.height        = h;
     fb.samples       = 1;
-    fb.colorAsTexture = true;
-    fb.depthAsTexture = false;  // no depth; we just blit into it
+    fb.bColorAsTexture = true;
+    fb.bDepthAsTexture = false;  // no depth; we just blit into it
     fb.colorMode     = EColorMode::HDR16F;
     fb.depthMode     = EDepthMode::None;
 

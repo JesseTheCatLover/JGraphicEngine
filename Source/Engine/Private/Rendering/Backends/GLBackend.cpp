@@ -253,6 +253,47 @@ void GLBackend::ClearDepthOnly(bool bClearDepth)
     glClear(mask);
 }
 
+void GLBackend::ClearDepthStencil(float depth, int stencil)
+{
+    // Clamp to sensible ranges
+    depth = std::clamp(depth, 0.0f, 1.0f);
+    stencil = std::clamp(stencil, 0, 255);
+
+    // Make sure clears actually write
+    glDepthMask(GL_TRUE);
+
+    // Stencil clears are affected by stencil write mask.
+    // Make sure we can clear all bits.
+    glStencilMask(0xFF);
+
+    GLint drawFbo = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+
+    if (drawFbo != 0)
+    {
+        // FBO path (fast, explicit)
+        glClearBufferfi(GL_DEPTH_STENCIL, 0, depth, stencil);
+    }
+    else
+    {
+        // Default framebuffer path (widely compatible)
+        glClearDepth(depth);
+        glClearStencil(stencil);
+        glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    }
+}
+
+void GLBackend::ClearColorDepthStencil(float r, float g, float b, float a, float depth, int stencil)
+{
+    const GLfloat color[4] = { r, g, b, a };
+
+    // Color attachment 0
+    glClearBufferfv(GL_COLOR, 0, color);
+
+    // Depth + stencil attachment
+    glClearBufferfi(GL_DEPTH_STENCIL, 0, depth, stencil);
+}
+
 void* GLBackend::GetNativeTextureHandle(RTextureHandle handle) const
 {
     auto it = m_Textures.find(handle);
@@ -578,8 +619,8 @@ RFramebufferHandle GLBackend::CreateFramebuffer(const RFramebuffer &framebufferD
     fb.width  = framebufferData.width;
     fb.height = framebufferData.height;
     fb.samples = std::max(1, framebufferData.samples);
-    fb.bColorIsTexture = framebufferData.colorAsTexture;
-    fb.bDepthIsTexture = framebufferData.depthAsTexture;
+    fb.bColorIsTexture = framebufferData.bColorAsTexture;
+    fb.bDepthIsTexture = framebufferData.bDepthAsTexture;
     const GLColorDesc col = ToGL(framebufferData);
     const GLDepthDesc dep = ToGLDepth(framebufferData);
     fb.colorInternalFormat = col.internal;

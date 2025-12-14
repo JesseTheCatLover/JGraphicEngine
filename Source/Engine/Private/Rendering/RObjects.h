@@ -81,8 +81,9 @@ struct RFramebuffer
 {
     int width = 0, height = 0;
     int samples = 1;                 // >1 => MSAA
-    bool colorAsTexture = true;      // false => renderbuffer for color (MSAA recommended)
-    bool depthAsTexture = false;     // true if you need to sample depth
+    bool bHasColor = true;
+    bool bColorAsTexture = true;      // false => renderbuffer for color (MSAA recommended)
+    bool bDepthAsTexture = false;     // true if you need to sample depth
 
     EColorMode colorMode = EColorMode::HDR16F; // default HDR pipeline
     EDepthMode depthMode = EDepthMode::D24S8;  // default depth

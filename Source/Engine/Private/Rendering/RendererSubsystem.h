@@ -9,6 +9,7 @@
 #include "Rendering/RHandles.h"
 #include "RCommandBuffer.h"
 
+struct FFramePostParams;
 class JScene;
 struct FRenderView;
 class EngineContext;
@@ -51,6 +52,8 @@ private:
 
     RShaderHandle m_DefaultShader{};
     void BuildDefaultShader();
+    RShaderHandle m_CustomDepthShader{};
+    void EnsureCustomDepthShader();
 
     FCoordAdapter m_CoordAdaptor;
     FMatrix4 m_ViewMat;
@@ -79,6 +82,8 @@ private:
     // Ping-Pong for post
     FTarget m_Ping{};
     FTarget m_Pong{};
+    // Custom target
+    FTarget m_Custom; // holds: fbo, color(id), depth(customDepth)
 
     // Command buffer for scene-gather stage
     RCommandBuffer m_SceneCmd;
@@ -101,12 +106,15 @@ private:
     void EnsureTargets(int w, int h, int samples);
     void DestroyTarget(FTarget& t);
     void BuildTarget(FTarget& t, int w, int h, int samples, bool withDepth = false, bool hdr = false, bool srgb = false);
-    RTextureHandle RunPostProcessChain(RTextureHandle sceneColor, int w, int h, uint32_t profileId);
+    void BuildCustomTarget(FTarget& t, int w, int h);
+    RTextureHandle RunPostProcessChain(RTextureHandle sceneColor, int w, int h, uint32_t profileId,
+        const FFramePostParams& frameParams);
     void RenderSceneBatch(const FSceneBatch& batch);
     void EnsureFullscreenQuad();
     void BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
     void RebuildKernelsIfDirty(uint32_t profileId);
     void DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4& viewMat, const FMatrix4& projMat);
+    void DrawCustomDepthPass(const RCommandBuffer& cmd, const FMatrix4& viewMat, const FMatrix4& projMat);
 
     FCoordAdapter BuildCoordAdapter(const FBackendCoordDesc& d);
 

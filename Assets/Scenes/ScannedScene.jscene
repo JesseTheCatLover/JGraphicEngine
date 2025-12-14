@@ -1,16 +1,16 @@
 {
     "name": "ScannedScene",
-    "actor_count": 3,
+    "actor_count": 4,
     "meta": {
         "thumbnail": "thumbnail.png",
-        "last_modified": "2025-12-11 17:56:53"
+        "last_modified": "2025-12-12 01:56:11"
     },
     "objects": [
         {
-            "uuid": "89b02ba7-629a-4a16-8222-77210f48fe3e",
+            "uuid": "5ff88d7d-ed4b-4082-b101-e0d32c4ceaa4",
             "type": "JActor",
             "relation": {
-                "root_component": "04afc9fa-51d5-41ec-901d-70b6696c1260"
+                "root_component": "c69eb109-a6b2-4c4f-8dd6-bf1652b02ffc"
             },
             "data": {
                 "m_Name": "TheArmoury",
@@ -19,10 +19,10 @@
             }
         },
         {
-            "uuid": "04afc9fa-51d5-41ec-901d-70b6696c1260",
+            "uuid": "c69eb109-a6b2-4c4f-8dd6-bf1652b02ffc",
             "type": "JSceneComponent",
             "relation": {
-                "owner_actor": "89b02ba7-629a-4a16-8222-77210f48fe3e"
+                "owner_actor": "5ff88d7d-ed4b-4082-b101-e0d32c4ceaa4"
             },
             "data": {
                 "m_LocalTransform": {
@@ -47,11 +47,11 @@
             }
         },
         {
-            "uuid": "a0411468-0c4f-4041-bed7-c0ca590535f3",
+            "uuid": "d3a92168-fcef-4d61-870e-39f4b575fa68",
             "type": "JModelComponent",
             "relation": {
-                "owner_actor": "89b02ba7-629a-4a16-8222-77210f48fe3e",
-                "parent_component": "04afc9fa-51d5-41ec-901d-70b6696c1260"
+                "owner_actor": "5ff88d7d-ed4b-4082-b101-e0d32c4ceaa4",
+                "parent_component": "c69eb109-a6b2-4c4f-8dd6-bf1652b02ffc"
             },
             "data": {
                 "m_ModelKey": "TheArmoury/model.obj",
@@ -78,10 +78,10 @@
             }
         },
         {
-            "uuid": "34cbab8c-bb7d-47de-80b1-858fbf76e7b5",
+            "uuid": "b17db0d6-d006-433f-bec0-cb9831bf136f",
             "type": "JActor",
             "relation": {
-                "root_component": "4299aa49-c9e8-43bd-afeb-0002991576ad"
+                "root_component": "3fa0e1c5-87c4-49ea-ae4b-cf30284dae3b"
             },
             "data": {
                 "m_Name": "Tape",
@@ -90,10 +90,10 @@
             }
         },
         {
-            "uuid": "4299aa49-c9e8-43bd-afeb-0002991576ad",
+            "uuid": "3fa0e1c5-87c4-49ea-ae4b-cf30284dae3b",
             "type": "JSceneComponent",
             "relation": {
-                "owner_actor": "34cbab8c-bb7d-47de-80b1-858fbf76e7b5"
+                "owner_actor": "b17db0d6-d006-433f-bec0-cb9831bf136f"
             },
             "data": {
                 "m_LocalTransform": {
@@ -118,11 +118,11 @@
             }
         },
         {
-            "uuid": "9fac0e0f-11da-4e88-85f6-9da78858b9cb",
+            "uuid": "de2b0c9d-932d-42ed-a797-83b581d81cfc",
             "type": "JModelComponent",
             "relation": {
-                "owner_actor": "34cbab8c-bb7d-47de-80b1-858fbf76e7b5",
-                "parent_component": "4299aa49-c9e8-43bd-afeb-0002991576ad"
+                "owner_actor": "b17db0d6-d006-433f-bec0-cb9831bf136f",
+                "parent_component": "3fa0e1c5-87c4-49ea-ae4b-cf30284dae3b"
             },
             "data": {
                 "m_ModelKey": "Tape/Tape.obj",
@@ -149,22 +149,95 @@
             }
         },
         {
-            "uuid": "8f3e825e-fbb9-46b4-8af5-69733d66d529",
+            "uuid": "91ccb4de-60ac-4730-94f8-79be20e81e89",
             "type": "JActor",
             "relation": {
-                "root_component": "dfab1e7a-2703-4be6-971a-9c19105f60a5"
+                "parent_actor": "b17db0d6-d006-433f-bec0-cb9831bf136f",
+                "root_component": "f087859e-f852-4329-b9c1-adbb505075c3"
             },
             "data": {
-                "m_Name": "CameraActor",
+                "m_Name": "Tape",
                 "m_VectorIndex": 2,
                 "m_bIsVisible": true
             }
         },
         {
-            "uuid": "dfab1e7a-2703-4be6-971a-9c19105f60a5",
+            "uuid": "f087859e-f852-4329-b9c1-adbb505075c3",
             "type": "JSceneComponent",
             "relation": {
-                "owner_actor": "8f3e825e-fbb9-46b4-8af5-69733d66d529"
+                "owner_actor": "91ccb4de-60ac-4730-94f8-79be20e81e89",
+                "parent_component": "3fa0e1c5-87c4-49ea-ae4b-cf30284dae3b"
+            },
+            "data": {
+                "m_LocalTransform": {
+                    "position": [
+                        0.0,
+                        2.222222328186035,
+                        0.0
+                    ],
+                    "rotation": [
+                        0.14224426448345184,
+                        0.5648625493049622,
+                        -0.09960050880908966,
+                        0.8067072629928589
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "m_Name": "RootComponent"
+            }
+        },
+        {
+            "uuid": "0fca87bb-4b93-47dc-9d6f-2ab9f90a7b22",
+            "type": "JModelComponent",
+            "relation": {
+                "owner_actor": "91ccb4de-60ac-4730-94f8-79be20e81e89",
+                "parent_component": "f087859e-f852-4329-b9c1-adbb505075c3"
+            },
+            "data": {
+                "m_ModelKey": "Tape/Tape.obj",
+                "m_Visible": true,
+                "m_LocalTransform": {
+                    "position": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "m_Name": ""
+            }
+        },
+        {
+            "uuid": "0395287d-d1bd-489c-b3f9-31f0dad0484d",
+            "type": "JActor",
+            "relation": {
+                "root_component": "c0fe4750-fe76-4df8-8206-76ece421f741"
+            },
+            "data": {
+                "m_Name": "CameraActor",
+                "m_VectorIndex": 3,
+                "m_bIsVisible": true
+            }
+        },
+        {
+            "uuid": "c0fe4750-fe76-4df8-8206-76ece421f741",
+            "type": "JSceneComponent",
+            "relation": {
+                "owner_actor": "0395287d-d1bd-489c-b3f9-31f0dad0484d"
             },
             "data": {
                 "m_LocalTransform": {
@@ -189,11 +262,11 @@
             }
         },
         {
-            "uuid": "9efcbabc-5cb9-4417-8db5-8f67443eca60",
+            "uuid": "eff481d2-374e-46c4-ae0b-35289adc4f95",
             "type": "JCameraComponent",
             "relation": {
-                "owner_actor": "8f3e825e-fbb9-46b4-8af5-69733d66d529",
-                "parent_component": "dfab1e7a-2703-4be6-971a-9c19105f60a5"
+                "owner_actor": "0395287d-d1bd-489c-b3f9-31f0dad0484d",
+                "parent_component": "c0fe4750-fe76-4df8-8206-76ece421f741"
             },
             "data": {
                 "m_FOV": 60.0,

@@ -646,6 +646,12 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
     actor2->SetActorLocation(5.f, 0.f, 5.f);
     actor2->SetActorScale(FVector3(0.9f));
 
+    auto actor3dup = spawnModelActor("Tape", "Tape/Tape.obj");
+    actor3dup->AttachToActor(actor2);
+    actor3dup->SetActorLocation(5.f, 2.f, 5.f);
+    actor3dup->SetActorRotation(70.f, 0.f, 20.f);
+    actor3dup->SetActorScale(FVector3(0.9f));
+
     JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
     cameraActor->SetName("CameraActor");
     cameraActor->AddRuntimeComponent<JCameraComponent>();

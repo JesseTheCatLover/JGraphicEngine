@@ -7,12 +7,16 @@
 #include <unordered_map>
 #include <variant>
 
-struct FPassParam {
+#include "Rendering/RHandles.h"
+
+struct FPassParam
+{
     std::unordered_map<std::string, float> floats;
     std::unordered_map<std::string, int> ints;
 };
 
-struct FPostPassDesc {
+struct FPostPassDesc
+{
     std::string name;
     bool bEnabled = true;
     FPassParam params;
@@ -22,6 +26,13 @@ struct FPostProfile
 {
     std::vector<FPostPassDesc> chains;
     bool bDirty = true;
+};
+
+struct FFramePostParams
+{
+    std::unordered_map<std::string, float> floats;
+    std::unordered_map<std::string, int>   ints;
+    std::unordered_map<std::string, RTextureHandle> textures;
 };
 
 class PostProcessManager

@@ -36,9 +36,14 @@ struct FGPUStateCache
 
 struct RDrawCommand
 {
+    uint64_t actorID = 0;
     uint64_t packet{0};   // composed key (layer, shader, material, depth bucket, etc.)
     FGPUStateCache state{};
     FMatrix4 transform{FMatrix4::Identity()};
+
+    // Custom depth/stencil
+    bool bWriteCustomDepth = false; // render into CustomDepth pass
+    uint8_t customStencil = 0;      // 0 = none, 1..255 = id
 };
 
 struct RLightData

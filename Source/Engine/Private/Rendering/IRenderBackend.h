@@ -52,6 +52,8 @@ public:
     virtual void SetViewport(int x, int y, int w, int h) = 0;
     virtual void ClearColorDepth(float r, float g, float b, float a, bool bClearDepth = true) = 0;
     virtual void ClearDepthOnly(bool bClearDepth = true) = 0;
+    virtual void ClearDepthStencil(float depth, int stencil) = 0;
+    virtual void ClearColorDepthStencil(float r, float g, float b, float a, float depth, int stencil) = 0;
 
     // State control
     virtual void SetDepthState(bool bTestEnable, bool bWriteEnable, ECompareFunc func) = 0;
