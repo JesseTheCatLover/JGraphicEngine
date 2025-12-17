@@ -2,12 +2,14 @@
 
 #include "Scene/SceneComponents/JModelComponent.h"
 
+#include "Core/EngineContext.h"
 #include "Core/JEngine.h"
 #include "Core/Serialization/JsonWriter.h"
 #include "Core/Serialization/JsonReader.h"
 #include "Resources/ResourceSubsystem.h"
 #include "Resources/GpuResources/ModelResource.h"
 #include "Rendering/RCommandQueue.h"
+#include "Scene/JActor.h"
 
 void JModelComponent::SetModel(const std::string& assetID)
 {
@@ -42,6 +44,15 @@ void JModelComponent::GatherProxies(IRenderSubmission& submission,
         cmd.state.shader   = m_Shader;
         cmd.state.material = sm.material;
         cmd.transform      = world;
+
+        cmd.actorID = GetOwnerActor()->GetRuntimeID();
+
+        const bool bSelected = JEngine::Get().GetEngineContext().GetEditorSelectionState().IsSelected(cmd.actorID);
+        if (bSelected)
+        {
+            cmd.bWriteCustomDepth = true;
+            cmd.customStencil = JEngine::Get().GetEngineContext().GetEditorSelectionState().selectionStencil;
+        }
         const uint16_t depthBucket = 0; // filled later by depth bucketer
         cmd.packet = RCommandQueue::MakeSortKey(
             GetRenderLayer(), cmd.state.shader.id, cmd.state.material.id, depthBucket);

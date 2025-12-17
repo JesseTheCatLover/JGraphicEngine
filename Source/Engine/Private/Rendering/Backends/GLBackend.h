@@ -138,6 +138,10 @@ public:
                             EResolveMask mask = EResolveMask::Color,
                             EResolveFilter filter = EResolveFilter::Nearest) override;
 
+    void SetStencilState(const FStencilState &state) override;
+
+    void SetColorWriteMask(bool r, bool g, bool b, bool a) override;
+
     RTextureHandle GetFramebufferColorTexture(RFramebufferHandle) override;
     RTextureHandle GetFramebufferDepthTexture(RFramebufferHandle) override;
 

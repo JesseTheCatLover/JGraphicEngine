@@ -4,6 +4,7 @@
 
 #include <iostream>
 
+#include "Core/EngineContext.h"
 #include "Framework/SceneManager.h"
 #include "Scene/JScene.h"
 
@@ -46,7 +47,9 @@ std::vector<FEditorActorSnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
 void EditorSceneAPI::SetSelectedActors(const std::vector<ActorID> &ids)
 {
     m_SelectedActors = ids;
-    // Later: propagate to renderer for outlines, etc.
+
+    // Push to render-facing state (so renderer can outline)
+    m_Context.GetEditorSelectionState().SetSelectedActors(ids);
 }
 
 void EditorSceneAPI::DeleteActors(const std::vector<ActorID> &ids)

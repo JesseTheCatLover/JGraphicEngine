@@ -54,6 +54,8 @@ private:
     void BuildDefaultShader();
     RShaderHandle m_CustomDepthShader{};
     void EnsureCustomDepthShader();
+    RShaderHandle m_OutlineShader{};
+    void EnsureOutlineShader();
 
     FCoordAdapter m_CoordAdaptor;
     FMatrix4 m_ViewMat;
@@ -115,6 +117,7 @@ private:
     void RebuildKernelsIfDirty(uint32_t profileId);
     void DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4& viewMat, const FMatrix4& projMat);
     void DrawCustomDepthPass(const RCommandBuffer& cmd, const FMatrix4& viewMat, const FMatrix4& projMat);
+    void DrawSceneStencilMaskPass(const RCommandBuffer& cmd, const FMatrix4& viewMat, const FMatrix4& projMat);
 
     FCoordAdapter BuildCoordAdapter(const FBackendCoordDesc& d);
 

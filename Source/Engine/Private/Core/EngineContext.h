@@ -1,7 +1,34 @@
 #pragma once
 #include <vector>
+#include <cstdint>
+#include <unordered_set>
+
 #include "Core/Memory/SmartPointers.h"
 #include "Rendering/FRenderView.h"
+
+struct FEditorSelectionRenderState
+{
+    std::unordered_set<uint64_t> selectedActors; // actorIDs
+    uint8_t selectionStencil = 1;          // 1..255
+
+    void SetSelectedActors(const std::vector<uint64_t>& ids)
+    {
+        selectedActors.clear();
+        selectedActors.reserve(ids.size());
+        for (uint64_t id : ids)
+            if (id != 0) selectedActors.insert(id);
+    }
+
+    [[nodiscard]] bool IsSelected(uint64_t id) const
+    {
+        return selectedActors.find(id) != selectedActors.end();
+    }
+
+    [[nodiscard]] bool HasSelection() const
+    {
+        return !selectedActors.empty();
+    }
+};
 
 class ICameraViewSource;
 struct FInputContext;
@@ -24,6 +51,8 @@ private:
     TUniquePtr<FViewportContext> m_ViewportContext;
     TUniquePtr<FInputContext> m_InputContext;
 
+    FEditorSelectionRenderState m_EditorSelection;
+
 public:
     ~EngineContext();
 
@@ -43,6 +72,9 @@ public:
 
     bool GetWireframeMode();
     void SetWireframeMode(bool bWireMode);
+
+    FEditorSelectionRenderState& GetEditorSelectionState() { return m_EditorSelection; }
+    const FEditorSelectionRenderState& GetEditorSelectionState() const { return m_EditorSelection; }
 
     void AddViewSource(const FRenderView& view) { m_ViewSources.push_back(view); }
 

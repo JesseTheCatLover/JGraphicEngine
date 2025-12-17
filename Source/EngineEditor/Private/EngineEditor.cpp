@@ -5,7 +5,9 @@
 #include <vector>
 #include <unordered_map>
 #include "Core/EngineContext.h"
+#include "Core/EngineGlobals.h"
 #include "Core/JEngine.h"
+#include "Framework/PostProcessManager.h"
 #include "Framework/SceneManager.h"
 #include "Rendering/FRenderView.h"
 #include "Rendering/IPlatformSurface.h"
@@ -23,6 +25,24 @@ EngineEditor::EngineEditor()
 {
     // Editor takes over rendering, so don't render directly to platform surface
     m_Context.SetShouldRenderToPlatformSurface(false);
+
+    auto& chain = GetPostProcessManager()->EditChain(kEditorPostProfile);
+    chain.clear();
+
+    FPostPassDesc outline{};
+    outline.name = "Outline";
+    outline.bEnabled = true;
+
+    // Optional defaults (can be overridden per-view via frame params)
+    outline.params.floats["u_Thickness"] = 2.0f;
+    outline.params.floats["u_Occlusion"] = 1.0f;
+    outline.params.floats["u_FillAlpha"] = 0.12f;
+    outline.params.floats["u_OutlineR"]  = 1.0f;
+    outline.params.floats["u_OutlineG"]  = 0.65f;
+    outline.params.floats["u_OutlineB"]  = 0.10f;
+    outline.params.floats["u_OutlineA"]  = 1.0f;
+
+    chain.push_back(std::move(outline));
 }
 
 EngineEditor::~EngineEditor()
@@ -127,7 +147,7 @@ void EngineEditor::SubmitEditorViewSources(const FCameraToolState& state)
         view.renderMask         = 0xFFFFFFFFu;
         view.bApplyPostGamma    = false; // TODO: Make this configurable for future
         view.bEnablePostProcess = true;
-        view.postProfileId      = 0;
+        view.postProfileId      = kEditorPostProfile;
 
         m_Context.AddViewSource(view);
     }

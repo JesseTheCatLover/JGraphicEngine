@@ -21,22 +21,26 @@ static void BindFrameAndPassParams(
     const FFramePostParams& frameParams,
     int& texUnit)
 {
-    // Ints: pass first, then frame overrides
-    for (const auto& [k, v] : passParams.ints)
-        backend->SetUniformInt(shader, k.c_str(), v);
-    for (const auto& [k, v] : frameParams.ints)
-        backend->SetUniformInt(shader, k.c_str(), v);
+    for (auto& [k,v] : passParams.floats) backend->SetUniformFloat(shader, k.c_str(), v);
+    for (auto& [k,v] : frameParams.floats) backend->SetUniformFloat(shader, k.c_str(), v);
 
-    // Floats
-    for (const auto& [k, v] : passParams.floats)
-        backend->SetUniformFloat(shader, k.c_str(), v);
-    for (const auto& [k, v] : frameParams.floats)
-        backend->SetUniformFloat(shader, k.c_str(), v);
+    for (auto& [k,v] : passParams.ints) backend->SetUniformInt(shader, k.c_str(), v);
+    for (auto& [k,v] : frameParams.ints) backend->SetUniformInt(shader, k.c_str(), v);
 
-    // Textures (frame-level)
+    // Textures (pass-level first, then frame-level so frame can override)
+    for (const auto& [k, tex] : passParams.textures)
+    {
+        if (k == "u_Input") continue;
+        if (!tex.IsValid()) continue;
+
+        backend->BindTexture(tex, texUnit);
+        backend->SetUniformInt(shader, k.c_str(), texUnit);
+        ++texUnit;
+    }
+
     for (const auto& [k, tex] : frameParams.textures)
     {
-        if (k == "u_Input") continue; // reserved, bound by BlitFullscreen
+        if (k == "u_Input") continue;
         if (!tex.IsValid()) continue;
 
         backend->BindTexture(tex, texUnit);
@@ -246,17 +250,35 @@ void RendererSubsystem::DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4
     drawList(buffer.alpha.GetDrawCommands(),    ERenderLayer::Alpha);
     drawList(buffer.overlay.GetDrawCommands(),  ERenderLayer::Overlay);
 }
-
-void RendererSubsystem::DrawCustomDepthPass(const RCommandBuffer& cmd, const FMatrix4& viewMat, const FMatrix4& projMat)
+void RendererSubsystem::DrawCustomDepthPass(const RCommandBuffer& cmd,
+                                            const FMatrix4& viewMat,
+                                            const FMatrix4& projMat)
 {
     EnsureCustomDepthShader();
 
-    // State: depth test/write ON, blending OFF
+    // CustomDepth pass state:
+    // - Depth test/write ON
+    // - Blend OFF
+    // - Stencil ON (write stencil ref on depth pass)
     m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
     m_Backend->SetDepthState(true, true, IRenderBackend::ECompareFunc::LessEqual);
     m_Backend->SetBlendState(false,
         IRenderBackend::EBlendFactor::One,
         IRenderBackend::EBlendFactor::Zero);
+
+    // Color write: optional. If you only want stencil+depth, disable color writes.
+    // For now, we can KEEP color writes so your existing outline shader sampling u_CustomID still works.
+    m_Backend->SetColorWriteMask(true, true, true, true);
+
+    // Base stencil config (we’ll vary ref per draw)
+    IRenderBackend::FStencilState st{};
+    st.bEnable   = true;
+    st.func      = IRenderBackend::ECompareFunc::Always; // always pass
+    st.readMask  = 0xFF;
+    st.writeMask = 0xFF;
+    st.sfail     = IRenderBackend::EStencilOp::Keep;
+    st.zfail     = IRenderBackend::EStencilOp::Keep;
+    st.zpass     = IRenderBackend::EStencilOp::Replace;  // write ref when depth passes
 
     m_Backend->BindShader(m_CustomDepthShader);
     ApplyCamera(m_CustomDepthShader, viewMat, projMat);
@@ -269,6 +291,11 @@ void RendererSubsystem::DrawCustomDepthPass(const RCommandBuffer& cmd, const FMa
             if (!dc.bWriteCustomDepth) continue;
             if (dc.customStencil == 0) continue;
 
+            // 1) Real stencil write
+            st.ref = dc.customStencil;
+            m_Backend->SetStencilState(st);
+
+            // 2) Optional bridge: still write ID into color so post can sample u_CustomID
             const float id01 = (float)dc.customStencil / 255.0f;
             m_Backend->SetUniformFloat(m_CustomDepthShader, "u_ID01", id01);
 
@@ -279,6 +306,64 @@ void RendererSubsystem::DrawCustomDepthPass(const RCommandBuffer& cmd, const FMa
     drawQueue(cmd.opaque.GetDrawCommands());
     drawQueue(cmd.alpha.GetDrawCommands());
     drawQueue(cmd.overlay.GetDrawCommands());
+
+    // Clean up: don't leak stencil state into later passes
+    IRenderBackend::FStencilState off{};
+    off.bEnable = false;
+    m_Backend->SetStencilState(off);
+}
+
+void RendererSubsystem::DrawSceneStencilMaskPass(const RCommandBuffer& cmd,const FMatrix4& viewMat,
+    const FMatrix4& projMat)
+{
+    EnsureCustomDepthShader(); // good enough: position-only
+
+    // Don't touch color
+    m_Backend->SetColorWriteMask(false, false, false, false);
+
+    // Only mark visible fragments
+    m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
+    m_Backend->SetDepthState(true, false, IRenderBackend::ECompareFunc::LessEqual);
+    m_Backend->SetBlendState(false,
+        IRenderBackend::EBlendFactor::One,
+        IRenderBackend::EBlendFactor::Zero);
+
+    IRenderBackend::FStencilState st{};
+    st.bEnable   = true;
+    st.func      = IRenderBackend::ECompareFunc::Always;
+    st.readMask  = 0xFF;
+    st.writeMask = 0xFF;
+    st.sfail     = IRenderBackend::EStencilOp::Keep;
+    st.zfail     = IRenderBackend::EStencilOp::Keep;
+    st.zpass     = IRenderBackend::EStencilOp::Replace;
+
+    m_Backend->BindShader(m_CustomDepthShader);
+    ApplyCamera(m_CustomDepthShader, viewMat, projMat);
+
+    auto drawQueue = [&](const std::vector<RDrawCommand>& cmds)
+    {
+        for (const auto& dc : cmds)
+        {
+            if (!dc.state.mesh.IsValid()) continue;
+            if (!dc.bWriteCustomDepth)    continue;   // "marked"
+            if (dc.customStencil == 0)    continue;
+
+            st.ref = dc.customStencil;
+            m_Backend->SetStencilState(st);
+
+            // Color is off, so FragColor doesn't matter.
+            DrawMesh(dc.state.mesh, m_CustomDepthShader, dc.transform);
+        }
+    };
+
+    drawQueue(cmd.opaque.GetDrawCommands());
+    drawQueue(cmd.alpha.GetDrawCommands());
+    drawQueue(cmd.overlay.GetDrawCommands());
+
+    // Restore
+    m_Backend->SetColorWriteMask(true, true, true, true);
+    IRenderBackend::FStencilState off{}; off.bEnable = false;
+    m_Backend->SetStencilState(off);
 }
 
 void RendererSubsystem::BuildDefaultShader()
@@ -392,37 +477,210 @@ void RendererSubsystem::EnsureCustomDepthShader()
     m_CustomDepthShader = m_Backend->CreateShader(s);
 }
 
+void RendererSubsystem::EnsureOutlineShader()
+{
+    if (m_OutlineShader.IsValid())
+        return;
+
+    // Not strictly required for compilation, but ensures fullscreen tri exists early.
+    EnsureFullscreenQuad();
+
+    RShader s{};
+
+    // Fullscreen vertex
+    s.vertexSource = R"(#version 330 core
+        layout(location=0) in vec3 aPos;
+        layout(location=2) in vec2 aUV;
+
+        out vec2 vUV;
+
+        void main()
+        {
+            vUV = aUV;
+            gl_Position = vec4(aPos, 1.0);
+        }
+    )";
+
+    // Outline: CustomID + CustomDepth + SceneDepth
+    // - Edge is computed using a dilation ring (radius 1..4 px controlled by u_Thickness)
+    // - Occlusion is computed using min neighbor CustomDepth (important!)
+    // - Optional fill tint inside selected object
+    s.fragmentSource = R"(#version 330 core
+        in vec2 vUV;
+        out vec4 FragColor;
+
+        uniform sampler2D u_Input;
+        uniform sampler2D u_CustomID;
+        uniform sampler2D u_CustomDepth;
+        uniform sampler2D u_SceneDepth;
+
+        // Selected stencil id in 0..1 (your engine passes stencil/255)
+        uniform float u_StencilRef01;
+
+        // Thickness in pixels (1..4 recommended with this shader)
+        uniform float u_Thickness;
+
+        // Texture texel size (1/width, 1/height)
+        uniform float u_InvW;
+        uniform float u_InvH;
+
+        // Depth test epsilon for occlusion comparisons
+        uniform float u_DepthEpsilon;
+
+        // Outline color provided as floats (since your param binder currently does floats/ints/textures)
+        uniform float u_OutlineR;
+        uniform float u_OutlineG;
+        uniform float u_OutlineB;
+        uniform float u_OutlineA;
+
+        // Fill tint strength inside the selected object (0 disables fill)
+        uniform float u_FillAlpha;
+
+        // 1 = hide when occluded by scene depth, 0 = x-ray outline
+        uniform float u_Occlusion;
+
+        const float kIDHalfStep = 0.5 / 255.0;
+
+        float IsSelected(float id01)
+        {
+            // IDs are quantized to 8-bit in CustomID render target.
+            // Use a half-step threshold to match the bucket.
+            return step(abs(id01 - u_StencilRef01), kIDHalfStep);
+        }
+
+        void SampleNeighbor(vec2 uv, float include, inout float anySel, inout float minCd)
+        {
+            if (include < 0.5) return;
+
+            float id = texture(u_CustomID, uv).r;
+            float s  = IsSelected(id);
+            if (s > 0.5)
+            {
+                anySel = 1.0;
+                float cd = texture(u_CustomDepth, uv).r;
+                minCd = min(minCd, cd);
+            }
+        }
+
+        void main()
+        {
+            vec4 scene = texture(u_Input, vUV);
+
+            // If no selection requested, passthrough.
+            if (u_StencilRef01 <= 0.0)
+            {
+                FragColor = scene;
+                return;
+            }
+
+            vec2 texel = vec2(u_InvW, u_InvH);
+
+            // Center mask + depths
+            float idC = texture(u_CustomID, vUV).r;
+            float mC  = IsSelected(idC);
+
+            float sd  = texture(u_SceneDepth,  vUV).r;
+            float cdC = texture(u_CustomDepth, vUV).r;
+
+            // Fill visibility uses the center depth (valid because center is inside the mask for fill)
+            float visibleFill = 1.0;
+            if (u_Occlusion > 0.5)
+                visibleFill = step(cdC, sd + u_DepthEpsilon);
+
+            // Edge detection:
+            // edge pixel = (any neighbor selected) AND (center NOT selected)
+            float anySel = 0.0;
+            float minCd  = 1.0; // neighbor-based occlusion uses min neighbor custom depth
+
+            // Dilation ring: radius 1..4
+            // (Keeping it fixed-size avoids driver weirdness and keeps perf predictable.)
+            for (int r = 1; r <= 4; ++r)
+            {
+                // include this radius if r <= thickness (+0.5 for nicer thresholding)
+                float include = step(float(r) - 0.5, u_Thickness);
+                vec2 off = texel * float(r);
+
+                // 8-neighborhood sampling
+                SampleNeighbor(vUV + vec2( off.x, 0.0), include, anySel, minCd);
+                SampleNeighbor(vUV + vec2(-off.x, 0.0), include, anySel, minCd);
+                SampleNeighbor(vUV + vec2(0.0,  off.y), include, anySel, minCd);
+                SampleNeighbor(vUV + vec2(0.0, -off.y), include, anySel, minCd);
+
+                SampleNeighbor(vUV + vec2( off.x,  off.y), include, anySel, minCd);
+                SampleNeighbor(vUV + vec2( off.x, -off.y), include, anySel, minCd);
+                SampleNeighbor(vUV + vec2(-off.x,  off.y), include, anySel, minCd);
+                SampleNeighbor(vUV + vec2(-off.x, -off.y), include, anySel, minCd);
+            }
+
+            float edge = clamp(anySel - mC, 0.0, 1.0);
+
+            // Edge visibility uses min neighbor depth (CRITICAL):
+            // outline pixels are outside the mask, so center depth is often cleared to 1.0.
+            float visibleEdge = 1.0;
+            if (u_Occlusion > 0.5)
+                visibleEdge = step(minCd, sd + u_DepthEpsilon);
+
+            vec3 outlineColor = vec3(u_OutlineR, u_OutlineG, u_OutlineB);
+
+            // Fill inside object (subtle tint)
+            float fillA = clamp(u_FillAlpha, 0.0, 1.0) * mC * visibleFill;
+            vec3 color = mix(scene.rgb, outlineColor, fillA);
+
+            // Outline on top
+            float outA = clamp(u_OutlineA, 0.0, 1.0) * edge * visibleEdge;
+            color = mix(color, outlineColor, outA);
+
+            FragColor = vec4(color, scene.a);
+        }
+    )";
+
+    m_OutlineShader = m_Backend->CreateShader(s);
+}
+
 void RendererSubsystem::EnsureTargets(int w, int h, int samples)
 {
-    // (Re)build on first run or size/sample change
-    auto need = [&](const FTarget& t){ return t.w!=w || t.h!=h || t.samples!=samples || !t.fbo.IsValid(); };
+    auto needExact = [&](const FTarget& t, int ew, int eh, int es)
+    {
+        return !t.fbo.IsValid() || t.w != ew || t.h != eh || t.samples != es;
+    };
 
-    if (need(m_Scene))
+    // Scene single-sample (always 1)
+    if (needExact(m_Scene, w, h, 1))
     {
         DestroyTarget(m_Scene);
-        BuildTarget(m_Scene, w, h, 1, /*withDepth*/true, /*hdr*/true, /*srgb*/false); // keep post chain in HDR
+        BuildTarget(m_Scene, w, h, 1, /*withDepth*/true, /*hdr*/true, /*srgb*/false);
     }
-    if (samples > 1 && need(m_SceneMSAA))
+
+    // Scene MSAA (only if samples > 1)
+    if (samples > 1)
     {
-        DestroyTarget(m_SceneMSAA);
-        BuildTarget(m_SceneMSAA, w, h, samples, /*withDepth*/true, /*hdr*/true, /*srgb*/false);
+        if (needExact(m_SceneMSAA, w, h, samples))
+        {
+            DestroyTarget(m_SceneMSAA);
+            BuildTarget(m_SceneMSAA, w, h, samples, /*withDepth*/true, /*hdr*/true, /*srgb*/false);
+        }
     }
-    else if (samples == 1 && m_SceneMSAA.fbo.IsValid())
+    else
     {
-        DestroyTarget(m_SceneMSAA);
+        if (m_SceneMSAA.fbo.IsValid())
+            DestroyTarget(m_SceneMSAA);
     }
-    if (need(m_Ping))
+
+    // Ping/pong (always 1)
+    if (needExact(m_Ping, w, h, 1) || needExact(m_Pong, w, h, 1))
     {
-        DestroyTarget(m_Ping); DestroyTarget(m_Pong);
-        BuildTarget(m_Ping, w, h, 1, false, true, false);
-        BuildTarget(m_Pong, w, h, 1, false, true, false);
+        DestroyTarget(m_Ping);
+        DestroyTarget(m_Pong);
+        BuildTarget(m_Ping, w, h, 1, /*withDepth*/false, /*hdr*/true, /*srgb*/false);
+        BuildTarget(m_Pong, w, h, 1, /*withDepth*/false, /*hdr*/true, /*srgb*/false);
     }
-    if (need(m_Custom))
+
+    // Custom (always 1)
+    if (needExact(m_Custom, w, h, 1))
     {
         DestroyTarget(m_Custom);
         BuildCustomTarget(m_Custom, w, h);
     }
-
 }
 
 void RendererSubsystem::DestroyTarget(FTarget &t)
@@ -438,8 +696,11 @@ void RendererSubsystem::BuildTarget(FTarget &t, int w, int h, int samples, bool 
     fb.width = w;
     fb.height = h;
     fb.samples = std::max(1, samples);
+
+    fb.bHasColor = true;
     fb.bColorAsTexture = true; // we want to sample color
     fb.bDepthAsTexture = withDepth && samples==1;  // depth as tex only if single-sample
+
     fb.colorMode = hdr ? EColorMode::HDR16F : EColorMode::LDR8;
     fb.depthMode = withDepth ? EDepthMode::D24S8 : EDepthMode::None;
 
@@ -575,17 +836,17 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
         // 2) Clear Color/Depth if requested
         if (view.bClearColor)
         {
-            m_Backend->ClearColorDepth(
-                view.clearColorValue.x,
-                view.clearColorValue.y,
-                view.clearColorValue.z,
-                view.clearColorValue.w,
-                view.bClearDepth);
+            m_Backend->ClearColorDepthStencil(
+                view.clearColorValue.x, view.clearColorValue.y, view.clearColorValue.z, view.clearColorValue.w,
+                1.f, 0 // depth=1, stencil=0
+            );
         }
         else
         {
-            m_Backend->ClearDepthOnly(view.bClearDepth);
+            // if you keep a separate function, at least clear depth+stencil here
+            m_Backend->ClearDepthStencil(1.f, 0);
         }
+
 
         // 3) Build camera matrices
         const float aspect = (sceneRT.h > 0)
@@ -617,8 +878,13 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
         {
             m_Backend->ResolveFramebuffer(
                 m_SceneMSAA.fbo, m_Scene.fbo,
-                IRenderBackend::EResolveMask::Color,
-                IRenderBackend::EResolveFilter::Nearest);
+                (IRenderBackend::EResolveMask)(
+                    (uint8_t)IRenderBackend::EResolveMask::Color |
+                    (uint8_t)IRenderBackend::EResolveMask::Depth |
+                    (uint8_t)IRenderBackend::EResolveMask::Stencil
+                ),
+                IRenderBackend::EResolveFilter::Nearest
+            );
         }
 
 
@@ -642,9 +908,32 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
             FFramePostParams frameParams{};
             frameParams.textures["u_CustomID"]    = m_Custom.color;
             frameParams.textures["u_CustomDepth"] = m_Custom.depth;
-            frameParams.textures["u_SceneDepth"] = m_Scene.depth;
+            frameParams.textures["u_SceneDepth"]  = m_Scene.depth;
+
+            // REQUIRED for thickness in pixels
+            frameParams.floats["u_InvW"] = 1.0f / float(sceneRT.w);
+            frameParams.floats["u_InvH"] = 1.0f / float(sceneRT.h);
+
+            // Selection target
+            frameParams.floats["u_StencilRef01"] = float(m_Context.GetEditorSelectionState().selectionStencil) / 255.0f;
+
+            // Edge/occlusion tuning
+            frameParams.floats["u_DepthEpsilon"] = 0.0005f;
+            frameParams.floats["u_Thickness"]    = 1.0f;   // try 1..3
+
+            // Defaults
+            frameParams.floats["u_Occlusion"] = 1.0f;  // 1=hide behind walls, 0=x-ray outlines
+            frameParams.floats["u_FillAlpha"] = 0.12f; // subtle fill inside selection
+
+            // Outline color (linear space)
+            frameParams.floats["u_OutlineR"] = 1.0f;
+            frameParams.floats["u_OutlineG"] = 0.65f;
+            frameParams.floats["u_OutlineB"] = 0.10f;
+            frameParams.floats["u_OutlineA"] = 1.0f;
+
             finalColor = RunPostProcessChain(finalColor, sceneRT.w, sceneRT.h, view.postProfileId, frameParams);
         }
+
 
         // 9) Present this view
         if (view.targetFBO.IsValid())  // Editor/RT
@@ -781,6 +1070,14 @@ void RendererSubsystem::RebuildKernelsIfDirty(uint32_t profileId)
         if (auto it = m_Kernels.find(pass.name); it != m_Kernels.end())
         {
             newKernels.emplace(pass.name, it->second); // Keep compiled kernel
+        }
+        else if (pass.name == "Outline")
+        {
+            EnsureOutlineShader(); // compiles once, stores m_OutlinePPShader
+            FPassKernel k{};
+            k.shader = m_OutlineShader;
+            newKernels.emplace(pass.name, k);
+            continue;
         }
         else
         {

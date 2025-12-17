@@ -34,7 +34,26 @@ public:
     enum class ECompareFunc   : uint8_t { Never, Less, LessEqual, Equal, Greater, GreaterEqual, NotEqual, Always };
     enum class EBlendFactor   : uint8_t { Zero, One, SrcColor, OneMinusSrcColor, DstColor, OneMinusDstColor,
                                           SrcAlpha, OneMinusSrcAlpha, DstAlpha, OneMinusDstAlpha };
+    enum class EStencilOp     : uint8_t { Keep, Zero, Replace, Incr, IncrWrap, Decr, DecrWrap, Invert };
     enum class ECullMode      : uint8_t { None, Back, Front };
+
+    struct FStencilState
+    {
+        bool bEnable = false;
+
+        // Comparison
+        ECompareFunc func = ECompareFunc::Always;
+        uint8_t ref = 0;
+        uint8_t readMask = 0xFF;
+
+        // Writes
+        uint8_t writeMask = 0xFF;
+
+        // Ops: what happens to the stencil value
+        EStencilOp sfail = EStencilOp::Keep;  // stencil test fails
+        EStencilOp zfail = EStencilOp::Keep;  // stencil passes, depth fails
+        EStencilOp zpass = EStencilOp::Keep;  // both pass
+    };
 
     static constexpr uint32_t kMaxLights = 128;
 
@@ -79,6 +98,10 @@ public:
     virtual void ResolveFramebuffer(RFramebufferHandle src, RFramebufferHandle dst,
                                 EResolveMask mask = EResolveMask::Color,
                                 EResolveFilter filter = EResolveFilter::Nearest) = 0;
+
+    virtual void SetStencilState(const FStencilState& state) = 0;
+
+    virtual void SetColorWriteMask(bool r, bool g, bool b, bool a) = 0;
 
     virtual RTextureHandle GetFramebufferColorTexture(RFramebufferHandle) = 0;
     virtual RTextureHandle GetFramebufferDepthTexture(RFramebufferHandle) = 0;

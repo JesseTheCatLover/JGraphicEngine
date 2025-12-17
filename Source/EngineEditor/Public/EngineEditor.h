@@ -31,6 +31,8 @@ private:
 
     TEditorTools<CameraEditorTool> m_CameraTools;
 
+    static constexpr uint32_t kEditorPostProfile = 1;
+
 public:
     ~EngineEditor();
 
