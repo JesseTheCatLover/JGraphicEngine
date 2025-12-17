@@ -34,15 +34,33 @@ EngineEditor::EngineEditor()
     outline.bEnabled = true;
 
     // Optional defaults (can be overridden per-view via frame params)
-    outline.params.floats["u_Thickness"] = 2.0f;
-    outline.params.floats["u_Occlusion"] = 1.0f;
-    outline.params.floats["u_FillAlpha"] = 0.12f;
-    outline.params.floats["u_OutlineR"]  = 1.0f;
-    outline.params.floats["u_OutlineG"]  = 0.65f;
-    outline.params.floats["u_OutlineB"]  = 0.10f;
-    outline.params.floats["u_OutlineA"]  = 1.0f;
+    // Edge/occlusion tuning
+    outline.params.floats["u_DepthEpsilon"] = 0.0005f;
+    outline.params.floats["u_Thickness"]    = 1.5f;   // try 1..3
+
+    // Defaults
+    outline.params.floats["u_Occlusion"] = 0.0f;  // 1=hide behind walls, 0=x-ray outlines
+    outline.params.floats["u_FillAlpha"] = 0.08f; // subtle fill inside selection
+
+    // Outline color (linear space)
+    outline.params.floats["u_OutlineR"] = 1.0f;
+    outline.params.floats["u_OutlineG"] = 0.65f;
+    outline.params.floats["u_OutlineB"] = 0.10f;
+    outline.params.floats["u_OutlineA"] = 1.0f;
+
 
     chain.push_back(std::move(outline));
+
+    FPostPassDesc fxaa{};
+    fxaa.name = "FXAA";
+    fxaa.bEnabled = true;
+
+    // Optional tuning (sane defaults)
+    fxaa.params.floats["u_FXAA_ReduceMin"] = 1.0f / 128.0f;
+    fxaa.params.floats["u_FXAA_ReduceMul"] = 1.0f / 8.0f;
+    fxaa.params.floats["u_FXAA_SpanMax"]   = 4.0f;
+
+    chain.push_back(fxaa);
 }
 
 EngineEditor::~EngineEditor()

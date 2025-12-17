@@ -56,6 +56,8 @@ private:
     void EnsureCustomDepthShader();
     RShaderHandle m_OutlineShader{};
     void EnsureOutlineShader();
+    RShaderHandle m_FXAAShader{};
+    void EnsureFXAAShader();
 
     FCoordAdapter m_CoordAdaptor;
     FMatrix4 m_ViewMat;

@@ -637,6 +637,100 @@ void RendererSubsystem::EnsureOutlineShader()
     m_OutlineShader = m_Backend->CreateShader(s);
 }
 
+void RendererSubsystem::EnsureFXAAShader()
+{
+    if (m_FXAAShader.IsValid())
+        return;
+
+    EnsureFullscreenQuad();
+
+    RShader s{};
+
+    s.vertexSource = R"(#version 330 core
+        layout(location=0) in vec3 aPos;
+        layout(location=2) in vec2 aUV;
+        out vec2 vUV;
+        void main()
+        {
+            vUV = aUV;
+            gl_Position = vec4(aPos, 1.0);
+        }
+    )";
+
+    s.fragmentSource = R"(#version 330 core
+        in vec2 vUV;
+        out vec4 FragColor;
+
+        uniform sampler2D u_Input;
+
+        // REQUIRED: 1/width and 1/height
+        uniform float u_InvW;
+        uniform float u_InvH;
+
+        // Tuning (good defaults)
+        // Reduce = how much to smooth low-contrast edges
+        // SpanMax = max search distance in pixels (8 is typical)
+        uniform float u_FXAA_ReduceMin;   // e.g. 1.0/128.0
+        uniform float u_FXAA_ReduceMul;   // e.g. 1.0/8.0
+        uniform float u_FXAA_SpanMax;     // e.g. 8.0
+
+        float Luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+
+        void main()
+        {
+            vec2 texel = vec2(u_InvW, u_InvH);
+
+            vec3 rgbM  = texture(u_Input, vUV).rgb;
+            vec3 rgbNW = texture(u_Input, vUV + texel * vec2(-1.0, -1.0)).rgb;
+            vec3 rgbNE = texture(u_Input, vUV + texel * vec2( 1.0, -1.0)).rgb;
+            vec3 rgbSW = texture(u_Input, vUV + texel * vec2(-1.0,  1.0)).rgb;
+            vec3 rgbSE = texture(u_Input, vUV + texel * vec2( 1.0,  1.0)).rgb;
+
+            float lumaM  = Luma(rgbM);
+            float lumaNW = Luma(rgbNW);
+            float lumaNE = Luma(rgbNE);
+            float lumaSW = Luma(rgbSW);
+            float lumaSE = Luma(rgbSE);
+
+            float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
+            float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+
+            vec2 dir;
+            dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
+            dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));
+
+            float dirReduce = max(
+                (lumaNW + lumaNE + lumaSW + lumaSE) * (0.25 * u_FXAA_ReduceMul),
+                u_FXAA_ReduceMin
+            );
+
+            float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
+
+            dir = clamp(dir * rcpDirMin,
+                        vec2(-u_FXAA_SpanMax, -u_FXAA_SpanMax),
+                        vec2( u_FXAA_SpanMax,  u_FXAA_SpanMax)) * texel;
+
+            vec3 rgbA = 0.5 * (
+                texture(u_Input, vUV + dir * (1.0/3.0 - 0.5)).rgb +
+                texture(u_Input, vUV + dir * (2.0/3.0 - 0.5)).rgb
+            );
+
+            vec3 rgbB = rgbA * 0.5 + 0.25 * (
+                texture(u_Input, vUV + dir * (-0.5)).rgb +
+                texture(u_Input, vUV + dir * ( 0.5)).rgb
+            );
+
+            float lumaB = Luma(rgbB);
+
+            vec3 outRGB = (lumaB < lumaMin || lumaB > lumaMax) ? rgbA : rgbB;
+
+            FragColor = vec4(outRGB, 1.0);
+        }
+    )";
+
+    m_FXAAShader = m_Backend->CreateShader(s);
+}
+
 void RendererSubsystem::EnsureTargets(int w, int h, int samples)
 {
     auto needExact = [&](const FTarget& t, int ew, int eh, int es)
@@ -917,20 +1011,6 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
             // Selection target
             frameParams.floats["u_StencilRef01"] = float(m_Context.GetEditorSelectionState().selectionStencil) / 255.0f;
 
-            // Edge/occlusion tuning
-            frameParams.floats["u_DepthEpsilon"] = 0.0005f;
-            frameParams.floats["u_Thickness"]    = 1.0f;   // try 1..3
-
-            // Defaults
-            frameParams.floats["u_Occlusion"] = 1.0f;  // 1=hide behind walls, 0=x-ray outlines
-            frameParams.floats["u_FillAlpha"] = 0.12f; // subtle fill inside selection
-
-            // Outline color (linear space)
-            frameParams.floats["u_OutlineR"] = 1.0f;
-            frameParams.floats["u_OutlineG"] = 0.65f;
-            frameParams.floats["u_OutlineB"] = 0.10f;
-            frameParams.floats["u_OutlineA"] = 1.0f;
-
             finalColor = RunPostProcessChain(finalColor, sceneRT.w, sceneRT.h, view.postProfileId, frameParams);
         }
 
@@ -1076,6 +1156,14 @@ void RendererSubsystem::RebuildKernelsIfDirty(uint32_t profileId)
             EnsureOutlineShader(); // compiles once, stores m_OutlinePPShader
             FPassKernel k{};
             k.shader = m_OutlineShader;
+            newKernels.emplace(pass.name, k);
+            continue;
+        }
+        else if (pass.name == "FXAA")
+        {
+            EnsureFXAAShader();
+            FPassKernel k{};
+            k.shader = m_FXAAShader;
             newKernels.emplace(pass.name, k);
             continue;
         }
