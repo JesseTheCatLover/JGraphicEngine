@@ -20,3 +20,8 @@ inline InputManager* GetInputManager()
 {
     return (GEngine ? GEngine->GetInputManager() : nullptr);
 }
+
+inline DebugDraw* GetDebugDraw()
+{
+    return (GEngine ? GEngine->GetDebugDraw() : nullptr);
+}

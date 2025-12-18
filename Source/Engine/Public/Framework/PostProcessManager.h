@@ -8,12 +8,17 @@
 #include <utility>
 #include <algorithm>
 
+#include "Core/Math/FVector2.h"
+#include "Core/Math/FVector4.h"
 #include "Rendering/RHandles.h"
 
 struct FPassParam
 {
     std::unordered_map<std::string, float> floats;
     std::unordered_map<std::string, int32_t> ints;
+
+    std::unordered_map<std::string, FVector2> vec2s;
+    std::unordered_map<std::string, FVector4> vec4s;
 
     // IMPORTANT: per-pass textures (LUTs, noise, blur kernels, etc.)
     // Frame textures can still override these in the renderer bind step.
@@ -37,6 +42,10 @@ struct FFramePostParams
 {
     std::unordered_map<std::string, float> floats;
     std::unordered_map<std::string, int32_t> ints;
+
+    std::unordered_map<std::string, FVector2> vec2s;
+    std::unordered_map<std::string, FVector4> vec4s;
+
     std::unordered_map<std::string, RTextureHandle> textures;
 };
 

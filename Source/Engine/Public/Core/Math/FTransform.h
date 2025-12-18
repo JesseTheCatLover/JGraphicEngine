@@ -69,6 +69,21 @@ public:
 
     [[nodiscard]] FVector3 TransformVector(const FVector3& vector) const;
 
+    [[nodiscard]] FVector3 GetForward() const
+    {
+        return m_Rotation.RotateVector(FVector3(1, 0, 0));
+    }
+
+    [[nodiscard]] FVector3 GetRight() const
+    {
+        return m_Rotation.RotateVector(FVector3(0, 1, 0));
+    }
+
+    [[nodiscard]] FVector3 GetUp() const
+    {
+        return m_Rotation.RotateVector(FVector3(0, 0, 1));
+    }
+
     inline FTransform operator*(const FTransform& other) const
     {
         FVector3 rotatedPos = m_Rotation.RotateVector(other.m_Position * m_Scale);

@@ -24,6 +24,8 @@ struct FBackendCoordDesc
 class IPlatformSurface;
 struct FMatrix4;
 struct RLightData;
+struct FDebugClipVertex;
+struct FDebugVertex;
 
 class IRenderBackend
 {
@@ -107,6 +109,11 @@ public:
     virtual RTextureHandle GetFramebufferDepthTexture(RFramebufferHandle) = 0;
 
     [[nodiscard]] virtual void* GetNativeTextureHandle(RTextureHandle handle) const = 0;
+
+    virtual void SubmitDebugLineList(RShaderHandle shader, const FDebugVertex* verts, uint32_t vertCount) = 0;
+
+    virtual void SubmitDebugClipTriList(RShaderHandle shader, const FDebugClipVertex* verts, uint32_t vertCount) = 0;
+
 
     // Rendering
     virtual void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) = 0;

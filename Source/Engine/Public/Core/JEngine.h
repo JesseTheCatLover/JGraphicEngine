@@ -7,6 +7,7 @@
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+class DebugDraw;
 struct FRenderView;
 class EngineContext;
 class IInputBackend;
@@ -51,6 +52,7 @@ public:
     SceneManager* GetSceneManager();
     PostProcessManager* GetPostProcessManager();
     InputManager* GetInputManager();
+    DebugDraw* GetDebugDraw();
 
 private:
     JEngine();

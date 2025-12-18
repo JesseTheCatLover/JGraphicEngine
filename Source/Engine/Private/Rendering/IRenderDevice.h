@@ -4,11 +4,16 @@
 #include <functional>
 #include "Rendering/RHandles.h"
 
+struct FDebugTri;
+struct FDebugClipVertex;
+struct FDebugLine;
+struct FDebugVertex;
 class IRenderSubmission;
 struct FSurfaceDesc;
 struct RShader;
 struct RTexture;
 struct RMesh;
+struct FRenderView;
 
 class IRenderDevice
 {
@@ -29,6 +34,9 @@ public:
     virtual void DestroyMaterial(RMaterialHandle h) = 0;
 
     [[nodiscard]] virtual RTextureHandle GetSceneColorTarget() const = 0;
+
+    virtual void SubmitDebugLines(const FRenderView& view, const FDebugLine* lines, uint32_t lineCount) = 0;
+    virtual void SubmitDebugTriangles(const FRenderView& view, const FDebugTri* tris, uint32_t triCount) = 0;
 
     // virtual RMaterialHandle CreateMaterial(const RMaterialDesc& d) = 0;
     // Queue a lambda to run on the render thread.

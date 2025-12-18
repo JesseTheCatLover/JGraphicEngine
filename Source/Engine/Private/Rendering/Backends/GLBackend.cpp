@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <unordered_set>
 
+#include "Framework/DebugDrawFramework.h"
 #include "Rendering/RCommandQueue.h"
 
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
@@ -947,6 +948,135 @@ RTextureHandle GLBackend::GetFramebufferDepthTexture(RFramebufferHandle h)
     auto it = m_Framebuffers.find(h);
     if (it == m_Framebuffers.end()) return RTextureHandle::Invalid();
     return it->second.depthTexHandle;
+}
+
+void GLBackend::EnsureDebugLineStream()
+{
+    if (m_DebugLineVAO != 0) return;
+
+    glGenVertexArrays(1, &m_DebugLineVAO);
+    glGenBuffers(1, &m_DebugLineVBO);
+
+    glBindVertexArray(m_DebugLineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_DebugLineVBO);
+
+    m_DebugLineVBBytes = 0;
+
+    // FDebugVertex layout:
+    // location 0: vec3 position (x,y,z)
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(
+        0, 3, GL_FLOAT, GL_FALSE,
+        (GLsizei)sizeof(FDebugVertex),
+        (void*)offsetof(FDebugVertex, x));
+
+    // location 1: vec4 color (r,g,b,a)
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(
+        1, 4, GL_FLOAT, GL_FALSE,
+        (GLsizei)sizeof(FDebugVertex),
+        (void*)offsetof(FDebugVertex, r));
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void GLBackend::SubmitDebugLineList(RShaderHandle shader, const FDebugVertex* verts, uint32_t vertCount)
+{
+    if (!verts || vertCount < 2) return;
+    if ((vertCount & 1u) != 0u) return; // line list must be even
+
+    auto sit = m_Shaders.find(shader);
+    if (sit == m_Shaders.end() || sit->second.program == 0) return;
+
+    EnsureDebugLineStream();
+
+    const size_t bytes = size_t(vertCount) * sizeof(FDebugVertex);
+
+    glBindVertexArray(m_DebugLineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_DebugLineVBO);
+
+    if (bytes > m_DebugLineVBBytes)
+    {
+        m_DebugLineVBBytes = std::max(bytes, m_DebugLineVBBytes ? m_DebugLineVBBytes * 2 : bytes);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)m_DebugLineVBBytes, nullptr, GL_STREAM_DRAW);
+    }
+
+    // orphan + upload
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)bytes, nullptr, GL_STREAM_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)bytes, verts);
+
+    glUseProgram(sit->second.program);
+    glDrawArrays(GL_LINES, 0, (GLsizei)vertCount);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void GLBackend::EnsureDebugClipTriStream()
+{
+    if (m_DebugClipTriVAO != 0) return;
+
+    glGenVertexArrays(1, &m_DebugClipTriVAO);
+    glGenBuffers(1, &m_DebugClipTriVBO);
+
+    glBindVertexArray(m_DebugClipTriVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_DebugClipTriVBO);
+
+    // start small; will grow
+    m_DebugClipTriVBBytes = 0;
+
+    // layout:
+    // location 0: vec4 clip position (x,y,z,w)
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(
+        0, 4, GL_FLOAT, GL_FALSE,
+        (GLsizei)sizeof(FDebugClipVertex),
+        (void*)offsetof(FDebugClipVertex, x));
+
+    // location 1: vec4 color (r,g,b,a)
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(
+        1, 4, GL_FLOAT, GL_FALSE,
+        (GLsizei)sizeof(FDebugClipVertex),
+        (void*)offsetof(FDebugClipVertex, r));
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void GLBackend::SubmitDebugClipTriList(RShaderHandle shader, const FDebugClipVertex* verts, uint32_t vertCount)
+{
+    if (!verts || vertCount < 3) return;
+    if ((vertCount % 3u) != 0u) return; // must be multiple of 3 for triangles
+
+    // validate shader handle
+    auto sit = m_Shaders.find(shader);
+    if (sit == m_Shaders.end() || sit->second.program == 0) return;
+
+    EnsureDebugClipTriStream();
+
+    const size_t bytes = size_t(vertCount) * sizeof(FDebugClipVertex);
+
+    glBindVertexArray(m_DebugClipTriVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_DebugClipTriVBO);
+
+    // grow if needed
+    if (bytes > m_DebugClipTriVBBytes)
+    {
+        m_DebugClipTriVBBytes = std::max(bytes, m_DebugClipTriVBBytes * 2);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)m_DebugClipTriVBBytes, nullptr, GL_STREAM_DRAW);
+    }
+
+    // orphan to avoid GPU stalls, then upload
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)bytes, nullptr, GL_STREAM_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)bytes, verts);
+
+    glUseProgram(sit->second.program);
+    glDrawArrays(GL_TRIANGLES, 0, (GLsizei)vertCount);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void GLBackend::SetUniformInt(RShaderHandle sh, const char* name, int v)

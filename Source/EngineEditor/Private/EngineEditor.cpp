@@ -48,6 +48,12 @@ EngineEditor::EngineEditor()
     outline.params.floats["u_OutlineB"] = 0.10f;
     outline.params.floats["u_OutlineA"] = 1.0f;
 
+    // outline.params.floats["u_OutlineR"] = 0.18f;
+    // outline.params.floats["u_OutlineG"] = 0.28f;
+    // outline.params.floats["u_OutlineB"] = 0.40f;
+    // outline.params.floats["u_OutlineA"] = 1.0f;
+
+
 
     chain.push_back(std::move(outline));
 

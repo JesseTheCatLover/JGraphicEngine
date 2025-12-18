@@ -9,6 +9,8 @@
 
 #define MAX_BONE_INFLUENCE 4
 
+struct FDebugClipVertex;
+struct FDebugVertex;
 struct RLightData;
 
 class GLBackend : public IRenderBackend
@@ -96,6 +98,14 @@ private:
     std::vector<FGLLight> m_LightStaging;
     int m_LastLightCount = 0;
 
+    GLuint  m_DebugLineVAO = 0;
+    GLuint  m_DebugLineVBO = 0;
+    size_t  m_DebugLineVBBytes = 0;
+
+    GLuint  m_DebugClipTriVAO = 0;
+    GLuint  m_DebugClipTriVBO = 0;
+    size_t  m_DebugClipTriVBBytes = 0;
+
 public:
     bool Initialize(IPlatformSurface* surface) override;
     void Shutdown() override;
@@ -144,6 +154,10 @@ public:
 
     RTextureHandle GetFramebufferColorTexture(RFramebufferHandle) override;
     RTextureHandle GetFramebufferDepthTexture(RFramebufferHandle) override;
+    void EnsureDebugLineStream();
+    void SubmitDebugLineList(RShaderHandle shader, const FDebugVertex* verts, uint32_t vertCount) override;
+    void EnsureDebugClipTriStream();
+    void SubmitDebugClipTriList(RShaderHandle shader, const FDebugClipVertex* verts, uint32_t vertCount) override;
 
     void SetUniformInt   (RShaderHandle sh, const char* name, int v) override;
     void SetUniformFloat (RShaderHandle sh, const char* name, float v) override;

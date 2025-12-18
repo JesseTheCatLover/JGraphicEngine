@@ -56,8 +56,14 @@ private:
     void EnsureCustomDepthShader();
     RShaderHandle m_OutlineShader{};
     void EnsureOutlineShader();
-    RShaderHandle m_FXAAShader{};
+    RShaderHandle m_FXAAShader{}; // TODO: These messy stuff need to be refactored for the future
     void EnsureFXAAShader();
+
+    RShaderHandle m_DebugLineShader{};
+    void EnsureDebugLineShader();
+
+    RShaderHandle m_DebugClipTriShader{};
+    void EnsureDebugClipTriShader();
 
     FCoordAdapter m_CoordAdaptor;
     FMatrix4 m_ViewMat;
@@ -126,6 +132,10 @@ private:
     void ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& viewEngine, const FMatrix4& projEngine);
     void DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle& shaderToUse, const FMatrix4& modelEngine);
 
+    void SubmitDebugLineList_Internal(const FDebugVertex* verts, uint32_t vertCount, bool bDepthTest);
+    void SubmitDebugClipTriList_Internal(const FRenderView& view, const FDebugClipVertex* verts, uint32_t vertCount,
+                                               bool bDepthTest);
+
 public:
     ~RendererSubsystem() = default;
 
@@ -134,6 +144,9 @@ public:
     [[nodiscard]] RTextureHandle GetSceneColorTarget() const override { return m_Scene.color; }
 
     [[nodiscard]] void* GetNativeTextureHandle(RTextureHandle handle) const;
+
+    void SubmitDebugTriangles(const FRenderView &view, const FDebugTri *tris, uint32_t triCount) override;
+    void SubmitDebugLines(const FRenderView &view, const FDebugLine *lines, uint32_t lineCount) override;
 
     RMeshHandle CreateMesh(const RMesh &data) override;
     void DestroyMesh(RMeshHandle h) override;

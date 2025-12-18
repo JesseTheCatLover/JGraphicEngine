@@ -48,7 +48,7 @@ void JModelComponent::GatherProxies(IRenderSubmission& submission,
         cmd.actorID = GetOwnerActor()->GetRuntimeID();
 
         const bool bSelected = JEngine::Get().GetEngineContext().GetEditorSelectionState().IsSelected(cmd.actorID);
-        if (bSelected)
+        if (bSelected) // TODO: This selection logic needs to be cleaned and refactored later
         {
             cmd.bWriteCustomDepth = true;
             cmd.customStencil = JEngine::Get().GetEngineContext().GetEditorSelectionState().selectionStencil;

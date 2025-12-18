@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <iostream>
 #include "Core/EngineContext.h"
+#include "Framework/DebugDrawFramework.h"
 #include "Rendering/FRenderView.h"
 #include "Scene/JScene.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
@@ -26,6 +27,13 @@ static void BindFrameAndPassParams(
 
     for (auto& [k,v] : passParams.ints) backend->SetUniformInt(shader, k.c_str(), v);
     for (auto& [k,v] : frameParams.ints) backend->SetUniformInt(shader, k.c_str(), v);
+
+    // TODO: Implement this in future
+    // for (auto& [k,v] : passParams.vec2s) backend->SetUniformVec2(shader, k.c_str(), v);
+    // for (auto& [k,v] : frameParams.vec2s) backend->SetUniformVec2(shader, k.c_str(), v);
+    //
+    // for (auto& [k,v] : passParams.vec4s) backend->SetUniformVec4(shader, k.c_str(), v);
+    // for (auto& [k,v] : frameParams.vec4s) backend->SetUniformVec4(shader, k.c_str(), v);
 
     // Textures (pass-level first, then frame-level so frame can override)
     for (const auto& [k, tex] : passParams.textures)
@@ -731,6 +739,68 @@ void RendererSubsystem::EnsureFXAAShader()
     m_FXAAShader = m_Backend->CreateShader(s);
 }
 
+void RendererSubsystem::EnsureDebugLineShader()
+{
+    if (m_DebugLineShader.IsValid())
+        return;
+
+    RShader s{};
+
+    s.vertexSource = R"(
+        #version 330 core
+        layout(location=0) in vec3 aPos;
+        layout(location=1) in vec4 aColor;
+
+        uniform mat4 u_View;
+        uniform mat4 u_Proj;
+
+        out vec4 vColor;
+
+        void main()
+        {
+            vColor = aColor;
+            gl_Position = u_Proj * u_View * vec4(aPos, 1.0);
+        }
+    )";
+
+    s.fragmentSource = R"(
+        #version 330 core
+        in vec4 vColor;
+        out vec4 FragColor;
+        void main() { FragColor = vColor; }
+    )";
+
+    m_DebugLineShader = m_Backend->CreateShader(s);
+}
+
+void RendererSubsystem::EnsureDebugClipTriShader()
+{
+    if (m_DebugClipTriShader.IsValid()) return;
+
+    RShader s{};
+    s.vertexSource = R"(
+        #version 330 core
+        layout(location=0) in vec4 aPos;    // clip space
+        layout(location=1) in vec4 aColor;
+
+        out vec4 vColor;
+        void main()
+        {
+            vColor = aColor;
+            gl_Position = aPos;
+        }
+    )";
+
+    s.fragmentSource = R"(
+        #version 330 core
+        in vec4 vColor;
+        out vec4 FragColor;
+        void main() { FragColor = vColor; }
+    )";
+
+    m_DebugClipTriShader = m_Backend->CreateShader(s);
+}
+
 void RendererSubsystem::EnsureTargets(int w, int h, int samples)
 {
     auto needExact = [&](const FTarget& t, int ew, int eh, int es)
@@ -979,8 +1049,21 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
                 ),
                 IRenderBackend::EResolveFilter::Nearest
             );
+
+            // IMPORTANT: switch to resolved target for any further drawing
+            m_Backend->BindFramebuffer(m_Scene.fbo);
+            m_Backend->SetViewport(0, 0, m_Scene.w, m_Scene.h);
         }
 
+        // Store the view matrices so SubmitDebugLineList can use them
+        m_ViewMat = viewMat;
+        m_ProjMat = projMat;
+
+        // Draw debug lines into the same target as the scene
+        if (GEngine && GEngine->GetDebugDraw())
+        {
+            GEngine->GetDebugDraw()->RenderForView(*this, view);
+        }
 
         RTextureHandle finalColor = m_Scene.color;
 
@@ -1235,9 +1318,249 @@ void RendererSubsystem::DrawMesh(const RMeshHandle& meshHandle, const RShaderHan
     m_Backend->SubmitMesh(meshHandle, shaderToUse, modelBackend);
 }
 
+void RendererSubsystem::SubmitDebugLineList_Internal(const FDebugVertex* verts,
+                                                     uint32_t vertCount,
+                                                     bool bDepthTest)
+{
+    if (!verts || vertCount < 2) return;
+
+    EnsureDebugLineShader();
+
+    m_Backend->SetCullMode(IRenderBackend::ECullMode::None);
+    m_Backend->SetBlendState(true,
+        IRenderBackend::EBlendFactor::SrcAlpha,
+        IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+
+    if (bDepthTest)
+        m_Backend->SetDepthState(true, false, IRenderBackend::ECompareFunc::LessEqual);
+    else
+        m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
+
+    // positions are WORLD SPACE, so we need camera uniforms
+    ApplyCamera(m_DebugLineShader, m_ViewMat, m_ProjMat);
+
+    // backend method (GLBackend already implemented this)
+    m_Backend->SubmitDebugLineList(m_DebugLineShader, verts, vertCount);
+}
+
 void* RendererSubsystem::GetNativeTextureHandle(RTextureHandle handle) const
 {
     return m_Backend->GetNativeTextureHandle(handle);
+}
+void RendererSubsystem::SubmitDebugTriangles(const FRenderView& view,
+                                             const FDebugTri* tris,
+                                             uint32_t triCount)
+{
+    if (!tris || triCount == 0) return;
+
+    EnsureDebugClipTriShader();
+
+    // Same VP as SubmitDebugLines (world -> clip)
+    const FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * m_ViewMat * m_CoordAdaptor.BackendToEngine;
+    const FMatrix4 projBackend = m_ProjMat;
+    const FMatrix4 VP = projBackend * viewBackend;
+
+    std::vector<FDebugClipVertex> overlay;
+    std::vector<FDebugClipVertex> depth;
+    overlay.reserve((size_t)triCount * 3);
+    depth.reserve((size_t)triCount * 3);
+
+    auto pick = [&](EDebugDepthMode d) -> std::vector<FDebugClipVertex>&
+    {
+        return (d == EDebugDepthMode::Overlay) ? overlay : depth;
+    };
+
+    auto push = [&](std::vector<FDebugClipVertex>& out, const FVector3& p, const FVector4& c)
+    {
+        const FVector4 pb = m_CoordAdaptor.EngineToBackend * FVector4(p.x, p.y, p.z, 1.0f);
+        const FVector4 cp = VP * pb;
+        out.push_back(FDebugClipVertex{ cp.x, cp.y, cp.z, cp.w, c.x, c.y, c.z, c.w });
+    };
+
+    for (uint32_t i = 0; i < triCount; ++i)
+    {
+        const FDebugTri& t = tris[i];
+
+        // Triangles are only meaningful for SOLID fill. If someone passes wireframe,
+        // silently ignore (wireframe should be emitted as lines by DebugDraw).
+        if (t.style.fill == EDebugFillMode::Wireframe)
+            continue;
+
+        auto& out = pick(t.style.depth);
+        push(out, t.a, t.color);
+        push(out, t.b, t.color);
+        push(out, t.c, t.color);
+    }
+
+    if (!overlay.empty())
+        SubmitDebugClipTriList_Internal(view, overlay.data(), (uint32_t)overlay.size(), /*bDepthTest=*/false);
+
+    if (!depth.empty())
+        SubmitDebugClipTriList_Internal(view, depth.data(), (uint32_t)depth.size(), /*bDepthTest=*/true);
+}
+
+void RendererSubsystem::SubmitDebugLines(const FRenderView& view, const FDebugLine* lines, uint32_t lineCount)
+{
+    if (!lines || lineCount == 0) return;
+
+    // Buckets: thin = world-pos lines, thick = clip-pos triangles
+    std::vector<FDebugVertex> thinOverlay;
+    std::vector<FDebugVertex> thinDepth;
+    std::vector<FDebugClipVertex> thickOverlay;
+    std::vector<FDebugClipVertex> thickDepth;
+
+    thinOverlay.reserve(lineCount * 2);
+    thinDepth.reserve(lineCount * 2);
+    thickOverlay.reserve(lineCount * 6);
+    thickDepth.reserve(lineCount * 6);
+
+    auto pick = [&](EDebugDepthMode d, auto& overlayBuf, auto& depthBuf) -> auto&
+    {
+        return (d == EDebugDepthMode::Overlay) ? overlayBuf : depthBuf;
+    };
+
+    auto pushThin = [&](std::vector<FDebugVertex>& out, const FVector3& a, const FVector3& b, const FVector4& c)
+    {
+        const FVector4 ab = m_CoordAdaptor.EngineToBackend * FVector4(a.x, a.y, a.z, 1.0f);
+        const FVector4 bb = m_CoordAdaptor.EngineToBackend * FVector4(b.x, b.y, b.z, 1.0f);
+
+        out.push_back(FDebugVertex{ab.x, ab.y, ab.z, c.x, c.y, c.z, c.w});
+        out.push_back(FDebugVertex{bb.x, bb.y, bb.z, c.x, c.y, c.z, c.w});
+    };
+
+
+    auto pushTri = [&](std::vector<FDebugClipVertex>& out,
+                       const FVector4& p0, const FVector4& p1, const FVector4& p2,
+                       const FVector4& c)
+    {
+        out.push_back(FDebugClipVertex{p0.x, p0.y, p0.z, p0.w, c.x, c.y, c.z, c.w});
+        out.push_back(FDebugClipVertex{p1.x, p1.y, p1.z, p1.w, c.x, c.y, c.z, c.w});
+        out.push_back(FDebugClipVertex{p2.x, p2.y, p2.z, p2.w, c.x, c.y, c.z, c.w});
+    };
+
+    const FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * m_ViewMat * m_CoordAdaptor.BackendToEngine;
+    const FMatrix4 projBackend = m_ProjMat;
+    const FMatrix4 VP = projBackend * viewBackend;
+
+    const float invW = (view.viewportW > 0) ? (1.0f / float(view.viewportW)) : 0.0f;
+    const float invH = (view.viewportH > 0) ? (1.0f / float(view.viewportH)) : 0.0f;
+
+    auto emitThick = [&](std::vector<FDebugClipVertex>& out,
+                         const FVector3& a, const FVector3& b,
+                         const FVector4& color,
+                         float thicknessPx)
+    {
+        if (thicknessPx <= 1.0f || invW <= 0.0f || invH <= 0.0f)
+            return false;
+
+        const FVector4 aw = m_CoordAdaptor.EngineToBackend * FVector4(a.x, a.y, a.z, 1.0f);
+        const FVector4 bw = m_CoordAdaptor.EngineToBackend * FVector4(b.x, b.y, b.z, 1.0f);
+
+        const FVector4 ca = VP * aw;
+        const FVector4 cb = VP * bw;
+
+
+        // If both behind camera, skip. (Simple; avoids worst artifacts.)
+        if (ca.w <= 0.0f && cb.w <= 0.0f)
+            return false;
+
+        // NDC
+        const float ax = ca.x / ca.w;
+        const float ay = ca.y / ca.w;
+        const float az = ca.z / ca.w;
+
+        const float bx = cb.x / cb.w;
+        const float by = cb.y / cb.w;
+        const float bz = cb.z / cb.w;
+
+        float dx = bx - ax;
+        float dy = by - ay;
+
+        const float len2 = dx*dx + dy*dy;
+        if (len2 <= 1e-12f)
+            return false;
+
+        const float invLen = 1.0f / std::sqrt(len2);
+        dx *= invLen;
+        dy *= invLen;
+
+        // Perp in NDC
+        float px = -dy;
+        float py =  dx;
+
+        // Half thickness in NDC units
+        const float half = thicknessPx * 0.5f;
+        const float offX = px * (half * 2.0f * invW);
+        const float offY = py * (half * 2.0f * invH);
+
+        // Build 4 corners in clip-space by offsetting x/y and re-multiplying by w
+        const FVector4 a0((ax + offX) * ca.w, (ay + offY) * ca.w, az * ca.w, ca.w);
+        const FVector4 a1((ax - offX) * ca.w, (ay - offY) * ca.w, az * ca.w, ca.w);
+        const FVector4 b0((bx + offX) * cb.w, (by + offY) * cb.w, bz * cb.w, cb.w);
+        const FVector4 b1((bx - offX) * cb.w, (by - offY) * cb.w, bz * cb.w, cb.w);
+
+        // Two triangles: a0-b0-b1 and a0-b1-a1
+        pushTri(out, a0, b0, b1, color);
+        pushTri(out, a0, b1, a1, color);
+        return true;
+    };
+
+    for (uint32_t i = 0; i < lineCount; ++i)
+    {
+        const FDebugLine& ln = lines[i];
+
+        // Route once; no duplicated overlay/depth logic
+        if (ln.style.thicknessPx > 1.0f)
+        {
+            auto& out = pick(ln.style.depth, thickOverlay, thickDepth);
+            const bool ok = emitThick(out, ln.a, ln.b, ln.color, ln.style.thicknessPx);
+            if (!ok)
+            {
+                // fallback to thin if thick failed (degenerate, etc.)
+                auto& t = pick(ln.style.depth, thinOverlay, thinDepth);
+                pushThin(t, ln.a, ln.b, ln.color);
+            }
+        }
+        else
+        {
+            auto& out = pick(ln.style.depth, thinOverlay, thinDepth);
+            pushThin(out, ln.a, ln.b, ln.color);
+        }
+    }
+
+    // Submit thin
+    if (!thinOverlay.empty())
+        SubmitDebugLineList_Internal(thinOverlay.data(), (uint32_t)thinOverlay.size(), /*bDepthTest=*/false);
+    if (!thinDepth.empty())
+        SubmitDebugLineList_Internal(thinDepth.data(), (uint32_t)thinDepth.size(), /*bDepthTest=*/true);
+
+    // Submit thick
+    if (!thickOverlay.empty())
+        SubmitDebugClipTriList_Internal(view, thickOverlay.data(), (uint32_t)thickOverlay.size(), /*bDepthTest=*/false);
+    if (!thickDepth.empty())
+        SubmitDebugClipTriList_Internal(view, thickDepth.data(), (uint32_t)thickDepth.size(), /*bDepthTest=*/true);
+}
+
+void RendererSubsystem::SubmitDebugClipTriList_Internal(const FRenderView& view, const FDebugClipVertex* verts, uint32_t vertCount,
+                                               bool bDepthTest)
+{
+    if (!verts || vertCount == 0) return;
+
+    EnsureDebugClipTriShader();
+
+    // state
+    m_Backend->SetCullMode(IRenderBackend::ECullMode::None);
+    m_Backend->SetBlendState(true,
+        IRenderBackend::EBlendFactor::SrcAlpha,
+        IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+
+    if (bDepthTest)
+        m_Backend->SetDepthState(true, false, IRenderBackend::ECompareFunc::LessEqual);
+    else
+        m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
+
+    // NOTE: no camera uniforms needed; positions already clip-space
+    m_Backend->SubmitDebugClipTriList(m_DebugClipTriShader, verts, vertCount);
 }
 
 RMeshHandle RendererSubsystem::CreateMesh(const RMesh &data)

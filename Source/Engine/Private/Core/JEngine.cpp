@@ -19,6 +19,7 @@
 #include "Rendering/RendererSubsystem.h"
 #include "Resources/ResourceSubsystem.h"
 #include "Core/Math/FMath.h"
+#include "Framework/DebugDrawFramework.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
 
@@ -339,6 +340,9 @@ void JEngine::RunMainLoop()
     {
         CalculateDeltaTime();
 
+        if (GetDebugDraw())
+            GetDebugDraw()->BeginFrame();
+
         // Per-frame views reset
         m_Context->ClearViewSources();
 
@@ -380,6 +384,9 @@ void JEngine::Tick()
 
     if (GetSceneManager())
         GetSceneManager()->Tick(deltaTime);
+
+    if (GetDebugDraw())
+        GetDebugDraw()->Tick(deltaTime);
 
     if (m_InputSystem)
         m_InputSystem->Tick(deltaTime);
@@ -548,6 +555,11 @@ InputManager* JEngine::GetInputManager()
     return m_Services->GetService<InputManager>().get();
 }
 
+DebugDraw * JEngine::GetDebugDraw()
+{
+    return m_Services->GetService<DebugDraw>().get();
+}
+
 void JEngine::RegisterServices()
 {
     m_Services->RegisterFactory<SceneManager>([]() -> TSharedPtr<SceneManager>
@@ -567,6 +579,11 @@ void JEngine::RegisterServices()
         return TSharedPtr<InputManager>(new InputManager());
     });
     m_Services->GetService<InputManager>();
+
+    m_Services->RegisterFactory<DebugDraw>([]() -> TSharedPtr<DebugDraw>
+    {
+        return TSharedPtr<DebugDraw>(new DebugDraw());
+    });
 }
 
 bool JEngine::BootstrapScene()
@@ -644,18 +661,29 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
 
     auto actor2 = spawnModelActor("Tape", "Tape/Tape.obj");
     actor2->SetActorLocation(5.f, 0.f, 5.f);
-    actor2->SetActorScale(FVector3(0.9f));
+    actor2->SetActorScale(FVector3(0.5f));
 
     auto actor3dup = spawnModelActor("Tape", "Tape/Tape.obj");
     actor3dup->AttachToActor(actor2);
-    actor3dup->SetActorLocation(5.f, 2.f, 5.f);
+    actor3dup->SetActorLocation(7.f, 3.f, 5.f);
     actor3dup->SetActorRotation(70.f, 0.f, 20.f);
-    actor3dup->SetActorScale(FVector3(0.9f));
+    actor3dup->SetActorScale(FVector3(0.5f));
+    auto actor4dup = spawnModelActor("Tape", "Tape/Tape.obj");
+    actor4dup->AttachToActor(actor2);
+    actor4dup->SetActorLocation(5.f, 1.f, 5.f);
+    actor4dup->SetActorRotation(50.f, 10.f, 30.f);
+    actor4dup->SetActorScale(FVector3(0.5f));
 
     JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
     cameraActor->SetName("CameraActor");
     cameraActor->AddRuntimeComponent<JCameraComponent>();
     cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
+
+    auto chair = spawnModelActor("WoodenChair", "DiningChair/DiningChair.obj");
+    chair->SetActorLocation(0.f, 8.f, 1.2f);
+    chair->SetActorScale(FVector3(5.f));
+    chair->SetActorRotation(0.f, 100.f, 0.f);
+
 
     // ---------------------------------------------------------------------
     // 5) Save the scene so next launch restores this layout
