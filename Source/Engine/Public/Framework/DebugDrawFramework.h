@@ -9,6 +9,7 @@
 #include "Core/Math/FVector3.h"
 #include "Core/Math/FVector4.h"
 #include "Core/Math/FTransform.h"
+#include "Core/Math/FMatrix4.h"
 
 class IRenderDevice;
 struct FRenderView;
@@ -46,6 +47,8 @@ struct FDebugDrawStyle
     EDebugFillMode  fill  = EDebugFillMode::Wireframe;
     EDebugDepthMode depth = EDebugDepthMode::Overlay;
     EDebugDrawLayer layer = EDebugDrawLayer::Gameplay;
+
+    uint32_t hitId = 0; // 0 = not pickable
 };
 
 struct FDebugLine
@@ -73,6 +76,27 @@ struct FDebugClipVertex
 {
     float x, y, z, w; // clip-space position
     float r, g, b, a;
+};
+
+struct FDebugHit
+{
+    enum class EType : uint8_t { None, Line, Tri };
+
+    EType type = EType::None;
+    uint32_t hitId = 0;        // stable ID you set when drawing
+    uint32_t index = 0;        // index in the tested list (optional / debug)
+    float depth01 = 1.0f;    // 0 near .. 1 far (best-effort)
+    float distPx = 1e9f;    // for lines/overlay tie-break
+    float tRay = 1e30f;   // for ray hits (smaller = closer)
+
+    FVector3 worldPos = FVector3(0,0,0);
+};
+
+struct FScreenPt
+{
+    float x, y;     // pixels
+    float depth01;  // 0..1
+    bool  valid;
 };
 
 class DebugDraw
@@ -126,6 +150,25 @@ private:
     void EmitTriTimedInternal(const FVector3& a, const FVector3& b, const FVector3& c,
                               const FVector4& col, const FDebugDrawStyle& s,
                               float seconds);
+
+    static FScreenPt ProjectToScreen(const FMatrix4& VP,
+                                     const FVector3& world,
+                                     int vx, int vy, int vw, int vh);
+
+    static float DistPointToSegment2D(float px, float py,
+                                      float ax, float ay,
+                                      float bx, float by);
+
+    static bool BuildRayFromMouse(const FRenderView& view,
+                                  const FMatrix4& invVP,
+                                  float mouseX_px,
+                                  float mouseY_px,
+                                  FVector3& outOrigin,
+                                  FVector3& outDir);
+
+    static bool RayTriIntersectMT(const FVector3& ro, const FVector3& rd,
+                                  const FVector3& a, const FVector3& b, const FVector3& c,
+                                  float& outT, float& outU, float& outV);
 
 private:
     // ---------- Geometry builders (HEADER-ONLY templates) ----------
@@ -422,6 +465,17 @@ public:
 
     void SetLayerEnabled(EDebugDrawLayer layer, bool b);
     bool IsLayerEnabled(EDebugDrawLayer layer) const;
+
+    /**
+     * @brief mouseX_px/mouseY_px are absolute pixels in the same coordinate space as view.viewportX/Y/W/H.
+     * radiusPx is a tolerance for clicking (like 6-10 px).
+     */
+    bool MouseHitTest(const FRenderView& view, const FMatrix4& viewMat, const FMatrix4& projMat,
+                      float mouseX_px, float mouseY_px,
+                      float radiusPx,
+                      FDebugHit& outHit,
+                      bool bRequireHitId = true) const;
+
 
     // Immediate primitives
     void DrawLine(const FVector3& a, const FVector3& b, const FVector4& color,
