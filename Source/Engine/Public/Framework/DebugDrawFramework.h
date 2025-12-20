@@ -113,7 +113,7 @@ private:
         float timeRemaining = 0.0f;
     };
 
-    bool     m_Enabled   = true;
+    bool     m_bEnabled   = true;
     uint32_t m_LayerMask = 0xFFFFFFFFu;
 
     std::vector<FDebugLine> m_Immediate;
@@ -460,8 +460,8 @@ public:
     void Tick(float dt);
 
     // Global toggles
-    void SetEnabled(bool b) { m_Enabled = b; }
-    bool IsEnabled() const { return m_Enabled; }
+    void SetEnabled(bool b) { m_bEnabled = b; }
+    bool IsEnabled() const { return m_bEnabled; }
 
     void SetLayerEnabled(EDebugDrawLayer layer, bool b);
     bool IsLayerEnabled(EDebugDrawLayer layer) const;
@@ -478,6 +478,12 @@ public:
 
 
     // Immediate primitives
+    void DrawTri(const FVector3& a, const FVector3& b, const FVector3& c,
+                 const FVector4& color, const FDebugDrawStyle& style = {});
+
+    void DrawQuad(const FVector3& p0, const FVector3& p1, const FVector3& p2, const FVector3& p3,
+                  const FVector4& color, const FDebugDrawStyle& style = {});
+
     void DrawLine(const FVector3& a, const FVector3& b, const FVector4& color,
                   const FDebugDrawStyle& style = {});
     void DrawRay(const FVector3& origin, const FVector3& dir, float len, const FVector4& color,

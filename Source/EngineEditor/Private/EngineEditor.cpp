@@ -213,3 +213,23 @@ void* EngineEditor::GetNativeTextureHandle(RTextureHandle handle) const
 {
     return m_Renderer.GetNativeTextureHandle(handle);
 }
+
+UDynamicID::IDType EngineEditor::CreateGizmoEditorTool()
+{
+    return m_GizmoTools.Create();
+}
+
+void EngineEditor::DestroyGizmoEditorTool(UDynamicID::IDType id)
+{
+    m_GizmoTools.Destroy(id);
+}
+
+GizmoEditorTool* EngineEditor::GetGizmoEditorTool(UDynamicID::IDType id)
+{
+    return m_GizmoTools.Get(id);
+}
+
+const GizmoEditorTool* EngineEditor::GetGizmoEditorTool(UDynamicID::IDType id) const
+{
+    return m_GizmoTools.Get(id);
+}

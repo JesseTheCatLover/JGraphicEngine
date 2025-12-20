@@ -77,7 +77,7 @@ bool DebugDraw::MouseHitTest(const FRenderView& view, const FMatrix4& viewMat, c
                              bool bRequireHitId) const
 {
     outHit = FDebugHit{};
-    if (!m_Enabled) return false;
+    if (!m_bEnabled) return false;
 
     const FMatrix4 VP = projMat * viewMat;
     const FMatrix4 invVP = VP.Inverse();
@@ -182,6 +182,20 @@ bool DebugDraw::MouseHitTest(const FRenderView& view, const FMatrix4& viewMat, c
     return found;
 }
 
+void DebugDraw::DrawTri(const FVector3& a, const FVector3& b, const FVector3& c,
+                        const FVector4& color, const FDebugDrawStyle& style)
+{
+    EmitTriInternal(m_ImmediateTris, a, b, c, color, style);
+}
+
+void DebugDraw::DrawQuad(const FVector3& p0, const FVector3& p1, const FVector3& p2, const FVector3& p3,
+                         const FVector4& color, const FDebugDrawStyle& style)
+{
+    // two triangles
+    EmitTriInternal(m_ImmediateTris, p0, p1, p2, color, style);
+    EmitTriInternal(m_ImmediateTris, p0, p2, p3, color, style);
+}
+
 // ----------------------------
 // Emit
 // ----------------------------
@@ -190,7 +204,7 @@ void DebugDraw::EmitLineInternal(std::vector<FDebugLine>& dst,
                                  const FVector3& a, const FVector3& b,
                                  const FVector4& c, const FDebugDrawStyle& s)
 {
-    if (!m_Enabled) return;
+    if (!m_bEnabled) return;
     if (!PassLayer(s.layer)) return;
 
     FDebugLine ln;
@@ -205,7 +219,7 @@ void DebugDraw::EmitTriInternal(std::vector<FDebugTri>& dst,
                                 const FVector3& a, const FVector3& b, const FVector3& c,
                                 const FVector4& col, const FDebugDrawStyle& s)
 {
-    if (!m_Enabled) return;
+    if (!m_bEnabled) return;
     if (!PassLayer(s.layer)) return;
 
     FDebugTri t;
@@ -219,7 +233,7 @@ void DebugDraw::EmitLineTimedInternal(const FVector3& a, const FVector3& b,
                                       const FVector4& c, const FDebugDrawStyle& s,
                                       float seconds)
 {
-    if (!m_Enabled) return;
+    if (!m_bEnabled) return;
     if (!PassLayer(s.layer)) return;
 
     FTimedLine tl;
@@ -235,7 +249,7 @@ void DebugDraw::EmitTriTimedInternal(const FVector3& a, const FVector3& b, const
                                      const FVector4& col, const FDebugDrawStyle& s,
                                      float seconds)
 {
-    if (!m_Enabled) return;
+    if (!m_bEnabled) return;
     if (!PassLayer(s.layer)) return;
 
     FTimedTri tt;
@@ -649,7 +663,7 @@ void DebugDraw::DrawCapsuleTimed(const FVector3& center, const FVector3& axisDir
 
 void DebugDraw::RenderForView(IRenderDevice& renderer, const FRenderView& view)
 {
-    if (!m_Enabled) return;
+    if (!m_bEnabled) return;
 
     std::vector<FDebugLine> lines;
     lines.reserve(m_Immediate.size() + m_Timed.size());

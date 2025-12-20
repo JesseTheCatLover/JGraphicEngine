@@ -6,6 +6,7 @@
 #include "Surface/SurfaceAPI.h"
 #include "Tools/TEditorTools.h"
 #include "Tools/FEditorToolFrameState.h"
+#include "Tools/GizmoEditorTool.h"
 #include "Viewport/ViewportAPI.h"
 
 class ICameraViewSource;
@@ -30,6 +31,7 @@ private:
     EditorSurfaceAPI m_SurfaceAPI;
 
     TEditorTools<CameraEditorTool> m_CameraTools;
+    TEditorTools<GizmoEditorTool> m_GizmoTools;
 
     static constexpr uint32_t kEditorPostProfile = 1;
 
@@ -51,6 +53,12 @@ public:
     // Viewport textures for ImGui
     RTextureHandle GetViewportColorHandle(UDynamicID::IDType cameraID);
     void* GetNativeTextureHandle(RTextureHandle handle) const;
+
+    // Gizmo Tool
+    UDynamicID::IDType CreateGizmoEditorTool();
+    void DestroyGizmoEditorTool(UDynamicID::IDType id);
+    GizmoEditorTool* GetGizmoEditorTool(UDynamicID::IDType id);
+    const GizmoEditorTool* GetGizmoEditorTool(UDynamicID::IDType id) const;
 
 private:
     // Helpers:
