@@ -4,7 +4,6 @@
 #include "EditorContext.h"
 #include <algorithm>
 #include <iostream>
-
 #include "Core/EngineGlobals.h"
 #include "Core/JEngine.h"
 #include "Core/Math/FMatrix4.h"
@@ -14,9 +13,10 @@
 #include "FSelectionModifiers.h"
 #include "Tools/CameraEditorTool.h"
 
-EditorCore::EditorCore(EditorContext &context, EngineEditor& engineEditor):
+EditorCore::EditorCore(EditorContext &context, EditorRuntime& runtime):
 m_Context(context),
-m_EngineEditor(engineEditor)
+m_EngineEditor(runtime),
+m_ToolManager(*this, runtime)
 {
 }
 
@@ -57,8 +57,8 @@ void EditorCore::TickEditorTools(float deltaTime)
 
     TickCameraTools(toolState.camera);
 
-    // Tick tools in engine editor
-    m_EngineEditor.TickAllTools(deltaTime, toolState);
+    // Tick tools
+    m_ToolManager.Tick(deltaTime);
 
     // Build views
     m_EngineEditor.SubmitEditorViewSources(toolState.camera);
@@ -108,21 +108,6 @@ void EditorCore::TickCameraTools(FCameraToolState& cameraState)
 
 void EditorCore::ClearFrameStates()
 {
-}
-
-void* EditorCore::GetViewportTextureHandle(const IEditorPanel* panel) const
-{
-    auto itCam = m_PanelToCameraMap.find(panel);
-    if (itCam == m_PanelToCameraMap.end())
-        return nullptr;
-
-    UDynamicID::IDType camId = itCam->second;
-
-    RTextureHandle color = m_EngineEditor.GetViewportColorHandle(camId);
-    if (!color.IsValid())
-        return nullptr;
-
-    return m_EngineEditor.GetNativeTextureHandle(color);
 }
 
 void EditorCore::PickActorAtViewportPos(const IEditorPanel* panel, float x, float y, const FSelectionModifiers& mods)

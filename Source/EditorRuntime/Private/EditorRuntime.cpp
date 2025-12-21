@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "EngineEditor.h"
+#include "EditorRuntime.h"
 
 #include <vector>
 #include <unordered_map>
@@ -14,7 +14,7 @@
 #include "Rendering/RendererSubsystem.h"
 #include "Tools/CameraEditorTool.h"
 
-EngineEditor::EngineEditor()
+EditorRuntime::EditorRuntime()
     : m_Context(JEngine::Get().GetEngineContext())
     , m_SceneManager(*JEngine::Get().GetSceneManager())
     , m_Renderer(*JEngine::Get().GetRenderer())
@@ -69,17 +69,17 @@ EngineEditor::EngineEditor()
     chain.push_back(fxaa);
 }
 
-EngineEditor::~EngineEditor()
+EditorRuntime::~EditorRuntime()
 {
 
 }
 
-void EngineEditor::TickAllTools(float deltaTime, const FEditorToolFrameState& state)
+void EditorRuntime::TickAllTools(float deltaTime, const FEditorToolFrameState& state)
 {
     TickCameraTools(deltaTime, state.camera);
 }
 
-void EngineEditor::TickCameraTools(float deltaTime, const FCameraToolState& state)
+void EditorRuntime::TickCameraTools(float deltaTime, const FCameraToolState& state)
 {
     m_CameraTools.ForEach(
         [&](UDynamicID::IDType id, CameraEditorTool& tool)
@@ -96,7 +96,7 @@ void EngineEditor::TickCameraTools(float deltaTime, const FCameraToolState& stat
         });
 }
 
-void EngineEditor::SubmitEditorViewSources(const FCameraToolState& state)
+void EditorRuntime::SubmitEditorViewSources(const FCameraToolState& state)
 {
     auto* scene = m_SceneManager.GetActiveScene();
     if (!scene)
@@ -177,12 +177,12 @@ void EngineEditor::SubmitEditorViewSources(const FCameraToolState& state)
     }
 }
 
-UDynamicID::IDType EngineEditor::CreateCameraEditorTool()
+UDynamicID::IDType EditorRuntime::CreateCameraEditorTool()
 {
     return m_CameraTools.Create();
 }
 
-bool EngineEditor::DestroyCameraEditorTool(UDynamicID::IDType cameraID)
+bool EditorRuntime::DestroyCameraEditorTool(UDynamicID::IDType cameraID)
 {
     // Destroy its RT before removing
     if (CameraEditorTool* tool = m_CameraTools.Get(cameraID))
@@ -197,39 +197,39 @@ bool EngineEditor::DestroyCameraEditorTool(UDynamicID::IDType cameraID)
     return m_CameraTools.Destroy(cameraID);
 }
 
-CameraEditorTool* EngineEditor::GetCameraEditorTool(UDynamicID::IDType cameraID)
+CameraEditorTool* EditorRuntime::GetCameraEditorTool(UDynamicID::IDType cameraID)
 {
     return m_CameraTools.Get(cameraID);
 }
 
-RTextureHandle EngineEditor::GetViewportColorHandle(UDynamicID::IDType cameraID)
+RTextureHandle EditorRuntime::GetViewportColorHandle(UDynamicID::IDType cameraID)
 {
     if (CameraEditorTool* tool = m_CameraTools.Get(cameraID))
         return tool->GetRT().color;
     return {};
 }
 
-void* EngineEditor::GetNativeTextureHandle(RTextureHandle handle) const
+void* EditorRuntime::GetNativeTextureHandle(RTextureHandle handle) const
 {
     return m_Renderer.GetNativeTextureHandle(handle);
 }
 
-UDynamicID::IDType EngineEditor::CreateGizmoEditorTool()
+UDynamicID::IDType EditorRuntime::CreateGizmoEditorTool()
 {
     return m_GizmoTools.Create();
 }
 
-void EngineEditor::DestroyGizmoEditorTool(UDynamicID::IDType id)
+void EditorRuntime::DestroyGizmoEditorTool(UDynamicID::IDType id)
 {
     m_GizmoTools.Destroy(id);
 }
 
-GizmoEditorTool* EngineEditor::GetGizmoEditorTool(UDynamicID::IDType id)
+GizmoEditorTool* EditorRuntime::GetGizmoEditorTool(UDynamicID::IDType id)
 {
     return m_GizmoTools.Get(id);
 }
 
-const GizmoEditorTool* EngineEditor::GetGizmoEditorTool(UDynamicID::IDType id) const
+const GizmoEditorTool* EditorRuntime::GetGizmoEditorTool(UDynamicID::IDType id) const
 {
     return m_GizmoTools.Get(id);
 }

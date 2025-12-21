@@ -16,6 +16,8 @@ public:
     // Unique name of the panel, used for window titles, debugging, etc.
     [[nodiscard]] virtual const char* GetName() const = 0;
 
+    [[nodiscard]] virtual const char* GetPanelKey() const = 0;
+
     // Called when the panel is added/created
     virtual void OnCreate(EditorContext& context, EditorCore& core) {}
 

@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-#include "EngineEditor.h"
+#include "EditorRuntime.h"
 #include "Core/IEditorBridge.h"
 #include "Core/Memory/SmartPointers.h"
 
@@ -35,7 +35,7 @@ private:
 
     // Core components
     TUniquePtr<EditorContext> m_Context;
-    TUniquePtr<EngineEditor> m_EngineEditor;
+    TUniquePtr<EditorRuntime> m_EditorRuntime;
     TUniquePtr<EditorCore> m_Core;
 
     // UI

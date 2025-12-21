@@ -50,7 +50,7 @@ FetchContent_MakeAvailable(glfw assimp glm json)
 add_subdirectory(ThirdParty)
 # --- Engine modules
 add_subdirectory(Source/Engine)
-add_subdirectory(Source/EngineEditor)
+add_subdirectory(Source/EditorRuntime)
 add_subdirectory(Source/Editor)
 add_subdirectory(Source/Launch) # Executable is defined in this module
 
@@ -62,7 +62,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 # Engine internals folder
-set_target_properties(JApplication Engine EngineEditor PROPERTIES
+set_target_properties(JApplication Engine EditorRuntime PROPERTIES
         FOLDER "EngineLibs"
         EXCLUDE_FROM_ALL TRUE
 )

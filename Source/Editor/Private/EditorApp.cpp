@@ -240,10 +240,10 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     m_Context = MakeUnique<EditorContext>();
 
     // EngineEditor (safe bridge API to Engine)
-    m_EngineEditor = TUniquePtr<EngineEditor>(new EngineEditor());
+    m_EditorRuntime = TUniquePtr<EngineEditor>(new EngineEditor());
 
     // Create EditorCore to drive context & commands
-    m_Core = TUniquePtr<EditorCore>(new EditorCore(*m_Context, *m_EngineEditor));
+    m_Core = TUniquePtr<EditorCore>(new EditorCore(*m_Context, *m_EditorRuntime));
 
     int viewportIndex = 0;
 

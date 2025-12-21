@@ -17,7 +17,7 @@ target_include_directories(Editor
 
 # Link dependencies
 target_link_libraries(Editor
-        PUBLIC EngineEditor glfw imgui  # expose EngineEditor and ImGui includes to users
+        PUBLIC EditorRuntime glfw imgui  # expose EditorRuntime and ImGui includes to users
 )
 
 # Editor library folder

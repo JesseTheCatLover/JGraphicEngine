@@ -15,11 +15,11 @@ class EngineContext;
 class SceneManager;
 class RendererSubsystem;
 
-class EngineEditor
+class EditorRuntime
 {
     friend class EditorApp;
 private:
-    EngineEditor();
+    EditorRuntime();
 
     EngineContext& m_Context;
     SceneManager& m_SceneManager;
@@ -30,35 +30,17 @@ private:
     EditorViewportAPI m_ViewportAPI;
     EditorSurfaceAPI m_SurfaceAPI;
 
-    TEditorTools<CameraEditorTool> m_CameraTools;
-    TEditorTools<GizmoEditorTool> m_GizmoTools;
-
     static constexpr uint32_t kEditorPostProfile = 1;
 
 public:
-    ~EngineEditor();
+    ~EditorRuntime();
 
     // Mutating operations – ONLY EditorCore may call them
     [[nodiscard]] EditorSceneAPI& GetSceneAPI() { return m_SceneAPI; }
     [[nodiscard]] EditorViewportAPI& GetViewportAPI() { return m_ViewportAPI; }
     [[nodiscard]] EditorSurfaceAPI& GetSurfaceAPI() { return m_SurfaceAPI; }
 
-    void TickAllTools(float deltaTime, const FEditorToolFrameState& state);
     void SubmitEditorViewSources(const FCameraToolState& state);
-
-    // Camera Tool
-    UDynamicID::IDType CreateCameraEditorTool();
-    bool DestroyCameraEditorTool(UDynamicID::IDType cameraID);
-    CameraEditorTool* GetCameraEditorTool(UDynamicID::IDType cameraID);
-    // Viewport textures for ImGui
-    RTextureHandle GetViewportColorHandle(UDynamicID::IDType cameraID);
-    void* GetNativeTextureHandle(RTextureHandle handle) const;
-
-    // Gizmo Tool
-    UDynamicID::IDType CreateGizmoEditorTool();
-    void DestroyGizmoEditorTool(UDynamicID::IDType id);
-    GizmoEditorTool* GetGizmoEditorTool(UDynamicID::IDType id);
-    const GizmoEditorTool* GetGizmoEditorTool(UDynamicID::IDType id) const;
 
 private:
     // Helpers:

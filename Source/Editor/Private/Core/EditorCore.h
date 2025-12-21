@@ -4,7 +4,8 @@
 #include <stack>
 
 #include "EditorContext.h"
-#include "EngineEditor.h"
+#include "EditorRuntime.h"
+#include "EditorToolManager.h"
 #include "IEditorCommand.h"
 #include "Core/Memory/SmartPointers.h"
 
@@ -17,12 +18,12 @@ class EditorCore
 {
     friend class EditorApp;
 private:
-    explicit EditorCore(EditorContext& context, EngineEditor& engineEditor);
+    explicit EditorCore(EditorContext& context, EditorRuntime& runtime);
 
     EditorContext& m_Context;
-    EngineEditor& m_EngineEditor;
+    EditorRuntime& m_EngineEditor;
 
-    FEditorFrameSnapshot m_FrameSnapshot;
+    EditorToolManager m_ToolManager;
 
     std::vector<FEditorActorSnapshot>  m_HierarchySnapshot;
     std::vector<ActorID> m_SelectedActors;
@@ -31,9 +32,6 @@ private:
 
     std::stack<TUniquePtr<IEditorCommand>> m_UndoStack;
     std::stack<TUniquePtr<IEditorCommand>> m_RedoStack;
-
-    // One editor camera per viewport panel for now
-    std::unordered_map<const IEditorPanel*, UDynamicID::IDType> m_PanelToCameraMap;
 
     // Which panel currently owns editor camera input
     const IEditorPanel* m_ActiveViewportPanel = nullptr;
@@ -73,10 +71,25 @@ public:
 
     // Scene Hierarchy
     void UpdateHierarchySnapshot();
-    const std::vector<FEditorActorSnapshot>& GetHierarchySnapshot() const { return m_HierarchySnapshot; }
+    [[nodiscard]] const std::vector<FEditorActorSnapshot>& GetHierarchySnapshot() const { return m_HierarchySnapshot; }
 
-    // Viewport section
-    [[nodiscard]] void* GetViewportTextureHandle(const IEditorPanel* panel) const;
+    // --- Viewport section ---
+
+    void SubmitViewportPanelContext(const FViewportPanelContext& ctx)
+    {
+        m_ToolManager.SubmitViewportPanelContext(ctx);
+    }
+
+    [[nodiscard]] void* GetViewportNativeTexture(const char* panelKey) const
+    {
+        return m_ToolManager.GetViewportNativeTexture(panelKey);
+    }
+
+    void DestroyViewport(const char* panelKey)
+    {
+        m_ToolManager.DestroyViewport(panelKey);
+    }
+
     void PickActorAtViewportPos(const IEditorPanel* panel, float x, float y, const FSelectionModifiers& mods);
 
     // Called by panels that want an editor camera
