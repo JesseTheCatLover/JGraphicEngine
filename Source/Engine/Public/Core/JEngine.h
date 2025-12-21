@@ -21,7 +21,6 @@ class IRenderBackend;
 class IPlatformSurface;
 class JRendererLegacy;
 class TServiceContainer;
-class EditorContext;
 
 class JEngine
 {

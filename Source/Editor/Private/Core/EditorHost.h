@@ -3,7 +3,6 @@
 #pragma once
 #include <stack>
 
-#include "EditorContext.h"
 #include "EditorRuntime.h"
 #include "EditorPanelManager.h"
 #include "IEditorCommand.h"
@@ -18,9 +17,8 @@ class EditorHost
 {
     friend class EditorApp;
 private:
-    explicit EditorHost(EditorContext& context, EditorRuntime& runtime);
+    explicit EditorHost(EditorRuntime& runtime);
 
-    EditorContext& m_Context;
     EditorRuntime& m_EngineEditor;
 
     EditorPanelManager m_PanelManager;
@@ -43,7 +41,6 @@ private:
     // Helpers:
     void PushFrameInfoToEditorContext();
     void TickEditorTools(float deltaTime);
-    void TickCameraTools(FCameraToolState& cameraState);
     void ClearFrameStates();
 
     // Tools
@@ -51,9 +48,6 @@ private:
     void DeactivateCameraForPanel(const IEditorPanel* panel);
 
 public:
-    EditorContext& GetContext() { return m_Context; }
-    [[nodiscard]] const EditorContext& GetContext() const { return m_Context; }
-
     // Called every frame from EditorApp::OnTick
     void Tick(float deltaTime);
 

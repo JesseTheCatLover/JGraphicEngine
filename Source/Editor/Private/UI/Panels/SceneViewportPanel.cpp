@@ -8,9 +8,9 @@
 #include "Core/EngineGlobals.h"
 #include "Core/FSelectionModifiers.h"
 
-void SceneViewportPanel::OnCreate(EditorContext&, EditorHost&) {}
+void SceneViewportPanel::OnCreate(EditorHost&) {}
 
-void SceneViewportPanel::OnDestroy(EditorContext&, EditorHost& core)
+void SceneViewportPanel::OnDestroy(EditorHost& core)
 {
     core.DestroyViewport(GetPanelKey());
 }
@@ -19,7 +19,7 @@ const char* SceneViewportPanel::GetPanelKey() const
 {
     return m_PanelKey.c_str();
 }
-void SceneViewportPanel::Draw(EditorContext& context, EditorHost& core)
+void SceneViewportPanel::Draw(EditorHost& core)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     if (!ImGui::Begin(GetName()))
@@ -85,9 +85,6 @@ void SceneViewportPanel::Draw(EditorContext& context, EditorHost& core)
     ctx.bOverViewport = bOverViewport;
     ctx.mouseX = mouseX;
     ctx.mouseY = mouseY;
-
-    // Optional: put defaults here (lets controller configure camera)
-    ctx.msaaSamples = 4;
 
     ctx.rectMinX = rectMin.x;
     ctx.rectMinY = rectMin.y;

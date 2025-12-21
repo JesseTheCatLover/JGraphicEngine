@@ -1,20 +1,16 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "EditorHost.h"
-#include "EditorContext.h"
 #include <algorithm>
 #include <iostream>
 #include "Core/EngineGlobals.h"
 #include "Core/JEngine.h"
-#include "Core/Math/FMatrix4.h"
-#include "Core/Math/FVector4.h"
 #include "Framework/SceneManager.h"
 #include "Rendering/IPlatformSurface.h"
 #include "FSelectionModifiers.h"
 #include "Tools/CameraEditorTool.h"
 
-EditorHost::EditorHost(EditorContext &context, EditorRuntime& runtime):
-m_Context(context),
+EditorHost::EditorHost(EditorRuntime& runtime):
 m_EngineEditor(runtime),
 m_PanelManager(*this, runtime)
 {
@@ -44,66 +40,14 @@ void EditorHost::UpdateHierarchySnapshot()
     }
 }
 
-void EditorHost::PushFrameInfoToEditorContext()
-{
-    // Pull frame info to EditorContext
-    m_FrameSnapshot = m_EngineEditor.GetViewportAPI().GetFrameSnapshot();
-    m_Context.SetFrameSnapshot(m_FrameSnapshot);
-}
-
 void EditorHost::TickEditorTools(float deltaTime)
 {
-    FEditorToolFrameState toolState;
-
-    TickCameraTools(toolState.camera);
 
     // Tick tools
     m_PanelManager.Tick(deltaTime);
 
     // Build views
-    m_EngineEditor.SubmitEditorViewSources(toolState.camera);
-}
-
-void EditorHost::TickCameraTools(FCameraToolState& cameraState)
-{
-    // 1) Active camera (panel with mouse capture)
-    if (m_ActiveViewportPanel)
-    {
-        auto itCam = m_PanelToCameraMap.find(m_ActiveViewportPanel);
-        if (itCam != m_PanelToCameraMap.end())
-        {
-            cameraState.activeCameraId = itCam->second;
-        }
-    }
-
-    // 2) Build viewstateMap from per-panel size
-    int viewIndex = 0;
-    for (const auto& [panel, camId] : m_PanelToCameraMap)
-    {
-        auto itVp = m_CameraStateMap.find(panel);
-        if (itVp == m_CameraStateMap.end())
-            continue;
-
-        const auto& vp = itVp->second;
-        if (vp.width <= 0.f || vp.height <= 0.f)
-            continue;
-
-        FCameraViewState vs{};
-        vs.width  = vp.width;
-        vs.height = vp.height;
-        vs.aspect = (vp.height > 0.f)
-                        ? (vp.width / vp.height)
-                        : 16.f / 9.f;
-        vs.viewIndex = viewIndex++;
-
-        cameraState.viewstateMap[camId] = vs;
-    }
-
-    // 3) Propagate MSAA samples
-    for (const auto& [camId, samples] : m_CameraSampleMap)
-    {
-        cameraState.cameraSampleMap[camId] = samples;
-    }
+    //m_EngineEditor.SubmitEditorViewSources(toolState.camera); TODO: Should be handled in the controller/runtime stuff
 }
 
 void EditorHost::ClearFrameStates()
@@ -214,30 +158,6 @@ void EditorHost::PickActorAtViewportPos(const IEditorPanel* panel, float x, floa
     {
         ClearSelection();
     }
-}
-
-void EditorHost::CreateCameraForPanel(const IEditorPanel* panel)
-{
-    if (m_PanelToCameraMap.count(panel) > 0)
-        return;
-
-    auto id = m_EngineEditor.CreateCameraEditorTool();
-    m_PanelToCameraMap[panel] = id;
-}
-
-void EditorHost::DestroyCameraForPanel(const IEditorPanel* panel)
-{
-    auto it = m_PanelToCameraMap.find(panel);
-    if (it == m_PanelToCameraMap.end())
-        return;
-
-    UDynamicID::IDType id = it->second;
-
-    m_EngineEditor.DestroyCameraEditorTool(id);
-
-    m_PanelToCameraMap.erase(it);
-    m_CameraStateMap.erase(panel);
-    DeactivateCameraForPanel(panel);
 }
 
 void EditorHost::SetViewportFocused(const IEditorPanel *panel, bool bFocused)

@@ -5,7 +5,6 @@
 #include "Scene/SceneAPI.h"
 #include "Surface/SurfaceAPI.h"
 #include "Tools/TEditorTools.h"
-#include "Tools/FEditorToolFrameState.h"
 #include "Tools/GizmoEditorTool.h"
 #include "Viewport/ViewportAPI.h"
 

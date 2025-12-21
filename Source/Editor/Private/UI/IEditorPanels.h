@@ -2,7 +2,6 @@
 
 #pragma once
 
-class EditorContext;
 class EditorHost;
 
 /** @class IEditorPanel
@@ -19,11 +18,11 @@ public:
     [[nodiscard]] virtual const char* GetPanelKey() const = 0;
 
     // Called when the panel is added/created
-    virtual void OnCreate(EditorContext& context, EditorHost& core) {}
+    virtual void OnCreate(EditorHost& host) {}
 
     // Called before the panel is removed/destroyed
-    virtual void OnDestroy(EditorContext& context, EditorHost& core) {}
+    virtual void OnDestroy(EditorHost& host) {}
 
-    // Panels should only use EditorContext to interact with the engine/editor.
-    virtual void Draw(EditorContext& context, EditorHost& core) = 0;
+    // Panels should only use EditorHost to interact with the engine/editor.
+    virtual void Draw(EditorHost& host) = 0;
 };

@@ -34,7 +34,6 @@ private:
     GLFWwindow* m_Window;
 
     // Core components
-    TUniquePtr<EditorContext> m_Context;
     TUniquePtr<EditorRuntime> m_EditorRuntime;
     TUniquePtr<EditorHost> m_EditorHost;
 

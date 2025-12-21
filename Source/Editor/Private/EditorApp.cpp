@@ -3,7 +3,6 @@
 #include <Core/CoreMinimal.h>
 #include <Rendering/IPlatformSurface.h>
 #include <GLFW/glfw3.h>
-#include <EditorContext.h>
 #include <ImGuiLayer.h>
 #include <iostream>
 #include <UI/Panels/SceneHierarchyPanel.h>
@@ -165,19 +164,6 @@ void EditorApp::RenderPanels()
     ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 
     // ---- 4. Draw panels inside dockspace ----
-    if (m_Context)
-    {
-        for (auto& panel : m_Panels)
-        {
-            if (!panel) continue;
-
-            // // Example: only draw asset browser if flag is on
-            // if (panel->GetName() == std::string("Asset Browser") && !m_ShowAssetBrowser)
-            //     continue;
-
-            panel->Draw(*m_Context, *m_EditorHost);
-        }
-    }
 
     ImGui::End(); // DockSpaceRoot
 }
@@ -196,7 +182,6 @@ void EditorApp::Shutdown()
 
     // Destroy core/context
     m_EditorHost.reset();
-    m_Context.reset();
 
     if (m_ImGuiLayer)
     {
@@ -237,13 +222,12 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     // Initialize ImGui backend
     m_ImGuiLayer = MakeUnique<ImGuiLayer>(window);
 
-    m_Context = MakeUnique<EditorContext>();
 
-    // EngineEditor (safe bridge API to Engine)
-    m_EditorRuntime = TUniquePtr<EngineEditor>(new EngineEditor());
+    // EditorRuntime (safe bridge API to Engine)
+    m_EditorRuntime = TUniquePtr<EditorRuntime>(new EditorRuntime());
 
     // Create EditorCore to drive context & commands
-    m_EditorHost = TUniquePtr<EditorHost>(new EditorHost(*m_Context, *m_EditorRuntime));
+    m_EditorHost = TUniquePtr<EditorHost>(new EditorHost(*m_EditorRuntime));
 
     int viewportIndex = 0;
 
@@ -256,7 +240,7 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     for (auto& panel : m_Panels)
     {
         if (panel)
-            panel->OnCreate(*m_Context, *m_EditorHost);
+            panel->OnCreate(*m_EditorHost);
     }
 
     m_DockSpace = MakeUnique<DockSpace>();
