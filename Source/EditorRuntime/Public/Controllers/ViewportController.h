@@ -7,9 +7,9 @@
 #include "Rendering/RHandles.h"
 #include "Viewport/FViewportPanelContext.h"
 
-class EditorCore;
+class EditorHost;
 class EditorRuntime;
-class EditorToolManager;
+class EditorPanelManager;
 class CameraEditorTool;
 
 class ViewportController
@@ -17,9 +17,9 @@ class ViewportController
 private:
     PanelID m_PanelId = 0;
 
-    EditorCore& m_Core;
+    EditorHost& m_Core;
     EditorRuntime& m_Runtime;
-    EditorToolManager& m_Tools;
+    EditorPanelManager& m_Tools;
 
     // One camera tool per panel
     UDynamicID::IDType m_CameraToolId = 0;
@@ -44,7 +44,7 @@ private:
     void SubmitView();
 
 public:
-    ViewportController(PanelID panelId, EditorCore& core, EditorRuntime& runtime, EditorToolManager& tools);
+    ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, EditorPanelManager& tools);
     ~ViewportController();
 
     [[nodiscard]] PanelID GetPanelId() const { return m_PanelId; }

@@ -2,7 +2,7 @@
 
 #include "SceneHierarchyPanel.h"
 #include "EditorContext.h"
-#include "Core/EditorCore.h"
+#include "Core/EditorHost.h"
 #include "imgui.h"
 #include "Core/FSelectionModifiers.h"
 
@@ -39,7 +39,7 @@ static void BuildParentChain(const std::vector<FEditorActorSnapshot>& actors, Ac
     }
 }
 
-void SceneHierarchyPanel::ApplyRevealRequest(const std::vector<FEditorActorSnapshot>& actors, EditorCore& core)
+void SceneHierarchyPanel::ApplyRevealRequest(const std::vector<FEditorActorSnapshot>& actors, EditorHost& core)
 {
     const ActorID reveal = core.ConsumeRevealRequest();
     if (reveal == 0)
@@ -60,7 +60,7 @@ void SceneHierarchyPanel::ApplyRevealRequest(const std::vector<FEditorActorSnaps
 void SceneHierarchyPanel::DrawActorNode(
     const FEditorActorSnapshot& node,
     const std::vector<FEditorActorSnapshot>& allActors,
-    EditorCore& core)
+    EditorHost& core)
 {
     ImGuiTreeNodeFlags flags =
         ImGuiTreeNodeFlags_OpenOnArrow |
@@ -120,7 +120,7 @@ void SceneHierarchyPanel::DrawActorNode(
     }
 }
 
-void SceneHierarchyPanel::Draw(EditorContext& context, EditorCore& core)
+void SceneHierarchyPanel::Draw(EditorContext& context, EditorHost& core)
 {
     if (!ImGui::Begin(GetName()))
     {

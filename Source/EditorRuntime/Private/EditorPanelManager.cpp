@@ -1,23 +1,23 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "EditorToolManager.h"
+#include "EditorPanelManager.h"
 
-#include "Core/EditorCore.h"
+#include "Core/EditorHost.h"
 #include "EditorRuntime.h"
 #include "Controllers/ViewportController.h"
 
-EditorToolManager::EditorToolManager(EditorCore& core, EditorRuntime& runtime)
+EditorPanelManager::EditorPanelManager(EditorHost& core, EditorRuntime& runtime)
     : m_Core(core)
     , m_Runtime(runtime)
 {
 }
 
-EditorToolManager::~EditorToolManager()
+EditorPanelManager::~EditorPanelManager()
 {
     m_Viewports.clear(); // Destroy controllers first (they destroy tools)
 }
 
-ViewportController& EditorToolManager::GetOrCreateViewport(PanelID panelId)
+ViewportController& EditorPanelManager::GetOrCreateViewport(PanelID panelId)
 {
     auto it = m_Viewports.find(panelId);
     if (it != m_Viewports.end())
@@ -29,7 +29,7 @@ ViewportController& EditorToolManager::GetOrCreateViewport(PanelID panelId)
     return ref;
 }
 
-void EditorToolManager::SubmitViewportPanelContext(const FViewportPanelContext& ctx)
+void EditorPanelManager::SubmitViewportPanelContext(const FViewportPanelContext& ctx)
 {
     if (!ctx.panelKey || ctx.panelKey[0] == '\0')
         return;
@@ -40,7 +40,7 @@ void EditorToolManager::SubmitViewportPanelContext(const FViewportPanelContext& 
     (void)GetOrCreateViewport(pid);
 }
 
-void* EditorToolManager::GetViewportNativeTexture(const char* panelKey) const
+void* EditorPanelManager::GetViewportNativeTexture(const char* panelKey) const
 {
     if (!panelKey || panelKey[0] == '\0')
         return nullptr;
@@ -56,7 +56,7 @@ void* EditorToolManager::GetViewportNativeTexture(const char* panelKey) const
     return it->second->GetNativeTexture();
 }
 
-void EditorToolManager::DestroyViewport(const char* panelKey)
+void EditorPanelManager::DestroyViewport(const char* panelKey)
 {
     if (!panelKey || panelKey[0] == '\0')
         return;
@@ -71,7 +71,7 @@ void EditorToolManager::DestroyViewport(const char* panelKey)
     m_PanelIds.Release(panelKey);
 }
 
-void EditorToolManager::Tick(float dt)
+void EditorPanelManager::Tick(float dt)
 {
     // Update each viewport controller using its latest submitted frame
     for (auto& [panelId, ctrl] : m_Viewports)
@@ -85,32 +85,32 @@ void EditorToolManager::Tick(float dt)
 }
 
 // ---- Tool pools ----
-UDynamicID::IDType EditorToolManager::CreateCameraTool()
+UDynamicID::IDType EditorPanelManager::CreateCameraTool()
 {
     return m_CameraTools.Create();
 }
 
-bool EditorToolManager::DestroyCameraTool(UDynamicID::IDType id)
+bool EditorPanelManager::DestroyCameraTool(UDynamicID::IDType id)
 {
     return m_CameraTools.Destroy(id);
 }
 
-CameraEditorTool* EditorToolManager::GetCameraTool(UDynamicID::IDType id)
+CameraEditorTool* EditorPanelManager::GetCameraTool(UDynamicID::IDType id)
 {
     return m_CameraTools.Get(id);
 }
 
-UDynamicID::IDType EditorToolManager::CreateGizmoTool()
+UDynamicID::IDType EditorPanelManager::CreateGizmoTool()
 {
     return m_GizmoTools.Create();
 }
 
-bool EditorToolManager::DestroyGizmoTool(UDynamicID::IDType id)
+bool EditorPanelManager::DestroyGizmoTool(UDynamicID::IDType id)
 {
     return m_GizmoTools.Destroy(id);
 }
 
-GizmoEditorTool* EditorToolManager::GetGizmoTool(UDynamicID::IDType id)
+GizmoEditorTool* EditorPanelManager::GetGizmoTool(UDynamicID::IDType id)
 {
     return m_GizmoTools.Get(id);
 }

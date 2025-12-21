@@ -24,14 +24,14 @@ private:
     void DrawActorNode(
     const FEditorActorSnapshot& node,
     const std::vector<FEditorActorSnapshot>& allActors,
-    EditorCore& core);
+    EditorHost& core);
 
     void ApplyRevealRequest(
         const std::vector<FEditorActorSnapshot>& actors,
-        EditorCore& core);
+        EditorHost& core);
 
 public:
     const char* GetName() const override { return "Scene Hierarchy"; }
 
-    void Draw(EditorContext& context, EditorCore& core) override;
+    void Draw(EditorContext& context, EditorHost& core) override;
 };

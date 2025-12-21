@@ -1,13 +1,13 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Controllers/ViewportController.h"
-#include "Core/EditorCore.h"
+#include "Core/EditorHost.h"
 #include "EditorRuntime.h"
 #include "Tools/EditorToolManager.h"
 
 #include "Tools/CameraEditorTool.h"
 
-ViewportController::ViewportController(PanelID panelId, EditorCore& core, EditorRuntime& runtime, EditorToolManager& tools)
+ViewportController::ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, EditorPanelManager& tools)
     : m_PanelId(panelId)
     , m_Core(core)
     , m_Runtime(runtime)

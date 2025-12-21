@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "EditorCore.h"
+#include "EditorHost.h"
 #include "EditorContext.h"
 #include <algorithm>
 #include <iostream>
@@ -13,14 +13,14 @@
 #include "FSelectionModifiers.h"
 #include "Tools/CameraEditorTool.h"
 
-EditorCore::EditorCore(EditorContext &context, EditorRuntime& runtime):
+EditorHost::EditorHost(EditorContext &context, EditorRuntime& runtime):
 m_Context(context),
 m_EngineEditor(runtime),
-m_ToolManager(*this, runtime)
+m_PanelManager(*this, runtime)
 {
 }
 
-void EditorCore::Tick(float deltaTime)
+void EditorHost::Tick(float deltaTime)
 {
     PushFrameInfoToEditorContext();
 
@@ -31,7 +31,7 @@ void EditorCore::Tick(float deltaTime)
     ClearFrameStates();
 }
 
-void EditorCore::UpdateHierarchySnapshot()
+void EditorHost::UpdateHierarchySnapshot()
 {
     // Ask EngineEditor -> EditorSceneAPI for a fresh snapshot
     m_HierarchySnapshot = m_EngineEditor.GetSceneAPI().BuildHierarchySnapshot();
@@ -44,27 +44,27 @@ void EditorCore::UpdateHierarchySnapshot()
     }
 }
 
-void EditorCore::PushFrameInfoToEditorContext()
+void EditorHost::PushFrameInfoToEditorContext()
 {
     // Pull frame info to EditorContext
     m_FrameSnapshot = m_EngineEditor.GetViewportAPI().GetFrameSnapshot();
     m_Context.SetFrameSnapshot(m_FrameSnapshot);
 }
 
-void EditorCore::TickEditorTools(float deltaTime)
+void EditorHost::TickEditorTools(float deltaTime)
 {
     FEditorToolFrameState toolState;
 
     TickCameraTools(toolState.camera);
 
     // Tick tools
-    m_ToolManager.Tick(deltaTime);
+    m_PanelManager.Tick(deltaTime);
 
     // Build views
     m_EngineEditor.SubmitEditorViewSources(toolState.camera);
 }
 
-void EditorCore::TickCameraTools(FCameraToolState& cameraState)
+void EditorHost::TickCameraTools(FCameraToolState& cameraState)
 {
     // 1) Active camera (panel with mouse capture)
     if (m_ActiveViewportPanel)
@@ -106,11 +106,11 @@ void EditorCore::TickCameraTools(FCameraToolState& cameraState)
     }
 }
 
-void EditorCore::ClearFrameStates()
+void EditorHost::ClearFrameStates()
 {
 }
 
-void EditorCore::PickActorAtViewportPos(const IEditorPanel* panel, float x, float y, const FSelectionModifiers& mods)
+void EditorHost::PickActorAtViewportPos(const IEditorPanel* panel, float x, float y, const FSelectionModifiers& mods)
 {
     // 1) Find the camera associated with this panel
     auto camIt = m_PanelToCameraMap.find(panel);
@@ -216,7 +216,7 @@ void EditorCore::PickActorAtViewportPos(const IEditorPanel* panel, float x, floa
     }
 }
 
-void EditorCore::CreateCameraForPanel(const IEditorPanel* panel)
+void EditorHost::CreateCameraForPanel(const IEditorPanel* panel)
 {
     if (m_PanelToCameraMap.count(panel) > 0)
         return;
@@ -225,7 +225,7 @@ void EditorCore::CreateCameraForPanel(const IEditorPanel* panel)
     m_PanelToCameraMap[panel] = id;
 }
 
-void EditorCore::DestroyCameraForPanel(const IEditorPanel* panel)
+void EditorHost::DestroyCameraForPanel(const IEditorPanel* panel)
 {
     auto it = m_PanelToCameraMap.find(panel);
     if (it == m_PanelToCameraMap.end())
@@ -240,7 +240,7 @@ void EditorCore::DestroyCameraForPanel(const IEditorPanel* panel)
     DeactivateCameraForPanel(panel);
 }
 
-void EditorCore::SetViewportFocused(const IEditorPanel *panel, bool bFocused)
+void EditorHost::SetViewportFocused(const IEditorPanel *panel, bool bFocused)
 {
     IPlatformSurface* surface = JEngine::Get().GetPlatformSurface();
     if (bFocused)
@@ -259,18 +259,18 @@ void EditorCore::SetViewportFocused(const IEditorPanel *panel, bool bFocused)
     }
 }
 
-void EditorCore::ActivateCameraForPanel(const IEditorPanel *panel)
+void EditorHost::ActivateCameraForPanel(const IEditorPanel *panel)
 {
     m_ActiveViewportPanel = panel;
 }
 
-void EditorCore::DeactivateCameraForPanel(const IEditorPanel *panel)
+void EditorHost::DeactivateCameraForPanel(const IEditorPanel *panel)
 {
     if (m_ActiveViewportPanel == panel)
         m_ActiveViewportPanel = nullptr;
 }
 
-void EditorCore::OnViewportResized(const IEditorPanel *panel, float width, float height)
+void EditorHost::OnViewportResized(const IEditorPanel *panel, float width, float height)
 {
     auto it = m_PanelToCameraMap.find(panel);
     if (it == m_PanelToCameraMap.end())
@@ -289,7 +289,7 @@ void EditorCore::OnViewportResized(const IEditorPanel *panel, float width, float
     m_CameraStateMap[panel] = vp;
 }
 
-void EditorCore::SetViewportMSAASamples(const IEditorPanel *panel, int samples)
+void EditorHost::SetViewportMSAASamples(const IEditorPanel *panel, int samples)
 {
     auto it = m_PanelToCameraMap.find(panel);
     if (it == m_PanelToCameraMap.end())
@@ -304,7 +304,7 @@ void EditorCore::SetViewportMSAASamples(const IEditorPanel *panel, int samples)
     m_CameraSampleMap[id] = samples;
 }
 
-void EditorCore::ExecuteCommand(TUniquePtr<IEditorCommand> cmd)
+void EditorHost::ExecuteCommand(TUniquePtr<IEditorCommand> cmd)
 {
     if (!cmd)
         return;
@@ -318,7 +318,7 @@ void EditorCore::ExecuteCommand(TUniquePtr<IEditorCommand> cmd)
         m_RedoStack.pop();
 }
 
-void EditorCore::Undo()
+void EditorHost::Undo()
 {
     if (m_UndoStack.empty())
         return;
@@ -331,7 +331,7 @@ void EditorCore::Undo()
     m_RedoStack.push(TakeUniqueOwnership(cmd));
 }
 
-void EditorCore::Redo()
+void EditorHost::Redo()
 {
     if (m_RedoStack.empty())
         return;
@@ -370,7 +370,7 @@ static std::vector<ActorID> BuildVisibleOrder(const std::vector<FEditorActorSnap
     return order;
 }
 
-void EditorCore::HandleSelectionClick(ActorID id, const FSelectionModifiers& mods)
+void EditorHost::HandleSelectionClick(ActorID id, const FSelectionModifiers& mods)
 {
     if (id == 0)
         return;
@@ -383,7 +383,7 @@ void EditorCore::HandleSelectionClick(ActorID id, const FSelectionModifiers& mod
         SelectSingleActor(id);
 }
 
-void EditorCore::SelectSingleActor(ActorID id)
+void EditorHost::SelectSingleActor(ActorID id)
 {
     m_SelectedActors.clear();
 
@@ -401,7 +401,7 @@ void EditorCore::SelectSingleActor(ActorID id)
     m_EngineEditor.GetSceneAPI().SetSelectedActors(m_SelectedActors);
 }
 
-void EditorCore::ToggleActorSelection(ActorID id)
+void EditorHost::ToggleActorSelection(ActorID id)
 {
     if (id == 0) return;
 
@@ -416,7 +416,7 @@ void EditorCore::ToggleActorSelection(ActorID id)
     m_EngineEditor.GetSceneAPI().SetSelectedActors(m_SelectedActors);
 }
 
-void EditorCore::SelectRangeTo(ActorID id)
+void EditorHost::SelectRangeTo(ActorID id)
 {
     if (m_HierarchySnapshot.empty())
         return;
@@ -452,7 +452,7 @@ void EditorCore::SelectRangeTo(ActorID id)
     m_EngineEditor.GetSceneAPI().SetSelectedActors(m_SelectedActors);
 }
 
-void EditorCore::ClearSelection()
+void EditorHost::ClearSelection()
 {
     m_SelectedActors.clear();
     m_SelectionAnchor = 0;

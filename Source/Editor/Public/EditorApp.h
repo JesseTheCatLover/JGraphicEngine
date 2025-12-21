@@ -7,7 +7,7 @@
 
 class IEditorPanel;
 class DockSpace;
-class EditorCore;
+class EditorHost;
 struct GLFWwindow;
 class EditorContext;
 class ImGuiLayer;
@@ -36,11 +36,14 @@ private:
     // Core components
     TUniquePtr<EditorContext> m_Context;
     TUniquePtr<EditorRuntime> m_EditorRuntime;
-    TUniquePtr<EditorCore> m_Core;
+    TUniquePtr<EditorHost> m_EditorHost;
 
-    // UI
+    // Backend
     TUniquePtr<ImGuiLayer> m_ImGuiLayer;
+
+    // Dock
     TUniquePtr<DockSpace> m_DockSpace;
 
+    // Panel pool
     std::vector<TUniquePtr<IEditorPanel>> m_Panels;
 };

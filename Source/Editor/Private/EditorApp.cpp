@@ -10,7 +10,7 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "Core/EditorCore.h"
+#include "Core/EditorHost.h"
 #include "Layout/DockSpace.h"
 #include "UI/IEditorPanels.h"
 #include "UI/Panels/SceneViewportPanel.h"
@@ -45,15 +45,15 @@ void EditorApp::RenderPanels()
 
         if (ImGui::BeginMenu("Edit"))
         {
-            if (m_Core)
+            if (m_EditorHost)
             {
-                bool canUndo = m_Core->CanUndo();
-                bool canRedo = m_Core->CanRedo();
+                bool canUndo = m_EditorHost->CanUndo();
+                bool canRedo = m_EditorHost->CanRedo();
 
                 if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo))
-                    m_Core->Undo();
+                    m_EditorHost->Undo();
                 if (ImGui::MenuItem("Redo", "Ctrl+Y", false, canRedo))
-                    m_Core->Redo();
+                    m_EditorHost->Redo();
             }
             ImGui::EndMenu();
         }
@@ -175,7 +175,7 @@ void EditorApp::RenderPanels()
             // if (panel->GetName() == std::string("Asset Browser") && !m_ShowAssetBrowser)
             //     continue;
 
-            panel->Draw(*m_Context, *m_Core);
+            panel->Draw(*m_Context, *m_EditorHost);
         }
     }
 
@@ -195,7 +195,7 @@ void EditorApp::Shutdown()
     m_Panels.clear();
 
     // Destroy core/context
-    m_Core.reset();
+    m_EditorHost.reset();
     m_Context.reset();
 
     if (m_ImGuiLayer)
@@ -243,7 +243,7 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     m_EditorRuntime = TUniquePtr<EngineEditor>(new EngineEditor());
 
     // Create EditorCore to drive context & commands
-    m_Core = TUniquePtr<EditorCore>(new EditorCore(*m_Context, *m_EditorRuntime));
+    m_EditorHost = TUniquePtr<EditorHost>(new EditorHost(*m_Context, *m_EditorRuntime));
 
     int viewportIndex = 0;
 
@@ -256,7 +256,7 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     for (auto& panel : m_Panels)
     {
         if (panel)
-            panel->OnCreate(*m_Context, *m_Core);
+            panel->OnCreate(*m_Context, *m_EditorHost);
     }
 
     m_DockSpace = MakeUnique<DockSpace>();
@@ -275,6 +275,6 @@ void EditorApp::OnRenderOverlay()
 
 void EditorApp::OnTick(float deltaTime)
 {
-    if (m_Core)
-        m_Core->Tick(deltaTime);
+    if (m_EditorHost)
+        m_EditorHost->Tick(deltaTime);
 }

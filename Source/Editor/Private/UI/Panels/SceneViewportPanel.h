@@ -3,7 +3,7 @@
 #include <string>
 #include "UI/IEditorPanels.h"
 
-class EditorCore;
+class EditorHost;
 class EditorContext;
 
 class SceneViewportPanel : public IEditorPanel
@@ -22,9 +22,9 @@ public:
 
     [[nodiscard]] const char* GetPanelKey() const override;
 
-    void Draw(EditorContext& context, EditorCore& core) override;
-    void OnCreate(EditorContext& context, EditorCore& core) override;
-    void OnDestroy(EditorContext& context, EditorCore& core) override;
+    void Draw(EditorContext& context, EditorHost& core) override;
+    void OnCreate(EditorContext& context, EditorHost& core) override;
+    void OnDestroy(EditorContext& context, EditorHost& core) override;
 
 private:
     std::string m_PanelKey;

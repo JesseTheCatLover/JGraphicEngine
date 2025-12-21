@@ -14,11 +14,11 @@ enum class EGizmoMode
 };
 
 class EngineContext;
-class EditorCore;
+class EditorHost;
 
 class EditorContext
 {
-    friend class EditorCore;
+    friend class EditorHost;
 private:
     std::vector<ActorID> m_SelectedActors;
     EGizmoMode m_GizmoMode = EGizmoMode::Select;

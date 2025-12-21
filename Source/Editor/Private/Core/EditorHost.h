@@ -5,7 +5,7 @@
 
 #include "EditorContext.h"
 #include "EditorRuntime.h"
-#include "EditorToolManager.h"
+#include "EditorPanelManager.h"
 #include "IEditorCommand.h"
 #include "Core/Memory/SmartPointers.h"
 
@@ -14,16 +14,16 @@ class IEditorPanel;
 class EditorContext;
 class FSelectionModifiers;
 
-class EditorCore
+class EditorHost
 {
     friend class EditorApp;
 private:
-    explicit EditorCore(EditorContext& context, EditorRuntime& runtime);
+    explicit EditorHost(EditorContext& context, EditorRuntime& runtime);
 
     EditorContext& m_Context;
     EditorRuntime& m_EngineEditor;
 
-    EditorToolManager m_ToolManager;
+    EditorPanelManager m_PanelManager;
 
     std::vector<FEditorActorSnapshot>  m_HierarchySnapshot;
     std::vector<ActorID> m_SelectedActors;
@@ -35,18 +35,6 @@ private:
 
     // Which panel currently owns editor camera input
     const IEditorPanel* m_ActiveViewportPanel = nullptr;
-
-    struct FViewportPanelState
-    {
-        float width  = 0.f;
-        float height = 0.f;
-    };
-
-    // Per-panel viewport size (used to build FCameraToolState)
-    std::unordered_map<const IEditorPanel*, FViewportPanelState> m_CameraStateMap;
-
-    // Per-camera MSAA samples (1 = no MSAA)
-    std::unordered_map<UDynamicID::IDType, int> m_CameraSampleMap;
 
     // // Internal helper to sync selection to EngineEditor
     // void SyncSelectionToEngine();
@@ -77,17 +65,17 @@ public:
 
     void SubmitViewportPanelContext(const FViewportPanelContext& ctx)
     {
-        m_ToolManager.SubmitViewportPanelContext(ctx);
+        m_PanelManager.SubmitViewportPanelContext(ctx);
     }
 
     [[nodiscard]] void* GetViewportNativeTexture(const char* panelKey) const
     {
-        return m_ToolManager.GetViewportNativeTexture(panelKey);
+        return m_PanelManager.GetViewportNativeTexture(panelKey);
     }
 
     void DestroyViewport(const char* panelKey)
     {
-        m_ToolManager.DestroyViewport(panelKey);
+        m_PanelManager.DestroyViewport(panelKey);
     }
 
     void PickActorAtViewportPos(const IEditorPanel* panel, float x, float y, const FSelectionModifiers& mods);

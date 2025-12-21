@@ -11,14 +11,14 @@
 #include "Tools/GizmoEditorTool.h"
 #include "Viewport/FViewportPanelContext.h"
 
-class EditorCore;
+class EditorHost;
 class EditorRuntime;
 class ViewportController;
 
-class EditorToolManager
+class EditorPanelManager
 {
 private:
-    EditorCore& m_Core;
+    EditorHost& m_Core;
     EditorRuntime& m_Runtime;
 
     PanelRegistry m_PanelIds;
@@ -37,8 +37,8 @@ private:
     ViewportController& GetOrCreateViewport(PanelID panelId);
 
 public:
-    EditorToolManager(EditorCore& core, EditorRuntime& runtime);
-    ~EditorToolManager();
+    EditorPanelManager(EditorHost& core, EditorRuntime& runtime);
+    ~EditorPanelManager();
 
     // Called once per frame from Core
     void Tick(float dt);

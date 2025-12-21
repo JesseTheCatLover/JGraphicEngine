@@ -4,13 +4,13 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "Core/EditorCore.h"
+#include "Core/EditorHost.h"
 #include "Core/EngineGlobals.h"
 #include "Core/FSelectionModifiers.h"
 
-void SceneViewportPanel::OnCreate(EditorContext&, EditorCore&) {}
+void SceneViewportPanel::OnCreate(EditorContext&, EditorHost&) {}
 
-void SceneViewportPanel::OnDestroy(EditorContext&, EditorCore& core)
+void SceneViewportPanel::OnDestroy(EditorContext&, EditorHost& core)
 {
     core.DestroyViewport(GetPanelKey());
 }
@@ -19,7 +19,7 @@ const char* SceneViewportPanel::GetPanelKey() const
 {
     return m_PanelKey.c_str();
 }
-void SceneViewportPanel::Draw(EditorContext& context, EditorCore& core)
+void SceneViewportPanel::Draw(EditorContext& context, EditorHost& core)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     if (!ImGui::Begin(GetName()))
