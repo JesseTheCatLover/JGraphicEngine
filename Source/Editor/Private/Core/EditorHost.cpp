@@ -2,19 +2,34 @@
 
 #include "EditorHost.h"
 
-#include "PanelContainer.h"
+#include "TPanelContainer.h"
 #include "ToolService.h"
+#include "Subsystems/ViewportSubsystem.h"
 
 EditorHost::EditorHost(EditorRuntime& runtime):
 m_EditorRuntime(runtime)
 {
     m_ToolService = TUniquePtr<ToolService>(new ToolService());
-    m_PanelContainer = TUniquePtr<PanelContainer>(new PanelContainer(*this, runtime, *m_ToolService));
+    m_PanelContainer = TUniquePtr<TPanelContainer>(new TPanelContainer(*this, runtime, *m_ToolService));
+
+    RegisterCoreSubsystems();
+}
+
+void EditorHost::RegisterCoreSubsystems()
+{
+    // Core subsystems
+    m_PanelContainer->RegisterSubsystem<ViewportSubsystem>(*this, m_EditorRuntime, *m_ToolService);
+    // m_PanelContainer->RegisterSubsystem<HierarchySubsystem>(*this, m_EditorRuntime, *m_ToolService);
 }
 
 void EditorHost::Tick(float deltaTime)
 {
     m_PanelContainer->Tick(deltaTime);
+}
+
+ViewportSubsystem& EditorHost::GetViewportSubsystem() const
+{
+    return m_PanelContainer->GetSubsystem<ViewportSubsystem>();
 }
 
 

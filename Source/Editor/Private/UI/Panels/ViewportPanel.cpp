@@ -4,7 +4,6 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "PanelContainer.h"
 #include "Controllers/Outputs/FViewportOutput.h"
 #include "Core/EditorHost.h"
 #include "Core/EngineGlobals.h"
@@ -73,7 +72,7 @@ void ViewportPanel::Draw(EditorHost& host)
     input.rectMinX = rectMin.x;
     input.rectMinY = rectMin.y;
 
-    host.GetPanelContainer()->GetViewport().SubmitInput(input);
+    host.GetViewportSubsystem().SubmitInput(input);
 
 
     // Draw (or dummy placeholder)
@@ -81,7 +80,7 @@ void ViewportPanel::Draw(EditorHost& host)
     ImVec2 uv1(1.0f, 0.0f);
 
     // Ask for current texture (might be null on first frame)
-    const FViewportOutput* out = host.GetPanelContainer()->GetViewport().GetOutput(GetPanelKey());
+    const FViewportOutput* out = host.GetViewportSubsystem().GetOutput(GetPanelKey());
 
     if(out && out->bHasTexture)
     {

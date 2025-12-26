@@ -4,9 +4,10 @@
 
 #include "EditorRuntime.h"
 #include "Core/Memory/SmartPointers.h"
+#include "Subsystems/ViewportSubsystem.h"
 
 class ToolService;
-class PanelContainer;
+class TPanelContainer;
 
 class EditorHost
 {
@@ -16,13 +17,17 @@ private:
 
     EditorRuntime& m_EditorRuntime;
     TUniquePtr<ToolService> m_ToolService;
-    TUniquePtr<PanelContainer> m_PanelContainer;
+    TUniquePtr<TPanelContainer> m_PanelContainer;
+
+    void RegisterCoreSubsystems();
 
 public:
     // Called every frame from EditorApp::OnTick
     void Tick(float deltaTime);
 
     // Getters
-    [[nodiscard]] PanelContainer* GetPanelContainer() const { return m_PanelContainer.get(); }
+    [[nodiscard]] TPanelContainer* GetPanelContainer() const { return m_PanelContainer.get(); }
     [[nodiscard]] ToolService* GetToolService() const { return m_ToolService.get(); }
+
+    [[nodiscard]] ViewportSubsystem& GetViewportSubsystem() const;
 };

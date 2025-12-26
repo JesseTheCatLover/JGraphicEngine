@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "IPanelSubsystem.h"
 #include "PanelRegistry.h"
 #include "Utilities/UDynamicID.h"
 #include "TPanelSubsystem.h"
@@ -14,7 +15,7 @@ class EditorHost;
 class EditorRuntime;
 class ToolService;
 
-class ViewportSubsystem
+class ViewportSubsystem : public IPanelSubsystem
 {
 private:
     EditorHost& m_Host;
@@ -27,7 +28,7 @@ private:
 public:
     ViewportSubsystem(EditorHost& host, EditorRuntime& runtime, ToolService& tools);
 
-    void Tick(float dt) { m_Channel.Tick(dt); }
+    void Tick(float deltaTime) override { m_Channel.Tick(deltaTime); }
 
     void SubmitInput(const FViewportPanelInput& input) { m_Channel.SubmitInput(input); }
 
