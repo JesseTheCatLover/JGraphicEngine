@@ -3,7 +3,6 @@
 #pragma once
 
 #include "PanelRegistry.h"
-#include "ToolService.h"
 #include "Utilities/UDynamicID.h"
 #include "TPanelSubsystem.h"
 
@@ -26,15 +25,7 @@ private:
     Channel m_Channel;
 
 public:
-    ViewportSubsystem(EditorHost& host, EditorRuntime& runtime, ToolService& tools)
-        : m_Host(host)
-        , m_Runtime(runtime)
-        , m_Tools(tools)
-        , m_Channel([this](PanelID id)
-            {
-                return std::make_unique<ViewportController>(id, m_Host, m_Runtime, m_Tools);
-            })
-    {}
+    ViewportSubsystem(EditorHost& host, EditorRuntime& runtime, ToolService& tools);
 
     void Tick(float dt) { m_Channel.Tick(dt); }
 

@@ -22,9 +22,9 @@ public:
 
     [[nodiscard]] const char* GetPanelKey() const override;
 
-    void Draw(EditorHost& core) override;
-    void OnCreate(EditorHost& core) override;
-    void OnDestroy(EditorHost& core) override;
+    void Draw(EditorHost& host) override;
+    void OnCreate(EditorHost& host) override;
+    void OnDestroy(EditorHost& host) override;
 
 private:
     std::string m_PanelKey;

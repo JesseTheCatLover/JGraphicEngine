@@ -13,16 +13,15 @@
 
 void ViewportPanel::OnCreate(EditorHost&) {}
 
-void ViewportPanel::OnDestroy(EditorHost& core)
+void ViewportPanel::OnDestroy(EditorHost& host)
 {
-    core.DestroyViewport(GetPanelKey());
 }
 
 const char* ViewportPanel::GetPanelKey() const
 {
     return m_PanelKey.c_str();
 }
-void ViewportPanel::Draw(EditorHost& core)
+void ViewportPanel::Draw(EditorHost& host)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     if (!ImGui::Begin(GetName()))
@@ -44,25 +43,6 @@ void ViewportPanel::Draw(EditorHost& core)
     // We want stable rect+mouse even if texture isn't ready
     ImVec2 cursor = ImGui::GetCursorScreenPos();
 
-
-    // Draw (or dummy placeholder)
-    ImVec2 uv0(0.0f, 1.0f);
-    ImVec2 uv1(1.0f, 0.0f);
-
-    // Ask for current texture (might be null on first frame)
-    const FViewportOutput* out = core.GetPanelContainer()->GetViewport().GetOutput(GetPanelKey());
-
-    if(out && out->bHasTexture)
-    {
-        ImGui::Image((ImTextureID)out->nativeTexture, ImVec2(w, h), uv0, uv1);
-    }
-    else
-    {
-        ImGui::Dummy(ImVec2(w, h));
-        ImGui::SetCursorScreenPos(cursor);
-        ImGui::TextUnformatted("No valid scene texture available.");
-    }
-
     // Rect of the drawn item (Image or Dummy)
     ImVec2 rectMin = ImGui::GetItemRectMin();
     ImVec2 rectMax = ImGui::GetItemRectMax();
@@ -79,21 +59,41 @@ void ViewportPanel::Draw(EditorHost& core)
     // Is mouse over the viewport image area?
     const bool bOverViewport = ImGui::IsItemHovered(ImGuiHoveredFlags_None);
 
-    // Submit tool-agnostic context
-    FViewportPanelInput ctx{};
-    ctx.panelKey = GetPanelKey();
-    ctx.width = w;
-    ctx.height = h;
-    ctx.bFocused = windowFocused;
-    ctx.bHovered = windowHovered;
-    ctx.bOverViewport = bOverViewport;
-    ctx.mouseX = mouseX;
-    ctx.mouseY = mouseY;
+    // Submit panel input
+    FViewportPanelInput input{};
+    input.panelKey = GetPanelKey();
+    input.width = w;
+    input.height = h;
+    input.bFocused = windowFocused;
+    input.bHovered = windowHovered;
+    input.bOverViewport = bOverViewport;
+    input.mouseX = mouseX;
+    input.mouseY = mouseY;
 
-    ctx.rectMinX = rectMin.x;
-    ctx.rectMinY = rectMin.y;
+    input.rectMinX = rectMin.x;
+    input.rectMinY = rectMin.y;
 
-    core.SubmitViewportInput(ctx);
+    host.GetPanelContainer()->GetViewport().SubmitInput(input);
+
+
+    // Draw (or dummy placeholder)
+    ImVec2 uv0(0.0f, 1.0f);
+    ImVec2 uv1(1.0f, 0.0f);
+
+    // Ask for current texture (might be null on first frame)
+    const FViewportOutput* out = host.GetPanelContainer()->GetViewport().GetOutput(GetPanelKey());
+
+    if(out && out->bHasTexture)
+    {
+        ImGui::Image((ImTextureID)out->nativeTexture, ImVec2(w, h), uv0, uv1);
+    }
+    else
+    {
+        ImGui::Dummy(ImVec2(w, h));
+        ImGui::SetCursorScreenPos(cursor);
+        ImGui::TextUnformatted("No valid scene texture available.");
+    }
+
 
     ImGui::End();
     ImGui::PopStyleVar();
