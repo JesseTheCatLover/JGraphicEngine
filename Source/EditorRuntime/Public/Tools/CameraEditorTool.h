@@ -31,8 +31,6 @@ private:
     mutable bool m_bProjDirty = true;
     mutable float m_LastAspect = -1.0f;
 
-    FViewportRT m_RT;
-
     void RebuildView() const;
     void RebuildProj(float aspect) const;
 
@@ -60,8 +58,6 @@ public:
 
     void SetFOV(float degrees) { m_FOV = degrees; m_bProjDirty = true; }
     float GetFOV() const { return m_FOV; }
-
-     FViewportRT& GetRT() { return m_RT; }
 
     // ICameraViewSource
     FMatrix4& GetViewMatrix() const override;

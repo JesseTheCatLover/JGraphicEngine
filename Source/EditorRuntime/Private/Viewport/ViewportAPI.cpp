@@ -3,6 +3,7 @@
 #include "Viewport/ViewportAPI.h"
 
 #include "Core/EngineContext.h"
+#include "Rendering/FViewportRT.h"
 #include "Rendering/RendererSubsystem.h"
 
 EditorViewportAPI::EditorViewportAPI(EngineContext &ctx, RendererSubsystem &renderer):
@@ -11,16 +12,38 @@ m_Renderer(renderer)
 {
 }
 
-FEditorFrameSnapshot EditorViewportAPI::GetFrameSnapshot() const
+void EditorViewportAPI::SubmitRenderView(const FRenderView &view) const
 {
-    FEditorFrameSnapshot info{};
+    m_Context.SubmitViewSource(view);
+}
 
-    info.deltaTime = m_Context.GetDeltaTime();
-    info.framebufferWidth = m_Context.GetFramebufferWidth();
-    info.framebufferHeight = m_Context.GetFramebufferHeight();
-    info.aspectRatio = (info.framebufferHeight > 0)
-                          ? float(info.framebufferWidth) / float(info.framebufferHeight)
-                          : 0.0f;
+void* EditorViewportAPI::GetNativeTexture(const RTextureHandle &handle)
+{
+    return m_Renderer.GetNativeTextureHandle(handle);
+}
 
-    return info;
+void EditorViewportAPI::CreateViewportTarget(int width, int height, FViewportRT &outRT)
+{
+    if (width <= 0 || height <= 0)
+        return;
+
+    // Destroy old if still alive
+    DestroyViewportTarget(outRT);
+
+    RTextureHandle color{};
+    RFramebufferHandle fbo = m_Renderer.CreateColorTarget(width, height, color);
+
+    outRT.fbo = fbo;
+    outRT.color = color;
+    outRT.width = width;
+    outRT.height = height;
+}
+
+void EditorViewportAPI::DestroyViewportTarget(FViewportRT &rt)
+{
+    if (rt.fbo.IsValid())
+    {
+        m_Renderer.DestroyColorTarget(rt.fbo);
+        rt = {};
+    }
 }

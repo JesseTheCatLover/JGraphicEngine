@@ -4,9 +4,12 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "PanelContainer.h"
+#include "Controllers/Outputs/FViewportOutput.h"
 #include "Core/EditorHost.h"
 #include "Core/EngineGlobals.h"
 #include "Core/FSelectionModifiers.h"
+#include "Subsystems/ViewportSubsystem.h"
 
 void ViewportPanel::OnCreate(EditorHost&) {}
 
@@ -41,16 +44,17 @@ void ViewportPanel::Draw(EditorHost& core)
     // We want stable rect+mouse even if texture isn't ready
     ImVec2 cursor = ImGui::GetCursorScreenPos();
 
-    // Ask for current texture (might be null on first frame)
-    void* native = core.GetViewportNativeTexture(GetPanelKey());
 
     // Draw (or dummy placeholder)
     ImVec2 uv0(0.0f, 1.0f);
     ImVec2 uv1(1.0f, 0.0f);
 
-    if (native && w > 0.f && h > 0.f)
+    // Ask for current texture (might be null on first frame)
+    const FViewportOutput* out = core.GetPanelContainer()->GetViewport().GetOutput(GetPanelKey());
+
+    if(out && out->bHasTexture)
     {
-        ImGui::Image((ImTextureID)native, ImVec2(w, h), uv0, uv1);
+        ImGui::Image((ImTextureID)out->nativeTexture, ImVec2(w, h), uv0, uv1);
     }
     else
     {

@@ -436,7 +436,7 @@ void JEngine::BuildGameViews() // TODO: this responsibility will be placed in a 
     view.bEnablePostProcess = true;
     view.postProfileId      = 0; // default profile
 
-    m_Context->AddViewSource(view);
+    m_Context->SubmitViewSource(view);
 }
 
 void JEngine::TickGameFreeCamera(float deltaTime)

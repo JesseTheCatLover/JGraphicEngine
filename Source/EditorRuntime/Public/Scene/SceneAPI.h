@@ -6,6 +6,7 @@
 #include "FEditorActorSnapshot.h"
 #include "FRaycast.h"
 
+class JScene;
 class SceneManager;
 class EngineContext;
 
@@ -19,6 +20,8 @@ private:
 
 public:
     EditorSceneAPI(EngineContext& ctx, SceneManager& scene);
+
+    JScene* GetActiveScene();
 
     [[nodiscard]] std::vector<FEditorActorSnapshot>
         BuildHierarchySnapshot() const;

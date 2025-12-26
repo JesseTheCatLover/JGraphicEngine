@@ -15,8 +15,8 @@ private:
     explicit EditorHost(EditorRuntime& runtime);
 
     EditorRuntime& m_EditorRuntime;
-    TUniquePtr<PanelContainer> m_PanelContainer;
     TUniquePtr<ToolService> m_ToolService;
+    TUniquePtr<PanelContainer> m_PanelContainer;
 
 public:
     // Called every frame from EditorApp::OnTick

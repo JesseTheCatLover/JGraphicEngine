@@ -173,6 +173,6 @@ void EditorRuntime::SubmitEditorViewSources(const FCameraToolState& state)
         view.bEnablePostProcess = true;
         view.postProfileId      = kEditorPostProfile;
 
-        m_Context.AddViewSource(view);
+        m_Context.SubmitViewSource(view);
     }
 }

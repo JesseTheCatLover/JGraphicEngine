@@ -76,7 +76,7 @@ public:
     FEditorSelectionRenderState& GetEditorSelectionState() { return m_EditorSelection; }
     const FEditorSelectionRenderState& GetEditorSelectionState() const { return m_EditorSelection; }
 
-    void AddViewSource(const FRenderView& view) { m_ViewSources.push_back(view); }
+    void SubmitViewSource(const FRenderView& view) { m_ViewSources.push_back(view); }
 
 private:
     void SetRunning(bool bIsRunning) { m_bRunning = bIsRunning; }

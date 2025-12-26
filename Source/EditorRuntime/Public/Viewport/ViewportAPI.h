@@ -1,9 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-#include "FEditorFrameSnapshot.h"
-#include "Rendering/RHandles.h"
-#include "Utilities/UDynamicID.h"
 
 class RendererSubsystem;
 class EngineContext;
@@ -17,5 +14,10 @@ private:
 public:
     EditorViewportAPI(EngineContext& ctx, RendererSubsystem& renderer);
 
-    [[nodiscard]] FEditorFrameSnapshot GetFrameSnapshot() const;
+    void SubmitRenderView(const struct FRenderView& view) const;
+
+    void* GetNativeTexture(const struct RTextureHandle& handle);
+
+    void CreateViewportTarget(int width, int height, struct FViewportRT& outRT);
+    void DestroyViewportTarget(FViewportRT& rt);
 };

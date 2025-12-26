@@ -2,59 +2,56 @@
 
 #pragma once
 
+#include "PanelRegistry.h"
+#include "Rendering/FViewportRT.h"
 #include "Utilities/UDynamicID.h"
 #include "Rendering/RHandles.h"
-#include "PanelContainer.h"
-#include "../../../Editor/Private/UI/Inputs/FViewportPanelInput.h"
+
+struct FViewportPanelInput;
+struct FViewportOutput;
 
 class EditorHost;
 class EditorRuntime;
-class PanelContainer;
-class CameraEditorTool;
+class ToolService;
 
 class ViewportController
 {
 private:
     PanelID m_PanelID = 0;
 
-    EditorHost& m_Core;
+    EditorHost&    m_Host;
     EditorRuntime& m_Runtime;
-    PanelContainer& m_Tools;
+    ToolService&   m_Tools;
 
     // One camera tool per panel
     UDynamicID::IDType m_CameraToolID = 0;
 
-    // Cached output for UI
-    RTextureHandle m_Color = {};
-    void* m_NativeTexture = nullptr;
+    // Controller-owned RT
+    FViewportRT m_RT;
 
-    // Cached viewport facts
+    // Cached viewport facts (from input)
     float m_Width = 0.f;
     float m_Height = 0.f;
-    bool m_Focused = false;
-    bool m_Hovered = false;
+    bool  m_Focused = false;
+    bool  m_Hovered = false;
 
-    int m_MSAASamples = 4;
+    int   m_MSAASamples = 4;
 
 private:
     void EnsureCameraTool();
-    void UpdateCameraTool(float dt);
+    void DestroyCameraTool();
 
-    // View submission
+    void EnsureRenderTarget();
+    void DestroyRenderTarget();
+
+    void TickCamera(float dt);
     void SubmitView();
 
 public:
-    ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, PanelContainer& tools);
+    ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools);
     ~ViewportController();
 
-    [[nodiscard]] PanelID GetPanelID() const { return m_PanelID; }
-
-    // Called once per frame from PanelManager
-    void Update(float deltaTime, const FViewportPanelInput& ctx);
-
-    // For panels to display
-    [[nodiscard]] void* GetNativeTexture() const { return m_NativeTexture; }
+    void Update(float deltaTime, const FViewportPanelInput& input, FViewportOutput& out);
 
     void OnPanelDestroyed();
 };
-

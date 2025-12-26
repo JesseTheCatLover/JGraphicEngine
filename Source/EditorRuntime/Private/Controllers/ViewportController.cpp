@@ -1,14 +1,17 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
-
 #include "Controllers/ViewportController.h"
+
 #include "Core/EditorHost.h"
 #include "EditorRuntime.h"
-
+#include "Controllers/Inputs/FViewportPanelInput.h"
+#include "Controllers/Outputs/FViewportOutput.h"
 #include "Tools/CameraEditorTool.h"
+#include "ToolService.h"
+#include "Rendering/EViewType.h"
+#include "Rendering/FRenderView.h"
 
-ViewportController::ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, PanelContainer& tools)
-    : m_PanelID(panelId)
-    , m_Core(core)
+ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools)
+    : m_PanelID(id)
+    , m_Host(host)
     , m_Runtime(runtime)
     , m_Tools(tools)
 {
@@ -21,15 +24,8 @@ ViewportController::~ViewportController()
 
 void ViewportController::OnPanelDestroyed()
 {
-    // Destroy camera tool instance (and its RT, if camera tool owns it)
-    if (m_CameraToolID != 0)
-    {
-        m_Tools.DestroyCameraTool(m_CameraToolID);
-        m_CameraToolID = 0;
-    }
-
-    m_Color = {};
-    m_NativeTexture = nullptr;
+    DestroyCameraTool();
+    DestroyRenderTarget();
 }
 
 void ViewportController::EnsureCameraTool()
@@ -38,70 +34,120 @@ void ViewportController::EnsureCameraTool()
         m_CameraToolID = m_Tools.CreateCameraTool();
 }
 
-void ViewportController::Update(float deltaTime, const FViewportPanelInput& ctx)
+void ViewportController::DestroyCameraTool()
 {
-    EnsureCameraTool();
-
-    m_Width = ctx.width;
-    m_Height = ctx.height;
-    m_Focused = ctx.bFocused;
-    m_Hovered = ctx.bHovered && ctx.bOverViewport;
-
-    // 1) Tick tools (camera uses your input system internally)
-    UpdateCameraTool(deltaTime);
-
-    // 2) Submit view and cache output texture handle
-    if (m_Width > 0.f && m_Height > 0.f)  // Only submit if we have a valid panel size
+    if (m_CameraToolID != 0)
     {
-        SubmitView();
-    }
-    else
-    {
-        m_Color = {};
-        m_NativeTexture = nullptr;
+        m_Tools.DestroyCameraTool(m_CameraToolID);
+        m_CameraToolID = 0;
     }
 }
 
-void ViewportController::UpdateCameraTool(float dt)
+void ViewportController::EnsureRenderTarget()
+{
+    if (m_Width <= 0.f || m_Height <= 0.f)
+        return;
+
+    const int vpW = (int)m_Width;
+    const int vpH = (int)m_Height;
+
+    if (!m_RT.fbo.IsValid() || m_RT.width != vpW || m_RT.height != vpH)
+    {
+        DestroyRenderTarget();
+
+        // Create RT owned by the controller
+        m_Runtime.GetViewport().CreateViewportTarget(vpW, vpH, m_RT);
+    }
+}
+
+void ViewportController::DestroyRenderTarget()
+{
+    if (m_RT.fbo.IsValid())
+    {
+        m_Runtime.GetViewport().DestroyViewportTarget(m_RT);
+        m_RT = {};
+    }
+}
+
+void ViewportController::TickCamera(float dt)
 {
     CameraEditorTool* cam = m_Tools.GetCameraTool(m_CameraToolID);
     if (!cam) return;
 
-    // Only allow camera input when focused (policy point)
     const bool bActive = m_Focused;
 
-    float aspect = 16.f / 9.f;
-    if (m_Width > 0.f && m_Height > 0.f)
-        aspect = m_Width / m_Height;
+    float aspect = (m_Height > 0.f) ? (m_Width / m_Height) : (16.f / 9.f);
 
     cam->Tick(dt, bActive, aspect);
 }
 
 void ViewportController::SubmitView()
 {
-    if (m_Width <= 0.f || m_Height <= 0.f)
+    if (!m_RT.fbo.IsValid())
         return;
 
-    // For now, keep using your existing EditorRuntime::SubmitEditorViewSources flow.
-    // We'll build a tiny camera state for just this one camera tool.
+    CameraEditorTool* cam = m_Tools.GetCameraTool(m_CameraToolID);
+    if (!cam) return;
 
-    FCameraToolState cameraState{};
-    cameraState.activeCameraId = (m_Focused ? m_CameraToolID : 0);
+    auto* scene = m_Runtime.GetScene().GetActiveScene();
+    if (!scene) return;
 
-    // view state for this camera
-    FCameraToolViewState vs{};
-    vs.width = m_Width;
-    vs.height = m_Height;
-    vs.aspect = (m_Height > 0.f) ? (m_Width / m_Height) : (16.f/9.f);
-    vs.viewIndex = 0; // you can set per panel index if needed
+    FRenderView view{};
+    view.scene     = scene;
+    view.camera    = cam;
+    view.viewType  = EViewType::EditorViewport;
+    view.viewIndex = 0;
 
-    cameraState.viewstateMap[m_CameraToolID] = vs;
-    cameraState.cameraSampleMap[m_CameraToolID] = m_MSAASamples;
+    view.targetFBO = m_RT.fbo;
 
-    // Submits a render view into EngineContext and ensures RT in camera tool (current design)
-    m_Runtime.SubmitEditorViewSources(cameraState);
+    view.viewportX = 0;
+    view.viewportY = 0;
+    view.viewportW = m_RT.width;
+    view.viewportH = m_RT.height;
 
-    // Get color texture for panel and cache native handle for UI
-    m_Color = m_Runtime.GetViewportColorHandle(m_CameraToolID);
-    m_NativeTexture = m_Runtime.GetNativeTextureHandle(m_Color);
+    view.sampleCount        = m_MSAASamples;
+    view.bClearColor        = true;
+    view.bClearDepth        = true;
+    view.clearColorValue    = {0.1f, 0.1f, 0.1f, 1.0f};
+    view.renderMask         = 0xFFFFFFFFu;
+    view.bEnablePostProcess = true;
+
+    m_Runtime.GetViewport().SubmitRenderView(view);
+}
+
+void ViewportController::Update(float deltaTime, const FViewportPanelInput& input, FViewportOutput& out)
+{
+    EnsureCameraTool();
+
+    // 1) Read snapshot input
+    m_Width   = input.width;
+    m_Height  = input.height;
+    m_Focused = input.bFocused;
+    m_Hovered = input.bHovered && input.bOverViewport;
+
+    // 2) Tick tools
+    TickCamera(deltaTime);
+
+    // 3) Render
+    if (m_Width > 0.f && m_Height > 0.f)
+    {
+        EnsureRenderTarget();
+        SubmitView();
+    }
+    else
+    {
+        DestroyRenderTarget();
+    }
+
+    // 4) Write snapshot output
+    if (m_RT.color.IsValid())
+    {
+        out.nativeTexture = m_Runtime.GetViewport().GetNativeTexture(m_RT.color);
+        out.bHasTexture   = (out.nativeTexture != nullptr);
+    }
+    else
+    {
+        out.nativeTexture = nullptr;
+        out.bHasTexture   = false;
+    }
 }

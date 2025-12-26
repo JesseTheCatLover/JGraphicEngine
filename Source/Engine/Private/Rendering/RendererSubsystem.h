@@ -160,7 +160,7 @@ public:
     RMaterialHandle CreateMaterial(const FSurfaceDesc &surface) override;
     void DestroyMaterial(RMaterialHandle h) override;
 
-    RFramebufferHandle CreateColorTarget(int width, int height, RTextureHandle& outColor);
+    RFramebufferHandle CreateColorTarget(int width, int height, RTextureHandle& outColor); // TODO: Move the pipeline into viewports and shape the renderer into a stateless machine
     void DestroyColorTarget(RFramebufferHandle fbo);
 
     void SetDefaultShader(RShaderHandle h) { m_DefaultShader = h; }

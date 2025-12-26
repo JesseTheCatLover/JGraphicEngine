@@ -14,6 +14,11 @@ m_SceneManager(scene)
 {
 }
 
+JScene* EditorSceneAPI::GetActiveScene()
+{
+    return m_SceneManager.GetActiveScene();
+}
+
 std::vector<FEditorActorSnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
 {
     std::vector<FEditorActorSnapshot> result;
