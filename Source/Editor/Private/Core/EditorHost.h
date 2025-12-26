@@ -3,9 +3,10 @@
 #pragma once
 
 #include "EditorRuntime.h"
-#include "PanelSubsystem.h"
+#include "Core/Memory/SmartPointers.h"
 
-struct FViewportPanelInput;
+class ToolService;
+class PanelContainer;
 
 class EditorHost
 {
@@ -13,24 +14,15 @@ class EditorHost
 private:
     explicit EditorHost(EditorRuntime& runtime);
 
-    EditorRuntime& m_EngineEditor;
-    PanelSubsystem m_PanelSubsystem;
+    EditorRuntime& m_EditorRuntime;
+    TUniquePtr<PanelContainer> m_PanelContainer;
+    TUniquePtr<ToolService> m_ToolService;
 
 public:
     // Called every frame from EditorApp::OnTick
     void Tick(float deltaTime);
 
-    // --- Viewport section ---
-
-    void SubmitViewportInput(const FViewportPanelInput& input);
-
-    [[nodiscard]] void* GetViewportNativeTexture(const char* panelKey) const // TODO: Decide Should we remove these and create a public getter for panel substem? or this current approach is better? (I think we should forward to the getter)
-    {
-        return m_PanelSubsystem.GetViewportNativeTexture(panelKey);
-    }
-
-    void DestroyViewport(const char* panelKey)
-    {
-        m_PanelSubsystem.DestroyViewport(panelKey);
-    }
+    // Getters
+    [[nodiscard]] PanelContainer* GetPanelContainer() const { return m_PanelContainer.get(); }
+    [[nodiscard]] ToolService* GetToolService() const { return m_ToolService.get(); }
 };

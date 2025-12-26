@@ -4,12 +4,12 @@
 
 #include "Utilities/UDynamicID.h"
 #include "Rendering/RHandles.h"
-#include "PanelSubsystem.h"
+#include "PanelContainer.h"
 #include "../../../Editor/Private/UI/Inputs/FViewportPanelInput.h"
 
 class EditorHost;
 class EditorRuntime;
-class PanelSubsystem;
+class PanelContainer;
 class CameraEditorTool;
 
 class ViewportController
@@ -19,7 +19,7 @@ private:
 
     EditorHost& m_Core;
     EditorRuntime& m_Runtime;
-    PanelSubsystem& m_Tools;
+    PanelContainer& m_Tools;
 
     // One camera tool per panel
     UDynamicID::IDType m_CameraToolID = 0;
@@ -44,7 +44,7 @@ private:
     void SubmitView();
 
 public:
-    ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, PanelSubsystem& tools);
+    ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, PanelContainer& tools);
     ~ViewportController();
 
     [[nodiscard]] PanelID GetPanelID() const { return m_PanelID; }

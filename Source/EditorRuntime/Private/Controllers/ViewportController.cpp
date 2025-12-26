@@ -6,7 +6,7 @@
 
 #include "Tools/CameraEditorTool.h"
 
-ViewportController::ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, PanelSubsystem& tools)
+ViewportController::ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, PanelContainer& tools)
     : m_PanelID(panelId)
     , m_Core(core)
     , m_Runtime(runtime)

@@ -2,20 +2,24 @@
 
 #include "EditorHost.h"
 
+#include "PanelContainer.h"
+#include "ToolService.h"
+
 EditorHost::EditorHost(EditorRuntime& runtime):
-m_EngineEditor(runtime),
-m_PanelSubsystem(*this, runtime)
+m_EditorRuntime(runtime)
 {
+    m_PanelContainer = TUniquePtr<PanelContainer>(new PanelContainer(*this, runtime));
+    m_ToolService = TUniquePtr<ToolService>(new ToolService());
 }
 
 void EditorHost::Tick(float deltaTime)
 {
-    m_PanelSubsystem.Tick(deltaTime);
+    m_PanelContainer->Tick(deltaTime);
 }
 
 void EditorHost::SubmitViewportInput(const FViewportPanelInput &input)
 {
-    m_PanelSubsystem.SubmitViewportInput(input);
+    m_PanelContainer->SubmitViewportInput(input);
 }
 
 //
