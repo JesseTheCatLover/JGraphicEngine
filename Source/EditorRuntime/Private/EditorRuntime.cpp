@@ -26,7 +26,7 @@ EditorRuntime::EditorRuntime()
     // Editor takes over rendering, so don't render directly to platform surface
     m_Context.SetShouldRenderToPlatformSurface(false);
 
-    auto& chain = GetPostProcessManager()->EditChain(kEditorPostProfile);
+    auto& chain = GetPostProcessManager()->EditChain(kEditorPostProfile); // TODO: LEGACY
     chain.clear();
 
     FPostPassDesc outline{};
@@ -74,7 +74,7 @@ EditorRuntime::~EditorRuntime()
 
 }
 
-void EditorRuntime::TickAllTools(float deltaTime, const FEditorToolFrameState& state)
+void EditorRuntime::TickAllTools(float deltaTime, const FEditorToolFrameState& state) // Legacy
 {
     TickCameraTools(deltaTime, state.camera);
 }
@@ -175,61 +175,4 @@ void EditorRuntime::SubmitEditorViewSources(const FCameraToolState& state)
 
         m_Context.AddViewSource(view);
     }
-}
-
-UDynamicID::IDType EditorRuntime::CreateCameraEditorTool()
-{
-    return m_CameraTools.Create();
-}
-
-bool EditorRuntime::DestroyCameraEditorTool(UDynamicID::IDType cameraID)
-{
-    // Destroy its RT before removing
-    if (CameraEditorTool* tool = m_CameraTools.Get(cameraID))
-    {
-        FViewportRT& rt = tool->GetRT();
-        if (rt.fbo.IsValid())
-        {
-            m_Renderer.DestroyColorTarget(rt.fbo);
-            rt = {};
-        }
-    }
-    return m_CameraTools.Destroy(cameraID);
-}
-
-CameraEditorTool* EditorRuntime::GetCameraEditorTool(UDynamicID::IDType cameraID)
-{
-    return m_CameraTools.Get(cameraID);
-}
-
-RTextureHandle EditorRuntime::GetViewportColorHandle(UDynamicID::IDType cameraID)
-{
-    if (CameraEditorTool* tool = m_CameraTools.Get(cameraID))
-        return tool->GetRT().color;
-    return {};
-}
-
-void* EditorRuntime::GetNativeTextureHandle(RTextureHandle handle) const
-{
-    return m_Renderer.GetNativeTextureHandle(handle);
-}
-
-UDynamicID::IDType EditorRuntime::CreateGizmoEditorTool()
-{
-    return m_GizmoTools.Create();
-}
-
-void EditorRuntime::DestroyGizmoEditorTool(UDynamicID::IDType id)
-{
-    m_GizmoTools.Destroy(id);
-}
-
-GizmoEditorTool* EditorRuntime::GetGizmoEditorTool(UDynamicID::IDType id)
-{
-    return m_GizmoTools.Get(id);
-}
-
-const GizmoEditorTool* EditorRuntime::GetGizmoEditorTool(UDynamicID::IDType id) const
-{
-    return m_GizmoTools.Get(id);
 }

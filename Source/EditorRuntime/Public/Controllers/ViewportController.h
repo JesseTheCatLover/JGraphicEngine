@@ -2,27 +2,27 @@
 
 #pragma once
 
-#include "Tools/FEditorToolFrameState.h"
 #include "Utilities/UDynamicID.h"
 #include "Rendering/RHandles.h"
-#include "Viewport/FViewportPanelContext.h"
+#include "PanelSubsystem.h"
+#include "../../../Editor/Private/UI/Inputs/FViewportPanelInput.h"
 
 class EditorHost;
 class EditorRuntime;
-class EditorPanelManager;
+class PanelSubsystem;
 class CameraEditorTool;
 
 class ViewportController
 {
 private:
-    PanelID m_PanelId = 0;
+    PanelID m_PanelID = 0;
 
     EditorHost& m_Core;
     EditorRuntime& m_Runtime;
-    EditorPanelManager& m_Tools;
+    PanelSubsystem& m_Tools;
 
     // One camera tool per panel
-    UDynamicID::IDType m_CameraToolId = 0;
+    UDynamicID::IDType m_CameraToolID = 0;
 
     // Cached output for UI
     RTextureHandle m_Color = {};
@@ -34,7 +34,7 @@ private:
     bool m_Focused = false;
     bool m_Hovered = false;
 
-    int m_MSAASamples = 1;
+    int m_MSAASamples = 4;
 
 private:
     void EnsureCameraTool();
@@ -44,13 +44,13 @@ private:
     void SubmitView();
 
 public:
-    ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, EditorPanelManager& tools);
+    ViewportController(PanelID panelId, EditorHost& core, EditorRuntime& runtime, PanelSubsystem& tools);
     ~ViewportController();
 
-    [[nodiscard]] PanelID GetPanelId() const { return m_PanelId; }
+    [[nodiscard]] PanelID GetPanelID() const { return m_PanelID; }
 
-    // Called once per frame from ToolManager
-    void Update(float dt, const FViewportPanelContext& frame);
+    // Called once per frame from PanelManager
+    void Update(float deltaTime, const FViewportPanelInput& ctx);
 
     // For panels to display
     [[nodiscard]] void* GetNativeTexture() const { return m_NativeTexture; }

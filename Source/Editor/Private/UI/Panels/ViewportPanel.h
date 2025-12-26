@@ -6,10 +6,10 @@
 class EditorHost;
 class EditorContext;
 
-class SceneViewportPanel : public IEditorPanel
+class ViewportPanel : public IEditorPanel
 {
 public:
-    explicit SceneViewportPanel(int index)
+    explicit ViewportPanel(int index)
     {
         m_PanelKey = "Viewport:" + std::to_string(index);
 

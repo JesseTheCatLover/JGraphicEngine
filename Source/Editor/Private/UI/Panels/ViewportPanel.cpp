@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "SceneViewportPanel.h"
+#include "ViewportPanel.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -8,18 +8,18 @@
 #include "Core/EngineGlobals.h"
 #include "Core/FSelectionModifiers.h"
 
-void SceneViewportPanel::OnCreate(EditorHost&) {}
+void ViewportPanel::OnCreate(EditorHost&) {}
 
-void SceneViewportPanel::OnDestroy(EditorHost& core)
+void ViewportPanel::OnDestroy(EditorHost& core)
 {
     core.DestroyViewport(GetPanelKey());
 }
 
-const char* SceneViewportPanel::GetPanelKey() const
+const char* ViewportPanel::GetPanelKey() const
 {
     return m_PanelKey.c_str();
 }
-void SceneViewportPanel::Draw(EditorHost& core)
+void ViewportPanel::Draw(EditorHost& core)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     if (!ImGui::Begin(GetName()))
@@ -76,7 +76,7 @@ void SceneViewportPanel::Draw(EditorHost& core)
     const bool bOverViewport = ImGui::IsItemHovered(ImGuiHoveredFlags_None);
 
     // Submit tool-agnostic context
-    FViewportPanelContext ctx{};
+    FViewportPanelInput ctx{};
     ctx.panelKey = GetPanelKey();
     ctx.width = w;
     ctx.height = h;
@@ -89,7 +89,7 @@ void SceneViewportPanel::Draw(EditorHost& core)
     ctx.rectMinX = rectMin.x;
     ctx.rectMinY = rectMin.y;
 
-    core.SubmitViewportPanelContext(ctx);
+    core.SubmitViewportInput(ctx);
 
     ImGui::End();
     ImGui::PopStyleVar();

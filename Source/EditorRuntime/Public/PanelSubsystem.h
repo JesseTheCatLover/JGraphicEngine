@@ -9,13 +9,13 @@
 #include "Tools/TEditorTools.h"
 #include "Tools/CameraEditorTool.h"
 #include "Tools/GizmoEditorTool.h"
-#include "Viewport/FViewportPanelContext.h"
 
+struct FViewportPanelInput;
 class EditorHost;
 class EditorRuntime;
 class ViewportController;
 
-class EditorPanelManager
+class PanelSubsystem
 {
 private:
     EditorHost& m_Core;
@@ -31,20 +31,20 @@ private:
     std::unordered_map<PanelID, std::unique_ptr<ViewportController>> m_Viewports;
 
     // Latest frame snapshot per panel (submitted by panels)
-    std::unordered_map<PanelID, FViewportPanelContext> m_LatestContexts;
+    std::unordered_map<PanelID, FViewportPanelInput> m_LatestContexts;
 
 private:
     ViewportController& GetOrCreateViewport(PanelID panelId);
 
 public:
-    EditorPanelManager(EditorHost& core, EditorRuntime& runtime);
-    ~EditorPanelManager();
+    PanelSubsystem(EditorHost& core, EditorRuntime& runtime);
+    ~PanelSubsystem();
 
     // Called once per frame from Core
     void Tick(float dt);
 
     // Called from Core (panel bridge)
-    void SubmitViewportPanelContext(const FViewportPanelContext& ctx);
+    void SubmitViewportInput(const FViewportPanelInput& input);
 
     [[nodiscard]] void* GetViewportNativeTexture(const char* panelKey) const;
 

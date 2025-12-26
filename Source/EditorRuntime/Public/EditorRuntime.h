@@ -29,19 +29,15 @@ private:
     EditorViewportAPI m_ViewportAPI;
     EditorSurfaceAPI m_SurfaceAPI;
 
-    static constexpr uint32_t kEditorPostProfile = 1;
+    static constexpr uint32_t kEditorPostProfile = 1; // TODO: Legacy: should be moved
 
 public:
     ~EditorRuntime();
 
-    // Mutating operations – ONLY EditorCore may call them
+    // Mutating operations
     [[nodiscard]] EditorSceneAPI& GetSceneAPI() { return m_SceneAPI; }
     [[nodiscard]] EditorViewportAPI& GetViewportAPI() { return m_ViewportAPI; }
     [[nodiscard]] EditorSurfaceAPI& GetSurfaceAPI() { return m_SurfaceAPI; }
 
-    void SubmitEditorViewSources(const FCameraToolState& state);
-
 private:
-    // Helpers:
-    void TickCameraTools(float deltaTime, const FCameraToolState& state);
 };

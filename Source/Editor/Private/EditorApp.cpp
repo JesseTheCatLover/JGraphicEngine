@@ -12,7 +12,7 @@
 #include "Core/EditorHost.h"
 #include "Layout/DockSpace.h"
 #include "UI/IEditorPanels.h"
-#include "UI/Panels/SceneViewportPanel.h"
+#include "UI/Panels/ViewportPanel.h"
 
 EditorApp::EditorApp()
 {
@@ -233,8 +233,8 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
 
     // Register panels
     m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
-    m_Panels.emplace_back(MakeUnique<SceneViewportPanel>(viewportIndex++));
-    m_Panels.emplace_back(MakeUnique<SceneViewportPanel>(viewportIndex++)); // Second viewport
+    m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++));
+    m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++)); // Second viewport
 
     // Call OnCreate for all panels now that Context/Core exist
     for (auto& panel : m_Panels)
