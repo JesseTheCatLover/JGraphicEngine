@@ -29,6 +29,8 @@ private:
     // Controller-owned RT
     FViewportRT m_RT;
 
+    int m_PostProfile = 1;
+
     // Cached viewport facts (from input)
     float m_Width = 0.f;
     float m_Height = 0.f;

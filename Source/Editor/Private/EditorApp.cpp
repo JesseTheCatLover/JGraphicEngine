@@ -46,13 +46,13 @@ void EditorApp::RenderPanels()
         {
             if (m_EditorHost)
             {
-                bool canUndo = m_EditorHost->CanUndo();
-                bool canRedo = m_EditorHost->CanRedo();
-
-                if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo))
-                    m_EditorHost->Undo();
-                if (ImGui::MenuItem("Redo", "Ctrl+Y", false, canRedo))
-                    m_EditorHost->Redo();
+                // bool canUndo = m_EditorHost->CanUndo();
+                // bool canRedo = m_EditorHost->CanRedo();
+                //
+                // if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo))
+                //     m_EditorHost->Undo();
+                // if (ImGui::MenuItem("Redo", "Ctrl+Y", false, canRedo))
+                //     m_EditorHost->Redo();
             }
             ImGui::EndMenu();
         }
@@ -165,6 +165,13 @@ void EditorApp::RenderPanels()
 
     // ---- 4. Draw panels inside dockspace ----
 
+    for (auto& panel : m_Panels)
+    {
+        if (!panel) continue;
+
+        panel->Draw( *m_EditorHost);
+    }
+
     ImGui::End(); // DockSpaceRoot
 }
 
@@ -232,7 +239,7 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     int viewportIndex = 0;
 
     // Register panels
-    m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
+    //m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
     m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++));
     m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++)); // Second viewport
 

@@ -110,7 +110,9 @@ void ViewportController::SubmitView()
     view.bClearDepth        = true;
     view.clearColorValue    = {0.1f, 0.1f, 0.1f, 1.0f};
     view.renderMask         = 0xFFFFFFFFu;
+    view.bApplyPostGamma    = false; // TODO: Make this configurable for future
     view.bEnablePostProcess = true;
+    view.postProfileId = EditorRuntime::kEditorPostProfile;
 
     m_Runtime.GetViewport().SubmitRenderView(view);
 }

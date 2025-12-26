@@ -6,12 +6,12 @@
 #include <typeinfo>
 #include <cassert>
 
+#include "ToolService.h"
 #include "Core/Memory/SmartPointers.h"
 #include "Subsystems/IPanelSubsystem.h"
 
 class EditorHost;
 class EditorRuntime;
-class ToolService;
 
 class TPanelContainer
 {

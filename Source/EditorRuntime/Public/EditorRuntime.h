@@ -29,8 +29,6 @@ private:
     EditorViewportAPI m_ViewportAPI;
     EditorSurfaceAPI m_SurfaceAPI;
 
-    static constexpr uint32_t kEditorPostProfile = 1; // TODO: Legacy: should be moved
-
 public:
     ~EditorRuntime();
 
@@ -38,6 +36,8 @@ public:
     [[nodiscard]] EditorSceneAPI& GetScene() { return m_SceneAPI; }
     [[nodiscard]] EditorViewportAPI& GetViewport() { return m_ViewportAPI; }
     [[nodiscard]] EditorSurfaceAPI& GetSurface() { return m_SurfaceAPI; }
+
+    static constexpr uint32_t kEditorPostProfile = 1; // TODO: Legacy: should be moved
 
 private:
 };

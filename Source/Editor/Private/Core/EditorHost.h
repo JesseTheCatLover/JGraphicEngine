@@ -3,6 +3,7 @@
 #pragma once
 
 #include "EditorRuntime.h"
+#include "TPanelContainer.h"
 #include "Core/Memory/SmartPointers.h"
 #include "Subsystems/ViewportSubsystem.h"
 
@@ -29,5 +30,10 @@ public:
     [[nodiscard]] TPanelContainer* GetPanelContainer() const { return m_PanelContainer.get(); }
     [[nodiscard]] ToolService* GetToolService() const { return m_ToolService.get(); }
 
-    [[nodiscard]] ViewportSubsystem& GetViewportSubsystem() const;
+    template<typename TSubsystem>
+    TSubsystem& GetSubsystem()
+    {
+        return m_PanelContainer->GetSubsystem<TSubsystem>();
+    }
+
 };

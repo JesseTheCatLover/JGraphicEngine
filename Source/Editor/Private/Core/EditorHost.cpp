@@ -27,12 +27,6 @@ void EditorHost::Tick(float deltaTime)
     m_PanelContainer->Tick(deltaTime);
 }
 
-ViewportSubsystem& EditorHost::GetViewportSubsystem() const
-{
-    return m_PanelContainer->GetSubsystem<ViewportSubsystem>();
-}
-
-
 //
 // void EditorHost::UpdateHierarchySnapshot()
 // {

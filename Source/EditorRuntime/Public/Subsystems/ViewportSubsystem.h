@@ -3,10 +3,9 @@
 #pragma once
 
 #include "IPanelSubsystem.h"
-#include "PanelRegistry.h"
-#include "Utilities/UDynamicID.h"
-#include "TPanelSubsystem.h"
 
+#include "TPanelSubsystem.h"
+#include "ToolService.h"
 #include "Controllers/ViewportController.h"
 #include "Controllers/Inputs/FViewportPanelInput.h"
 #include "Controllers/Outputs/FViewportOutput.h"
@@ -26,7 +25,15 @@ private:
     Channel m_Channel;
 
 public:
-    ViewportSubsystem(EditorHost& host, EditorRuntime& runtime, ToolService& tools);
+    ViewportSubsystem(EditorHost &host, EditorRuntime &runtime, ToolService &tools)
+    : m_Host(host)
+          , m_Runtime(runtime)
+          , m_Tools(tools)
+          , m_Channel([this](PanelID id)
+              {
+                  return std::make_unique<ViewportController>(id, m_Host, m_Runtime, m_Tools);
+              })
+        {}
 
     void Tick(float deltaTime) override { m_Channel.Tick(deltaTime); }
 
