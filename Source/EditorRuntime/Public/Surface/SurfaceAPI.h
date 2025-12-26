@@ -2,6 +2,7 @@
 
 #pragma once
 
+enum class ECursorMode;
 class IPlatformSurface;
 class EngineContext;
 
@@ -13,4 +14,8 @@ private:
 
 public:
     EditorSurfaceAPI(EngineContext& ctx, IPlatformSurface& surface);
+
+    void SetCursorDisabled();
+    void SetCursorHidden();
+    void SetCursorVisible();
 };

@@ -14,7 +14,7 @@ void ViewportPanel::OnCreate(EditorHost&) {}
 
 void ViewportPanel::OnDestroy(EditorHost& host)
 {
-    host.GetSubsystem<ViewportSubsystem>().Destroy(GetPanelKey());
+    host.GetSubsystem<ViewportSubsystem>().Destroy(GetPanelKey()); // TODO: Should be handled by a lower level pipeline
 }
 
 const char* ViewportPanel::GetPanelKey() const
@@ -32,13 +32,11 @@ void ViewportPanel::Draw(EditorHost& host)
     }
 
 
-    // Size of viewport image
+    // Size of viewport
     ImVec2 size = ImGui::GetContentRegionAvail();
     float w = (size.x > 0.f) ? size.x : 0.f;
     float h = (size.y > 0.f) ? size.y : 0.f;
 
-    // We want stable rect+mouse even if texture isn't ready
-    ImVec2 cursor = ImGui::GetCursorScreenPos();
 
     // Ask for current texture (might be null on first frame)
     const FViewportOutput* out = host.GetSubsystem<ViewportSubsystem>().GetOutput(GetPanelKey());
@@ -52,6 +50,7 @@ void ViewportPanel::Draw(EditorHost& host)
     else
     {
         ImGui::Dummy(ImVec2(w, h));
+        ImVec2 cursor = ImGui::GetCursorScreenPos(); // We want stable rect+mouse even if texture isn't ready
         ImGui::SetCursorScreenPos(cursor);
         ImGui::TextUnformatted("No valid scene texture available.");
     }
@@ -69,20 +68,24 @@ void ViewportPanel::Draw(EditorHost& host)
     mouseX = ImClamp(mouseX, 0.0f, rectMax.x - rectMin.x);
     mouseY = ImClamp(mouseY, 0.0f, rectMax.y - rectMin.y);
 
-    // Window focus/hover (input for viewport policy)
-    const bool windowFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-    const bool windowHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-
-    // Is mouse over the viewport image area?
-    const bool bOverViewport = ImGui::IsItemHovered(ImGuiHoveredFlags_None);
-
     // Submit panel input
     FViewportPanelInput input{};
     input.panelKey = GetPanelKey();
     input.width = w;
     input.height = h;
-    input.bFocused = windowFocused;
-    input.bHovered = windowHovered;
+    input.bFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);;
+    input.bHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    input.bLeftClicked    = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    input.bRightClicked   = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+    input.bRightReleased  = ImGui::IsMouseReleased(ImGuiMouseButton_Right);
+
+    ImGuiIO& io = ImGui::GetIO();
+    input.bCtrl  = io.KeyCtrl || io.KeySuper;
+    input.bShift = io.KeyShift;
+    input.bAlt   = io.KeyAlt;
+
+    // Is mouse over the viewport image area?
+    const bool bOverViewport = ImGui::IsItemHovered(ImGuiHoveredFlags_None);
     input.bOverViewport = bOverViewport;
     input.mouseX = mouseX;
     input.mouseY = mouseY;

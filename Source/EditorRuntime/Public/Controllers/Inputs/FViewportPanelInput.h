@@ -5,4 +5,5 @@
 
 struct FViewportPanelInput : FPanelInputBase
 {
+    bool bOverViewport = false;  // mouse over the Image
 };

@@ -74,7 +74,7 @@ void ViewportController::TickCamera(float dt)
     CameraEditorTool* cam = m_Tools.GetCameraTool(m_CameraToolID);
     if (!cam) return;
 
-    const bool bActive = m_Focused;
+    const bool bActive = m_bHasMouseCapture;
 
     float aspect = (m_Height > 0.f) ? (m_Width / m_Height) : (16.f / 9.f);
 
@@ -117,20 +117,39 @@ void ViewportController::SubmitView()
     m_Runtime.GetViewport().SubmitRenderView(view);
 }
 
+void ViewportController::UpdateCapturePolicy(const FViewportPanelInput &input)
+{
+    // Start capture
+    if (input.bOverViewport && input.bRightClicked)
+    {
+        m_bHasMouseCapture = true;
+        m_Runtime.GetSurface().SetCursorDisabled();
+    }
+
+    // End capture
+    if (m_bHasMouseCapture && input.bRightReleased)
+    {
+        m_bHasMouseCapture = false;
+        m_Runtime.GetSurface().SetCursorVisible();
+    }
+}
+
 void ViewportController::Update(float deltaTime, const FViewportPanelInput& input, FViewportOutput& out)
 {
     EnsureCameraTool();
 
-    // 1) Read snapshot input
+    // Read snapshot input
     m_Width   = input.width;
     m_Height  = input.height;
     m_Focused = input.bFocused;
     m_Hovered = input.bHovered && input.bOverViewport;
 
-    // 2) Tick tools
+    UpdateCapturePolicy(input);
+
+    // Tick tools
     TickCamera(deltaTime);
 
-    // 3) Render
+    // Viewport Render
     if (m_Width > 0.f && m_Height > 0.f)
     {
         EnsureRenderTarget();

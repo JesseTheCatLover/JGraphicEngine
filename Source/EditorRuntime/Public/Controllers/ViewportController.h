@@ -31,13 +31,15 @@ private:
 
     int m_PostProfile = 1;
 
+    bool m_bHasMouseCapture = false;
+
     // Cached viewport facts (from input)
     float m_Width = 0.f;
     float m_Height = 0.f;
-    bool  m_Focused = false;
-    bool  m_Hovered = false;
+    bool m_Focused = false;
+    bool m_Hovered = false;
 
-    int   m_MSAASamples = 4;
+    int m_MSAASamples = 4;
 
 private:
     void EnsureCameraTool();
@@ -48,6 +50,8 @@ private:
 
     void TickCamera(float dt);
     void SubmitView();
+
+    void UpdateCapturePolicy(const FViewportPanelInput& input);
 
 public:
     ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools);

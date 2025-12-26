@@ -11,7 +11,15 @@ struct FPanelInputBase
 
     bool bFocused = false;       // window focus (root)
     bool bHovered = false;       // window hovered
-    bool bOverViewport = false;  // mouse over the Image (or Dummy)
+
+    bool bLeftClicked = false;
+    bool bLeftReleased = false;
+    bool bRightClicked = false;
+    bool bRightReleased = false;
+
+    bool bCtrl = false;
+    bool bShift = false;
+    bool bAlt = false;
 
     // Mouse position in panel-local pixels
     float mouseX = 0.f;
