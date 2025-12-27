@@ -52,6 +52,7 @@ private:
     void SubmitView();
 
     void UpdateCapturePolicy(const FViewportPanelInput& input);
+    void HandlePicking(const FViewportPanelInput& input);
 
 public:
     ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools);

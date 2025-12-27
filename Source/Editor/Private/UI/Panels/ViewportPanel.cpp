@@ -7,7 +7,7 @@
 #include "Controllers/Outputs/FViewportOutput.h"
 #include "Core/EditorHost.h"
 #include "Core/EngineGlobals.h"
-#include "Core/FSelectionModifiers.h"
+#include "../../../../EditorRuntime/Public/Scene/FSelectionModifiers.h"
 #include "Subsystems/ViewportSubsystem.h"
 
 void ViewportPanel::OnCreate(EditorHost&) {}

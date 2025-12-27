@@ -28,7 +28,7 @@
 #include "Rendering/FRenderView.h"
 
 JEngine::JEngine()
-    : m_Services(MakeUnique<TServiceContainer>())
+    : m_Services(MakeUnique<TEditorServiceContainer>())
 {
 }
 

@@ -19,9 +19,9 @@ JScene* EditorSceneAPI::GetActiveScene()
     return m_SceneManager.GetActiveScene();
 }
 
-std::vector<FEditorActorSnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
+std::vector<FHierarchySnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
 {
-    std::vector<FEditorActorSnapshot> result;
+    std::vector<FHierarchySnapshot> result;
 
     JScene* scene = m_SceneManager.GetActiveScene();
     if (!scene)
@@ -34,14 +34,14 @@ std::vector<FEditorActorSnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
     {
         if (!actor) continue;
 
-        FEditorActorSnapshot info{};
+        FHierarchySnapshot info{};
         info.id = actor->GetRuntimeID();
         info.parentID = actor->GetParentActor()
                             ? actor->GetParentActor()->GetRuntimeID()
                             : 0;
         info.name = actor->GetName();
         info.hasChildren = !actor->GetChildActors().empty();
-        info.isSelected  = false; // will be filled by EditorCore
+        info.isSelected  = false; // fill be filled by TODO: hm?
 
         result.push_back(std::move(info));
     }

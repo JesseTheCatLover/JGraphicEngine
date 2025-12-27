@@ -20,7 +20,7 @@ class RendererSubsystem;
 class IRenderBackend;
 class IPlatformSurface;
 class JRendererLegacy;
-class TServiceContainer;
+class TEditorServiceContainer;
 
 class JEngine
 {
@@ -71,7 +71,7 @@ private:
     TUniquePtr<IInputBackend> m_InputBackend;
     TUniquePtr<InputSubsystem> m_InputSystem;
 
-    TUniquePtr<TServiceContainer> m_Services;
+    TUniquePtr<TEditorServiceContainer> m_Services;
 
     bool Initialize();
     bool SurfaceInitialize();

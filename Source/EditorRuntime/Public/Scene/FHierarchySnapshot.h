@@ -4,12 +4,12 @@
 #include <cstdint>
 #include <string>
 
-using ActorID = std::uint64_t;
-
-struct FEditorActorSnapshot
+struct FHierarchySnapshot
 {
-    ActorID id = 0;
-    ActorID parentID = 0;
+    using ID = std::uint64_t;
+
+    ID id = 0;
+    ID parentID = 0;
     std::string name;
 
     bool hasChildren = false;

@@ -2,8 +2,9 @@
 
 #pragma once
 #include <vector>
+#include <cstdint>
 
-#include "FEditorActorSnapshot.h"
+#include "FHierarchySnapshot.h"
 #include "FRaycast.h"
 
 class JScene;
@@ -13,6 +14,8 @@ class EngineContext;
 class EditorSceneAPI
 {
 private:
+    using ActorID = uint64_t;
+
     EngineContext& m_Context;
     SceneManager& m_SceneManager;
 
@@ -23,7 +26,7 @@ public:
 
     JScene* GetActiveScene();
 
-    [[nodiscard]] std::vector<FEditorActorSnapshot>
+    [[nodiscard]] std::vector<FHierarchySnapshot>
         BuildHierarchySnapshot() const;
     void SetSelectedActors(const std::vector<ActorID>& ids);
     void DeleteActors(const std::vector<ActorID>& ids);

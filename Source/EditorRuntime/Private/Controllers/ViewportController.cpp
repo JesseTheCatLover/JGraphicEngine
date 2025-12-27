@@ -8,6 +8,7 @@
 #include "ToolService.h"
 #include "Rendering/EViewType.h"
 #include "Rendering/FRenderView.h"
+#include "Scene/FSelectionModifiers.h"
 
 ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools)
     : m_PanelID(id)
@@ -134,6 +135,24 @@ void ViewportController::UpdateCapturePolicy(const FViewportPanelInput &input)
     }
 }
 
+void ViewportController::HandlePicking(const FViewportPanelInput& input)
+{
+    if (!(input.bOverViewport && input.bLeftClicked))
+        return;
+
+    FSelectionModifiers mods;
+    mods.bRange  = false;
+    mods.bToggle = input.bCtrl || input.bShift;
+
+    // TODO: Implement Scene Subsystem for the host
+    // m_Host.GetSceneSubsystem().PickActorAtViewportPos(
+    //     m_PanelID,
+    //     input.mouseX,
+    //     input.mouseY,
+    //     mods
+    // );
+}
+
 void ViewportController::Update(float deltaTime, const FViewportPanelInput& input, FViewportOutput& out)
 {
     EnsureCameraTool();
@@ -144,7 +163,9 @@ void ViewportController::Update(float deltaTime, const FViewportPanelInput& inpu
     m_Focused = input.bFocused;
     m_Hovered = input.bHovered && input.bOverViewport;
 
+    // Policy
     UpdateCapturePolicy(input);
+    HandlePicking(input);
 
     // Tick tools
     TickCamera(deltaTime);
@@ -160,7 +181,7 @@ void ViewportController::Update(float deltaTime, const FViewportPanelInput& inpu
         DestroyRenderTarget();
     }
 
-    // 4) Write snapshot output
+    // Write snapshot output
     if (m_RT.color.IsValid())
     {
         out.nativeTexture = m_Runtime.GetViewport().GetNativeTexture(m_RT.color);

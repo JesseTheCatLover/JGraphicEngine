@@ -3,12 +3,12 @@
 #pragma once
 
 #include "EditorRuntime.h"
+#include "TEditorServiceContainer.h"
 #include "TPanelContainer.h"
 #include "Core/Memory/SmartPointers.h"
 #include "Subsystems/ViewportSubsystem.h"
 
 class ToolService;
-class TPanelContainer;
 
 class EditorHost
 {
@@ -19,8 +19,10 @@ private:
     EditorRuntime& m_EditorRuntime;
     TUniquePtr<ToolService> m_ToolService;
     TUniquePtr<TPanelContainer> m_PanelContainer;
+    TUniquePtr<TEditorServiceContainer> m_Services;
 
     void RegisterCoreSubsystems();
+    void RegisterCoreServices();
 
 public:
     // Called every frame from EditorApp::OnTick
@@ -35,5 +37,8 @@ public:
     {
         return m_PanelContainer->GetSubsystem<TSubsystem>();
     }
+
+    template<typename T>
+    T& GetService() { return m_Services->Get<T>(); }
 
 };

@@ -6,7 +6,7 @@
 #include <typeindex>
 #include <unordered_map>
 
-class TServiceContainer
+class TEditorServiceContainer
 {
 private:
     friend class JEngine; // only JEngine can call anything here
