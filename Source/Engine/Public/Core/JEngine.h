@@ -7,6 +7,7 @@
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+class TServiceContainer;
 class DebugDraw;
 struct FRenderView;
 class EngineContext;
@@ -20,7 +21,6 @@ class RendererSubsystem;
 class IRenderBackend;
 class IPlatformSurface;
 class JRendererLegacy;
-class TEditorServiceContainer;
 
 class JEngine
 {
@@ -71,7 +71,7 @@ private:
     TUniquePtr<IInputBackend> m_InputBackend;
     TUniquePtr<InputSubsystem> m_InputSystem;
 
-    TUniquePtr<TEditorServiceContainer> m_Services;
+    TUniquePtr<TServiceContainer> m_Services;
 
     bool Initialize();
     bool SurfaceInitialize();

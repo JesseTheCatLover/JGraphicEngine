@@ -13,7 +13,7 @@ bool SceneQueryService::Raycast(const FRay &ray, FRaycastHit &outHit)
     return m_Runtime.GetScene().Raycast(ray, outHit);
 }
 
-auto SceneQueryService::BuildHierarchySnapshot()
+std::vector<FHierarchySnapshot> SceneQueryService::BuildHierarchySnapshot()
 {
     return m_Runtime.GetScene().BuildHierarchySnapshot();
 }

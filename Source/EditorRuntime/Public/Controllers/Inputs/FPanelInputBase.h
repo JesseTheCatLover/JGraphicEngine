@@ -20,6 +20,7 @@ struct FPanelInputBase
     bool bCtrl = false;
     bool bShift = false;
     bool bAlt = false;
+    bool bSuper = false;
 
     // Mouse position in panel-local pixels
     float mouseX = 0.f;

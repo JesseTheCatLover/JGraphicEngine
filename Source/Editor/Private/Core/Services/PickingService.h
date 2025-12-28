@@ -6,6 +6,8 @@
 #include "Core/IEditorService.h"
 #include "Scene/FRaycast.h"
 
+using ActorID = uint64_t;
+
 struct FSelectionModifiers;
 class CameraEditorTool;
 class EditorHost;
@@ -22,9 +24,9 @@ private:
 public:
     explicit PickingService(EditorHost& host);
 
-    uint64_t PickActor(const CameraEditorTool& cam,
+    ActorID PickActorAtViewportPos(const CameraEditorTool& cam,
                        float width, float height,
                        float x, float y);
 
-    void ApplyPickSelection(uint64_t actorId, const FSelectionModifiers& mods);
+    void ApplyPickSelection(ActorID actorId, const FSelectionModifiers& mods);
 };

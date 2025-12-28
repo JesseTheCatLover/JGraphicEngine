@@ -1,7 +1,10 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include <vector>
+
 #include "Core/IEditorService.h"
+#include "Scene/FHierarchySnapshot.h"
 
 class EditorRuntime;
 struct FRaycastHit;
@@ -17,5 +20,5 @@ public:
 
     bool Raycast(const FRay& ray, FRaycastHit& outHit);
 
-    auto BuildHierarchySnapshot();
+    std::vector<FHierarchySnapshot> BuildHierarchySnapshot();
 };

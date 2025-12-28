@@ -1,4 +1,5 @@
 #include "Controllers/ViewportController.h"
+#include <cstdint>
 
 #include "Core/EditorHost.h"
 #include "EditorRuntime.h"
@@ -6,6 +7,7 @@
 #include "Controllers/Outputs/FViewportOutput.h"
 #include "Tools/CameraEditorTool.h"
 #include "ToolService.h"
+#include "Core/Services/PickingService.h"
 #include "Rendering/EViewType.h"
 #include "Rendering/FRenderView.h"
 #include "Scene/FSelectionModifiers.h"
@@ -140,17 +142,17 @@ void ViewportController::HandlePicking(const FViewportPanelInput& input)
     if (!(input.bOverViewport && input.bLeftClicked))
         return;
 
+    const auto cam = m_Tools.GetCameraTool(m_CameraToolID);
+    if (!cam) return;
+
     FSelectionModifiers mods;
     mods.bRange  = false;
-    mods.bToggle = input.bCtrl || input.bShift;
+    mods.bToggle = input.bCtrl || input.bShift || input.bSuper;
 
-    // TODO: Implement Scene Subsystem for the host
-    // m_Host.GetSceneSubsystem().PickActorAtViewportPos(
-    //     m_PanelID,
-    //     input.mouseX,
-    //     input.mouseY,
-    //     mods
-    // );
+    auto& picker = m_Host.GetService<PickingService>();
+
+    const auto id = picker.PickActorAtViewportPos(*cam, input.width, input.height, input.mouseX, input. mouseY);
+    picker.ApplyPickSelection(id, mods);
 }
 
 void ViewportController::Update(float deltaTime, const FViewportPanelInput& input, FViewportOutput& out)

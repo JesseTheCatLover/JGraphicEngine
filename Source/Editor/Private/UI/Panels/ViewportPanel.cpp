@@ -83,6 +83,7 @@ void ViewportPanel::Draw(EditorHost& host)
     input.bCtrl  = io.KeyCtrl || io.KeySuper;
     input.bShift = io.KeyShift;
     input.bAlt   = io.KeyAlt;
+    input.bSuper = io.KeySuper;
 
     // Is mouse over the viewport image area?
     const bool bOverViewport = ImGui::IsItemHovered(ImGuiHoveredFlags_None);

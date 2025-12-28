@@ -3,6 +3,7 @@
 #include "SelectionService.h"
 
 #include "EditorRuntime.h"
+#include "Scene/FSelectionModifiers.h"
 
 SelectionService::SelectionService(EditorRuntime &rt)
 : m_Runtime(rt)

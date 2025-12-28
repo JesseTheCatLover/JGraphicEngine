@@ -5,7 +5,7 @@
 #include <typeindex>
 #include <memory>
 
-#include "../IEditorService.h"
+#include "IEditorService.h"
 
 class TEditorServiceContainer
 {
