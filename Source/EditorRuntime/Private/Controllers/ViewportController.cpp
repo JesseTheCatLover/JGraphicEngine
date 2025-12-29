@@ -15,7 +15,7 @@
 #include "Rendering/FRenderView.h"
 #include "Scene/FSelectionModifiers.h"
 
-class SceneQueryService;
+static int viewportIndex = 0;
 
 ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools)
     : m_PanelID(id)
@@ -104,7 +104,7 @@ bool ViewportController::BuildRenderView(FRenderView &outView) const
     outView.scene     = scene;
     outView.camera    = cam;
     outView.viewType  = EViewType::EditorViewport;
-    outView.viewIndex = 0;
+    outView.viewIndex = ++viewportIndex;
 
     outView.targetFBO = m_RT.fbo;
 

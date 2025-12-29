@@ -66,6 +66,7 @@ public:
     // Main: render gizmo primitives into DebugDraw.
     // camPos/camFwd are used for constant-size scaling and plane handle orientation if needed later.
     void Draw(DebugDraw& dd,
+              uint32_t viewKey,
               const FVector3& camPos,
               const FVector3& camFwd,
               const FTransform& gizmoXf,
@@ -110,6 +111,7 @@ private:
                            FVector3& outX, FVector3& outY, FVector3& outZ);
 
     void DrawTranslate(DebugDraw& dd,
+                       uint32_t viewKey,
                        const FVector3& camPos,
                        const FVector3& camFwd,
                        const FTransform& xf,
@@ -118,6 +120,7 @@ private:
                        const FVisualConfig& v) const;
 
     void DrawRotate(DebugDraw& dd,
+                    uint32_t viewKey,
                     const FVector3& camPos,
                     const FVector3& camFwd,
                     const FTransform& xf,
@@ -126,6 +129,7 @@ private:
                     const FVisualConfig& v) const;
 
     void DrawScale(DebugDraw& dd,
+                   uint32_t viewKey,
                    const FVector3& camPos,
                    const FVector3& camFwd,
                    const FTransform& xf,

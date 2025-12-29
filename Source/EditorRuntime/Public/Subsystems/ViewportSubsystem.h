@@ -31,7 +31,7 @@ public:
           , m_Tools(tools)
           , m_Channel([this](PanelID id)
               {
-                  return std::make_unique<ViewportController>(id, m_Host, m_Runtime, m_Tools);
+                  return MakeUnique<ViewportController>(id, m_Host, m_Runtime, m_Tools);
               })
         {}
 

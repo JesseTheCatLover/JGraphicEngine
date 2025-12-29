@@ -2,6 +2,7 @@
 
 #include "Tools/Controllers/GizmoEditorController.h"
 #include "Controllers/Inputs/FViewportPanelInput.h"
+#include "Rendering/FRenderView.h"
 
 GizmoEditorTool::EHandle GizmoEditorController::HitTest(const DebugDraw& debugDraw,
                                                         const FRenderView& view,
@@ -85,7 +86,7 @@ GizmoEditorController::FResult GizmoEditorController::UpdateAndDraw(DebugDraw& d
     params.hoveredHandle= m_Hovered;
     params.activeHandle = m_Active;
 
-    m_GizmoTool.Draw(debugDraw, camPos, camFwd, gizmoXf, params);
+    m_GizmoTool.Draw(debugDraw, view.viewIndex, camPos, camFwd, gizmoXf, params);
 
     result.hovered = m_Hovered;
     result.active  = m_Active;

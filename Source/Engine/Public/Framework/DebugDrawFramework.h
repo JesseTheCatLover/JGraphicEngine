@@ -49,6 +49,7 @@ struct FDebugDrawStyle
     EDebugDrawLayer layer = EDebugDrawLayer::Gameplay;
 
     uint32_t hitId = 0; // 0 = not pickable
+    uint32_t viewKey = 0;  // 0 = draw in ALL views; otherwise only if matches view.debugViewKey
 };
 
 struct FDebugLine

@@ -138,7 +138,7 @@ GizmoEditorTool::EHandle GizmoEditorTool::HitIdToHandle(uint32_t baseHitId, uint
 // Draw entry
 // ----------------------
 
-void GizmoEditorTool::Draw(DebugDraw& dd, const FVector3& camPos, const FVector3& camFwd,
+void GizmoEditorTool::Draw(DebugDraw& dd, uint32_t viewKey, const FVector3& camPos, const FVector3& camFwd,
                            const FTransform& gizmoXf, const FDrawParams& p) const
 {
     FVisualConfig v{};
@@ -148,13 +148,13 @@ void GizmoEditorTool::Draw(DebugDraw& dd, const FVector3& camPos, const FVector3
     switch (p.mode)
     {
         case EMode::Translate:
-            DrawTranslate(dd, camPos, camFwd, gizmoXf, p, scale, v);
+            DrawTranslate(dd, viewKey, camPos, camFwd, gizmoXf, p, scale, v);
             break;
         case EMode::Rotate:
-            DrawRotate(dd, camPos, camFwd, gizmoXf, p, scale, v);
+            DrawRotate(dd, viewKey, camPos, camFwd, gizmoXf, p, scale, v);
             break;
         case EMode::Scale:
-            DrawScale(dd, camPos, camFwd, gizmoXf, p, scale, v);
+            DrawScale(dd, viewKey, camPos, camFwd, gizmoXf, p, scale, v);
             break;
         default: break;
     }
@@ -164,7 +164,7 @@ void GizmoEditorTool::Draw(DebugDraw& dd, const FVector3& camPos, const FVector3
 // Translate
 // ----------------------
 
-void GizmoEditorTool::DrawTranslate(DebugDraw& dd, const FVector3& camPos, const FVector3& camFwd, const FTransform& xf,
+void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVector3& camPos, const FVector3& camFwd, const FTransform& xf,
                                     const FDrawParams& p, float gizmoScale, const FVisualConfig& v) const
 {
     (void)camPos; (void)camFwd;
@@ -184,6 +184,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, const FVector3& camPos, const
     s.depth = EDebugDepthMode::Overlay;
     s.fill = EDebugFillMode::Solid;
     s.thicknessPx = v.axisThicknessPx;
+    s.viewKey = viewKey;
 
     // Colors
     FVector4 cx(1,0,0,1);
@@ -270,6 +271,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, const FVector3& camPos, const
 // ----------------------
 
 void GizmoEditorTool::DrawRotate(DebugDraw& dd,
+                                 uint32_t viewKey,
                                  const FVector3& camPos,
                                  const FVector3& camFwd,
                                  const FTransform& xf,
@@ -291,6 +293,7 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
     s.depth = EDebugDepthMode::Overlay;
     s.fill  = EDebugFillMode::Wireframe;
     s.thicknessPx = v.ringThicknessPx;
+    s.viewKey = viewKey;
 
     FVector4 cx(1,0,0,1);
     FVector4 cy(0,1,0,1);
@@ -337,6 +340,7 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
 // ----------------------
 
 void GizmoEditorTool::DrawScale(DebugDraw& dd,
+                                uint32_t viewKey,
                                 const FVector3& camPos,
                                 const FVector3& camFwd,
                                 const FTransform& xf,
@@ -357,6 +361,7 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     sLine.layer = EDebugDrawLayer::Editor;
     sLine.depth = EDebugDepthMode::Overlay;
     sLine.thicknessPx = v.scaleArmThicknessPx;
+    sLine.viewKey = viewKey;
 
     FDebugDrawStyle sBox = sLine;
     sBox.fill = EDebugFillMode::Solid;

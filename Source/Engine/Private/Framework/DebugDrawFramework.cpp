@@ -5,7 +5,6 @@
 #include "Rendering/FRenderView.h"
 
 #include <cstddef>
-#include <iostream>
 
 // ----------------------------
 // Helpers
@@ -85,9 +84,16 @@ bool DebugDraw::MouseHitTest(const FRenderView& view, const FMatrix4& viewMat, c
 
     bool found = false;
 
+    auto PassView = [&](const FDebugDrawStyle& s)
+    {
+        return (s.viewKey == 0) || (s.viewKey == view.viewIndex);
+    };
+
+
     auto considerLine = [&](const FDebugLine& ln, uint32_t idx)
     {
         if (!PassLayer(ln.style.layer)) return;
+        if (!PassView(ln.style)) return;
         if (bRequireHitId && ln.style.hitId == 0) return;
 
         const FScreenPt A = ProjectToScreen(VP, ln.a, view.viewportX, view.viewportY, view.viewportW, view.viewportH);
@@ -123,6 +129,7 @@ bool DebugDraw::MouseHitTest(const FRenderView& view, const FMatrix4& viewMat, c
     auto considerTri = [&](const FDebugTri& tr, uint32_t idx)
     {
         if (!PassLayer(tr.style.layer)) return;
+        if (!PassView(tr.style)) return;
         if (bRequireHitId && tr.style.hitId == 0) return;
 
         // We usually only want solid tris pickable (gizmo planes, solid handles)
@@ -666,6 +673,11 @@ void DebugDraw::RenderForView(IRenderDevice& renderer, const FRenderView& view)
 {
     if (!m_bEnabled) return;
 
+    auto PassView = [&](const FDebugDrawStyle& s)
+    {
+        return (s.viewKey == 0) || (s.viewKey == view.viewIndex);
+    };
+
     std::vector<FDebugLine> lines;
     lines.reserve(m_Immediate.size() + m_Timed.size());
 
@@ -675,12 +687,14 @@ void DebugDraw::RenderForView(IRenderDevice& renderer, const FRenderView& view)
     auto acceptLine = [&](const FDebugLine& ln)
     {
         if (!PassLayer(ln.style.layer)) return;
+        if (!PassView(ln.style)) return;
         lines.push_back(ln);
     };
 
     auto acceptTri = [&](const FDebugTri& tr)
     {
         if (!PassLayer(tr.style.layer)) return;
+        if (!PassView(tr.style)) return;
         tris.push_back(tr);
     };
 
@@ -689,9 +703,6 @@ void DebugDraw::RenderForView(IRenderDevice& renderer, const FRenderView& view)
 
     for (const auto& tr : m_ImmediateTris) acceptTri(tr);
     for (const auto& tt : m_TimedTris)     acceptTri(tt.tri);
-
-    std::cout << "[DebugDraw] lines=" << lines.size()
-          << " tris=" << tris.size() << "\n";
 
     if (!lines.empty())
         renderer.SubmitDebugLines(view, lines.data(), (uint32_t)lines.size());
