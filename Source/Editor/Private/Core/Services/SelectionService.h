@@ -17,6 +17,7 @@ private:
     EditorRuntime& m_Runtime;
     std::vector<ActorID> m_Selected;
     ActorID m_Anchor = 0;
+    ActorID m_RevealRequest = 0;
 
     void PushToRuntime();
 
@@ -32,8 +33,10 @@ public:
     [[nodiscard]] const std::vector<ActorID>& GetSelection() const { return m_Selected; }
     [[nodiscard]] ActorID GetAnchor() const { return m_Anchor; }
 
-    void Clear();
-
     void ApplyClick(ActorID id, const FSelectionModifiers& mods,
                     const std::vector<ActorID>* visibleOrder /*nullable*/);
+
+    ActorID ConsumeRevealRequest();
+
+    void Clear();
 };

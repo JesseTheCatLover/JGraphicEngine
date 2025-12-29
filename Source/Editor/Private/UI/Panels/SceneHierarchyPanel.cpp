@@ -1,156 +1,152 @@
-// //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
-//
-// #include "SceneHierarchyPanel.h"
-// #include "Core/EditorHost.h"
-// #include "imgui.h"
-// #include "Core/FSelectionModifiers.h"
-//
-// static bool FindNodeById(
-//     const std::vector<FEditorActorSnapshot>& actors,
-//     ActorID id,
-//     FEditorActorSnapshot& outNode)
-// {
-//     for (const auto& n : actors)
-//     {
-//         if (n.id == id)
-//         {
-//             outNode = n;
-//             return true;
-//         }
-//     }
-//     return false;
-// }
-//
-// static void BuildParentChain(const std::vector<FEditorActorSnapshot>& actors, ActorID leaf,
-//     std::vector<ActorID>& outChain)
-// {
-//     // leaf -> parent -> ... until root
-//     ActorID cur = leaf;
-//     while (cur != 0)
-//     {
-//         outChain.push_back(cur);
-//
-//         FEditorActorSnapshot node{};
-//         if (!FindNodeById(actors, cur, node))
-//             break;
-//
-//         cur = node.parentID;
-//     }
-// }
-//
-// void SceneHierarchyPanel::ApplyRevealRequest(const std::vector<FEditorActorSnapshot>& actors, EditorHost& core)
-// {
-//     const ActorID reveal = core.ConsumeRevealRequest();
-//     if (reveal == 0)
-//         return;
-//
-//     std::vector<ActorID> chain;
-//     chain.reserve(8);
-//     BuildParentChain(actors, reveal, chain);
-//
-//     // Expand all nodes in the chain so the leaf becomes visible.
-//     for (ActorID id : chain)
-//         m_OpenNodes.insert(id);
-//
-//     // Scroll the target into view when we draw it.
-//     m_ScrollTo = reveal;
-// }
-//
-// void SceneHierarchyPanel::DrawActorNode(
-//     const FEditorActorSnapshot& node,
-//     const std::vector<FEditorActorSnapshot>& allActors,
-//     EditorHost& core)
-// {
-//     ImGuiTreeNodeFlags flags =
-//         ImGuiTreeNodeFlags_OpenOnArrow |
-//         ImGuiTreeNodeFlags_SpanAvailWidth;
-//
-//     if (!node.hasChildren)
-//         flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-//
-//     if (node.isSelected)
-//         flags |= ImGuiTreeNodeFlags_Selected;
-//
-//     // Apply persistent open-state to ImGui.
-//     const bool bWantOpen = (m_OpenNodes.count(node.id) > 0);
-//     ImGui::SetNextItemOpen(bWantOpen, ImGuiCond_Always);
-//
-//     const bool bOpened = ImGui::TreeNodeEx(
-//         (void*)(intptr_t)node.id,
-//         flags,
-//         "%s", node.name.c_str()
-//     );
-//
-//     // If user toggled this node open/closed, sync back to the set
-//     if (ImGui::IsItemToggledOpen())
-//     {
-//         if (bOpened) m_OpenNodes.insert(node.id);
-//         else m_OpenNodes.erase(node.id);
-//     }
-//
-//     // Scroll into view if this is the reveal target
-//     if (m_ScrollTo == node.id)
-//     {
-//         ImGui::SetScrollHereY(0.25f);
-//         m_ScrollTo = 0;
-//     }
-//
-//     // Click selection (ignore clicks that are only toggling open)
-//     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
-//     {
-//         bClickedAnyItemThisFrame = true;
-//
-//         ImGuiIO& io = ImGui::GetIO();
-//         FSelectionModifiers mods;
-//         mods.bRange  = io.KeyShift;
-//         mods.bToggle = io.KeyCtrl || io.KeySuper;
-//
-//         core.HandleSelectionClick(node.id, mods);
-//     }
-//
-//     if (bOpened && node.hasChildren)
-//     {
-//         for (const auto& child : allActors)
-//         {
-//             if (child.parentID == node.id)
-//                 DrawActorNode(child, allActors, core);
-//         }
-//         ImGui::TreePop();
-//     }
-// }
-//
-// void SceneHierarchyPanel::Draw(EditorContext& context, EditorHost& core)
-// {
-//     if (!ImGui::Begin(GetName()))
-//     {
-//         ImGui::End();
-//         return;
-//     }
-//     // Later we add toolbar buttons here (add actor, search, filters, etc.)
-//     const auto& actors = core.GetHierarchySnapshot();
-//     if (actors.empty())
-//     {
-//         //ImGui::TextUnformatted("No actors in scene.");
-//         ImGui::End();
-//         return;
-//     }
-//
-//     // First: if viewport selection requested reveal, expand + queue scroll.
-//     ApplyRevealRequest(actors, core); // TODO: Make this optional in setting for future with something like bSyncHierarchyToSelection
-//
-//     bClickedAnyItemThisFrame = false;
-//
-//     for (const auto& actor : actors)
-//         if (actor.parentID == 0)
-//             DrawActorNode(actor, actors, core);
-//
-//     // Background click clears selection
-//     if (ImGui::IsWindowHovered() &&
-//         ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-//         !bClickedAnyItemThisFrame)
-//     {
-//         core.ClearSelection();
-//     }
-//
-//     ImGui::End();
-// }
+//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+#include "SceneHierarchyPanel.h"
+
+#include "imgui.h"
+#include "Core/EditorHost.h"
+#include "Subsystems/SceneHierarchySubsystem.h"
+#include "Controllers/Outputs/FHierarchyOutput.h"
+
+// helpers
+static bool FindNodeById(const std::vector<FHierarchySnapshot>& actors, ActorID id, FHierarchySnapshot& outNode)
+{
+    for (const auto& n : actors)
+        if (n.id == id) { outNode = n; return true; }
+    return false;
+}
+
+static void BuildParentChain(const std::vector<FHierarchySnapshot>& actors, ActorID leaf, std::vector<ActorID>& outChain)
+{
+    ActorID cur = leaf;
+    while (cur != 0)
+    {
+        outChain.push_back(cur);
+        FHierarchySnapshot node{};
+        if (!FindNodeById(actors, cur, node)) break;
+        cur = node.parentID;
+    }
+}
+
+void SceneHierarchyPanel::ApplyRevealRequest(const std::vector<FHierarchySnapshot>& actors, ActorID reveal)
+{
+    if (reveal == 0) return;
+
+    std::vector<ActorID> chain;
+    chain.reserve(8);
+    BuildParentChain(actors, reveal, chain);
+
+    for (ActorID id : chain)
+        m_OpenNodes.insert(id);
+
+    m_ScrollTo = reveal;
+}
+
+void SceneHierarchyPanel::DrawActorNode(const FHierarchySnapshot& node,
+                                       const std::vector<FHierarchySnapshot>& allActors,
+                                       FHierarchyPanelInput& ioInput)
+{
+    ImGuiTreeNodeFlags flags =
+        ImGuiTreeNodeFlags_OpenOnArrow |
+        ImGuiTreeNodeFlags_SpanAvailWidth;
+
+    if (!node.hasChildren)
+        flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+    if (node.isSelected)
+        flags |= ImGuiTreeNodeFlags_Selected;
+
+    const bool wantOpen = (m_OpenNodes.count(node.id) > 0);
+    ImGui::SetNextItemOpen(wantOpen, ImGuiCond_Always);
+
+    const bool opened = ImGui::TreeNodeEx((void*)(intptr_t)node.id, flags, "%s", node.name.c_str());
+
+    if (ImGui::IsItemToggledOpen())
+    {
+        if (opened) m_OpenNodes.insert(node.id);
+        else        m_OpenNodes.erase(node.id);
+    }
+
+    if (m_ScrollTo == node.id)
+    {
+        ImGui::SetScrollHereY(0.25f);
+        m_ScrollTo = 0;
+    }
+
+    // click selection (ignore clicks that just toggled open)
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+    {
+        m_bClickedAnyItemThisFrame = true;
+        ioInput.bClickedItem = true;
+        ioInput.clickedActor = node.id;
+    }
+
+    if (opened && node.hasChildren)
+    {
+        for (const auto& child : allActors)
+            if (child.parentID == node.id)
+                DrawActorNode(child, allActors, ioInput);
+
+        ImGui::TreePop();
+    }
+}
+
+void SceneHierarchyPanel::OnDestroy(EditorHost& host)
+{
+}
+
+void SceneHierarchyPanel::Draw(EditorHost& host)
+{
+    if (!ImGui::Begin(GetName()))
+    {
+        ImGui::End();
+        return;
+    }
+
+    // Build input for this frame
+    FHierarchyPanelInput input{};
+    input.panelKey = GetPanelKey();
+
+    input.bFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    input.bHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+
+    ImGuiIO& io = ImGui::GetIO();
+    input.bCtrl  = io.KeyCtrl;
+    input.bShift = io.KeyShift;
+    input.bSuper = io.KeySuper;
+
+    m_bClickedAnyItemThisFrame = false;
+
+    // Output snapshot
+    const FHierarchyOutput* out = host.GetSubsystem<SceneHierarchySubsystem>().GetOutput(GetPanelKey());
+    if (!out || !out->bHasSnapshot || !out->snapshot)
+    {
+        ImGui::TextUnformatted("Hierarchy: waiting for snapshot...");
+        // IMPORTANT: still submit input so controller gets created next tick
+        host.GetSubsystem<SceneHierarchySubsystem>().SubmitInput(input);
+        ImGui::End();
+        return;
+    }
+
+
+    const auto& actors = *out->snapshot;
+
+    // Apply reveal request
+    ApplyRevealRequest(actors, out->revealActorID);
+
+    // Draw tree roots
+    for (const auto& a : actors)
+        if (a.parentID == 0)
+            DrawActorNode(a, actors, input);
+
+    // Background click clears selection
+    if (ImGui::IsWindowHovered() &&
+        ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+        !m_bClickedAnyItemThisFrame)
+    {
+        input.bClearSelection = true;
+    }
+
+    // Submit input last
+    host.GetSubsystem<SceneHierarchySubsystem>().SubmitInput(input);
+
+    ImGui::End();
+}

@@ -37,6 +37,7 @@ void PickingService::ApplyPickSelection(ActorID actorId, const FSelectionModifie
         order = &m_Host.GetService<HierarchyService>().GetVisibleOrder();
 
     sel.ApplyClick(actorId, mods, order);
+    m_Host.GetService<HierarchyService>().MarkDirty();
 }
 
 FRay PickingService::BuildRay(const CameraEditorTool& cam,

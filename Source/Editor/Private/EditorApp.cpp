@@ -239,7 +239,7 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     int viewportIndex = 0;
 
     // Register panels
-    //m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
+    m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
     m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++));
     m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++)); // Second viewport
 

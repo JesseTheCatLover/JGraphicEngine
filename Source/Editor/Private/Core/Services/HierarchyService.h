@@ -22,7 +22,7 @@ private:
 public:
     explicit HierarchyService(EditorHost& host);
 
-    void Tick(float) override;
+    void Tick(float deltaTime) override;
 
     void MarkDirty() { m_Dirty = true; }
 

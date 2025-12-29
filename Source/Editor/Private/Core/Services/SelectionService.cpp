@@ -9,13 +9,6 @@ SelectionService::SelectionService(EditorRuntime &rt)
 : m_Runtime(rt)
 {}
 
-void SelectionService::Clear()
-{
-    m_Selected.clear();
-    m_Anchor = 0;
-    PushToRuntime();
-}
-
 void SelectionService::ApplyClick(ActorID id, const FSelectionModifiers &mods, const std::vector<ActorID> *visibleOrder)
 {
     if (id == 0) { Clear(); return; }
@@ -28,6 +21,13 @@ void SelectionService::ApplyClick(ActorID id, const FSelectionModifiers &mods, c
         SelectSingle(id);
 }
 
+SelectionService::ActorID SelectionService::ConsumeRevealRequest()
+{
+    const ActorID out = m_RevealRequest;
+    m_RevealRequest = 0;
+    return out;
+}
+
 void SelectionService::PushToRuntime()
 {
     m_Runtime.GetScene().SetSelectedActors(m_Selected);
@@ -36,8 +36,11 @@ void SelectionService::PushToRuntime()
 void SelectionService::SelectSingle(ActorID id)
 {
     m_Selected.clear();
-    m_Selected.push_back(id);
+    if (id != 0) m_Selected.push_back(id);
+
     m_Anchor = id;
+    m_RevealRequest = id;
+
     PushToRuntime();
 }
 
@@ -47,6 +50,7 @@ void SelectionService::Toggle(ActorID id)
     if (it == m_Selected.end()) m_Selected.push_back(id);
     else m_Selected.erase(it);
     m_Anchor = id;
+    m_RevealRequest = id;
     PushToRuntime();
 }
 
@@ -65,5 +69,14 @@ void SelectionService::SelectRangeTo(ActorID id, const std::vector<ActorID> &ord
     for (auto it = begin; it != end + 1; ++it)
         m_Selected.push_back(*it);
 
+    m_RevealRequest = id;
     PushToRuntime(); // (OS explorer behavior)
+}
+
+void SelectionService::Clear()
+{
+    m_Selected.clear();
+    m_Anchor = 0;
+    m_RevealRequest = 0;
+    PushToRuntime();
 }
