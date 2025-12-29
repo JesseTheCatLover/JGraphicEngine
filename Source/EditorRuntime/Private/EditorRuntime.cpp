@@ -19,7 +19,7 @@ EditorRuntime::EditorRuntime()
     , m_SceneManager(*JEngine::Get().GetSceneManager())
     , m_Renderer(*JEngine::Get().GetRenderer())
     , m_PlatformSurface(*JEngine::Get().GetPlatformSurface())
-    , m_SceneAPI(m_Context, m_SceneManager)
+    , m_SceneAPI(m_Context, m_SceneManager, *JEngine::Get().GetDebugDraw())
     , m_ViewportAPI(m_Context, m_Renderer)
     , m_SurfaceAPI(m_Context, m_PlatformSurface)
 {

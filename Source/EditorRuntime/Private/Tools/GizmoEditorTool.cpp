@@ -141,7 +141,7 @@ GizmoEditorTool::EHandle GizmoEditorTool::HitIdToHandle(uint32_t baseHitId, uint
 void GizmoEditorTool::Draw(DebugDraw& dd, const FVector3& camPos, const FVector3& camFwd,
                            const FTransform& gizmoXf, const FDrawParams& p) const
 {
-    FVisual v{};
+    FVisualConfig v{};
     const FVector3 gizmoPos = gizmoXf.GetPosition();
     const float scale = ComputeGizmoScale(camPos, gizmoPos);
 
@@ -165,7 +165,7 @@ void GizmoEditorTool::Draw(DebugDraw& dd, const FVector3& camPos, const FVector3
 // ----------------------
 
 void GizmoEditorTool::DrawTranslate(DebugDraw& dd, const FVector3& camPos, const FVector3& camFwd, const FTransform& xf,
-                                    const FDrawParams& p, float gizmoScale, const FVisual& v) const
+                                    const FDrawParams& p, float gizmoScale, const FVisualConfig& v) const
 {
     (void)camPos; (void)camFwd;
 
@@ -199,13 +199,13 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, const FVector3& camPos, const
     };
 
     // Axis arrows
-    s.hitId = HandleToHitId(p.baseHitId, EHandle::T_X);
+    s.hitId = HandleToHitId(p.baseHitID, EHandle::T_X);
     dd.DrawArrow(o, o + X * axisLen, applyHL(EHandle::T_X, cx), headLen, headRad, 16, s);
 
-    s.hitId = HandleToHitId(p.baseHitId, EHandle::T_Y);
+    s.hitId = HandleToHitId(p.baseHitID, EHandle::T_Y);
     dd.DrawArrow(o, o + Y * axisLen, applyHL(EHandle::T_Y, cy), headLen, headRad, 16, s);
 
-    s.hitId = HandleToHitId(p.baseHitId, EHandle::T_Z);
+    s.hitId = HandleToHitId(p.baseHitID, EHandle::T_Z);
     dd.DrawArrow(o, o + Z * axisLen, applyHL(EHandle::T_Z, cz), headLen, headRad, 16, s);
 
     // Center sphere (free move)
@@ -213,7 +213,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, const FVector3& camPos, const
     {
         FDebugDrawStyle cs = s;
         cs.thicknessPx = 1.0f;
-        cs.hitId = HandleToHitId(p.baseHitId, EHandle::T_Center);
+        cs.hitId = HandleToHitId(p.baseHitID, EHandle::T_Center);
 
         FVector4 col = applyHL(EHandle::T_Center, cCenter);
         dd.DrawSphere(o, centerRad, col, 24, cs);
@@ -234,7 +234,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, const FVector3& camPos, const
         {
             FDebugDrawStyle ps = s;
             ps.thicknessPx = 2.0f;
-            ps.hitId = HandleToHitId(p.baseHitId, EHandle::T_XY);
+            ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_XY);
 
             const FVector3 c = o + (X + Y) * off;
             const FVector4 col = applyHL(EHandle::T_XY, cxy);
@@ -245,7 +245,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, const FVector3& camPos, const
         {
             FDebugDrawStyle ps = s;
             ps.thicknessPx = 2.0f;
-            ps.hitId = HandleToHitId(p.baseHitId, EHandle::T_XZ);
+            ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_XZ);
 
             const FVector3 c = o + (X + Z) * off;
             const FVector4 col = applyHL(EHandle::T_XZ, cxz);
@@ -256,7 +256,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, const FVector3& camPos, const
         {
             FDebugDrawStyle ps = s;
             ps.thicknessPx = 2.0f;
-            ps.hitId = HandleToHitId(p.baseHitId, EHandle::T_YZ);
+            ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_YZ);
 
             const FVector3 c = o + (Y + Z) * off;
             const FVector4 col = applyHL(EHandle::T_YZ, cyz);
@@ -275,7 +275,7 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
                                  const FTransform& xf,
                                  const FDrawParams& p,
                                  float gizmoScale,
-                                 const FVisual& v) const
+                                 const FVisualConfig& v) const
 {
     (void)camPos; (void)camFwd;
 
@@ -315,15 +315,15 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
     }
 
     // X ring (normal = X axis => circle lies in YZ)
-    s.hitId = HandleToHitId(p.baseHitId, EHandle::R_X);
+    s.hitId = HandleToHitId(p.baseHitID, EHandle::R_X);
     dd.DrawCircle(o, X, r, applyHL(EHandle::R_X, cx), v.ringSegments, s);
 
     // Y ring
-    s.hitId = HandleToHitId(p.baseHitId, EHandle::R_Y);
+    s.hitId = HandleToHitId(p.baseHitID, EHandle::R_Y);
     dd.DrawCircle(o, Y, r, applyHL(EHandle::R_Y, cy), v.ringSegments, s);
 
     // Z ring
-    s.hitId = HandleToHitId(p.baseHitId, EHandle::R_Z);
+    s.hitId = HandleToHitId(p.baseHitID, EHandle::R_Z);
     dd.DrawCircle(o, Z, r, applyHL(EHandle::R_Z, cz), v.ringSegments, s);
 
     // Optional free-rotate handle (center sphere)
@@ -342,7 +342,7 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
                                 const FTransform& xf,
                                 const FDrawParams& p,
                                 float gizmoScale,
-                                const FVisual& v) const
+                                const FVisualConfig& v) const
 {
     (void)camPos; (void)camFwd;
 
@@ -379,28 +379,28 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     const FVector3 ez = o + Z * axisLen;
 
     // Arms (lines)
-    sLine.hitId = HandleToHitId(p.baseHitId, EHandle::S_X);
+    sLine.hitId = HandleToHitId(p.baseHitID, EHandle::S_X);
     dd.DrawLine(o, ex, applyHL(EHandle::S_X, cx), sLine);
 
-    sLine.hitId = HandleToHitId(p.baseHitId, EHandle::S_Y);
+    sLine.hitId = HandleToHitId(p.baseHitID, EHandle::S_Y);
     dd.DrawLine(o, ey, applyHL(EHandle::S_Y, cy), sLine);
 
-    sLine.hitId = HandleToHitId(p.baseHitId, EHandle::S_Z);
+    sLine.hitId = HandleToHitId(p.baseHitID, EHandle::S_Z);
     dd.DrawLine(o, ez, applyHL(EHandle::S_Z, cz), sLine);
 
     // Heads (boxes)
     {
-        sBox.hitId = HandleToHitId(p.baseHitId, EHandle::S_X);
+        sBox.hitId = HandleToHitId(p.baseHitID, EHandle::S_X);
         const float h = v.scaleBoxHalf * gizmoScale;
         dd.DrawBox(ex, FVector3(h,h,h), applyHL(EHandle::S_X, cx), sBox);
     }
     {
-        sBox.hitId = HandleToHitId(p.baseHitId, EHandle::S_Y);
+        sBox.hitId = HandleToHitId(p.baseHitID, EHandle::S_Y);
         const float h = v.scaleBoxHalf * gizmoScale;
         dd.DrawBox(ey, FVector3(h,h,h), applyHL(EHandle::S_Y, cy), sBox);
     }
     {
-        sBox.hitId = HandleToHitId(p.baseHitId, EHandle::S_Z);
+        sBox.hitId = HandleToHitId(p.baseHitID, EHandle::S_Z);
         const float h = v.scaleBoxHalf * gizmoScale;
         dd.DrawBox(ez, FVector3(h,h,h), applyHL(EHandle::S_Z, cz), sBox);
     }
@@ -408,7 +408,7 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     // Center uniform scale box
     if (p.bDrawCenter)
     {
-        sBox.hitId = HandleToHitId(p.baseHitId, EHandle::S_Uniform);
+        sBox.hitId = HandleToHitId(p.baseHitID, EHandle::S_Uniform);
         const float h = v.uniformBoxHalf * gizmoScale;
         dd.DrawBox(o, FVector3(h,h,h), applyHL(EHandle::S_Uniform, cU), sBox);
     }

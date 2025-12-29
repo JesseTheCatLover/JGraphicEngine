@@ -51,6 +51,7 @@ public:
     SceneManager* GetSceneManager();
     PostProcessManager* GetPostProcessManager();
     InputManager* GetInputManager();
+
     DebugDraw* GetDebugDraw();
 
 private:

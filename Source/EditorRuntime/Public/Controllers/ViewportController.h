@@ -4,8 +4,16 @@
 
 #include "PanelRegistry.h"
 #include "Rendering/FViewportRT.h"
+#include "Tools/Controllers/GizmoEditorController.h"
 #include "Utilities/UDynamicID.h"
 
+struct FViewportPolicy
+{
+    bool bSuppressActorPick = false; // gizmo-first or gizmo capture
+    bool bCameraActive      = false; // whether cam tool should respond this frame
+};
+
+class CameraEditorTool;
 struct FViewportPanelInput;
 struct FViewportOutput;
 
@@ -40,6 +48,16 @@ private:
 
     int m_MSAASamples = 4;
 
+    // Per-viewport gizmo state/policy (controller-owned)
+    GizmoEditorController m_Gizmo;
+
+    // Stable base id for this panel so hitIds don’t collide
+    uint32_t m_GizmoBaseHitID = 0;
+
+    // Cache the last hovered/active for debug/UI
+    GizmoEditorTool::EHandle m_GizmoHovered = GizmoEditorTool::EHandle::None;
+    GizmoEditorTool::EHandle m_GizmoActive = GizmoEditorTool::EHandle::None;
+
 private:
     void EnsureCameraTool();
     void DestroyCameraTool();
@@ -47,11 +65,17 @@ private:
     void EnsureRenderTarget();
     void DestroyRenderTarget();
 
-    void TickCamera(float dt);
-    void SubmitView();
+    void TickCamera(float deltaTime);
+    bool BuildRenderView(FRenderView& outView) const;
+    void SubmitView(const FRenderView& view);
 
-    void UpdateCapturePolicy(const FViewportPanelInput& input);
-    void HandlePicking(const FViewportPanelInput& input);
+    FViewportPolicy UpdateCapturePolicy(const FViewportPanelInput& input, const CameraEditorTool* cam,
+                                        const FRenderView* view);
+    void HandleActorPicking(const FViewportPanelInput& input);
+
+    void EnsureGizmoIDs();
+    bool HandleGizmo(const FViewportPanelInput& input, const CameraEditorTool& cam, const FRenderView& view);
+    bool TryBuildGizmoTransform(FTransform& outXf) const;
 
 public:
     ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools);

@@ -18,7 +18,7 @@ ActorID PickingService::PickActorAtViewportPos(const CameraEditorTool &cam, floa
 
     FRaycastHit hit{};
     auto& queries = m_Host.GetService<SceneQueryService>();
-    if (queries.Raycast(ray, hit) && hit.bHit)
+    if (queries.RaycastIntoTheScene(ray, hit) && hit.bHit)
         return hit.actorID;
 
     return 0;

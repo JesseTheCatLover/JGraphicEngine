@@ -2,21 +2,34 @@
 
 #include "Scene/SceneAPI.h"
 
-#include <iostream>
-
 #include "Core/EngineContext.h"
 #include "Framework/SceneManager.h"
 #include "Scene/JScene.h"
 
-EditorSceneAPI::EditorSceneAPI(EngineContext &ctx, SceneManager &scene):
+EditorSceneAPI::EditorSceneAPI(EngineContext &ctx, SceneManager &scene, DebugDraw &debugDraw):
 m_Context(ctx),
-m_SceneManager(scene)
+m_SceneManager(scene),
+m_DebugDraw(debugDraw)
 {
 }
 
 JScene* EditorSceneAPI::GetActiveScene()
 {
     return m_SceneManager.GetActiveScene();
+}
+
+DebugDraw& EditorSceneAPI::GetDebugDraw()
+{
+    return m_DebugDraw;
+}
+
+bool EditorSceneAPI::TryGetActorWorldTransform(ActorID id, FTransform& outXf) const
+{
+    JActor* a = m_SceneManager.FindActorByID(id);
+    if (!a) return false;
+
+    outXf = a->GetActorTransform();
+    return true;
 }
 
 std::vector<FHierarchySnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
@@ -67,7 +80,7 @@ void EditorSceneAPI::DuplicateActors(const std::vector<ActorID> &ids)
     // TODO: implement cloning later
 }
 
-bool EditorSceneAPI::Raycast(const FRay& ray, FRaycastHit& outHit) // TODO: Should detect based on AABB or mesh for future
+bool EditorSceneAPI::RaycastIntoTheScene(const FRay& ray, FRaycastHit& outHit) // TODO: Should detect based on AABB or mesh for future
 {
     outHit = FRaycastHit{};
 

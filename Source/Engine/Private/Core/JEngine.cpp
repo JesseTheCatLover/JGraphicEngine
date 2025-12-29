@@ -555,7 +555,7 @@ InputManager* JEngine::GetInputManager()
     return m_Services->GetService<InputManager>().get();
 }
 
-DebugDraw * JEngine::GetDebugDraw()
+DebugDraw* JEngine::GetDebugDraw()
 {
     return m_Services->GetService<DebugDraw>().get();
 }

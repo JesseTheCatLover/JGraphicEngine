@@ -48,7 +48,7 @@ public:
 
         // Base hit id for this panel (unique per panel).
         // All handles derive from this.
-        uint32_t baseHitId = 0;
+        uint32_t baseHitID = 0;
 
         // Highlighting (provided by editor once you implement hit testing)
         EHandle hoveredHandle = EHandle::None;
@@ -72,12 +72,12 @@ public:
               const FDrawParams& p) const;
 
     // Handle <-> hitId mapping
-    uint32_t HandleToHitId(uint32_t baseHitId, EHandle h) const;
-    EHandle HitIdToHandle(uint32_t baseHitId, uint32_t hitId) const;
+    [[nodiscard]] uint32_t HandleToHitId(uint32_t baseHitId, EHandle h) const;
+    [[nodiscard]] EHandle HitIdToHandle(uint32_t baseHitId, uint32_t hitId) const;
 
 private:
     // Visual tuning (in "gizmo units" before scaling)
-    struct FVisual
+    struct FVisualConfig
     {
         float axisLen      = 1.0f;
         float headLen      = 0.25f;  // translate arrow head
@@ -115,7 +115,7 @@ private:
                        const FTransform& xf,
                        const FDrawParams& p,
                        float gizmoScale,
-                       const FVisual& v) const;
+                       const FVisualConfig& v) const;
 
     void DrawRotate(DebugDraw& dd,
                     const FVector3& camPos,
@@ -123,7 +123,7 @@ private:
                     const FTransform& xf,
                     const FDrawParams& p,
                     float gizmoScale,
-                    const FVisual& v) const;
+                    const FVisualConfig& v) const;
 
     void DrawScale(DebugDraw& dd,
                    const FVector3& camPos,
@@ -131,7 +131,7 @@ private:
                    const FTransform& xf,
                    const FDrawParams& p,
                    float gizmoScale,
-                   const FVisual& v) const;
+                   const FVisualConfig& v) const;
 
     // Utility for plane squares made of 4 lines (wireframe).
     static void DrawPlaneSquareWire(DebugDraw& dd,

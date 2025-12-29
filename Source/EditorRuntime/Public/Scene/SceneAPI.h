@@ -7,6 +7,8 @@
 #include "FHierarchySnapshot.h"
 #include "FRaycast.h"
 
+struct FTransform;
+class DebugDraw;
 class JScene;
 class SceneManager;
 class EngineContext;
@@ -18,13 +20,17 @@ private:
 
     EngineContext& m_Context;
     SceneManager& m_SceneManager;
+    DebugDraw& m_DebugDraw;
 
     std::vector<ActorID> m_SelectedActors;
 
 public:
-    EditorSceneAPI(EngineContext& ctx, SceneManager& scene);
+    EditorSceneAPI(EngineContext& ctx, SceneManager& scene, DebugDraw& debugDraw);
 
     JScene* GetActiveScene();
+    DebugDraw& GetDebugDraw();
+
+    bool TryGetActorWorldTransform(ActorID id, FTransform& outXf) const;
 
     [[nodiscard]] std::vector<FHierarchySnapshot>
         BuildHierarchySnapshot() const;
@@ -32,5 +38,5 @@ public:
     void DeleteActors(const std::vector<ActorID>& ids);
     void DuplicateActors(const std::vector<ActorID>& ids);
 
-    bool Raycast(const FRay& ray, FRaycastHit& outHit);
+    bool RaycastIntoTheScene(const FRay& ray, FRaycastHit& outHit);
 };

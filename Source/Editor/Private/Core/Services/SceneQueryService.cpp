@@ -8,9 +8,14 @@ SceneQueryService::SceneQueryService(EditorRuntime &runtime)
 : m_Runtime(runtime)
 {}
 
-bool SceneQueryService::Raycast(const FRay &ray, FRaycastHit &outHit)
+bool SceneQueryService::RaycastIntoTheScene(const FRay &ray, FRaycastHit &outHit)
 {
-    return m_Runtime.GetScene().Raycast(ray, outHit);
+    return m_Runtime.GetScene().RaycastIntoTheScene(ray, outHit);
+}
+
+bool SceneQueryService::TryGetActorWorldTransform(ActorID id, FTransform &outXf) const
+{
+    return m_Runtime.GetScene().TryGetActorWorldTransform(id, outXf);
 }
 
 std::vector<FHierarchySnapshot> SceneQueryService::BuildHierarchySnapshot()

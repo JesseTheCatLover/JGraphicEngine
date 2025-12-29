@@ -416,23 +416,44 @@ private:
     }
 
     template <typename EmitLineFn, typename EmitTriFn>
-    static void BuildArrowGeom(const FVector3& a, const FVector3& b,
-                               float headLen, float headRadius, int headSegments,
-                               EDebugFillMode headFill,
-                               EmitLineFn&& emitLine, EmitTriFn&& emitTri)
+static void BuildArrowGeom(const FVector3& a, const FVector3& b,
+                           float headLen, float headRadius, int headSegments,
+                           EDebugFillMode fill,
+                           EmitLineFn&& emitLine, EmitTriFn&& emitTri)
     {
-        // shaft always line
-        emitLine(a, b);
-
         FVector3 dir = b - a;
         const float len = dir.Length();
         if (len <= 1e-6f) return;
 
         dir = dir / len;
-        const float hl = std::min(headLen, len * 0.5f);
 
-        // head at tip (cone points backwards along the shaft direction)
-        BuildConeGeom(b, -dir, hl, headRadius, headSegments, headFill, emitLine, emitTri);
+        const float hl = std::min(headLen, len * 0.5f);
+        const float shaftLen = std::max(0.0f, len - hl);
+
+        // Wireframe = lines only, Solid = tris only
+        if (fill == EDebugFillMode::Wireframe)
+        {
+            // shaft as a line
+            emitLine(a, b);
+
+            // head as wireframe cone
+            BuildConeGeom(b, -dir, hl, headRadius, headSegments,
+                          EDebugFillMode::Wireframe, emitLine, emitTri);
+            return;
+        }
+
+        // Solid: shaft as a cylinder (tris), head as solid cone (tris)
+        const float shaftRadius = headRadius * 0.15f;  // TODO: maybe should be tweakable
+
+        if (shaftLen > 1e-6f && shaftRadius > 1e-6f)
+        {
+            BuildCylinderGeom(a, dir, shaftLen, shaftRadius,
+                              std::max(6, headSegments),
+                              EDebugFillMode::Solid, emitLine, emitTri);
+        }
+
+        BuildConeGeom(b, -dir, hl, headRadius, headSegments,
+                      EDebugFillMode::Solid, emitLine, emitTri);
     }
 
     template <typename EmitLineFn, typename EmitTriFn>

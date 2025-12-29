@@ -5,6 +5,7 @@
 #include "Rendering/FRenderView.h"
 
 #include <cstddef>
+#include <iostream>
 
 // ----------------------------
 // Helpers
@@ -688,6 +689,9 @@ void DebugDraw::RenderForView(IRenderDevice& renderer, const FRenderView& view)
 
     for (const auto& tr : m_ImmediateTris) acceptTri(tr);
     for (const auto& tt : m_TimedTris)     acceptTri(tt.tri);
+
+    std::cout << "[DebugDraw] lines=" << lines.size()
+          << " tris=" << tris.size() << "\n";
 
     if (!lines.empty())
         renderer.SubmitDebugLines(view, lines.data(), (uint32_t)lines.size());
