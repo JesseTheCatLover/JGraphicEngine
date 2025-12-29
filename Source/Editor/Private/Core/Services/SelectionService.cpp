@@ -9,6 +9,11 @@ SelectionService::SelectionService(EditorRuntime &rt)
 : m_Runtime(rt)
 {}
 
+bool SelectionService::IsSelected(ActorID id) const
+{
+    return std::find(m_Selected.begin(), m_Selected.end(), id) != m_Selected.end();
+}
+
 void SelectionService::ApplyClick(ActorID id, const FSelectionModifiers &mods, const std::vector<ActorID> *visibleOrder)
 {
     if (id == 0) { Clear(); return; }

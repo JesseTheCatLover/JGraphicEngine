@@ -13,7 +13,6 @@ struct FHierarchySnapshot
     std::string name;
 
     bool hasChildren = false;
-    bool isSelected = false;
     bool isHidden = false;
     bool isLocked = false;
 };

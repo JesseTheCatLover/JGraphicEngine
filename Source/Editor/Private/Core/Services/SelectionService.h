@@ -33,6 +33,8 @@ public:
     [[nodiscard]] const std::vector<ActorID>& GetSelection() const { return m_Selected; }
     [[nodiscard]] ActorID GetAnchor() const { return m_Anchor; }
 
+    [[nodiscard]] bool IsSelected(ActorID id) const;
+
     void ApplyClick(ActorID id, const FSelectionModifiers& mods,
                     const std::vector<ActorID>* visibleOrder /*nullable*/);
 

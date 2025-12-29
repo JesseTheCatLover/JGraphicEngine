@@ -8,6 +8,7 @@
 #include "UI/IEditorPanels.h"
 #include "Controllers/Inputs/FHierarchyPanelInput.h"
 
+class SelectionService;
 using ActorID = uint64_t;
 struct FHierarchyOutput;
 struct FHierarchySnapshot;
@@ -24,7 +25,8 @@ class SceneHierarchyPanel : public IEditorPanel
     void ApplyRevealRequest(const std::vector<FHierarchySnapshot>& actors, ActorID reveal);
     void DrawActorNode(const FHierarchySnapshot& node,
                        const std::vector<FHierarchySnapshot>& allActors,
-                       FHierarchyPanelInput& ioInput);
+                       FHierarchyPanelInput& ioInput,
+                       const SelectionService& selection);
 
 public:
     [[nodiscard]] const char* GetName() const override { return "Scene Hierarchy"; }

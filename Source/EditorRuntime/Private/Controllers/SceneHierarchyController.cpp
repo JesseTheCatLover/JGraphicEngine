@@ -33,14 +33,12 @@ void SceneHierarchyController::Update(float deltaTime, const FHierarchyPanelInpu
         mods.bToggle = input.bCtrl || input.bSuper;
 
         selection.ApplyClick(input.clickedActor, mods, mods.bRange ? &hierarchy.GetVisibleOrder() : nullptr);
-        hierarchy.MarkDirty(); // so isSelected updates
     }
 
     // Background click clears selection
     if (input.bClearSelection)
     {
         selection.Clear();
-        hierarchy.MarkDirty();
     }
 
     // Reveal (viewport selection -> hierarchy expand/scroll)

@@ -7,7 +7,9 @@
 #include "Controllers/Outputs/FViewportOutput.h"
 #include "Tools/CameraEditorTool.h"
 #include "ToolService.h"
+#include "Core/Services/HierarchyService.h"
 #include "Core/Services/PickingService.h"
+#include "Core/Services/SelectionService.h"
 #include "Rendering/EViewType.h"
 #include "Rendering/FRenderView.h"
 #include "Scene/FSelectionModifiers.h"
@@ -145,14 +147,17 @@ void ViewportController::HandlePicking(const FViewportPanelInput& input)
     const auto cam = m_Tools.GetCameraTool(m_CameraToolID);
     if (!cam) return;
 
-    FSelectionModifiers mods;
+    FSelectionModifiers mods{};
     mods.bRange  = false;
     mods.bToggle = input.bCtrl || input.bShift || input.bSuper;
 
-    auto& picker = m_Host.GetService<PickingService>();
+    auto& picker    = m_Host.GetService<PickingService>();
+    auto& selection = m_Host.GetService<SelectionService>();
+    auto& hierarchy = m_Host.GetService<HierarchyService>();
 
-    const auto id = picker.PickActorAtViewportPos(*cam, input.width, input.height, input.mouseX, input. mouseY);
-    picker.ApplyPickSelection(id, mods);
+    const ActorID id = picker.PickActorAtViewportPos(*cam, input.width, input.height, input.mouseX, input.mouseY);
+
+    selection.ApplyClick(id, mods, mods.bRange ? &hierarchy.GetVisibleOrder() : nullptr);
 }
 
 void ViewportController::Update(float deltaTime, const FViewportPanelInput& input, FViewportOutput& out)

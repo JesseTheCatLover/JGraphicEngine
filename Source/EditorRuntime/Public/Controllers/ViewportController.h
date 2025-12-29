@@ -5,7 +5,6 @@
 #include "PanelRegistry.h"
 #include "Rendering/FViewportRT.h"
 #include "Utilities/UDynamicID.h"
-#include "Rendering/RHandles.h"
 
 struct FViewportPanelInput;
 struct FViewportOutput;

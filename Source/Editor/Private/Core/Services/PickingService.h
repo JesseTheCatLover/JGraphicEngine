@@ -26,7 +26,5 @@ public:
 
     ActorID PickActorAtViewportPos(const CameraEditorTool& cam,
                        float width, float height,
-                       float x, float y);
-
-    void ApplyPickSelection(ActorID actorId, const FSelectionModifiers& mods);
+                       float x, float y) const;
 };

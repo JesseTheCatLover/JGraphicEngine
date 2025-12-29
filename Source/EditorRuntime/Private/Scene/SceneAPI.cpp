@@ -41,7 +41,6 @@ std::vector<FHierarchySnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
                             : 0;
         info.name = actor->GetName();
         info.hasChildren = !actor->GetChildActors().empty();
-        info.isSelected  = false; // fill be filled by TODO: hm?
 
         result.push_back(std::move(info));
     }

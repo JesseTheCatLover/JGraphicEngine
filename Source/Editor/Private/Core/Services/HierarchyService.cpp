@@ -36,13 +36,6 @@ void HierarchyService::Tick(float)
     auto& queries = m_Host.GetService<SceneQueryService>();
     m_Snapshot = queries.BuildHierarchySnapshot();
 
-    const auto& selected = m_Host.GetService<SelectionService>().GetSelection();
-    for (auto& node : m_Snapshot)
-    {
-        node.isSelected =
-            std::find(selected.begin(), selected.end(), node.id) != selected.end();
-    }
-
     RebuildVisibleOrder();
     m_Dirty = false;
 }

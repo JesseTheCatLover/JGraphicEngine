@@ -2,19 +2,15 @@
 
 #include "PickingService.h"
 
-#include "HierarchyService.h"
 #include "SceneQueryService.h"
-#include "SelectionService.h"
 #include "Core/EditorHost.h"
 #include "Core/Math/FMath.h"
-#include "Scene/FSelectionModifiers.h"
-
 
 PickingService::PickingService(EditorHost &host)
 : m_Host(host)
 {}
 
-ActorID PickingService::PickActorAtViewportPos(const CameraEditorTool &cam, float width, float height, float x, float y)
+ActorID PickingService::PickActorAtViewportPos(const CameraEditorTool &cam, float width, float height, float x, float y) const
 {
     if (width <= 0.f || height <= 0.f) return 0;
 
@@ -26,18 +22,6 @@ ActorID PickingService::PickActorAtViewportPos(const CameraEditorTool &cam, floa
         return hit.actorID;
 
     return 0;
-}
-
-void PickingService::ApplyPickSelection(ActorID actorId, const FSelectionModifiers &mods)
-{
-    auto& sel = m_Host.GetService<SelectionService>();
-    const std::vector<ActorID>* order = nullptr;
-
-    if (mods.bRange)
-        order = &m_Host.GetService<HierarchyService>().GetVisibleOrder();
-
-    sel.ApplyClick(actorId, mods, order);
-    m_Host.GetService<HierarchyService>().MarkDirty();
 }
 
 FRay PickingService::BuildRay(const CameraEditorTool& cam,

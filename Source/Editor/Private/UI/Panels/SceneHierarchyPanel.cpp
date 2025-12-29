@@ -5,6 +5,7 @@
 #include "Core/EditorHost.h"
 #include "Subsystems/SceneHierarchySubsystem.h"
 #include "Controllers/Outputs/FHierarchyOutput.h"
+#include "Core/Services/SelectionService.h"
 
 // helpers
 static bool FindNodeById(const std::vector<FHierarchySnapshot>& actors, ActorID id, FHierarchySnapshot& outNode)
@@ -42,7 +43,8 @@ void SceneHierarchyPanel::ApplyRevealRequest(const std::vector<FHierarchySnapsho
 
 void SceneHierarchyPanel::DrawActorNode(const FHierarchySnapshot& node,
                                        const std::vector<FHierarchySnapshot>& allActors,
-                                       FHierarchyPanelInput& ioInput)
+                                       FHierarchyPanelInput& ioInput,
+                                       const SelectionService& selection)
 {
     ImGuiTreeNodeFlags flags =
         ImGuiTreeNodeFlags_OpenOnArrow |
@@ -51,7 +53,7 @@ void SceneHierarchyPanel::DrawActorNode(const FHierarchySnapshot& node,
     if (!node.hasChildren)
         flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-    if (node.isSelected)
+    if (selection.IsSelected(node.id))
         flags |= ImGuiTreeNodeFlags_Selected;
 
     const bool wantOpen = (m_OpenNodes.count(node.id) > 0);
@@ -83,7 +85,7 @@ void SceneHierarchyPanel::DrawActorNode(const FHierarchySnapshot& node,
     {
         for (const auto& child : allActors)
             if (child.parentID == node.id)
-                DrawActorNode(child, allActors, ioInput);
+                DrawActorNode(child, allActors, ioInput, selection);
 
         ImGui::TreePop();
     }
@@ -132,10 +134,12 @@ void SceneHierarchyPanel::Draw(EditorHost& host)
     // Apply reveal request
     ApplyRevealRequest(actors, out->revealActorID);
 
+    auto& selection = host.GetService<SelectionService>();
+
     // Draw tree roots
-    for (const auto& a : actors)
-        if (a.parentID == 0)
-            DrawActorNode(a, actors, input);
+    for (const auto& actor : actors)
+        if (actor.parentID == 0)
+            DrawActorNode(actor, actors, input, selection);
 
     // Background click clears selection
     if (ImGui::IsWindowHovered() &&
