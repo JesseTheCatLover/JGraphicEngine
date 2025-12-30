@@ -5,8 +5,8 @@
 #include "Rendering/IPlatformSurface.h"
 
 
-EditorSurfaceAPI::EditorSurfaceAPI(EngineContext &ctx, IPlatformSurface &surface)
-    : m_Context(ctx), m_PlatformSurface(surface)
+EditorSurfaceAPI::EditorSurfaceAPI(EngineContext &ctx, IPlatformSurface &surface,  InputManager& inputManager)
+    : m_Context(ctx), m_PlatformSurface(surface), m_InputManager(inputManager)
 {
 }
 

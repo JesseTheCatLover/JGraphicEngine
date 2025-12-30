@@ -303,6 +303,50 @@ bool JEngine::InitializeSubsystems()
         map.actions.push_back(std::move(moveY));
     }
 
+    // 4) Gizmo mode changing
+    {
+        FActionAxisSlot gizmoTranslate{};
+        gizmoTranslate.name = "Editor_GizmoTranslate";
+        gizmoTranslate.type = EInputChannelType::Bool;
+
+        FInputBinding translate{};
+        translate.deviceType  = EInputDeviceType::Keyboard;
+        translate.deviceIndex = 0;
+        translate.input       = EPhysicalInput::Key_W;
+
+        gizmoTranslate.bindings.push_back(translate);
+
+        map.actions.push_back(std::move(gizmoTranslate));
+
+
+        FActionAxisSlot gizmoRotation{};
+        gizmoRotation.name = "Editor_GizmoRotation";
+        gizmoRotation.type = EInputChannelType::Bool;
+
+        FInputBinding rotation{};
+        rotation.deviceType  = EInputDeviceType::Keyboard;
+        rotation.deviceIndex = 0;
+        rotation.input       = EPhysicalInput::Key_R;
+
+        gizmoRotation.bindings.push_back(rotation);
+
+        map.actions.push_back(std::move(gizmoRotation));
+
+
+        FActionAxisSlot gizmoScale{};
+        gizmoScale.name = "Editor_GizmoScale";
+        gizmoScale.type = EInputChannelType::Bool;
+
+        FInputBinding scale{};
+        scale.deviceType  = EInputDeviceType::Keyboard;
+        scale.deviceIndex = 0;
+        scale.input       = EPhysicalInput::Key_E;
+
+        gizmoScale.bindings.push_back(scale);
+
+        map.actions.push_back(std::move(gizmoScale));
+    }
+
     // Install mapping style
     m_InputSystem->SetMappingStyle(MakeUnique<ActionAxisStyle>(map));
     // ----------------------------------------------------

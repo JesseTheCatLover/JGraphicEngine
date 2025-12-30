@@ -1,5 +1,6 @@
 #include "Controllers/ViewportController.h"
 #include <cstdint>
+#include <iostream>
 
 #include "Core/EditorHost.h"
 #include "EditorRuntime.h"
@@ -11,6 +12,7 @@
 #include "Core/Services/PickingService.h"
 #include "Core/Services/SceneQueryService.h"
 #include "Core/Services/SelectionService.h"
+#include "Framework/InputManager.h"
 #include "Rendering/EViewType.h"
 #include "Rendering/FRenderView.h"
 #include "Scene/FSelectionModifiers.h"
@@ -288,6 +290,25 @@ bool ViewportController::TryBuildGizmoTransform(FTransform& outXf) const
     return true;
 }
 
+void ViewportController::UpdateGizmoMode()
+{
+    if (m_bHasMouseCapture) return;
+
+    auto& inputManager = m_Runtime.GetSurface().GetInputManager();
+
+    if (inputManager.GetActionDown("Editor_GizmoTranslate"))
+    {
+        m_Gizmo.SetMode(GizmoEditorTool::EMode::Translate);
+    }
+    if (inputManager.GetActionDown("Editor_GizmoRotation"))
+    {
+        m_Gizmo.SetMode(GizmoEditorTool::EMode::Rotate);
+    }
+    if (inputManager.GetActionDown("Editor_GizmoScale"))
+    {
+        m_Gizmo.SetMode(GizmoEditorTool::EMode::Scale);
+    }
+}
 
 void ViewportController::Update(float deltaTime, const FViewportPanelInput& input, FViewportOutput& out)
 {
@@ -321,6 +342,8 @@ void ViewportController::Update(float deltaTime, const FViewportPanelInput& inpu
 
     // Tick camera
     TickCamera(deltaTime);
+
+    UpdateGizmoMode();
 
     // Submit render
     if (bHasView)

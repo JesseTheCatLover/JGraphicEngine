@@ -80,16 +80,16 @@ private:
     // Visual tuning (in "gizmo units" before scaling)
     struct FVisualConfig
     {
-        float axisLen      = 1.0f;
-        float headLen      = 0.25f;  // translate arrow head
+        float axisLen      = 1.2f;
+        float headLen      = 0.3f;  // translate arrow head
         float headRadius   = 0.10f;
 
-        float centerRadius = 0.12f;  // translate center sphere
-        float planeSize    = 0.35f;  // translate plane square half size-ish
-        float planeOffset  = 0.25f;  // how far from origin plane handle sits
+        float centerRadius = 0.1f;  // translate center sphere
+        float planeSize    = 0.25f;  // translate plane square half size-ish
+        float planeOffset  = 0.6f;  // how far from origin plane handle sits
 
         float ringRadius   = 1.0f;   // rotate ring radius
-        float ringThicknessPx = 2.0f;
+        float ringThicknessPx = 4.0f;
         int   ringSegments = 64;
 
         float scaleBoxHalf = 0.08f;  // axis box head half extent
@@ -100,7 +100,7 @@ private:
         float highlightMul = 1.35f;  // brighten hovered/active colors
         float activeMul    = 1.65f;
         float planeAlpha   = 0.18f;
-        float sphereHintAlpha = 0.18f;
+        float sphereHintAlpha = 0.05f;
     };
 
 private:

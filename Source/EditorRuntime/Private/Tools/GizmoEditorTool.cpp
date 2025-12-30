@@ -20,7 +20,7 @@ float GizmoEditorTool::ComputeGizmoScale(const FVector3& camPos, const FVector3&
     // Simple constant-size heuristic.
     // Tune these later; feels decent in practice.
     const float dist = (gizmoPos - camPos).Length();
-    return std::max(0.25f, dist * 0.10f);
+    return std::max(0.3f, dist * 0.10f);
 }
 
 void GizmoEditorTool::BuildBasis(const FTransform& xf, ESpace space,
@@ -306,15 +306,16 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
         return col;
     };
 
-    // Optional faint sphere hint (wireframe)
+    // Optional faint sphere hint
     if (p.bDrawSphereHint)
     {
         FDebugDrawStyle hs = s;
         hs.thicknessPx = 1.0f;
         hs.hitId = 0; // not pickable
+        hs.fill = EDebugFillMode::Solid;
 
         FVector4 hint(0.9f, 0.9f, 0.9f, v.sphereHintAlpha);
-        dd.DrawSphere(o, r, hint, 24, hs);
+        dd.DrawSphere(o, r, hint, v.ringSegments, hs);
     }
 
     // X ring (normal = X axis => circle lies in YZ)

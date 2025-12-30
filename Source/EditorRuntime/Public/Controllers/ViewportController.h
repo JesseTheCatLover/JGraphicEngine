@@ -76,6 +76,7 @@ private:
     void EnsureGizmoIDs();
     bool HandleGizmo(const FViewportPanelInput& input, const CameraEditorTool& cam, const FRenderView& view);
     bool TryBuildGizmoTransform(FTransform& outXf) const;
+    void UpdateGizmoMode();
 
 public:
     ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools);

@@ -85,6 +85,7 @@ GizmoEditorController::FResult GizmoEditorController::UpdateAndDraw(DebugDraw& d
     params.baseHitID    = m_BaseHitID;
     params.hoveredHandle= m_Hovered;
     params.activeHandle = m_Active;
+    params.bDrawSphereHint = true;
 
     m_GizmoTool.Draw(debugDraw, view.viewIndex, camPos, camFwd, gizmoXf, params);
 

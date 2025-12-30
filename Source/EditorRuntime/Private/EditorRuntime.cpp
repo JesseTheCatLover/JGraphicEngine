@@ -21,7 +21,7 @@ EditorRuntime::EditorRuntime()
     , m_PlatformSurface(*JEngine::Get().GetPlatformSurface())
     , m_SceneAPI(m_Context, m_SceneManager, *JEngine::Get().GetDebugDraw())
     , m_ViewportAPI(m_Context, m_Renderer)
-    , m_SurfaceAPI(m_Context, m_PlatformSurface)
+    , m_SurfaceAPI(m_Context, m_PlatformSurface, *JEngine::Get().GetInputManager())
 {
     // Editor takes over rendering, so don't render directly to platform surface
     m_Context.SetShouldRenderToPlatformSurface(false);
