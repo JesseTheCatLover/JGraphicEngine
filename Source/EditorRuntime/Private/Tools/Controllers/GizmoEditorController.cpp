@@ -51,7 +51,7 @@ GizmoEditorController::FResult GizmoEditorController::UpdateAndDraw(DebugDraw& d
 
     // 1) Decide hovered handle (only when not capturing)
     GizmoEditorTool::EHandle newHover = GizmoEditorTool::EHandle::None;
-    if (!m_bCapturing && input.bOverViewport)
+    if (input.bFocused && !m_bCapturing && input.bOverViewport)
         newHover = HitTest(debugDraw, view, viewMat, projMat, input.mouseX, input.mouseY);
 
     // 2) Begin capture (based on current hover) — only if allowed

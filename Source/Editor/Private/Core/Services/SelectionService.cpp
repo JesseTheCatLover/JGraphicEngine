@@ -14,6 +14,11 @@ bool SelectionService::IsSelected(ActorID id) const
     return std::find(m_Selected.begin(), m_Selected.end(), id) != m_Selected.end();
 }
 
+bool SelectionService::IsSelectionEmpty() const
+{
+    return m_Selected.empty();
+}
+
 void SelectionService::ApplyClick(ActorID id, const FSelectionModifiers &mods, const std::vector<ActorID> *visibleOrder)
 {
     if (id == 0) { Clear(); return; }

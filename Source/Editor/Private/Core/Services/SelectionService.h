@@ -35,6 +35,8 @@ public:
 
     [[nodiscard]] bool IsSelected(ActorID id) const;
 
+    [[nodiscard]] bool IsSelectionEmpty() const;
+
     void ApplyClick(ActorID id, const FSelectionModifiers& mods,
                     const std::vector<ActorID>* visibleOrder /*nullable*/);
 
