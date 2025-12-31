@@ -23,10 +23,10 @@ public:
 
     struct FResult
     {
-        bool bConsumesClick = false; // block actor picking this frame
-        bool bWantsCapture  = false; // request exclusive mouse routing
         GizmoEditorTool::EHandle hovered = GizmoEditorTool::EHandle::None;
         GizmoEditorTool::EHandle active  = GizmoEditorTool::EHandle::None;
+        bool bConsumesClick = false; // block actor picking this frame
+        bool bWantsCapture  = false; // request exclusive mouse routing
     };
 
 private:
@@ -63,6 +63,7 @@ public:
                           const FVector3& camFwd,
                           const FTransform& gizmoXf,
                           bool bDraw,
+                          bool bAllowBeginCapture,
                           const FViewportPanelInput& input);
 
 private:

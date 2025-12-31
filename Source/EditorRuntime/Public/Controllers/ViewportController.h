@@ -7,10 +7,17 @@
 #include "Tools/Controllers/GizmoEditorController.h"
 #include "Utilities/UDynamicID.h"
 
+enum class ECaptureOwner : uint8_t
+{
+    None,
+    CameraRMB,
+    GizmoLMB,
+};
+
 struct FViewportPolicy
 {
     bool bSuppressActorPick = false; // gizmo-first or gizmo capture
-    bool bCameraActive      = false; // whether cam tool should respond this frame
+    bool bCameraMovementActive      = false; // whether cam tool should activative input movement this frame
 };
 
 class CameraEditorTool;
@@ -38,8 +45,6 @@ private:
 
     int m_PostProfile = 1;
 
-    bool m_bHasMouseCapture = false;
-
     // Cached viewport facts (from input)
     float m_Width = 0.f;
     float m_Height = 0.f;
@@ -58,6 +63,12 @@ private:
     GizmoEditorTool::EHandle m_GizmoHovered = GizmoEditorTool::EHandle::None;
     GizmoEditorTool::EHandle m_GizmoActive = GizmoEditorTool::EHandle::None;
 
+    // Stable view index per viewport controller instance
+    int m_ViewportIndex = -1;
+
+    // Explicit capture ownership
+    ECaptureOwner m_CaptureOwner = ECaptureOwner::None;
+
 private:
     void EnsureCameraTool();
     void DestroyCameraTool();
@@ -65,18 +76,25 @@ private:
     void EnsureRenderTarget();
     void DestroyRenderTarget();
 
-    void TickCamera(float deltaTime);
+    void TickCamera(float deltaTime, bool bCameraMovementActive);
     bool BuildRenderView(FRenderView& outView) const;
     void SubmitView(const FRenderView& view);
 
-    FViewportPolicy UpdateCapturePolicy(const FViewportPanelInput& input, const CameraEditorTool* cam,
-                                        const FRenderView* view);
     void HandleActorPicking(const FViewportPanelInput& input);
 
     void EnsureGizmoIDs();
-    bool HandleGizmo(const FViewportPanelInput& input, const CameraEditorTool& cam, const FRenderView& view);
+    bool HandleGizmo(const FViewportPanelInput& input, const CameraEditorTool& cam, const FRenderView& view, bool bAllowBeginCapture);
     bool TryBuildGizmoTransform(FTransform& outXf) const;
     void UpdateGizmoMode();
+
+    void ForceReleaseCapture();
+    void SetCursorCaptured(bool bCaptured);
+    void UpdateCaptureFromFocus(const FViewportPanelInput& input);
+    void UpdateCameraCapturePolicy(const FViewportPanelInput& input);
+    bool UpdateGizmoPolicyAndDraw(const FViewportPanelInput& input,
+                                     const CameraEditorTool* cam,
+                                     const FRenderView* view); // returns suppressPick
+    [[nodiscard]] FViewportPolicy ComputeFramePolicy(bool bGizmoSuppressPick) const;
 
 public:
     ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools);

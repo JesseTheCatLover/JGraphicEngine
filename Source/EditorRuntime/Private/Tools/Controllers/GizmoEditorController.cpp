@@ -35,6 +35,7 @@ GizmoEditorController::FResult GizmoEditorController::UpdateAndDraw(DebugDraw& d
                                                                     const FVector3& camFwd,
                                                                     const FTransform& gizmoXf,
                                                                     bool bDraw,
+                                                                    bool bAllowBeginCapture,
                                                                     const FViewportPanelInput& input)
 {
     FResult result{};
@@ -53,13 +54,15 @@ GizmoEditorController::FResult GizmoEditorController::UpdateAndDraw(DebugDraw& d
     if (!m_bCapturing && input.bOverViewport)
         newHover = HitTest(debugDraw, view, viewMat, projMat, input.mouseX, input.mouseY);
 
-    // 2) Begin capture (based on *current hover*)
+    // 2) Begin capture (based on current hover) — only if allowed
     if (!m_bCapturing)
     {
-        if (input.bOverViewport && input.bLeftClicked && newHover != GizmoEditorTool::EHandle::None)
+        if (bAllowBeginCapture && input.bOverViewport && input.bLeftClicked &&
+            newHover != GizmoEditorTool::EHandle::None)
         {
             m_bCapturing = true;
             m_Active = newHover;
+
 
             result.bWantsCapture  = true;
             result.bConsumesClick = m_Cfg.bGizmoFirst;
