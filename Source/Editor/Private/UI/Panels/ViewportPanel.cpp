@@ -23,7 +23,9 @@ const char* ViewportPanel::GetPanelKey() const
 void ViewportPanel::Draw(EditorHost& host)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-    if (!ImGui::Begin(GetName()))
+
+    const bool bVisible = ImGui::Begin(GetName()); // returns false for collapsed/hidden/inactive dock tab
+    if (!bVisible)
     {
         ImGui::End();
         ImGui::PopStyleVar();

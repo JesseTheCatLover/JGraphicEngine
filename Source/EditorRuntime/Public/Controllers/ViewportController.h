@@ -51,9 +51,6 @@ private:
 
     int m_PostProfile = 1;
 
-    // Stable view index per viewport controller instance
-    int m_ViewportIndex = -1;
-
     // Cached viewport facts (from input)
     float m_Width = 0.f;
     float m_Height = 0.f;

@@ -26,6 +26,12 @@ enum class EDebugDepthMode : uint8_t
     DepthTest  // depth test ON
 };
 
+enum class EDebugShading : uint8_t
+{
+    Unlit,       // Unlit
+    FixedLit,   // fake “editor light” look
+};
+
 enum class EDebugDrawLayer : uint8_t
 {
     Gameplay = 0,
@@ -49,6 +55,7 @@ struct FDebugDrawStyle
     EDebugDrawLayer layer = EDebugDrawLayer::Gameplay;
 
     uint32_t hitId = 0; // 0 = not pickable
+    EDebugShading shading = EDebugShading::Unlit;
     uint32_t viewKey = 0;  // 0 = draw in ALL views; otherwise only if matches view.debugViewKey
 };
 
@@ -76,6 +83,13 @@ struct FDebugVertex
 struct FDebugClipVertex
 {
     float x, y, z, w; // clip-space position
+    float r, g, b, a;
+};
+
+struct FDebugWorldVertex
+{
+    float x, y, z;
+    float nx, ny, nz;
     float r, g, b, a;
 };
 

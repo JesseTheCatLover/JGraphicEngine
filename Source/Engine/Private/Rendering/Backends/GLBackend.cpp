@@ -1079,6 +1079,68 @@ void GLBackend::SubmitDebugClipTriList(RShaderHandle shader, const FDebugClipVer
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+void GLBackend::EnsureDebugWorldTriStream()
+{
+    if (m_DebugWorldTriVAO != 0) return;
+
+    glGenVertexArrays(1, &m_DebugWorldTriVAO);
+    glGenBuffers(1, &m_DebugWorldTriVBO);
+
+    glBindVertexArray(m_DebugWorldTriVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_DebugWorldTriVBO);
+
+    m_DebugWorldTriVBBytes = 0;
+
+    // location 0: vec3 position
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(FDebugWorldVertex),
+                          (void*)offsetof(FDebugWorldVertex, x));
+
+    // location 1: vec3 normal
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(FDebugWorldVertex),
+                          (void*)offsetof(FDebugWorldVertex, nx));
+
+    // location 2: vec4 color
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(FDebugWorldVertex),
+                          (void*)offsetof(FDebugWorldVertex, r));
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void GLBackend::SubmitDebugWorldTriList(RShaderHandle shader, const FDebugWorldVertex *verts, uint32_t vertCount)
+{
+    if (!verts || vertCount < 3) return;
+    if ((vertCount % 3u) != 0u) return;
+
+    auto sit = m_Shaders.find(shader);
+    if (sit == m_Shaders.end() || sit->second.program == 0) return;
+
+    EnsureDebugWorldTriStream();
+
+    const size_t bytes = size_t(vertCount) * sizeof(FDebugWorldVertex);
+
+    glBindVertexArray(m_DebugWorldTriVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_DebugWorldTriVBO);
+
+    if (bytes > m_DebugWorldTriVBBytes)
+    {
+        m_DebugWorldTriVBBytes = std::max(bytes, m_DebugWorldTriVBBytes ? m_DebugWorldTriVBBytes * 2 : bytes);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)m_DebugWorldTriVBBytes, nullptr, GL_STREAM_DRAW);
+    }
+
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)bytes, nullptr, GL_STREAM_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)bytes, verts);
+
+    glUseProgram(sit->second.program);
+    glDrawArrays(GL_TRIANGLES, 0, (GLsizei)vertCount);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 void GLBackend::SetUniformInt(RShaderHandle sh, const char* name, int v)
 {
     GLuint p = GetProgramFromHandle(m_Shaders, sh); if (!p) return;

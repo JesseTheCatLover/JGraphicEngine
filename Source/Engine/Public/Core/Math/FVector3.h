@@ -159,6 +159,11 @@ struct FVector3
         return { vec.x * scalar, vec.y * scalar, vec.z * scalar };
     }
 
+    const float* ToFloat3()
+    {
+        return &this->x;
+    }
+
     [[nodiscard]] FRotator ToRotator() const;
 
     [[nodiscard]] FEuler ToEuler() const;

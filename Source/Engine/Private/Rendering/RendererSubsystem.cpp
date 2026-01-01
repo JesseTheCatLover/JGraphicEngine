@@ -801,6 +801,69 @@ void RendererSubsystem::EnsureDebugClipTriShader()
     m_DebugClipTriShader = m_Backend->CreateShader(s);
 }
 
+void RendererSubsystem::EnsureDebugWorldTriShader()
+{
+    if (m_DebugWorldTriShader.IsValid()) return;
+
+    RShader s{};
+    s.vertexSource = R"(
+        #version 330 core
+        layout(location=0) in vec3 aPos;
+        layout(location=1) in vec3 aNrm;
+        layout(location=2) in vec4 aColor;
+
+        uniform mat4 u_View;
+        uniform mat4 u_Proj;
+
+        out vec3 vNrmVS;
+        out vec3 vPosVS;
+        out vec4 vColor;
+
+        void main()
+        {
+            vec4 posVS = u_View * vec4(aPos, 1.0);
+            vPosVS = posVS.xyz;
+            vNrmVS = mat3(u_View) * aNrm;
+
+            vColor = aColor;
+            gl_Position = u_Proj * posVS;
+        }
+    )";
+
+    s.fragmentSource = R"(
+        #version 330 core
+        in vec3 vNrmVS;
+        in vec3 vPosVS;
+        in vec4 vColor;
+        out vec4 FragColor;
+
+        uniform vec3  u_LightDirVS;
+        uniform float u_Ambient;
+        uniform float u_Rim;
+        uniform float u_Spec;
+
+        void main()
+        {
+            vec3 N = normalize(vNrmVS);
+            vec3 V = normalize(-vPosVS);
+            vec3 L = normalize(u_LightDirVS);
+
+            float ndl = max(dot(N, L), 0.0);
+            float diffuse = mix(u_Ambient, 1.0, ndl);
+
+            float rim = pow(1.0 - max(dot(N, V), 0.0), 2.0) * u_Rim;
+
+            vec3 R = reflect(-L, N);
+            float spec = pow(max(dot(R, V), 0.0), 32.0) * u_Spec;
+
+            vec3 rgb = vColor.rgb * diffuse + rim + spec;
+            FragColor = vec4(rgb, vColor.a);
+        }
+    )";
+
+    m_DebugWorldTriShader = m_Backend->CreateShader(s);
+}
+
 void RendererSubsystem::EnsureTargets(int w, int h, int samples)
 {
     auto needExact = [&](const FTarget& t, int ew, int eh, int es)
@@ -1347,6 +1410,7 @@ void* RendererSubsystem::GetNativeTextureHandle(RTextureHandle handle) const
 {
     return m_Backend->GetNativeTextureHandle(handle);
 }
+
 void RendererSubsystem::SubmitDebugTriangles(const FRenderView& view,
                                              const FDebugTri* tris,
                                              uint32_t triCount)
@@ -1354,49 +1418,128 @@ void RendererSubsystem::SubmitDebugTriangles(const FRenderView& view,
     if (!tris || triCount == 0) return;
 
     EnsureDebugClipTriShader();
+    EnsureDebugWorldTriShader();
 
     // Same VP as SubmitDebugLines (world -> clip)
     const FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * m_ViewMat * m_CoordAdaptor.BackendToEngine;
     const FMatrix4 projBackend = m_ProjMat;
     const FMatrix4 VP = projBackend * viewBackend;
 
-    std::vector<FDebugClipVertex> overlay;
-    std::vector<FDebugClipVertex> depth;
-    overlay.reserve((size_t)triCount * 3);
-    depth.reserve((size_t)triCount * 3);
+    // ---- Buckets ----
+    std::vector<FDebugClipVertex> overlay_unlit;
+    std::vector<FDebugClipVertex> depth_unlit;
 
-    auto pick = [&](EDebugDepthMode d) -> std::vector<FDebugClipVertex>&
-    {
-        return (d == EDebugDepthMode::Overlay) ? overlay : depth;
+    std::vector<FDebugWorldVertex> overlay_lit;
+    std::vector<FDebugWorldVertex> depth_lit;
+
+    overlay_unlit.reserve((size_t)triCount * 3);
+    depth_unlit.reserve((size_t)triCount * 3);
+    overlay_lit.reserve((size_t)triCount * 3);
+    depth_lit.reserve((size_t)triCount * 3);
+
+    auto pickClip = [&](EDebugDepthMode d) -> std::vector<FDebugClipVertex>& {
+        return (d == EDebugDepthMode::Overlay) ? overlay_unlit : depth_unlit;
+    };
+    auto pickWorld = [&](EDebugDepthMode d) -> std::vector<FDebugWorldVertex>& {
+        return (d == EDebugDepthMode::Overlay) ? overlay_lit : depth_lit;
     };
 
-    auto push = [&](std::vector<FDebugClipVertex>& out, const FVector3& p, const FVector4& c)
+    auto pushClip = [&](std::vector<FDebugClipVertex>& out, const FVector3& p, const FVector4& c)
     {
         const FVector4 pb = m_CoordAdaptor.EngineToBackend * FVector4(p.x, p.y, p.z, 1.0f);
         const FVector4 cp = VP * pb;
         out.push_back(FDebugClipVertex{ cp.x, cp.y, cp.z, cp.w, c.x, c.y, c.z, c.w });
     };
 
+    auto pushWorld = [&](std::vector<FDebugWorldVertex>& out, const FVector3& p, const FVector3& n, const FVector4& c)
+    {
+        // position to backend world
+        const FVector4 pb4 = m_CoordAdaptor.EngineToBackend * FVector4(p.x, p.y, p.z, 1.0f);
+        const FVector3 pB(pb4.x, pb4.y, pb4.z);
+
+        // normal to backend world (w = 0 so translation is ignored)
+        const FVector4 nb4 = m_CoordAdaptor.EngineToBackend * FVector4(n.x, n.y, n.z, 0.0f);
+        FVector3 nB(nb4.x, nb4.y, nb4.z);
+        const float len = nB.Length();
+        if (len > 1e-6f) nB = nB / len;
+
+        out.push_back(FDebugWorldVertex{
+            pB.x, pB.y, pB.z,
+            nB.x, nB.y, nB.z,
+            c.x, c.y, c.z, c.w
+        });
+    };
+
+    // Build per-tri normals (flat shading)
+    auto triNormal = [&](const FVector3& a, const FVector3& b, const FVector3& c) -> FVector3
+    {
+        const FVector3 n = (b - a).Cross(c - a);
+        const float len = n.Length();
+        return (len > 1e-6f) ? (n / len) : FVector3(0,0,1);
+    };
+
+    auto ToBackendPos = [&](const FVector3& pE) -> FVector3
+    {
+        const FVector4 p4 = m_CoordAdaptor.EngineToBackend * FVector4(pE.x, pE.y, pE.z, 1.0f);
+        return FVector3(p4.x, p4.y, p4.z);
+    };
+
+    auto PushWorldBackend = [&](std::vector<FDebugWorldVertex>& out,
+                               const FVector3& pB, const FVector3& nB,
+                               const FVector4& c)
+    {
+        out.push_back(FDebugWorldVertex{
+            pB.x, pB.y, pB.z,
+            nB.x, nB.y, nB.z,
+            c.x, c.y, c.z, c.w
+        });
+    };
+
     for (uint32_t i = 0; i < triCount; ++i)
     {
         const FDebugTri& t = tris[i];
 
-        // Triangles are only meaningful for SOLID fill. If someone passes wireframe,
-        // silently ignore (wireframe should be emitted as lines by DebugDraw).
         if (t.style.fill == EDebugFillMode::Wireframe)
-            continue;
+            continue; // wire comes from lines
 
-        auto& out = pick(t.style.depth);
-        push(out, t.a, t.color);
-        push(out, t.b, t.color);
-        push(out, t.c, t.color);
+        if (t.style.shading == EDebugShading::FixedLit)
+        {
+            auto& out = pickWorld(t.style.depth);
+
+            const FVector3 aB = ToBackendPos(t.a);
+            const FVector3 bB = ToBackendPos(t.b);
+            const FVector3 cB = ToBackendPos(t.c);
+
+            FVector3 nB = (bB - aB).Cross(cB - aB);
+            const float len = nB.Length();
+            nB = (len > 1e-6f) ? (nB / len) : FVector3(0,0,1);
+
+            PushWorldBackend(out, aB, nB, t.color);
+            PushWorldBackend(out, bB, nB, t.color);
+            PushWorldBackend(out, cB, nB, t.color);
+        }
+        else
+        {
+            auto& out = pickClip(t.style.depth);
+            pushClip(out, t.a, t.color);
+            pushClip(out, t.b, t.color);
+            pushClip(out, t.c, t.color);
+        }
     }
 
-    if (!overlay.empty())
-        SubmitDebugClipTriList_Internal(view, overlay.data(), (uint32_t)overlay.size(), /*bDepthTest=*/false);
+    // ---- Submit UNLIT ----
+    if (!overlay_unlit.empty())
+        SubmitDebugClipTriList_Internal(view, overlay_unlit.data(), (uint32_t)overlay_unlit.size(), false);
 
-    if (!depth.empty())
-        SubmitDebugClipTriList_Internal(view, depth.data(), (uint32_t)depth.size(), /*bDepthTest=*/true);
+    if (!depth_unlit.empty())
+        SubmitDebugClipTriList_Internal(view, depth_unlit.data(), (uint32_t)depth_unlit.size(), true);
+
+    // ---- Submit FIXED-LIT  ----
+    if (!overlay_lit.empty())
+        SubmitDebugWorldTriList_Internal(view, overlay_lit.data(), (uint32_t)overlay_lit.size(), false);
+
+    if (!depth_lit.empty())
+        SubmitDebugWorldTriList_Internal(view, depth_lit.data(), (uint32_t)depth_lit.size(), true);
 }
 
 void RendererSubsystem::SubmitDebugLines(const FRenderView& view, const FDebugLine* lines, uint32_t lineCount)
@@ -1561,6 +1704,49 @@ void RendererSubsystem::SubmitDebugClipTriList_Internal(const FRenderView& view,
 
     // NOTE: no camera uniforms needed; positions already clip-space
     m_Backend->SubmitDebugClipTriList(m_DebugClipTriShader, verts, vertCount);
+}
+
+void RendererSubsystem::SubmitDebugWorldTriList_Internal(const FRenderView& view,
+                                                         const FDebugWorldVertex* verts,
+                                                         uint32_t vertCount,
+                                                         bool bDepthTest)
+{
+    if (!verts || vertCount == 0) return;
+
+    EnsureDebugWorldTriShader();
+
+    m_Backend->SetCullMode(IRenderBackend::ECullMode::Back);
+    m_Backend->SetBlendState(true,
+        IRenderBackend::EBlendFactor::SrcAlpha,
+        IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+
+    if (bDepthTest)
+        m_Backend->SetDepthState(true, true, IRenderBackend::ECompareFunc::LessEqual);
+    else
+        m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
+
+    // uniforms
+    m_Backend->BindShader(m_DebugWorldTriShader);
+
+    const FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * m_ViewMat * m_CoordAdaptor.BackendToEngine;
+    const FMatrix4 projBackend = m_ProjMat;
+
+    float viewRaw[16];
+    float projRaw[16];
+
+    viewBackend.ToFloatArray(viewRaw);
+    projBackend.ToFloatArray(projRaw);
+
+    m_Backend->SetUniformMat4(m_DebugWorldTriShader, "u_View", viewRaw);
+    m_Backend->SetUniformMat4(m_DebugWorldTriShader, "u_Proj", projRaw);
+
+    // stable “editor light” in view space
+    m_Backend->SetUniformVec3(m_DebugWorldTriShader, "u_LightDirVS", FVector3(-0.35f, 0.65f, 0.70f).Normalized().ToFloat3());
+    m_Backend->SetUniformFloat(m_DebugWorldTriShader, "u_Ambient", 0.35f);
+    m_Backend->SetUniformFloat(m_DebugWorldTriShader, "u_Rim", 0.25f);
+    m_Backend->SetUniformFloat(m_DebugWorldTriShader, "u_Spec", 0.18f);
+
+    m_Backend->SubmitDebugWorldTriList(m_DebugWorldTriShader, verts, vertCount);
 }
 
 RMeshHandle RendererSubsystem::CreateMesh(const RMesh &data)

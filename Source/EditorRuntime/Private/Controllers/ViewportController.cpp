@@ -1,7 +1,6 @@
 #include "Controllers/ViewportController.h"
 #include <cstdint>
 #include <iostream>
-#include <atomic>
 
 #include "Core/EditorHost.h"
 #include "EditorRuntime.h"
@@ -18,9 +17,6 @@
 #include "Rendering/FRenderView.h"
 #include "Scene/FSelectionModifiers.h"
 
-// Allocate stable view indices once per controller instance
-static std::atomic<int> GNextViewportIndex{1};
-
 ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools)
     : m_PanelID(id)
     , m_Host(host)
@@ -31,7 +27,6 @@ ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRunti
     , m_Hierarchy(m_Host.GetService<HierarchyService>())
     , m_ViewportSubsystem(m_Host.GetSubsystem<ViewportSubsystem>())
 {
-    m_ViewportIndex = GNextViewportIndex.fetch_add(1);
 }
 
 ViewportController::~ViewportController()
@@ -174,7 +169,7 @@ bool ViewportController::BuildRenderView(FRenderView &outView) const
     outView.scene     = scene;
     outView.camera    = cam;
     outView.viewType  = EViewType::EditorViewport;
-    outView.viewIndex = m_ViewportIndex;
+    outView.viewIndex = m_PanelID;
 
     outView.targetFBO = m_RT.fbo;
 

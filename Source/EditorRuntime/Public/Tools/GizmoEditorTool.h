@@ -104,6 +104,8 @@ private:
         float activeMul    = 1.65f;
         float planeAlpha   = 0.18f;
         float sphereHintAlpha = 0.05f;
+
+        EDebugShading shading = EDebugShading::FixedLit;
     };
 
 private:

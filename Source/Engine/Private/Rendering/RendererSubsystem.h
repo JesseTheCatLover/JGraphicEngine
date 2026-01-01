@@ -9,6 +9,7 @@
 #include "Rendering/RHandles.h"
 #include "RCommandBuffer.h"
 
+struct FDebugWorldVertex;
 struct FFramePostParams;
 class JScene;
 struct FRenderView;
@@ -64,6 +65,9 @@ private:
 
     RShaderHandle m_DebugClipTriShader{};
     void EnsureDebugClipTriShader();
+
+    RShaderHandle m_DebugWorldTriShader;
+    void EnsureDebugWorldTriShader();
 
     FCoordAdapter m_CoordAdaptor;
     FMatrix4 m_ViewMat;
@@ -135,6 +139,8 @@ private:
     void SubmitDebugLineList_Internal(const FDebugVertex* verts, uint32_t vertCount, bool bDepthTest);
     void SubmitDebugClipTriList_Internal(const FRenderView& view, const FDebugClipVertex* verts, uint32_t vertCount,
                                                bool bDepthTest);
+    void SubmitDebugWorldTriList_Internal(const FRenderView& view, const FDebugWorldVertex* verts, uint32_t vertCount,
+                                                         bool bDepthTest);
 
 public:
     ~RendererSubsystem() = default;

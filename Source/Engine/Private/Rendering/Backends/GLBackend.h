@@ -106,6 +106,10 @@ private:
     GLuint  m_DebugClipTriVBO = 0;
     size_t  m_DebugClipTriVBBytes = 0;
 
+    uint32_t m_DebugWorldTriVAO = 0;
+    uint32_t m_DebugWorldTriVBO = 0;
+    size_t   m_DebugWorldTriVBBytes = 0;
+
 public:
     bool Initialize(IPlatformSurface* surface) override;
     void Shutdown() override;
@@ -158,6 +162,9 @@ public:
     void SubmitDebugLineList(RShaderHandle shader, const FDebugVertex* verts, uint32_t vertCount) override;
     void EnsureDebugClipTriStream();
     void SubmitDebugClipTriList(RShaderHandle shader, const FDebugClipVertex* verts, uint32_t vertCount) override;
+    void EnsureDebugWorldTriStream();
+    void SubmitDebugWorldTriList(RShaderHandle shader, const FDebugWorldVertex *verts, uint32_t vertCount) override;
+
 
     void SetUniformInt   (RShaderHandle sh, const char* name, int v) override;
     void SetUniformFloat (RShaderHandle sh, const char* name, float v) override;

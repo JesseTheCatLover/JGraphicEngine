@@ -6,6 +6,7 @@
 #include "Rendering/RHandles.h"
 #include "Core/Math/FVector3.h"
 
+struct FDebugWorldVertex;
 // This describes how the backend's axes relate to ENGINE axes.
 // Engine coordinate system : X=Forward, Y=Right, Z=Up
 struct FBackendCoordDesc
@@ -113,6 +114,8 @@ public:
     virtual void SubmitDebugLineList(RShaderHandle shader, const FDebugVertex* verts, uint32_t vertCount) = 0;
 
     virtual void SubmitDebugClipTriList(RShaderHandle shader, const FDebugClipVertex* verts, uint32_t vertCount) = 0;
+
+    virtual void SubmitDebugWorldTriList(RShaderHandle shader, const FDebugWorldVertex* verts, uint32_t vertCount) = 0;
 
     // Rendering
     virtual void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) = 0;

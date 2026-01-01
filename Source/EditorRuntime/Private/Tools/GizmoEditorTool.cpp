@@ -185,6 +185,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
     s.depth = EDebugDepthMode::Overlay;
     s.fill = EDebugFillMode::Solid;
     s.thicknessPx = v.axisThicknessPx;
+    s.shading = v.shading;
     s.viewKey = viewKey;
 
     // Colors
@@ -295,6 +296,7 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
     s.depth = EDebugDepthMode::Overlay;
     s.fill  = EDebugFillMode::Wireframe;
     s.thicknessPx = v.ringThicknessPx;
+    s.shading = v.shading;
     s.viewKey = viewKey;
 
     FVector4 cx(1,0,0,1);
@@ -364,6 +366,7 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     sLine.layer = EDebugDrawLayer::Editor;
     sLine.depth = EDebugDepthMode::Overlay;
     sLine.thicknessPx = v.scaleArmThicknessPx;
+    sLine.shading = v.shading;
     sLine.viewKey = viewKey;
 
     FDebugDrawStyle sBox = sLine;
