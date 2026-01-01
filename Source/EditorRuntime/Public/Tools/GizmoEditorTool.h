@@ -58,6 +58,8 @@ public:
         bool bDrawCenter  = true;   // center sphere/cube
         bool bDrawPlanes  = true;   // translate plane handles
         bool bDrawSphereHint = true; // rotate: faint sphere
+
+        float scaleMul = 1.0f;
     };
 
 public:
@@ -92,6 +94,7 @@ private:
         float ringThicknessPx = 4.0f;
         int   ringSegments = 64;
 
+        float scaleArmLen = 1.0f;
         float scaleBoxHalf = 0.08f;  // axis box head half extent
         float uniformBoxHalf = 0.10f;
         float scaleArmThicknessPx = 2.0f;

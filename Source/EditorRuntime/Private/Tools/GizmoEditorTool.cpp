@@ -143,7 +143,8 @@ void GizmoEditorTool::Draw(DebugDraw& dd, uint32_t viewKey, const FVector3& camP
 {
     FVisualConfig v{};
     const FVector3 gizmoPos = gizmoXf.GetPosition();
-    const float scale = ComputeGizmoScale(camPos, gizmoPos);
+    float scale = ComputeGizmoScale(camPos, gizmoPos);
+    scale *= p.scaleMul;
 
     switch (p.mode)
     {
@@ -285,7 +286,8 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
     BuildBasis(xf, p.space, X, Y, Z);
 
     const FVector3 o = xf.GetPosition();
-    const float r = v.ringRadius * gizmoScale;
+    const float weakScale = std::max(gizmoScale * 0.9f, 0.7f);
+    const float r = v.ringRadius * weakScale;
 
     // Base style
     FDebugDrawStyle s{};
@@ -355,7 +357,7 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     BuildBasis(xf, p.space, X, Y, Z);
 
     const FVector3 o = xf.GetPosition();
-    const float axisLen = v.axisLen * gizmoScale;
+    const float axisLen = v.scaleArmLen * gizmoScale;
 
     // Styles
     FDebugDrawStyle sLine{};

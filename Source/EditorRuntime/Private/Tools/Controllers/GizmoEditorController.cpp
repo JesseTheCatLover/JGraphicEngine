@@ -4,6 +4,31 @@
 #include "Controllers/Inputs/FViewportPanelInput.h"
 #include "Rendering/FRenderView.h"
 
+static float ComputeGizmoScaleMulFromProjection(const FMatrix4& projMat, int viewportH)
+{
+    const float projY = projMat.GetMat4()[1][1];
+
+    if (projY <= 0.00001f)
+        return 1.0f;
+
+    // tan(fovY/2) = 1/projY
+    const float tanHalfFovY = 1.0f / projY;
+
+    // tuned reference: 60° vertical
+    constexpr float kRefTanHalfFovY = 0.57735026919f; // tan(30°)
+
+    float mul = tanHalfFovY / kRefTanHalfFovY;
+
+    // Stabilize across viewport pixel heights
+    constexpr float kRefViewportH = 720.0f;
+    {
+        float hMul = kRefViewportH / float(viewportH);
+        hMul = std::clamp(hMul, 0.6f, 1.8f); // tune clamp
+        mul *= hMul;
+    }
+    return mul;
+}
+
 GizmoEditorTool::EHandle GizmoEditorController::HitTest(const DebugDraw& debugDraw,
                                                         const FRenderView& view,
                                                         const FMatrix4& viewMat,
@@ -89,6 +114,8 @@ GizmoEditorController::FResult GizmoEditorController::UpdateAndDraw(DebugDraw& d
     params.hoveredHandle= m_Hovered;
     params.activeHandle = m_Active;
     params.bDrawSphereHint = true;
+
+    params.scaleMul = ComputeGizmoScaleMulFromProjection(projMat, view.viewportH);
 
     m_GizmoTool.Draw(debugDraw, view.viewIndex, camPos, camFwd, gizmoXf, params);
 
