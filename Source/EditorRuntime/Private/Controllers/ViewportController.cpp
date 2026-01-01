@@ -29,6 +29,7 @@ ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRunti
     , m_Selection(m_Host.GetService<SelectionService>())
     , m_Picker(m_Host.GetService<PickingService>())
     , m_Hierarchy(m_Host.GetService<HierarchyService>())
+    , m_ViewportSubsystem(m_Host.GetSubsystem<ViewportSubsystem>())
 {
     m_ViewportIndex = GNextViewportIndex.fetch_add(1);
 }
@@ -40,6 +41,9 @@ ViewportController::~ViewportController()
 
 void ViewportController::OnPanelDestroyed()
 {
+    if (m_ViewportSubsystem.IsCaptureOwner(m_PanelID))
+        m_ViewportSubsystem.EndCapture(m_PanelID);
+
     DestroyCameraTool();
     DestroyRenderTarget();
 }
@@ -85,12 +89,61 @@ void ViewportController::DestroyRenderTarget()
     }
 }
 
+bool ViewportController::IsMyCapture(EMouseCaptureKind kind) const
+{
+    return m_ViewportSubsystem.IsCaptureOwner(m_PanelID) &&
+           (m_ViewportSubsystem.GetCaptureKind() == kind);
+}
+
+bool ViewportController::CanConsumeInputThisFrame(const FViewportPanelInput& input) const
+{
+    if (!input.bAppFocused || input.bHidden)
+        return false;
+
+    // If someone is capturing, only the owner should react to inputs.
+    if (m_ViewportSubsystem.HasMouseCapture())
+        return m_ViewportSubsystem.IsCaptureOwner(m_PanelID);
+
+    // If no capture, any controller can *exist*, but only the focused+hovered
+    // viewport should drive “shared” hotkeys.
+    return true;
+}
+
+bool ViewportController::CanDriveSharedHotkeys(const FViewportPanelInput &input) const
+{
+    if (!CanConsumeInputThisFrame(input)) return false;
+
+    return true;
+}
+
+bool ViewportController::AllowBeginGizmoCapture(const FViewportPanelInput& input) const
+{
+    // Can only *start* gizmo capture if allowed to consume input.
+    // (Once you already own gizmo capture, you can keep updating even if mouse leaves.)
+    if (IsMyCapture(EMouseCaptureKind::GizmoTransform))
+        return true;
+
+    // starting capture needs ownership permission
+    return CanConsumeInputThisFrame(input) && m_Focused && m_Hovered && input.bOverViewport;
+}
+
+void ViewportController::CancelGizmoCapture()
+{
+    if (IsMyCapture(EMouseCaptureKind::GizmoTransform))
+        m_ViewportSubsystem.EndCapture(m_PanelID);
+
+    m_Gizmo.CancelCapture();
+}
+
 void ViewportController::UpdateInputPolicy(const FViewportPanelInput& input)
 {
     // Focus safety
     CheckPanelFocusStatus(input);
 
-    UpdateGizmoCapturePolicy();
+    // Shared gizmo hotkeys first (so mode is ready for gizmo update)
+    UpdateSharedGizmoModePolicy(input);
+
+    // Then capture decisions (camera capture can block gizmo capture start)
     UpdateCameraCapturePolicy(input);
 }
 
@@ -101,9 +154,9 @@ void ViewportController::TickCamera(float deltaTime)
 
     float aspect = (m_Height > 0.f) ? (m_Width / m_Height) : (16.f / 9.f);
 
-    const bool bIsInFlyMode = m_MouseCaptureOwner == EMouseCaptureOwner::CameraFly;
+    const bool bFly = IsMyCapture(EMouseCaptureKind::CameraFly);
 
-    cam->Tick(deltaTime, bIsInFlyMode , aspect);
+    cam->Tick(deltaTime, bFly , aspect);
 }
 
 bool ViewportController::BuildRenderView(FRenderView &outView) const
@@ -147,94 +200,56 @@ void ViewportController::SubmitView(const FRenderView& view)
     m_Runtime.GetViewport().SubmitRenderView(view);
 }
 
-void ViewportController::ApplySurfaceCursorCapture(const bool bShouldCapture)
-{
-    if (bShouldCapture && !m_bMouseCaptured)
-    {
-        m_Runtime.GetSurface().SetCursorDisabled();
-        m_bMouseCaptured = true;
-    }
-    else if (m_bMouseCaptured)
-    {
-        m_Runtime.GetSurface().SetCursorVisible();
-        m_bMouseCaptured = false;
-    }
-}
-
-void ViewportController::ForceReleaseCapture()
-{
-    m_MouseCaptureOwner = EMouseCaptureOwner::None;
-    ApplySurfaceCursorCapture(false);
-
-    // Safety: ensure gizmo is not stuck
-    m_Gizmo.CancelCapture();
-    m_GizmoHovered = GizmoEditorTool::EHandle::None;
-    m_GizmoActive  = GizmoEditorTool::EHandle::None;
-}
-
 void ViewportController::CheckPanelFocusStatus(const FViewportPanelInput& input)
 {
     // If panel/app focus is lost, never remain captured.
-    if (!input.bFocused)
-    {
-        // Only release if THIS controller actually owns capture. (Otherwise multi viewport panels will never capture)
-        if (m_MouseCaptureOwner != EMouseCaptureOwner::None || m_Gizmo.IsCapturing())
-            ForceReleaseCapture();
-    }
+    if (input.bAppFocused && !input.bHidden)
+        return;
+
+    // If I was the capture owner, release globally.
+    if (m_ViewportSubsystem.IsCaptureOwner(m_PanelID))
+        m_ViewportSubsystem.EndCapture(m_PanelID);
+
+    // Always cancel local gizmo capture so we don't get stuck.
+    m_Gizmo.CancelCapture();
 }
 
 void ViewportController::UpdateCameraCapturePolicy(const FViewportPanelInput& input)
 {
-    if (m_MouseCaptureOwner == EMouseCaptureOwner::None)
+    // Begin capture if nobody has capture
+    if (!m_ViewportSubsystem.HasMouseCapture())
     {
-        if (input.bOverViewport && input.bRightClicked) // Enable input fly movement
-        {
-            m_MouseCaptureOwner = EMouseCaptureOwner::CameraFly;
-            ApplySurfaceCursorCapture(true);
-        }
+        if (input.bOverViewport && input.bRightClicked)
+            m_ViewportSubsystem.TryBeginCapture(m_PanelID, EMouseCaptureKind::CameraFly);
+        return;
     }
-    else if (m_MouseCaptureOwner == EMouseCaptureOwner::CameraFly)
-    {
-        if (input.bRightReleased) // Disable input fly movement
-        {
-            CancelCameraCapture();
-        }
-    }
-}
 
-void ViewportController::UpdateGizmoCapturePolicy()
-{
-    // If gizmo is capturing, it owns capture
-    if (m_Gizmo.IsCapturing())
+    // If I'm the owner, and I'm in camera fly, release on RMB up
+    if (IsMyCapture(EMouseCaptureKind::CameraFly))
     {
-        m_MouseCaptureOwner = EMouseCaptureOwner::GizmoTransform;
-    }
-    else if (m_MouseCaptureOwner == EMouseCaptureOwner::GizmoTransform)
-    {
-        CancelGizmoCapture();
+        if (input.bRightReleased)
+            m_ViewportSubsystem.EndCapture(m_PanelID);
     }
 }
 
-void ViewportController::CancelGizmoCapture()
+void ViewportController::UpdateSharedGizmoModePolicy(const FViewportPanelInput& input)
 {
-    if (m_MouseCaptureOwner == EMouseCaptureOwner::GizmoTransform)
-        m_MouseCaptureOwner = EMouseCaptureOwner::None;
+    if (!CanDriveSharedHotkeys(input))
+        return;
 
-    ApplySurfaceCursorCapture(false);
+    if (m_ViewportSubsystem.HasCapture())
+        return;
 
-    m_Gizmo.CancelCapture();
-    m_GizmoHovered = GizmoEditorTool::EHandle::None;
-    m_GizmoActive = GizmoEditorTool::EHandle::None;
-}
+    auto& inputManager = m_Runtime.GetSurface().GetInputManager();
 
-void ViewportController::CancelCameraCapture()
-{
-    if (m_MouseCaptureOwner == EMouseCaptureOwner::CameraFly ||
-        m_MouseCaptureOwner == EMouseCaptureOwner::CameraOrbit)
-    {
-        m_MouseCaptureOwner = EMouseCaptureOwner::None;
-    }
-    ApplySurfaceCursorCapture(false);
+    if (inputManager.GetActionDown("Editor_GizmoTranslate"))
+        m_ViewportSubsystem.SetGizmoMode(GizmoEditorTool::EMode::Translate);
+
+    if (inputManager.GetActionDown("Editor_GizmoRotation"))
+        m_ViewportSubsystem.SetGizmoMode(GizmoEditorTool::EMode::Rotate);
+
+    if (inputManager.GetActionDown("Editor_GizmoScale"))
+        m_ViewportSubsystem.SetGizmoMode(GizmoEditorTool::EMode::Scale);
 }
 
 void ViewportController::HandleActorPicking(const FViewportPanelInput& input,
@@ -243,21 +258,21 @@ void ViewportController::HandleActorPicking(const FViewportPanelInput& input,
                                            SelectionService& selection,
                                            const HierarchyService& hierarchy)
 {
-    // Suppress picking while gizmo is capturing
-    if (m_MouseCaptureOwner == EMouseCaptureOwner::GizmoTransform)
+    if (!CanConsumeInputThisFrame(input)) return;
+    if (!cam) return;
+
+    // Don’t pick while camera fly or gizmo transform capture exists
+    if (m_ViewportSubsystem.HasMouseCapture())
         return;
 
     if (!(input.bOverViewport && input.bLeftClicked))
         return;
-
-    if (!cam) return;
 
     FSelectionModifiers mods{};
     mods.bRange  = false;
     mods.bToggle = input.bCtrl || input.bShift || input.bSuper;
 
     const ActorID id = picker.PickActorAtViewportPos(*cam, input.width, input.height, input.mouseX, input.mouseY);
-
     selection.ApplyClick(id, mods, mods.bRange ? &hierarchy.GetVisibleOrder() : nullptr);
 }
 
@@ -273,12 +288,19 @@ void ViewportController::EnsureGizmoIDs()
 bool ViewportController::HandleGizmo(const FViewportPanelInput& input,
                                      const CameraEditorTool& cam,
                                      const FRenderView& view,
-                                     const SelectionService& selection,
-                                     bool bAllowBeginCapture)
+                                     const SelectionService& selection)
 {
+    // Always apply shared mode/space to local gizmo (read-only)
+    m_Gizmo.SetMode(m_ViewportSubsystem.GetGizmoMode());
+    m_Gizmo.SetSpace(m_ViewportSubsystem.GetGizmoSpace());
+
     const bool bDrawGizmo = !selection.IsSelectionEmpty();
     if (!bDrawGizmo)
+    {
+        // If selection disappeared and I was gizmo-capturing, release global capture
+        CancelGizmoCapture();
         return false;
+    }
 
     EnsureGizmoIDs();
 
@@ -299,13 +321,22 @@ bool ViewportController::HandleGizmo(const FViewportPanelInput& input,
     const FVector3 camPos = cam.GetPosition();
     const FVector3 camFwd = cam.GetRotation().RotateVector(FVector3::Forward()).Normalized();
 
+    const bool bAllowBeginCapture = AllowBeginGizmoCapture(input);
+
     const auto gizmoResult = m_Gizmo.UpdateAndDraw(debugDraw, view, viewMat, projMat,
                                           camPos, camFwd, gizmoXf, bDrawGizmo, bAllowBeginCapture, input);
 
-    m_GizmoHovered = gizmoResult.hovered;
-    m_GizmoActive = gizmoResult.active;
+    // If gizmo started capturing this frame, claim global capture
+    if (m_Gizmo.IsCapturing() && !IsMyCapture(EMouseCaptureKind::GizmoTransform))
+    {
+        // If this fails, immediately cancel local capture so we don't desync
+        if (!m_ViewportSubsystem.TryBeginCapture(m_PanelID, EMouseCaptureKind::GizmoTransform))
+            m_Gizmo.CancelCapture();
+    }
 
-    UpdateGizmoTransformMode();
+    // If gizmo stopped capturing and I own global gizmo capture, release
+    if (!m_Gizmo.IsCapturing() && IsMyCapture(EMouseCaptureKind::GizmoTransform))
+        m_ViewportSubsystem.EndCapture(m_PanelID);
 
     // Return whether capturing was successful this frame.
     return gizmoResult.bConsumesClick;
@@ -350,27 +381,6 @@ bool ViewportController::TryBuildGizmoTransform(FTransform& outXf) const // TODO
     return true;
 }
 
-void ViewportController::UpdateGizmoTransformMode()
-{
-    // Don’t change modes during camera capture
-    if (m_MouseCaptureOwner == EMouseCaptureOwner::CameraFly) return;
-
-    auto& inputManager = m_Runtime.GetSurface().GetInputManager();
-
-    if (inputManager.GetActionDown("Editor_GizmoTranslate"))
-    {
-        m_Gizmo.SetMode(GizmoEditorTool::EMode::Translate);
-    }
-    if (inputManager.GetActionDown("Editor_GizmoRotation"))
-    {
-        m_Gizmo.SetMode(GizmoEditorTool::EMode::Rotate);
-    }
-    if (inputManager.GetActionDown("Editor_GizmoScale"))
-    {
-        m_Gizmo.SetMode(GizmoEditorTool::EMode::Scale);
-    }
-}
-
 void ViewportController::Update(float deltaTime, const FViewportPanelInput& input, FViewportOutput& out)
 {
     EnsureCameraTool();
@@ -385,19 +395,24 @@ void ViewportController::Update(float deltaTime, const FViewportPanelInput& inpu
     if (m_Width > 0.f && m_Height > 0.f) EnsureRenderTarget();
     else DestroyRenderTarget();
 
-    // Build view once
+    // View
     FRenderView view{};
-    const bool bHasView = BuildRenderView(view);
+    bool bHasView = false;
+    if (!input.bHidden)
+        bHasView = BuildRenderView(view);
 
+    // Policy (focus/capture/hotkeys)
     UpdateInputPolicy(input);
 
     CameraEditorTool* cam = m_Tools.GetCameraTool(m_CameraToolID);
     if (!cam) return;
 
-    HandleGizmo(input, *cam, view, m_Selection, true); // Right now there is no hard rule to disallow gizmo capture
+    if (bHasView)
+        HandleGizmo(input, *cam, view, m_Selection);
+
     HandleActorPicking(input, cam, m_Picker, m_Selection, m_Hierarchy);
 
-    // Tick camera using policy
+    // Tick camera
     TickCamera(deltaTime);
 
     // Submit render

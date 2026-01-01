@@ -9,8 +9,11 @@ struct FPanelInputBase
     float width = 0.f;
     float height = 0.f;
 
+    bool bAppFocused = true;     // OS/app focus (global)
     bool bFocused = false;       // window focus (root)
     bool bHovered = false;       // window hovered
+
+    bool bHidden = false;        // tab/collapsed/culled/not visible this frame
 
     bool bLeftClicked = false;
     bool bLeftReleased = false;

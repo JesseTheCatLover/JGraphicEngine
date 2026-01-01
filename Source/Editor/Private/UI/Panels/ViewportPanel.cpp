@@ -7,7 +7,6 @@
 #include "Controllers/Outputs/FViewportOutput.h"
 #include "Core/EditorHost.h"
 #include "Core/EngineGlobals.h"
-#include "../../../../EditorRuntime/Public/Scene/FSelectionModifiers.h"
 #include "Subsystems/ViewportSubsystem.h"
 
 void ViewportPanel::OnCreate(EditorHost&) {}
@@ -73,7 +72,7 @@ void ViewportPanel::Draw(EditorHost& host)
     input.panelKey = GetPanelKey();
     input.width = w;
     input.height = h;
-    input.bFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);;
+    input.bFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     input.bHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
     input.bLeftClicked    = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
     input.bRightClicked   = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
@@ -84,6 +83,14 @@ void ViewportPanel::Draw(EditorHost& host)
     input.bShift = io.KeyShift;
     input.bAlt   = io.KeyAlt;
     input.bSuper = io.KeySuper;
+
+    input.bAppFocused = !io.AppFocusLost;
+
+    const bool windowCollapsed = ImGui::IsWindowCollapsed();
+    const bool windowHiddenByClipping = ImGui::GetCurrentWindow()->Hidden;
+    const bool tooSmall = (w <= 1.0f || h <= 1.0f);
+
+    input.bHidden = windowCollapsed || windowHiddenByClipping || tooSmall;
 
     // Is mouse over the viewport image area?
     const bool bOverViewport = ImGui::IsItemHovered(ImGuiHoveredFlags_None);

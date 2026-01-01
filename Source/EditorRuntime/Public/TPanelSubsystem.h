@@ -53,6 +53,14 @@ public:
         m_Registry.Release(panelKey);
     }
 
+    PanelID FindPanelID(const char* panelKey) const
+    {
+        if (!panelKey || panelKey[0] == '\0')
+            return UDynamicID::InvalidID;
+
+        return m_Registry.Find(panelKey);
+    }
+
 private:
     PanelRegistry m_Registry;
     Channel m_Channel;

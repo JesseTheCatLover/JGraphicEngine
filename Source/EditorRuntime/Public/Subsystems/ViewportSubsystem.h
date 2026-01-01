@@ -24,16 +24,17 @@ private:
     using Channel = TPanelSubsystem<FViewportPanelInput, FViewportOutput, ViewportController>;
     Channel m_Channel;
 
+    PanelID m_CaptureOwner = 0;
+    EMouseCaptureKind m_SharedCaptureKind = EMouseCaptureKind::None;
+    bool m_bCursorCaptured = false;
+
+    GizmoEditorTool::EMode m_SharedGizmoMode = GizmoEditorTool::EMode::Translate;
+    GizmoEditorTool::ESpace m_SharedGizmoSpace = GizmoEditorTool::ESpace::World;
+
+    void ApplySurfaceCursorCapture(bool bShouldCapture);
+
 public:
-    ViewportSubsystem(EditorHost &host, EditorRuntime &runtime, ToolService &tools)
-    : m_Host(host)
-          , m_Runtime(runtime)
-          , m_Tools(tools)
-          , m_Channel([this](PanelID id)
-              {
-                  return MakeUnique<ViewportController>(id, m_Host, m_Runtime, m_Tools);
-              })
-        {}
+    ViewportSubsystem(EditorHost &host, EditorRuntime &runtime, ToolService &tools);
 
     void Tick(float deltaTime) override { m_Channel.Tick(deltaTime); }
 
@@ -48,4 +49,23 @@ public:
     {
         m_Channel.Destroy(panelKey);
     }
+
+    bool IsCaptureOwner(PanelID id) const;
+    bool HasCapture() const { return m_SharedCaptureKind != EMouseCaptureKind::None && m_CaptureOwner != 0; }
+    EMouseCaptureKind GetCaptureKind() const { return m_SharedCaptureKind; }
+
+    bool TryBeginCapture(PanelID id, EMouseCaptureKind kind);
+    void EndCapture(PanelID id);
+
+    bool HasMouseCapture() const
+    {
+        return m_bCursorCaptured;
+    }
+
+    // Shared gizmo state
+    GizmoEditorTool::EMode  GetGizmoMode() const  { return m_SharedGizmoMode; }
+    GizmoEditorTool::ESpace GetGizmoSpace() const { return m_SharedGizmoSpace; }
+
+    void SetGizmoMode(GizmoEditorTool::EMode mode)   { m_SharedGizmoMode = mode; }
+    void SetGizmoSpace(GizmoEditorTool::ESpace space) { m_SharedGizmoSpace = space; }
 };

@@ -7,11 +7,12 @@
 #include "Tools/Controllers/GizmoEditorController.h"
 #include "Utilities/UDynamicID.h"
 
+class ViewportSubsystem;
 class HierarchyService;
 class SelectionService;
 class PickingService;
 
-enum class EMouseCaptureOwner : uint8_t
+enum class EMouseCaptureKind : uint8_t
 {
     None,
     CameraFly,
@@ -37,10 +38,10 @@ private:
     ToolService&   m_Tools;
 
     // Service cashes
-
     SelectionService& m_Selection;
     PickingService&   m_Picker;
     HierarchyService&  m_Hierarchy;
+    ViewportSubsystem& m_ViewportSubsystem;
 
     // One camera tool per panel
     UDynamicID::IDType m_CameraToolID = 0;
@@ -52,11 +53,6 @@ private:
 
     // Stable view index per viewport controller instance
     int m_ViewportIndex = -1;
-
-    // Explicit mouse capture ownership
-    EMouseCaptureOwner m_MouseCaptureOwner = EMouseCaptureOwner::None;
-
-    bool m_bMouseCaptured = false;
 
     // Cached viewport facts (from input)
     float m_Width = 0.f;
@@ -71,10 +67,6 @@ private:
 
     // Stable base id for this panel so hitIds don’t collide
     uint32_t m_GizmoBaseHitID = 0;
-
-    // Cache the last hovered/active for debug/UI
-    GizmoEditorTool::EHandle m_GizmoHovered = GizmoEditorTool::EHandle::None;
-    GizmoEditorTool::EHandle m_GizmoActive = GizmoEditorTool::EHandle::None;
 
 private:
     void EnsureCameraTool();
@@ -94,20 +86,21 @@ private:
 
     void EnsureGizmoIDs();
     bool HandleGizmo(const FViewportPanelInput& input, const CameraEditorTool& cam, const FRenderView& view,
-                                                    const SelectionService& selection, bool bAllowBeginCapture);
+                                                    const SelectionService& selection);
     bool TryBuildGizmoTransform(FTransform& outXf) const;
-    void UpdateGizmoTransformMode();
+    void UpdateSharedGizmoModePolicy(const FViewportPanelInput& input); // shared mode hotkeys
 
     // Capture
-    void ApplySurfaceCursorCapture(bool bShouldCapture);
-    void ForceReleaseCapture();
-
     void CheckPanelFocusStatus(const FViewportPanelInput& input);
 
     void UpdateCameraCapturePolicy(const FViewportPanelInput& input);
-    void UpdateGizmoCapturePolicy();
+
+    bool CanConsumeInputThisFrame(const FViewportPanelInput& input) const;
+    bool IsMyCapture(EMouseCaptureKind kind) const;
+    bool CanDriveSharedHotkeys(const FViewportPanelInput& input) const;
+    bool AllowBeginGizmoCapture(const FViewportPanelInput& input) const;
+
     void CancelGizmoCapture();
-    void CancelCameraCapture();
 
 public:
     ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools);
