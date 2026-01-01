@@ -1100,6 +1100,16 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
         // 5) Draw this view into sceneRT
         DrawCommandBuffer(viewCmd, viewMat, projMat);
 
+        // Store the view matrices so SubmitDebugLineList can use them
+        m_ViewMat = viewMat;
+        m_ProjMat = projMat;
+
+        // Draw debug lines into the same target as the scene
+        if (GEngine && GEngine->GetDebugDraw())
+        {
+            GEngine->GetDebugDraw()->RenderForView(*this, view);
+        }
+
         // 6) Resolve MSAA if needed
         if (view.sampleCount > 1 && m_SceneMSAA.fbo.IsValid())
         {
@@ -1116,16 +1126,6 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
             // IMPORTANT: switch to resolved target for any further drawing
             m_Backend->BindFramebuffer(m_Scene.fbo);
             m_Backend->SetViewport(0, 0, m_Scene.w, m_Scene.h);
-        }
-
-        // Store the view matrices so SubmitDebugLineList can use them
-        m_ViewMat = viewMat;
-        m_ProjMat = projMat;
-
-        // Draw debug lines into the same target as the scene
-        if (GEngine && GEngine->GetDebugDraw())
-        {
-            GEngine->GetDebugDraw()->RenderForView(*this, view);
         }
 
         RTextureHandle finalColor = m_Scene.color;
