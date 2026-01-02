@@ -1361,14 +1361,8 @@ void RendererSubsystem::ApplyCamera(const RShaderHandle& shaderToUse, const FMat
     FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * viewEngine * m_CoordAdaptor.BackendToEngine;
     FMatrix4 projBackend = projEngine;
 
-    float viewRaw[16];
-    float projRaw[16];
-
-    viewBackend.ToFloatArray(viewRaw);
-    projBackend.ToFloatArray(projRaw);
-
-    m_Backend->SetUniformMat4(shaderToUse, "u_View", viewRaw);
-    m_Backend->SetUniformMat4(shaderToUse, "u_Proj", projRaw);
+    m_Backend->SetUniformMat4(shaderToUse, "u_View", viewBackend.ToFloat16());
+    m_Backend->SetUniformMat4(shaderToUse, "u_Proj", projBackend.ToFloat16());
 }
 
 void RendererSubsystem::DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle &shaderToUse, const FMatrix4 &modelEngine)
@@ -1766,19 +1760,13 @@ void RendererSubsystem::SubmitDebugWorldTriList_Internal(const FRenderView& view
     const FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * m_ViewMat * m_CoordAdaptor.BackendToEngine;
     const FMatrix4 projBackend = m_ProjMat;
 
-    float viewRaw[16];
-    float projRaw[16];
-
-    viewBackend.ToFloatArray(viewRaw);
-    projBackend.ToFloatArray(projRaw);
-
-    m_Backend->SetUniformMat4(m_DebugWorldTriShader, "u_View", viewRaw);
-    m_Backend->SetUniformMat4(m_DebugWorldTriShader, "u_Proj", projRaw);
+    m_Backend->SetUniformMat4(m_DebugWorldTriShader, "u_View", viewBackend.ToFloat16());
+    m_Backend->SetUniformMat4(m_DebugWorldTriShader, "u_Proj", projBackend.ToFloat16());
 
     // stable “editor light” in view space
     m_Backend->SetUniformVec3(m_DebugWorldTriShader, "u_LightDirVS", FVector3(-0.35f, 0.65f, 0.70f).Normalized().ToFloat3());
     m_Backend->SetUniformFloat(m_DebugWorldTriShader, "u_Ambient", 0.35f);
-    m_Backend->SetUniformFloat(m_DebugWorldTriShader, "u_Rim", 0.25f);
+    m_Backend->SetUniformFloat(m_DebugWorldTriShader, "u_Rim", 0.05f);
     m_Backend->SetUniformFloat(m_DebugWorldTriShader, "u_Spec", 0.18f);
 
     m_Backend->SubmitDebugWorldTriList(m_DebugWorldTriShader, verts, vertCount);

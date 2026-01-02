@@ -148,6 +148,11 @@ public:
         std::memcpy(out, glm::value_ptr(M), sizeof(float) * 16);
     }
 
+    [[nodiscard]] const float* ToFloat16() const
+    {
+        return GetValue();
+    }
+
     /** Returns a string representation of the matrix */
     [[nodiscard]] std::string ToString() const
     {
