@@ -823,7 +823,7 @@ void RendererSubsystem::EnsureDebugWorldTriShader()
         {
             vec4 posVS = u_View * vec4(aPos, 1.0);
             vPosVS = posVS.xyz;
-            vNrmVS = mat3(u_View) * aNrm;
+            vNrmVS = normalize(mat3(u_View) * aNrm);
 
             vColor = aColor;
             gl_Position = u_Proj * posVS;
@@ -1484,6 +1484,14 @@ void RendererSubsystem::SubmitDebugTriangles(const FRenderView& view,
         return FVector3(p4.x, p4.y, p4.z);
     };
 
+    auto ToBackendNrm = [&](const FVector3& nE) -> FVector3
+    {
+        const FVector4 n4 = m_CoordAdaptor.EngineToBackend * FVector4(nE.x, nE.y, nE.z, 0.0f);
+        FVector3 nB(n4.x, n4.y, n4.z);
+        const float len = nB.Length();
+        return (len > 1e-6f) ? (nB / len) : FVector3(0,0,1);
+    };
+
     auto PushWorldBackend = [&](std::vector<FDebugWorldVertex>& out,
                                const FVector3& pB, const FVector3& nB,
                                const FVector4& c)
@@ -1494,6 +1502,8 @@ void RendererSubsystem::SubmitDebugTriangles(const FRenderView& view,
             c.x, c.y, c.z, c.w
         });
     };
+
+    auto HasNormal = [](const FVector3& n) { return n.Length() > 1e-6f; };
 
     for (uint32_t i = 0; i < triCount; ++i)
     {
@@ -1510,13 +1520,38 @@ void RendererSubsystem::SubmitDebugTriangles(const FRenderView& view,
             const FVector3 bB = ToBackendPos(t.b);
             const FVector3 cB = ToBackendPos(t.c);
 
-            FVector3 nB = (bB - aB).Cross(cB - aB);
-            const float len = nB.Length();
-            nB = (len > 1e-6f) ? (nB / len) : FVector3(0,0,1);
+            FVector3 nFlatB = (bB - aB).Cross(cB - aB);
+            const float lf = nFlatB.Length();
+            nFlatB = (lf > 1e-6f) ? (nFlatB / lf) : FVector3(0,0,1);
 
-            PushWorldBackend(out, aB, nB, t.color);
-            PushWorldBackend(out, bB, nB, t.color);
-            PushWorldBackend(out, cB, nB, t.color);
+            const bool wantSmooth = (t.style.normalMode == EDebugNormalMode::Smooth);
+            const bool hasSmooth  = HasNormal(t.na) && HasNormal(t.nb) && HasNormal(t.nc);
+
+            if (wantSmooth && hasSmooth)
+            {
+                FVector3 naB = ToBackendNrm(t.na);
+                FVector3 nbB = ToBackendNrm(t.nb);
+                FVector3 ncB = ToBackendNrm(t.nc);
+
+                // CRITICAL: keep smooth normals consistent with the triangle facing
+                // (handles LH/RH reflection without any global "flip sign")
+                const float da = naB.Dot(nFlatB);
+                const float db = nbB.Dot(nFlatB);
+                const float dc = ncB.Dot(nFlatB);
+                const float dAvg = (da + db + dc) * (1.0f / 3.0f);
+                if (dAvg < 0.0f) { naB = -naB; nbB = -nbB; ncB = -ncB; }
+
+                PushWorldBackend(out, aB, naB, t.color);
+                PushWorldBackend(out, bB, nbB, t.color);
+                PushWorldBackend(out, cB, ncB, t.color);
+            }
+            else
+            {
+                // flat (same as before)
+                PushWorldBackend(out, aB, nFlatB, t.color);
+                PushWorldBackend(out, bB, nFlatB, t.color);
+                PushWorldBackend(out, cB, nFlatB, t.color);
+            }
         }
         else
         {

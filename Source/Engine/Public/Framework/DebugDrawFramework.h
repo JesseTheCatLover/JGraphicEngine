@@ -32,6 +32,8 @@ enum class EDebugShading : uint8_t
     FixedLit,   // fake “editor light” look
 };
 
+enum class EDebugNormalMode : uint8_t { Flat, Smooth };
+
 enum class EDebugDrawLayer : uint8_t
 {
     Gameplay = 0,
@@ -56,6 +58,7 @@ struct FDebugDrawStyle
 
     uint32_t hitId = 0; // 0 = not pickable
     EDebugShading shading = EDebugShading::Unlit;
+    EDebugNormalMode normalMode = EDebugNormalMode::Flat;
     uint32_t viewKey = 0;  // 0 = draw in ALL views; otherwise only if matches view.debugViewKey
 };
 
@@ -70,6 +73,7 @@ struct FDebugLine
 struct FDebugTri
 {
     FVector3 a, b, c;
+    FVector3 na, nb, nc;
     FVector4 color; // linear RGBA
     FDebugDrawStyle style;
 };
@@ -158,6 +162,11 @@ private:
                          const FVector3& a, const FVector3& b, const FVector3& c,
                          const FVector4& col, const FDebugDrawStyle& s);
 
+    void EmitTriInternalN(std::vector<FDebugTri>& dst,
+                      const FVector3& a, const FVector3& b, const FVector3& c,
+                      const FVector3& na, const FVector3& nb, const FVector3& nc,
+                      const FVector4& col, const FDebugDrawStyle& s);
+
     void EmitLineTimedInternal(const FVector3& a, const FVector3& b,
                                const FVector4& c, const FDebugDrawStyle& s,
                                float seconds);
@@ -165,6 +174,11 @@ private:
     void EmitTriTimedInternal(const FVector3& a, const FVector3& b, const FVector3& c,
                               const FVector4& col, const FDebugDrawStyle& s,
                               float seconds);
+
+    void EmitTriTimedInternalN(const FVector3& a, const FVector3& b, const FVector3& c,
+                                      const FVector3& na, const FVector3& nb, const FVector3& nc,
+                                      const FVector4& col, const FDebugDrawStyle& s,
+                                      float seconds);
 
     static FScreenPt ProjectToScreen(const FMatrix4& VP,
                                      const FVector3& world,
@@ -422,8 +436,8 @@ private:
         {
             const int j = (i + 1) % segments;
 
-            emitTri(ring0[i], ring1[i], ring1[j]);
-            emitTri(ring0[i], ring1[j], ring0[j]);
+            emitTri(ring0[i], ring1[j], ring1[i]);
+            emitTri(ring0[i], ring0[j], ring1[j]);
 
             emitTri(baseCenter, ring0[j], ring0[i]);
             emitTri(topCenter,  ring1[i], ring1[j]);
@@ -431,7 +445,7 @@ private:
     }
 
     template <typename EmitLineFn, typename EmitTriFn>
-static void BuildArrowGeom(const FVector3& a, const FVector3& b,
+    static void BuildArrowGeom(const FVector3& a, const FVector3& b,
                            float headLen, float headRadius, int headSegments,
                            EDebugFillMode fill,
                            EmitLineFn&& emitLine, EmitTriFn&& emitTri)

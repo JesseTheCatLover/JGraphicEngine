@@ -106,6 +106,7 @@ private:
         float sphereHintAlpha = 0.05f;
 
         EDebugShading shading = EDebugShading::FixedLit;
+        EDebugNormalMode normalMode = EDebugNormalMode::Smooth;
     };
 
 private:
