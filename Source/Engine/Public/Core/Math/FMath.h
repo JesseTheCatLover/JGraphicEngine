@@ -258,7 +258,6 @@ namespace FMath
         if (len <= eps) return VecType(0);
         return v / len;
     }
-}
 
     /////////////////////
     // Matrix Utilities

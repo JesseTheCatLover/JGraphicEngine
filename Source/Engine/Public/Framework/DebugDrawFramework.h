@@ -9,7 +9,9 @@
 #include "Core/Math/FVector3.h"
 #include "Core/Math/FVector4.h"
 #include "Core/Math/FTransform.h"
-#include "Core/Math/FMatrix4.h"
+#include "Core/Math/FMath.h"
+
+using namespace FMath;
 
 class IRenderDevice;
 struct FRenderView;
@@ -147,12 +149,17 @@ private:
         return 1u << uint32_t(layer);
     }
 
+    static bool WantSmoothLitSolid(const FDebugDrawStyle& style)
+    {
+        return style.shading == EDebugShading::FixedLit &&
+               style.fill    == EDebugFillMode::Solid &&
+               style.normalMode == EDebugNormalMode::Smooth;
+    };
+
     bool PassLayer(EDebugDrawLayer layer) const
     {
         return (m_LayerMask & DebugLayerBit(layer)) != 0;
     }
-
-    static FVector3 NormalizeSafe(const FVector3& v);
 
     void EmitLineInternal(std::vector<FDebugLine>& dst,
                           const FVector3& a, const FVector3& b,
@@ -503,6 +510,389 @@ private:
         BuildSphereGeom(a, radius, segments * 2, fill, emitLine, emitTri);
         BuildSphereGeom(b, radius, segments * 2, fill, emitLine, emitTri);
     }
+
+    // ----- Draw Immediate/Timed Implementation templates -----
+
+    template <bool bTimed>
+    void DrawLineImpl(const FVector3& a, const FVector3& b, const FVector4& color,
+                                 float seconds, const FDebugDrawStyle& style)
+    {
+        if constexpr (bTimed)
+            EmitLineTimedInternal(a, b, color, style, seconds);
+        else
+            EmitLineInternal(m_Immediate, a, b, color, style);
+    }
+
+    template <bool bTimed>
+    void DrawAxisTriadImpl(const FTransform& t, float scale,
+                                      float seconds, const FDebugDrawStyle& style)
+    {
+        const FVector3 o = t.GetPosition();
+        const FQuat q    = t.GetRotation();
+
+        const FVector3 xAxis = q.RotateVector(FVector3(1, 0, 0));
+        const FVector3 yAxis = q.RotateVector(FVector3(0, 1, 0));
+        const FVector3 zAxis = q.RotateVector(FVector3(0, 0, 1));
+
+        DrawLineImpl<bTimed>(o, o + xAxis * scale, FVector4(1, 0, 0, 1), seconds, style);
+        DrawLineImpl<bTimed>(o, o + yAxis * scale, FVector4(0, 1, 0, 1), seconds, style);
+        DrawLineImpl<bTimed>(o, o + zAxis * scale, FVector4(0, 0, 1, 1), seconds, style);
+    }
+
+    template <bool bTimed>
+    void DrawCircleImpl(const FVector3& center, const FVector3& normal, float radius, const FVector4& color,
+                                   float seconds, int segments, const FDebugDrawStyle& style)
+    {
+        auto emitL = [&](const FVector3& a, const FVector3& b)
+        {
+            DrawLineImpl<bTimed>(a, b, color, seconds, style);
+        };
+
+        auto emitT = [&](const FVector3& a, const FVector3& b, const FVector3& c)
+        {
+            if constexpr (bTimed)
+                EmitTriTimedInternal(a, b, c, color, style, seconds);
+            else
+                EmitTriInternal(m_ImmediateTris, a, b, c, color, style);
+        };
+
+        BuildCircleGeom(center, normal, radius, segments, style.fill, emitL, emitT);
+    }
+
+    template <bool bTimed>
+    void DrawSphereImpl(const FVector3& center, float radius, const FVector4& color,
+                                   float seconds, int segments, const FDebugDrawStyle& style)
+    {
+        auto emitL = [&](const FVector3& a, const FVector3& b)
+        {
+            DrawLineImpl<bTimed>(a, b, color, seconds, style);
+        };
+
+        auto emitT = [&](const FVector3& a, const FVector3& b, const FVector3& c)
+        {
+            if (WantSmoothLitSolid(style))
+            {
+                const FVector3 na = NormalizeSafe(a - center);
+                const FVector3 nb = NormalizeSafe(b - center);
+                const FVector3 nc = NormalizeSafe(c - center);
+
+                if constexpr (bTimed)
+                    EmitTriTimedInternalN(a,b,c, na,nb,nc, color, style, seconds);
+                else
+                    EmitTriInternalN(m_ImmediateTris, a,b,c, na,nb,nc, color, style);
+            }
+            else
+            {
+                if constexpr (bTimed)
+                    EmitTriTimedInternal(a,b,c, color, style, seconds);
+                else
+                    EmitTriInternal(m_ImmediateTris, a,b,c, color, style);
+            }
+        };
+
+        BuildSphereGeom(center, radius, segments, style.fill, emitL, emitT);
+    }
+
+    template <bool bTimed>
+    void DrawBoxImpl(const FVector3& center, const FVector3& halfExtents, const FVector4& color,
+                                float seconds, const FDebugDrawStyle& style)
+    {
+        auto emitL = [&](const FVector3& a, const FVector3& b)
+        {
+            DrawLineImpl<bTimed>(a, b, color, seconds, style);
+        };
+
+        auto emitT = [&](const FVector3& a, const FVector3& b, const FVector3& c)
+        {
+            if constexpr (bTimed)
+                EmitTriTimedInternal(a, b, c, color, style, seconds);
+            else
+                EmitTriInternal(m_ImmediateTris, a, b, c, color, style);
+        };
+
+        BuildBoxGeom(center, halfExtents, style.fill, emitL, emitT);
+    }
+
+    template <bool bTimed>
+    void DrawCylinderImpl(const FVector3& baseCenter, const FVector3& axisDir, float height, float radius,
+                                     const FVector4& color, float seconds, int segments, const FDebugDrawStyle& style)
+    {
+        auto emitL = [&](const FVector3& a, const FVector3& b)
+        {
+            DrawLineImpl<bTimed>(a, b, color, seconds, style);
+        };
+
+        const FVector3 axis = NormalizeSafe(axisDir);
+
+        auto cylNormal = [&](const FVector3& p) -> FVector3
+        {
+            const FVector3 v = p - baseCenter;
+            const float t = v.Dot(axis);
+            const FVector3 radial = v - axis * t;
+            return NormalizeSafe(radial);
+        };
+
+        auto emitT = [&](const FVector3& a, const FVector3& b, const FVector3& c)
+        {
+            if (WantSmoothLitSolid(style))
+            {
+                const FVector3 flat = NormalizeSafe((b - a).Cross(c - a));
+                const float capness = std::fabs(flat.Dot(axis));
+
+                if (capness > 0.85f)
+                {
+                    const float sign = (flat.Dot(axis) >= 0.0f) ? 1.0f : -1.0f;
+                    const FVector3 n = axis * sign;
+
+                    if constexpr (bTimed)
+                        EmitTriTimedInternalN(a,b,c, n,n,n, color, style, seconds);
+                    else
+                        EmitTriInternalN(m_ImmediateTris, a,b,c, n,n,n, color, style);
+                }
+                else
+                {
+                    const FVector3 na = cylNormal(a);
+                    const FVector3 nb = cylNormal(b);
+                    const FVector3 nc = cylNormal(c);
+
+                    if constexpr (bTimed)
+                        EmitTriTimedInternalN(a,b,c, na,nb,nc, color, style, seconds);
+                    else
+                        EmitTriInternalN(m_ImmediateTris, a,b,c, na,nb,nc, color, style);
+                }
+            }
+            else
+            {
+                if constexpr (bTimed)
+                    EmitTriTimedInternal(a,b,c, color, style, seconds);
+                else
+                    EmitTriInternal(m_ImmediateTris, a,b,c, color, style);
+            }
+        };
+
+        BuildCylinderGeom(baseCenter, axisDir, height, radius, segments, style.fill, emitL, emitT);
+    }
+
+    template <bool bTimed>
+    void DrawConeImpl(const FVector3& apex, const FVector3& dir, float height, float radius,
+                                 const FVector4& color, float seconds, int segments, const FDebugDrawStyle& style)
+    {
+        auto emitL = [&](const FVector3& a, const FVector3& b)
+        {
+            DrawLineImpl<bTimed>(a, b, color, seconds, style);
+        };
+
+        const FVector3 axis = NormalizeSafe(dir);
+        const float k = (height > 1e-6f) ? (radius / height) : 0.0f;
+
+        auto coneSideNormal = [&](const FVector3& p) -> FVector3
+        {
+            const FVector3 v = p - apex;
+            const float t = v.Dot(axis);
+            const FVector3 radial = v - axis * t;
+            const FVector3 rhat = NormalizeSafe(radial);
+            return NormalizeSafe(rhat - axis * k);
+        };
+
+        auto emitT = [&](const FVector3& a, const FVector3& b, const FVector3& c)
+        {
+            if (WantSmoothLitSolid(style))
+            {
+                const FVector3 flat = NormalizeSafe((b - a).Cross(c - a));
+                const float capness = std::fabs(flat.Dot(axis));
+
+                if (capness > 0.85f)
+                {
+                    const float sign = (flat.Dot(axis) >= 0.0f) ? 1.0f : -1.0f;
+                    const FVector3 n = axis * sign;
+
+                    if constexpr (bTimed)
+                        EmitTriTimedInternalN(a,b,c, n,n,n, color, style, seconds);
+                    else
+                        EmitTriInternalN(m_ImmediateTris, a,b,c, n,n,n, color, style);
+                }
+                else
+                {
+                    const FVector3 na = coneSideNormal(a);
+                    const FVector3 nb = coneSideNormal(b);
+                    const FVector3 nc = coneSideNormal(c);
+
+                    if constexpr (bTimed)
+                        EmitTriTimedInternalN(a,b,c, na,nb,nc, color, style, seconds);
+                    else
+                        EmitTriInternalN(m_ImmediateTris, a,b,c, na,nb,nc, color, style);
+                }
+            }
+            else
+            {
+                if constexpr (bTimed)
+                    EmitTriTimedInternal(a,b,c, color, style, seconds);
+                else
+                    EmitTriInternal(m_ImmediateTris, a,b,c, color, style);
+            }
+        };
+
+        BuildConeGeom(apex, dir, height, radius, segments, style.fill, emitL, emitT);
+    }
+
+    template <bool bTimed>
+    void DrawArrowImpl(const FVector3& a, const FVector3& b, const FVector4& color,
+                                  float seconds, float headLen, float headRadius, int headSegments,
+                                  const FDebugDrawStyle& style)
+    {
+        auto emitL = [&](const FVector3& p0, const FVector3& p1)
+        {
+            DrawLineImpl<bTimed>(p0, p1, color, seconds, style);
+        };
+
+        const FVector3 ab = b - a;
+        const float len = ab.Length();
+        if (len <= 1e-6f)
+            return;
+
+        const FVector3 axis = ab / len;
+
+        const float hl = std::min(headLen, len * 0.5f);
+        const float headStartT = len - hl;
+        const FVector3 headBase = b - axis * hl;
+
+        auto shaftNormal = [&](const FVector3& p) -> FVector3
+        {
+            const float t = (p - a).Dot(axis);
+            const FVector3 closest = a + axis * t;
+            return NormalizeSafe(p - closest);
+        };
+
+        const FVector3 coneDir = NormalizeSafe(headBase - b); // ~ -axis
+        const float k = (hl > 1e-6f) ? (headRadius / hl) : 0.0f;
+
+        auto coneSideNormal = [&](const FVector3& p) -> FVector3
+        {
+            const FVector3 v = p - b;
+            const float t = v.Dot(coneDir);
+            const FVector3 radial = v - coneDir * t;
+            const FVector3 rhat = NormalizeSafe(radial);
+            return NormalizeSafe(rhat - coneDir * k);
+        };
+
+        auto faceNormal = [&](const FVector3& p0, const FVector3& p1, const FVector3& p2) -> FVector3
+        {
+            return NormalizeSafe((p1 - p0).Cross(p2 - p0));
+        };
+
+        const FVector3 apexN = NormalizeSafe(-coneDir); // stable apex normal (prevents "star tip")
+
+        auto isSamePoint = [&](const FVector3& p, const FVector3& q) -> bool
+        {
+            const FVector3 d = p - q;
+            return d.Dot(d) < 1e-10f; // epsilon^2
+        };
+
+        auto emitTriFlat = [&](const FVector3& p0, const FVector3& p1, const FVector3& p2)
+        {
+            if constexpr (bTimed)
+                EmitTriTimedInternal(p0, p1, p2, color, style, seconds);
+            else
+                EmitTriInternal(m_ImmediateTris, p0, p1, p2, color, style);
+        };
+
+        auto emitTriN = [&](const FVector3& p0, const FVector3& p1, const FVector3& p2,
+                            const FVector3& n0, const FVector3& n1, const FVector3& n2)
+        {
+            if constexpr (bTimed)
+                EmitTriTimedInternalN(p0, p1, p2, n0, n1, n2, color, style, seconds);
+            else
+                EmitTriInternalN(m_ImmediateTris, p0, p1, p2, n0, n1, n2, color, style);
+        };
+
+        auto emitT = [&](const FVector3& p0, const FVector3& p1, const FVector3& p2)
+        {
+            if (!WantSmoothLitSolid(style))
+            {
+                emitTriFlat(p0, p1, p2);
+                return;
+            }
+
+            const float tAvg =
+                ((p0 - a).Dot(axis) + (p1 - a).Dot(axis) + (p2 - a).Dot(axis)) * (1.0f / 3.0f);
+            const bool inHead = (tAvg >= headStartT);
+
+            // Flat caps
+            const FVector3 fn = faceNormal(p0, p1, p2);
+            const float capness = std::fabs(fn.Dot(axis));
+            const bool isCap = (capness > 0.92f);
+
+            if (isCap)
+            {
+                const float sign = (fn.Dot(axis) >= 0.0f) ? 1.0f : -1.0f;
+                const FVector3 nCap = axis * sign;
+                emitTriN(p0, p1, p2, nCap, nCap, nCap);
+                return;
+            }
+
+            if (inHead)
+            {
+                auto headN = [&](const FVector3& p) -> FVector3
+                {
+                    if (isSamePoint(p, b))
+                        return apexN; // critical apex fix
+                    return coneSideNormal(p);
+                };
+
+                emitTriN(p0, p1, p2, headN(p0), headN(p1), headN(p2));
+            }
+            else
+            {
+                emitTriN(p0, p1, p2, shaftNormal(p0), shaftNormal(p1), shaftNormal(p2));
+            }
+        };
+
+        BuildArrowGeom(a, b, headLen, headRadius, headSegments, style.fill, emitL, emitT);
+    }
+
+    template <bool bTimed>
+    void DrawCapsuleImpl(const FVector3& center, const FVector3& axisDir, float halfHeight, float radius,
+                                    const FVector4& color, float seconds, int segments, const FDebugDrawStyle& style)
+    {
+        auto capsuleNormal = [&](const FVector3& p) -> FVector3
+        {
+            const FVector3 axis = NormalizeSafe(axisDir);
+            const float t = (p - center).Dot(axis);
+            const float tc = std::max(-halfHeight, std::min(halfHeight, t));
+            const FVector3 closest = center + axis * tc;
+            return NormalizeSafe(p - closest);
+        };
+
+        auto emitL = [&](const FVector3& p0, const FVector3& p1)
+        {
+            DrawLineImpl<bTimed>(p0, p1, color, seconds, style);
+        };
+
+        auto emitT = [&](const FVector3& p0, const FVector3& p1, const FVector3& p2)
+        {
+            if (WantSmoothLitSolid(style))
+            {
+                const FVector3 n0 = capsuleNormal(p0);
+                const FVector3 n1 = capsuleNormal(p1);
+                const FVector3 n2 = capsuleNormal(p2);
+
+                if constexpr (bTimed)
+                    EmitTriTimedInternalN(p0,p1,p2, n0,n1,n2, color, style, seconds);
+                else
+                    EmitTriInternalN(m_ImmediateTris, p0,p1,p2, n0,n1,n2, color, style);
+            }
+            else
+            {
+                if constexpr (bTimed)
+                    EmitTriTimedInternal(p0,p1,p2, color, style, seconds);
+                else
+                    EmitTriInternal(m_ImmediateTris, p0,p1,p2, color, style);
+            }
+        };
+
+        BuildCapsuleGeom(center, axisDir, halfHeight, radius, segments, style.fill, emitL, emitT);
+    }
+
 
 public:
     // Frame lifecycle
