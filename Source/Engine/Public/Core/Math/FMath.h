@@ -251,6 +251,15 @@ namespace FMath
                IsNearlyEqual(A.w, B.w, Epsilon);
     }
 
+    template<typename VecType>
+    inline VecType NormalizeSafe(const VecType& v, float eps = 1e-6f)
+    {
+        const float len = v.Length();
+        if (len <= eps) return VecType(0);
+        return v / len;
+    }
+}
+
     /////////////////////
     // Matrix Utilities
     /////////////////////

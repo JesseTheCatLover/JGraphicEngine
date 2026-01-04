@@ -17,14 +17,10 @@ class PickingService : public IEditorService
 private:
     EditorHost& m_Host;
 
-    static FRay BuildRay(const CameraEditorTool& cam,
-                         float width, float height,
-                         float x, float y);
-
 public:
     explicit PickingService(EditorHost& host);
 
-    ActorID PickActorAtViewportPos(const CameraEditorTool& cam,
+    [[nodiscard]] ActorID PickActorAtViewportPos(const CameraEditorTool& cam,
                        float width, float height,
                        float x, float y) const;
 };
