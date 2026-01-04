@@ -12,55 +12,52 @@
 
 namespace FViewportMath
 {
-    // Generic helper: build ray from matrices.
-    inline FRay BuildRayFromViewProj(const FMatrix4& viewMat,
-                                     const FMatrix4& projMat,
-                                     float viewportW, float viewportH,
-                                     float xPx, float yPx)
+    inline FRay BuildRayFromCamera(const ICameraViewSource& cam,
+                                   float viewportW, float viewportH,
+                                   float xPx, float yPx)
     {
         FRay out{};
-
         if (viewportW <= 0.f || viewportH <= 0.f)
             return out;
 
         // pixel -> NDC (-1..1), y flipped because top-left origin
         const float xNDC =  2.0f * (xPx / viewportW) - 1.0f;
         const float yNDC =  1.0f - 2.0f * (yPx / viewportH);
+        const float aspect = viewportW / viewportH;
 
-        const FMatrix4 VP = projMat * viewMat;
-        const FMatrix4 invVP = VP.Inverse();
+        const FVector3 camPos = cam.GetPosition();
+        const FQuat    camRot = cam.GetRotation();
 
-        const FVector4 pNearClip(xNDC, yNDC, -1.0f, 1.0f);
-        const FVector4 pFarClip (xNDC, yNDC,  1.0f, 1.0f);
+        if (cam.GetProjectionType() == EProjectionType::Perspective)
+        {
+            const float halfFovRad = FMath::Radians(cam.GetFOV() * 0.5f);
+            const float tanHalfFov = std::tan(halfFovRad);
 
-        FVector4 pNearW = invVP * pNearClip;
-        FVector4 pFarW  = invVP * pFarClip;
+            // Camera-space (ENGINE convention): +X forward, +Y right, +Z up
+            FVector3 dirCam;
+            dirCam.x = 1.0f;
+            dirCam.y = xNDC * tanHalfFov * aspect;
+            dirCam.z = yNDC * tanHalfFov;
 
-        if (std::fabs(pNearW.w) <= 1e-6f || std::fabs(pFarW.w) <= 1e-6f)
+            out.origin    = camPos;
+            out.direction = camRot.RotateVector(dirCam).Normalized();
             return out;
+        }
+        else
+        {
+            // Orthographic: origin slides on view plane, direction is constant forward
+            const float halfH = cam.GetOrthoHalfHeight();
+            const float halfW = halfH * aspect;
 
-        pNearW = pNearW / pNearW.w;
-        pFarW  = pFarW  / pFarW.w;
+            // point on camera plane (x = 0 in camera space)
+            FVector3 pCam;
+            pCam.x = 0.0f;
+            pCam.y = xNDC * halfW;
+            pCam.z = yNDC * halfH;
 
-        const FVector3 nearWS(pNearW.x, pNearW.y, pNearW.z);
-        const FVector3 farWS (pFarW.x,  pFarW.y,  pFarW.z);
-
-        out.origin    = nearWS;
-        out.direction = FMath::NormalizeSafe(farWS - nearWS);
-        return out;
-    }
-
-    inline FRay BuildRayFromCamera(const ICameraViewSource& cam,
-                                   float viewportW, float viewportH,
-                                   float xPx, float yPx)
-    {
-        const float aspect = (viewportH > 0.f) ? (viewportW / viewportH) : 1.0f;
-
-        //cam.RebuildProjectionMatrix(aspect);
-
-        const FMatrix4& view = cam.GetViewMatrix();
-        const FMatrix4& proj = cam.GetProjectionMatrix(aspect);
-
-        return BuildRayFromViewProj(view, proj, viewportW, viewportH, xPx, yPx);
+            out.origin    = camRot.RotateVector(pCam) + camPos;
+            out.direction = camRot.RotateVector(FVector3(1,0,0)).Normalized(); // +X forward
+            return out;
+        }
     }
 }

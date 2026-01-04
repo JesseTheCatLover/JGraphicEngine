@@ -51,8 +51,18 @@ protected:
 
 public:
     // Getters
-    EProjectionType GetProjectionType() const { return m_ProjectionType; }
-    float GetFOV() const { return m_FOV; }
+    EProjectionType GetProjectionType() const override { return m_ProjectionType; }
+    float GetFOV() const override { return m_FOV; }
+
+    [[nodiscard]] FVector3 GetPosition() const override
+    {
+        return  m_WorldTransform.GetPosition();
+    }
+
+    [[nodiscard]] FQuat GetRotation() const override
+    {
+        return  m_WorldTransform.GetRotation();
+    }
 
     // Setters
     void SetProjectionType(EProjectionType type) { m_ProjectionType = type; m_bProjDirty = true; }

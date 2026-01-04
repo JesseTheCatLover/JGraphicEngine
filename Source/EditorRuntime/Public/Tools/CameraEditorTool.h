@@ -42,11 +42,11 @@ public:
 
     // Control API
     void SetPosition(const FVector3& pos) { m_WorldTransform.SetPosition(pos); m_bViewDirty = true; }
-    FVector3 GetPosition() const { return m_WorldTransform.GetPosition(); }
+    FVector3 GetPosition() const override { return m_WorldTransform.GetPosition(); }
 
     // void SetRotation(const FQuat& rot) { m_WorldTransform.SetRotation(rot); }
     // void SetRotation(const FRotator& rot) { SetRotation(rot.ToQuat()); }
-    FQuat GetRotation() const { return m_WorldTransform.GetRotation(); }
+    FQuat GetRotation() const override { return m_WorldTransform.GetRotation(); }
 
     void SetProjectionType(EProjectionType type) { m_ProjectionType = type; m_bProjDirty = true; }
     EProjectionType GetProjectionType() const { return m_ProjectionType; }
@@ -57,7 +57,7 @@ public:
     float GetSpeed() const { return m_MoveSpeed; }
 
     void SetFOV(float degrees) { m_FOV = degrees; m_bProjDirty = true; }
-    float GetFOV() const { return m_FOV; }
+    float GetFOV() const override { return m_FOV; }
 
     // ICameraViewSource
     FMatrix4& GetViewMatrix() const override;
