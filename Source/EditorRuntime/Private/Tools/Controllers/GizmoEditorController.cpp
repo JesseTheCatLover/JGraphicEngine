@@ -116,6 +116,7 @@ GizmoEditorController::FResult GizmoEditorController::UpdateAndDraw(DebugDraw& d
     params.bDrawSphereHint = true;
 
     params.scaleMul = ComputeGizmoScaleMulFromProjection(projMat, view.viewportH);
+    params.alphaMul = ComputeFadeMul(viewMat, gizmoXf.GetPosition());
 
     m_GizmoTool.Draw(debugDraw, view.viewIndex, camPos, camFwd, gizmoXf, params);
 
@@ -124,6 +125,26 @@ GizmoEditorController::FResult GizmoEditorController::UpdateAndDraw(DebugDraw& d
     result.bWantsCapture = result.bWantsCapture || m_bCapturing;
 
     return result;
+}
+
+float GizmoEditorController::ComputeFadeMul(const FMatrix4 &viewMat, const FVector3 &gizmoPosWS)
+{
+    // view-space position
+    const FVector4 pVS4 = viewMat * FVector4(gizmoPosWS.x, gizmoPosWS.y, gizmoPosWS.z, 1.0f);
+    const float zVS = std::fabs(pVS4.x); // LH: X forward => depth is X in engine's convention (camera forward is +X)
+
+    // If depth is too small, fade out
+    // Tune these as "meters" in view space.
+    constexpr float kFadeStart = 3.f;
+    constexpr float kFadeEnd   = 0.3f;
+
+    // smoothstep(End..Start)
+    float t = (zVS - kFadeEnd) / (kFadeStart - kFadeEnd);
+    t = std::clamp(t, 0.0f, 1.0f);
+    // smoother step
+    //t = t*t*t * (t*(t*6 - 15) + 10); // 6t^5 - 15t^4 + 10t^3
+
+    return t; // 1 far, 0 very close
 }
 
 void GizmoEditorController::CancelCapture()

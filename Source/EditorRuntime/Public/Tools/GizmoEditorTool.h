@@ -60,6 +60,7 @@ public:
         bool bDrawSphereHint = true; // rotate: faint sphere
 
         float scaleMul = 1.0f;
+        float alphaMul = 1.0f;
     };
 
 public:
@@ -72,7 +73,7 @@ public:
               const FVector3& camPos,
               const FVector3& camFwd,
               const FTransform& gizmoXf,
-              const FDrawParams& p) const;
+              const FDrawParams& p);
 
     // Handle <-> hitId mapping
     [[nodiscard]] uint32_t HandleToHitId(uint32_t baseHitId, EHandle h) const;
@@ -82,28 +83,28 @@ private:
     // Visual tuning (in "gizmo units" before scaling)
     struct FVisualConfig
     {
-        float axisLen      = 1.2f;
+        float axisLen      = 1.5f;
         float headLen      = 0.3f;  // translate arrow head
         float headRadius   = 0.10f;
 
         float centerRadius = 0.1f;  // translate center sphere
         float planeSize    = 0.25f;  // translate plane square half size-ish
-        float planeOffset  = 0.6f;  // how far from origin plane handle sits
+        float planeOffset  = 0.9f;  // how far from origin plane handle sits
 
-        float ringRadius   = 1.0f;   // rotate ring radius
-        float ringThicknessPx = 4.0f;
+        float ringRadius   = 1.3f;   // rotate ring radius
+        float ringThicknessPx = 5.0f;
         int   ringSegments = 64;
 
-        float scaleArmLen = 1.0f;
-        float scaleBoxHalf = 0.08f;  // axis box head half extent
+        float scaleArmLen = 1.1f;
+        float scaleBoxHalf = 0.09f;  // axis box head half extent
         float uniformBoxHalf = 0.10f;
         float scaleArmThicknessPx = 2.0f;
 
         float axisThicknessPx = 2.0f;
         float highlightMul = 1.35f;  // brighten hovered/active colors
         float activeMul    = 1.65f;
-        float planeAlpha   = 0.18f;
-        float sphereHintAlpha = 0.05f;
+        float planeAlpha   = 0.7f;
+        float sphereHintAlpha = 0.01f;
 
         EDebugShading shading = EDebugShading::FixedLit;
         EDebugNormalMode normalMode = EDebugNormalMode::Flat;

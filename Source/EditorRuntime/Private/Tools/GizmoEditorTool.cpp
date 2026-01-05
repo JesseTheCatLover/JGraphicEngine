@@ -62,6 +62,7 @@ void GizmoEditorTool::DrawPlaneSquareSolid(DebugDraw &dd, const FVector3 &origin
     const FVector3 p3 = origin - a + b;
 
     style.fill = EDebugFillMode::Solid;
+    style.shading = EDebugShading::Unlit;
     dd.DrawQuad(p0, p1, p2, p3, color, style);
 }
 
@@ -139,7 +140,7 @@ GizmoEditorTool::EHandle GizmoEditorTool::HitIdToHandle(uint32_t baseHitId, uint
 // ----------------------
 
 void GizmoEditorTool::Draw(DebugDraw& dd, uint32_t viewKey, const FVector3& camPos, const FVector3& camFwd,
-                           const FTransform& gizmoXf, const FDrawParams& p) const
+                           const FTransform& gizmoXf, const FDrawParams& p)
 {
     FVisualConfig v{};
     const FVector3 gizmoPos = gizmoXf.GetPosition();
@@ -197,6 +198,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
 
     auto applyHL = [&](EHandle h, FVector4 col) -> FVector4
     {
+        col.w *= p.alphaMul;
         if (h == p.activeHandle)  return Brighten(col, v.activeMul);
         if (h == p.hoveredHandle) return Brighten(col, v.highlightMul);
         return col;
@@ -307,6 +309,7 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
 
     auto applyHL = [&](EHandle h, FVector4 col) -> FVector4
     {
+        col.w *= p.alphaMul;
         if (h == p.activeHandle)  return Brighten(col, v.activeMul);
         if (h == p.hoveredHandle) return Brighten(col, v.highlightMul);
         return col;
@@ -335,11 +338,6 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
     // Z ring
     s.hitId = HandleToHitId(p.baseHitID, EHandle::R_Z);
     dd.DrawCircle(o, Z, r, applyHL(EHandle::R_Z, cz), v.ringSegments, s);
-
-    // Optional free-rotate handle (center sphere)
-    // (If you want: treat as R_Free hitId, otherwise skip)
-    // If you enable it, it’ll be hit-testable via line hits only right now (sphere wireframe).
-    // Later, draw it solid for tri picking.
 }
 
 // ----------------------
@@ -383,6 +381,7 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
 
     auto applyHL = [&](EHandle h, FVector4 col) -> FVector4
     {
+        col.w *= p.alphaMul;
         if (h == p.activeHandle)  return Brighten(col, v.activeMul);
         if (h == p.hoveredHandle) return Brighten(col, v.highlightMul);
         return col;
