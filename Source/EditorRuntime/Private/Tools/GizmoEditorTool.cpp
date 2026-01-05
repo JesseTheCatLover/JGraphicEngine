@@ -244,6 +244,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
 
             const FVector3 c = o + (X + Y) * off;
             const FVector4 col = applyHL(EHandle::T_XY, cxy);
+            DrawPlaneSquareWire(dd, c, X, Y, half, col, ps);
             DrawPlaneSquareSolid(dd, c, X, Y, half, col, ps);
         }
 
@@ -255,6 +256,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
 
             const FVector3 c = o + (X + Z) * off;
             const FVector4 col = applyHL(EHandle::T_XZ, cxz);
+            DrawPlaneSquareWire(dd, c, X, Z, half, col, ps);
             DrawPlaneSquareSolid(dd, c, X, Z, half, col, ps);
         }
 
@@ -266,6 +268,7 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
 
             const FVector3 c = o + (Y + Z) * off;
             const FVector4 col = applyHL(EHandle::T_YZ, cyz);
+            DrawPlaneSquareWire(dd, c, Y, Z, half, col, ps);
             DrawPlaneSquareSolid(dd, c, Y, Z, half, col, ps);
         }
     }

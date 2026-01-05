@@ -103,7 +103,7 @@ private:
         float axisThicknessPx = 2.0f;
         float highlightMul = 1.35f;  // brighten hovered/active colors
         float activeMul    = 1.65f;
-        float planeAlpha   = 0.7f;
+        float planeAlpha   = 0.4f;
         float sphereHintAlpha = 0.01f;
 
         EDebugShading shading = EDebugShading::FixedLit;
