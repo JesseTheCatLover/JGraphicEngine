@@ -1,4 +1,4 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "Tools/GizmoEditorTool.h"
 
@@ -23,7 +23,7 @@ float GizmoEditorTool::ComputeGizmoScale(const FVector3& camPos, const FVector3&
     return std::max(0.3f, dist * 0.10f);
 }
 
-void GizmoEditorTool::BuildBasis(const FTransform& xf, ESpace space,
+void GizmoEditorTool::BuildBasis(const FTransform& xf, ESpace space, // TODO: Make this adjust to the camera and make it always face the cam
                                  FVector3& outX, FVector3& outY, FVector3& outZ)
 {
     // LH: +X forward, +Y right, +Z up
@@ -191,16 +191,25 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
     s.viewKey = viewKey;
 
     // Colors
-    FVector4 cx(1,0,0,1);
-    FVector4 cy(0,1,0,1);
-    FVector4 cz(0,0,1,1);
+    FVector4 cx(0.85f, 0.10f, 0.10f, 1);
+    FVector4 cy(0.10f, 0.85f, 0.10f, 1);
+    FVector4 cz(0.10f, 0.10f, 0.85f, 1);
     FVector4 cCenter(0.85f, 0.85f, 0.85f, 1.0f);
 
     auto applyHL = [&](EHandle h, FVector4 col) -> FVector4
     {
         col.w *= p.alphaMul;
-        if (h == p.activeHandle)  return Brighten(col, v.activeMul);
-        if (h == p.hoveredHandle) return Brighten(col, v.highlightMul);
+
+        if (h == p.activeHandle) {
+            col = Brighten(col, v.activeMul);
+            col.w = std::min(1.0f, col.w * 1.6f);
+            return col;
+        }
+        if (h == p.hoveredHandle) {
+            col = Brighten(col, v.highlightMul);
+            col.w = std::min(1.0f, col.w * 1.35f);
+            return col;
+        }
         return col;
     };
 
@@ -306,15 +315,24 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
     s.normalMode = v.normalMode;
     s.viewKey = viewKey;
 
-    FVector4 cx(1,0,0,1);
-    FVector4 cy(0,1,0,1);
-    FVector4 cz(0,0,1,1);
+    FVector4 cx(0.85f, 0.10f, 0.10f, 1);
+    FVector4 cy(0.10f, 0.85f, 0.10f, 1);
+    FVector4 cz(0.10f, 0.10f, 0.85f, 1);
 
     auto applyHL = [&](EHandle h, FVector4 col) -> FVector4
     {
         col.w *= p.alphaMul;
-        if (h == p.activeHandle)  return Brighten(col, v.activeMul);
-        if (h == p.hoveredHandle) return Brighten(col, v.highlightMul);
+
+        if (h == p.activeHandle) {
+            col = Brighten(col, v.activeMul);
+            col.w = std::min(1.0f, col.w * 1.6f);
+            return col;
+        }
+        if (h == p.hoveredHandle) {
+            col = Brighten(col, v.highlightMul);
+            col.w = std::min(1.0f, col.w * 1.35f);
+            return col;
+        }
         return col;
     };
 
@@ -377,16 +395,25 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     sBox.fill = EDebugFillMode::Solid;
     sBox.thicknessPx = 1.0f;
 
-    FVector4 cx(1,0,0,1);
-    FVector4 cy(0,1,0,1);
-    FVector4 cz(0,0,1,1);
+    FVector4 cx(0.85f, 0.10f, 0.10f, 1);
+    FVector4 cy(0.10f, 0.85f, 0.10f, 1);
+    FVector4 cz(0.10f, 0.10f, 0.85f, 1);
     FVector4 cU(0.9f,0.9f,0.9f,1);
 
     auto applyHL = [&](EHandle h, FVector4 col) -> FVector4
     {
         col.w *= p.alphaMul;
-        if (h == p.activeHandle)  return Brighten(col, v.activeMul);
-        if (h == p.hoveredHandle) return Brighten(col, v.highlightMul);
+
+        if (h == p.activeHandle) {
+            col = Brighten(col, v.activeMul);
+            col.w = std::min(1.0f, col.w * 1.6f);
+            return col;
+        }
+        if (h == p.hoveredHandle) {
+            col = Brighten(col, v.highlightMul);
+            col.w = std::min(1.0f, col.w * 1.35f);
+            return col;
+        }
         return col;
     };
 
