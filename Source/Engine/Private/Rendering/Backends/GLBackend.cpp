@@ -1,4 +1,4 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "GLBackend.h"
 #include "Rendering/IPlatformSurface.h"

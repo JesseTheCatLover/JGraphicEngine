@@ -3,7 +3,7 @@
 #pragma once
 #include <vector>
 
-#include "../../../Private/InputSystem/FInputDeviceState.h"
+#include "InputSystem/FInputDeviceState.h"
 #include "InputSystem/InputChannels.h"
 #include "ActionAxis/ActionAxisStates.h"
 
