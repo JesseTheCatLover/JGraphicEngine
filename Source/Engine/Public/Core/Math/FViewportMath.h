@@ -12,6 +12,47 @@
 
 namespace FViewportMath
 {
+    inline FVector3 UnprojectClip(const FMatrix4& invVP, float xNDC, float yNDC, float zNDC)
+    {
+        const FVector4 pClip(xNDC, yNDC, zNDC, 1.0f);
+        FVector4 pW = invVP * pClip;
+
+        if (std::fabs(pW.w) > 1e-6f)
+            pW = pW / pW.w;
+
+        return FVector3(pW.x, pW.y, pW.z);
+    }
+
+    inline FRay BuildRayFromInvViewProj(const FMatrix4& invVP,
+                                        float viewportW, float viewportH,
+                                        float xPx, float yPx)
+    {
+        FRay out{};
+        if (viewportW <= 0.f || viewportH <= 0.f)
+            return out;
+
+        // pixel -> NDC (-1..1), y flipped because top-left origin
+        const float xNDC =  2.0f * (xPx / viewportW) - 1.0f;
+        const float yNDC =  1.0f - 2.0f * (yPx / viewportH);
+
+        // NDC depth: near=-1, far=+1
+        const FVector3 nearWS = UnprojectClip(invVP, xNDC, yNDC, -1.0f);
+        const FVector3 farWS  = UnprojectClip(invVP, xNDC, yNDC,  1.0f);
+
+        out.origin = nearWS; // Important: Robust for ortho too
+        out.direction = FMath::NormalizeSafe(farWS - nearWS);
+        return out;
+    }
+
+    inline FRay BuildRayFromViewProj(const FMatrix4& viewMat,
+                                     const FMatrix4& projMat,
+                                     float viewportW, float viewportH,
+                                     float xPx, float yPx)
+    {
+        const FMatrix4 invVP = (projMat * viewMat).Inverse();
+        return BuildRayFromInvViewProj(invVP, viewportW, viewportH, xPx, yPx);
+    }
+
     inline FRay BuildRayFromCamera(const ICameraViewSource& cam,
                                    float viewportW, float viewportH,
                                    float xPx, float yPx)

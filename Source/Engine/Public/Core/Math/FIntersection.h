@@ -9,7 +9,7 @@
 #include "Core/Math/FMatrix4.h"
 #include "Scene/FRaycast.h"
 
-namespace FIntersections
+namespace FIntersection
 {
     constexpr float kEps = 1e-6f;
 
