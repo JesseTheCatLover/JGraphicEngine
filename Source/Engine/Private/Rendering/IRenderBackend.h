@@ -5,8 +5,9 @@
 #include "RObjects.h"
 #include "Rendering/RHandles.h"
 #include "Core/Math/FVector3.h"
+#include "Rendering/EProjectionType.h"
+#include "Rendering/FProjectionDesc.h"
 
-struct FDebugWorldVertex;
 // This describes how the backend's axes relate to ENGINE axes.
 // Engine coordinate system : X=Forward, Y=Right, Z=Up
 struct FBackendCoordDesc
@@ -27,6 +28,7 @@ struct FMatrix4;
 struct RLightData;
 struct FDebugClipVertex;
 struct FDebugVertex;
+struct FDebugWorldVertex;
 
 class IRenderBackend
 {
@@ -63,6 +65,7 @@ public:
     virtual ~IRenderBackend() = default;
 
     [[nodiscard]] virtual FBackendCoordDesc GetCoordConvention() const = 0;
+    [[nodiscard]] virtual FMatrix4 BuildProjectionMatrix(const FProjectionDesc& desc) const = 0;
 
     // Lifecycle
     virtual bool Initialize(IPlatformSurface* surface) = 0;

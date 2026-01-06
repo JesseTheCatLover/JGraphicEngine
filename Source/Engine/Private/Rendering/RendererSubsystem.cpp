@@ -119,7 +119,7 @@ void RendererSubsystem::Shutdown()
     m_Backend->Shutdown();
 }
 
-void RendererSubsystem::DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4& viewMat, const FMatrix4& projMat)
+void RendererSubsystem::DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4& viewMat, const FProjectionDesc& projDesc)
 {
     // Upload lights for this buffer
     if (!buffer.GetLights().empty())
@@ -186,7 +186,7 @@ void RendererSubsystem::DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4
                 m_Backend->BindShader(shaderToUse);
 
                 // Upload camera matrices to the shader we just bound
-                ApplyCamera(shaderToUse, viewMat, projMat);
+                ApplyCamera(shaderToUse,  viewMat, projDesc);
 
                 // Set light count once per shader bind
                 const int lightCount =
@@ -260,7 +260,7 @@ void RendererSubsystem::DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4
 }
 void RendererSubsystem::DrawCustomDepthPass(const RCommandBuffer& cmd,
                                             const FMatrix4& viewMat,
-                                            const FMatrix4& projMat)
+                                            const FProjectionDesc& projDesc)
 {
     EnsureCustomDepthShader();
 
@@ -289,7 +289,7 @@ void RendererSubsystem::DrawCustomDepthPass(const RCommandBuffer& cmd,
     st.zpass     = IRenderBackend::EStencilOp::Replace;  // write ref when depth passes
 
     m_Backend->BindShader(m_CustomDepthShader);
-    ApplyCamera(m_CustomDepthShader, viewMat, projMat);
+    ApplyCamera(m_CustomDepthShader, viewMat, projDesc);
 
     auto drawQueue = [&](const std::vector<RDrawCommand>& cmds)
     {
@@ -322,7 +322,7 @@ void RendererSubsystem::DrawCustomDepthPass(const RCommandBuffer& cmd,
 }
 
 void RendererSubsystem::DrawSceneStencilMaskPass(const RCommandBuffer& cmd,const FMatrix4& viewMat,
-    const FMatrix4& projMat)
+    const FProjectionDesc& projDesc)
 {
     EnsureCustomDepthShader(); // good enough: position-only
 
@@ -346,7 +346,7 @@ void RendererSubsystem::DrawSceneStencilMaskPass(const RCommandBuffer& cmd,const
     st.zpass     = IRenderBackend::EStencilOp::Replace;
 
     m_Backend->BindShader(m_CustomDepthShader);
-    ApplyCamera(m_CustomDepthShader, viewMat, projMat);
+    ApplyCamera(m_CustomDepthShader, viewMat, projDesc);
 
     auto drawQueue = [&](const std::vector<RDrawCommand>& cmds)
     {
@@ -1080,8 +1080,8 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
             ? static_cast<float>(sceneRT.w) / static_cast<float>(sceneRT.h)
             : 1.f;
 
-        FMatrix4 viewMat = view.camera->GetViewMatrix();
-        FMatrix4 projMat = view.camera->GetProjectionMatrix(aspect);
+        const FMatrix4 viewMat = view.camera->GetViewMatrix();
+        const FProjectionDesc projDesc = view.camera->GetProjectionDesc(aspect);
 
         // 4) Build a per-view command buffer from the scene-wide one
         // TODO: For now we just copy it; later we can optimize this to avoid full copy.
@@ -1098,11 +1098,21 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
         viewCmd.SortAllQueues();
 
         // 5) Draw this view into sceneRT
-        DrawCommandBuffer(viewCmd, viewMat, projMat);
+        DrawCommandBuffer(viewCmd, viewMat, projDesc);
 
-        // Store the view matrices so SubmitDebugLineList can use them
-        m_ViewMat = viewMat;
-        m_ProjMat = projMat;
+        // Cache for debug + thick line clip building
+        {
+            m_ViewCache.viewEngine = viewMat;
+            m_ViewCache.projDesc   = projDesc;
+
+            m_ViewCache.viewBackend = m_CoordAdaptor.EngineToBackend * viewMat;
+            m_ViewCache.projBackend = m_Backend->BuildProjectionMatrix(projDesc);
+            m_ViewCache.vpBackend   = m_ViewCache.projBackend * m_ViewCache.viewBackend;
+
+            m_ViewCache.vpW = view.viewportW;
+            m_ViewCache.vpH = view.viewportH;
+            m_ViewCache.viewIndex = view.viewIndex;
+        }
 
         // Draw debug lines into the same target as the scene
         if (GEngine && GEngine->GetDebugDraw())
@@ -1138,7 +1148,7 @@ void RendererSubsystem::RenderSceneBatch(const FSceneBatch& batch)
             // Clear ID(color) + depth + stencil
             m_Backend->ClearColorDepthStencil(0.f, 0.f, 0.f, 0.f, 1.f, 0);
 
-            DrawCustomDepthPass(viewCmd, viewMat, projMat);
+            DrawCustomDepthPass(viewCmd, viewMat, projDesc);
             m_Backend->UnbindFramebuffer();
         }
 
@@ -1330,36 +1340,33 @@ void RendererSubsystem::RebuildKernelsIfDirty(uint32_t profileId)
 
 FCoordAdapter RendererSubsystem::BuildCoordAdapter(const FBackendCoordDesc& d)
 {
-    // d.X, d.Y, d.Z are backend basis expressed in ENGINE coordinates.
-
-    // Build the 4x4 basis transform T: Engine -> Backend
-    // Columns are images of backend's basis vectors in engine space,
-    // but we want a matrix that transforms engine-space vectors into backend-space.
-    //
-    // Since d.X, d.Y, d.Z are backend axes in engine coordinates, we actually want
-    // the matrix that maps engine basis -> backend basis.
-    // That matrix is the inverse of the one with columns d.X, d.Y, d.Z.
-    //
-    // Let B = [d.X d.Y d.Z]. A vector in backend coords v_b = B * v_e (engine coords).
-    // We want v_b = T * v_e, so T = B.
-
     FMatrix4 T = FMatrix4::Identity();
 
-    T.SetBasisX(d.X); // backend X axis in engine coords
+    // Build an Engine->Backend axis remap matrix.
+    // The backend provides its basis axes (X/Y/Z) expressed in *engine* space,
+    // and this matrix converts vectors/points from engine coordinates into
+    // the backend coordinate convention (handedness + axis directions).
+    T.SetBasisX(d.X);
     T.SetBasisY(d.Y);
     T.SetBasisZ(d.Z);
 
     FCoordAdapter adapter;
     adapter.EngineToBackend = T;
     adapter.BackendToEngine = T.Inverse();
+
     return adapter;
 }
 
-void RendererSubsystem::ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& viewEngine, const FMatrix4& projEngine)
+void RendererSubsystem::ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& viewEngine, const FProjectionDesc& projDesc)
 {
     // Convert from engine space to backend space
-    FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * viewEngine * m_CoordAdaptor.BackendToEngine;
-    FMatrix4 projBackend = projEngine;
+    const FMatrix4& E2B = m_CoordAdaptor.EngineToBackend;
+    const FMatrix4& B2E = m_CoordAdaptor.BackendToEngine;
+
+    // Engine view -> Backend view
+    FMatrix4 viewBackend = E2B * viewEngine * B2E;
+
+    FMatrix4 projBackend = m_Backend->BuildProjectionMatrix(projDesc);
 
     m_Backend->SetUniformMat4(shaderToUse, "u_View", viewBackend.ToFloat16());
     m_Backend->SetUniformMat4(shaderToUse, "u_Proj", projBackend.ToFloat16());
@@ -1367,10 +1374,10 @@ void RendererSubsystem::ApplyCamera(const RShaderHandle& shaderToUse, const FMat
 
 void RendererSubsystem::DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle &shaderToUse, const FMatrix4 &modelEngine)
 {
-    FMatrix4 modelBackend = m_CoordAdaptor.EngineToBackend * modelEngine * m_CoordAdaptor.BackendToEngine;
-    float modelRaw[16];
-    modelBackend.ToFloatArray(modelRaw);
-    m_Backend->SetUniformMat4(shaderToUse, "u_Model", modelRaw);
+    const FMatrix4& E2B = m_CoordAdaptor.EngineToBackend;
+    const FMatrix4& B2E = m_CoordAdaptor.BackendToEngine;
+
+    const FMatrix4 modelBackend = E2B * modelEngine * B2E;
 
     m_Backend->SubmitMesh(meshHandle, shaderToUse, modelBackend);
 }
@@ -1394,9 +1401,8 @@ void RendererSubsystem::SubmitDebugLineList_Internal(const FDebugVertex* verts,
         m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
 
     // positions are WORLD SPACE, so we need camera uniforms
-    ApplyCamera(m_DebugLineShader, m_ViewMat, m_ProjMat);
+    ApplyCamera(m_DebugLineShader, m_ViewCache.viewEngine, m_ViewCache.projDesc);
 
-    // backend method (GLBackend already implemented this)
     m_Backend->SubmitDebugLineList(m_DebugLineShader, verts, vertCount);
 }
 
@@ -1414,10 +1420,7 @@ void RendererSubsystem::SubmitDebugTriangles(const FRenderView& view,
     EnsureDebugClipTriShader();
     EnsureDebugWorldTriShader();
 
-    // Same VP as SubmitDebugLines (world -> clip)
-    const FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * m_ViewMat * m_CoordAdaptor.BackendToEngine;
-    const FMatrix4 projBackend = m_ProjMat;
-    const FMatrix4 VP = projBackend * viewBackend;
+    const FMatrix4& VP = m_ViewCache.vpBackend;
 
     // ---- Buckets ----
     std::vector<FDebugClipVertex> overlay_unlit;
@@ -1440,8 +1443,8 @@ void RendererSubsystem::SubmitDebugTriangles(const FRenderView& view,
 
     auto pushClip = [&](std::vector<FDebugClipVertex>& out, const FVector3& p, const FVector4& c)
     {
-        const FVector4 pb = m_CoordAdaptor.EngineToBackend * FVector4(p.x, p.y, p.z, 1.0f);
-        const FVector4 cp = VP * pb;
+        const FVector4 pE(p.x, p.y, p.z, 1.0f);
+        const FVector4 cp = VP * pE;
         out.push_back(FDebugClipVertex{ cp.x, cp.y, cp.z, cp.w, c.x, c.y, c.z, c.w });
     };
 
@@ -1596,8 +1599,8 @@ void RendererSubsystem::SubmitDebugLines(const FRenderView& view, const FDebugLi
         const FVector4 ab = m_CoordAdaptor.EngineToBackend * FVector4(a.x, a.y, a.z, 1.0f);
         const FVector4 bb = m_CoordAdaptor.EngineToBackend * FVector4(b.x, b.y, b.z, 1.0f);
 
-        out.push_back(FDebugVertex{ab.x, ab.y, ab.z, c.x, c.y, c.z, c.w});
-        out.push_back(FDebugVertex{bb.x, bb.y, bb.z, c.x, c.y, c.z, c.w});
+        out.push_back(FDebugVertex{a.x, a.y, a.z, c.x, c.y, c.z, c.w});
+        out.push_back(FDebugVertex{b.x, b.y, b.z, c.x, c.y, c.z, c.w});
     };
 
 
@@ -1610,9 +1613,7 @@ void RendererSubsystem::SubmitDebugLines(const FRenderView& view, const FDebugLi
         out.push_back(FDebugClipVertex{p2.x, p2.y, p2.z, p2.w, c.x, c.y, c.z, c.w});
     };
 
-    const FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * m_ViewMat * m_CoordAdaptor.BackendToEngine;
-    const FMatrix4 projBackend = m_ProjMat;
-    const FMatrix4 VP = projBackend * viewBackend;
+    const FMatrix4& VP = m_ViewCache.vpBackend;
 
     const float invW = (view.viewportW > 0) ? (1.0f / float(view.viewportW)) : 0.0f;
     const float invH = (view.viewportH > 0) ? (1.0f / float(view.viewportH)) : 0.0f;
@@ -1625,11 +1626,8 @@ void RendererSubsystem::SubmitDebugLines(const FRenderView& view, const FDebugLi
         if (thicknessPx <= 1.0f || invW <= 0.0f || invH <= 0.0f)
             return false;
 
-        const FVector4 aw = m_CoordAdaptor.EngineToBackend * FVector4(a.x, a.y, a.z, 1.0f);
-        const FVector4 bw = m_CoordAdaptor.EngineToBackend * FVector4(b.x, b.y, b.z, 1.0f);
-
-        const FVector4 ca = VP * aw;
-        const FVector4 cb = VP * bw;
+        const FVector4 ca = VP * FVector4(a.x,a.y,a.z,1);
+        const FVector4 cb = VP * FVector4(b.x,b.y,b.z,1);
 
 
         // If both behind camera, skip. (Simple; avoids worst artifacts.)
@@ -1732,6 +1730,7 @@ void RendererSubsystem::SubmitDebugClipTriList_Internal(const FRenderView& view,
         m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
 
     // NOTE: no camera uniforms needed; positions already clip-space
+    m_Backend->BindShader(m_DebugClipTriShader);
     m_Backend->SubmitDebugClipTriList(m_DebugClipTriShader, verts, vertCount);
 }
 
@@ -1755,13 +1754,7 @@ void RendererSubsystem::SubmitDebugWorldTriList_Internal(const FRenderView& view
         m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
 
     // uniforms
-    m_Backend->BindShader(m_DebugWorldTriShader);
-
-    const FMatrix4 viewBackend = m_CoordAdaptor.EngineToBackend * m_ViewMat * m_CoordAdaptor.BackendToEngine;
-    const FMatrix4 projBackend = m_ProjMat;
-
-    m_Backend->SetUniformMat4(m_DebugWorldTriShader, "u_View", viewBackend.ToFloat16());
-    m_Backend->SetUniformMat4(m_DebugWorldTriShader, "u_Proj", projBackend.ToFloat16());
+    ApplyCamera(m_DebugWorldTriShader, m_ViewCache.viewEngine, m_ViewCache.projDesc);
 
     // stable “editor light” in view space
     m_Backend->SetUniformVec3(m_DebugWorldTriShader, "u_LightDirVS", FVector3(-0.35f, 0.65f, 0.70f).Normalized().ToFloat3());

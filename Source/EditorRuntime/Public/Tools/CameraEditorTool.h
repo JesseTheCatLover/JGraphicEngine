@@ -62,6 +62,7 @@ public:
     // ICameraViewSource
     FMatrix4& GetViewMatrix() const override;
     FMatrix4& GetProjectionMatrix(float aspectRatio) const override;
+    [[nodiscard]] FProjectionDesc GetProjectionDesc(float aspect) const override;
     float GetNearPlane() const override { return m_Near; }
     float GetFarPlane() const override { return m_Far; }
     [[nodiscard]] float GetOrthoHalfHeight() const override { return m_OrthoHalfHeight; }

@@ -43,6 +43,9 @@ protected:
 
     [[nodiscard]] const FMatrix4& GetProjectionMatrix(float aspectRatio) const override;
 
+    [[nodiscard]] FProjectionDesc GetProjectionDesc(float aspect) const override;
+
+protected:
     void OnWorldTransformChanged() override;
 
     float GetNearPlane() const override { return m_NearClip; }

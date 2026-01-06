@@ -1214,6 +1214,23 @@ FBackendCoordDesc GLBackend::GetCoordConvention() const
     return d;
 }
 
+FMatrix4 GLBackend::BuildProjectionMatrix(const FProjectionDesc& d) const
+{
+    const float nearP = std::max(d.nearP, 1e-6f);
+    const float farP  = std::max(d.farP, nearP + 1e-6f);
+
+    if (d.type == EProjectionType::Perspective)
+    {
+        return FMatrix4(glm::perspective(glm::radians(d.fovYDeg), d.aspect, nearP, farP));
+    }
+    else
+    {
+        const float halfH = d.orthoHalfHeight;
+        const float halfW = halfH * d.aspect;
+        return FMatrix4(glm::ortho(-halfW, +halfW, -halfH, +halfH, nearP, farP));
+    }
+}
+
 void GLBackend::UploadLights(const RLightData *lights, uint32_t count)
 {
     if (!m_LightUBO) {

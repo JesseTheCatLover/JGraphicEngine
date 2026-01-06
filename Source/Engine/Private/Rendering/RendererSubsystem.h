@@ -8,7 +8,9 @@
 #include "IRenderDevice.h"
 #include "Rendering/RHandles.h"
 #include "RCommandBuffer.h"
+#include "Rendering/FProjectionDesc.h"
 
+struct FProjectionDesc;
 struct FDebugWorldVertex;
 struct FFramePostParams;
 class JScene;
@@ -18,7 +20,9 @@ struct FBackendCoordDesc;
 
 struct FCoordAdapter
 {
+    ///< Use before sending transforms to the render backend
     FMatrix4 EngineToBackend;
+    ///< Use when interpreting backend-space results in engine space
     FMatrix4 BackendToEngine;
 };
 
@@ -70,8 +74,24 @@ private:
     void EnsureDebugWorldTriShader();
 
     FCoordAdapter m_CoordAdaptor;
-    FMatrix4 m_ViewMat;
-    FMatrix4 m_ProjMat;
+
+    // Cached per-view matrices for debug + thick lines projection.
+    // Recomputed once per view in RenderSceneBatch.
+    struct FViewCache
+    {
+        FMatrix4 viewEngine;
+        FProjectionDesc projDesc;
+
+        FMatrix4 viewBackend;
+        FMatrix4 projBackend;
+        FMatrix4 vpBackend; // projBackend * viewBackend
+
+        int vpW = 0;
+        int vpH = 0;
+        uint32_t viewIndex = 0;
+    };
+
+    FViewCache m_ViewCache;
 
 private:
     struct FMaterialEntry
@@ -127,13 +147,13 @@ private:
     void EnsureFullscreenQuad();
     void BlitFullscreen(RShaderHandle sh, RTextureHandle inputTex, int w, int h);
     void RebuildKernelsIfDirty(uint32_t profileId);
-    void DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4& viewMat, const FMatrix4& projMat);
-    void DrawCustomDepthPass(const RCommandBuffer& cmd, const FMatrix4& viewMat, const FMatrix4& projMat);
-    void DrawSceneStencilMaskPass(const RCommandBuffer& cmd, const FMatrix4& viewMat, const FMatrix4& projMat);
+    void DrawCommandBuffer(RCommandBuffer& buffer, const FMatrix4& viewMat, const FProjectionDesc& projDesc);
+    void DrawCustomDepthPass(const RCommandBuffer& cmd, const FMatrix4& viewMat, const FProjectionDesc& projDesc);
+    void DrawSceneStencilMaskPass(const RCommandBuffer& cmd, const FMatrix4& viewMat, const FProjectionDesc& projDesc);
 
     FCoordAdapter BuildCoordAdapter(const FBackendCoordDesc& d);
 
-    void ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& viewEngine, const FMatrix4& projEngine);
+    void ApplyCamera(const RShaderHandle& shaderToUse, const FMatrix4& viewEngine, const FProjectionDesc& projDesc);
     void DrawMesh(const RMeshHandle& meshHandle, const RShaderHandle& shaderToUse, const FMatrix4& modelEngine);
 
     void SubmitDebugLineList_Internal(const FDebugVertex* verts, uint32_t vertCount, bool bDepthTest);

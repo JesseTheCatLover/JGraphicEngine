@@ -32,6 +32,18 @@ const FMatrix4& JCameraComponent::GetProjectionMatrix(float aspectRatio) const
     return m_ProjectionMatrix;
 }
 
+FProjectionDesc JCameraComponent::GetProjectionDesc(float aspect) const
+{
+    FProjectionDesc d;
+    d.type = (m_ProjectionType == EProjectionType::Perspective) ? EProjectionType::Perspective : EProjectionType::Orthographic;
+    d.fovYDeg = m_FOV;
+    d.orthoHalfHeight = m_OrthoHalfHeight;
+    d.aspect = aspect;
+    d.nearP = m_NearClip;
+    d.farP = m_FarClip;
+    return d;
+}
+
 void JCameraComponent::OnWorldTransformChanged()
 {
     JSceneComponent::OnWorldTransformChanged();

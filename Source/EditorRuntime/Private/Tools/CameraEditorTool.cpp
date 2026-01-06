@@ -103,6 +103,18 @@ FMatrix4& CameraEditorTool::GetProjectionMatrix(float aspect) const
     return m_Proj;
 }
 
+FProjectionDesc CameraEditorTool::GetProjectionDesc(float aspect) const
+{
+    FProjectionDesc d;
+    d.type = (m_ProjectionType == EProjectionType::Perspective) ? EProjectionType::Perspective : EProjectionType::Orthographic;
+    d.fovYDeg = m_FOV;
+    d.orthoHalfHeight = m_OrthoHalfHeight;
+    d.aspect = aspect;
+    d.nearP = m_Near;
+    d.farP = m_Far;
+    return d;
+}
+
 void CameraEditorTool::RebuildView() const
 {
     const FMatrix4 worldMat = m_WorldTransform.ToMatrix();

@@ -177,6 +177,8 @@ public:
 
     [[nodiscard]] FBackendCoordDesc GetCoordConvention() const override;
 
+    [[nodiscard]] FMatrix4 BuildProjectionMatrix(const FProjectionDesc &desc) const override;
+
     // Rendering
     void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) override;
     void UploadLights(const RLightData* lights, uint32_t count) override;
