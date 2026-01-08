@@ -7,6 +7,8 @@
 #include "Core/IEditorService.h"
 #include "Scene/FHierarchySnapshot.h"
 
+struct FQuat;
+struct FVector3;
 struct FTransform;
 class EditorRuntime;
 struct FRaycastHit;
@@ -26,4 +28,10 @@ public:
     bool TryGetActorWorldTransform(ActorID id, FTransform& outXf) const;
 
     std::vector<FHierarchySnapshot> BuildHierarchySnapshot();
+
+    // Returns false if actor doesn't exist.
+    bool TrySetActorWorldTransform(ActorID id, const FTransform& xf);
+    bool TrySetActorWorldLocation(ActorID id, const FVector3& p);
+    bool TrySetActorWorldRotation(ActorID id, const FQuat& q);
+    bool TrySetActorWorldScale(ActorID id, const FVector3& s);
 };

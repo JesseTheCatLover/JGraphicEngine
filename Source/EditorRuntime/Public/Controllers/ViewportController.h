@@ -1,6 +1,8 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include <vector>
+#include <cstdint>
 
 #include "PanelRegistry.h"
 #include "Rendering/FViewportRT.h"
@@ -65,6 +67,28 @@ private:
     // Stable base id for this panel so hitIds don’t collide
     uint32_t m_GizmoBaseHitID = 0;
 
+    struct FGizmoEditSession
+    {
+        bool bActive = false;
+
+        GizmoEditorTool::EMode  mode  = GizmoEditorTool::EMode::Translate;
+        GizmoEditorTool::ESpace space = GizmoEditorTool::ESpace::World;
+        GizmoEditorTool::EHandle handle = GizmoEditorTool::EHandle::None;
+
+        // Pivot and basis locked at capture begin
+        FTransform gizmoStartXf{};
+        FVector3  pivotWS{0,0,0};
+        FVector3  basisX{1,0,0}, basisY{0,1,0}, basisZ{0,0,1};
+
+        // Selection snapshot at capture begin
+        std::vector<uint64_t> actors;
+        std::vector<FTransform> startXfs; // same order as actors
+
+        void Reset() { *this = FGizmoEditSession{}; }
+    };
+
+    FGizmoEditSession m_GizmoSession;
+
 private:
     void EnsureCameraTool();
     void DestroyCameraTool();
@@ -98,6 +122,16 @@ private:
     bool AllowBeginGizmoCapture(const FViewportPanelInput& input) const;
 
     void CancelGizmoCapture();
+
+    // Gizmo edit session
+
+    void BeginGizmoEditSession(const SelectionService& selection, const FTransform& gizmoXf);
+    void UpdateGizmoEditSession(const GizmoEditorController::FGizmoTransformDelta& delta);
+    void EndGizmoEditSession(bool bCommit);
+
+    static FTransform ApplyDeltaToTransformWS(const FTransform& start,
+                                             const FGizmoEditSession& session,
+                                             const GizmoEditorController::FGizmoTransformDelta& delta);
 
 public:
     ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools);

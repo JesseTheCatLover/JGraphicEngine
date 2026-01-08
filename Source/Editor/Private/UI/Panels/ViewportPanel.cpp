@@ -77,6 +77,7 @@ void ViewportPanel::Draw(EditorHost& host)
     input.bFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     input.bHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
     input.bLeftClicked    = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    input.bLeftReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
     input.bRightClicked   = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
     input.bRightReleased  = ImGui::IsMouseReleased(ImGuiMouseButton_Right);
 

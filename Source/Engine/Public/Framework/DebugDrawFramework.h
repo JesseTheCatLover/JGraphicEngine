@@ -1,4 +1,4 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 #pragma once
 
 #include <cstdint>
@@ -156,7 +156,7 @@ private:
                style.normalMode == EDebugNormalMode::Smooth;
     };
 
-    bool PassLayer(EDebugDrawLayer layer) const
+    [[nodiscard]] bool PassLayer(EDebugDrawLayer layer) const
     {
         return (m_LayerMask & DebugLayerBit(layer)) != 0;
     }
@@ -186,10 +186,6 @@ private:
                                       const FVector3& na, const FVector3& nb, const FVector3& nc,
                                       const FVector4& col, const FDebugDrawStyle& s,
                                       float seconds);
-
-    static FScreenPt ProjectToScreen(const FMatrix4& VP,
-                                     const FVector3& world,
-                                     int vx, int vy, int vw, int vh);
 
     static float DistPointToSegment2D(float px, float py,
                                       float ax, float ay,
@@ -479,7 +475,7 @@ private:
         }
 
         // Solid: shaft as a cylinder (tris), head as solid cone (tris)
-        const float shaftRadius = headRadius * 0.15f;  // TODO: maybe should be tweakable
+        const float shaftRadius = headRadius * 0.18f;  // TODO: maybe should be tweakable
 
         if (shaftLen > 1e-6f && shaftRadius > 1e-6f)
         {
@@ -905,6 +901,10 @@ public:
 
     void SetLayerEnabled(EDebugDrawLayer layer, bool b);
     bool IsLayerEnabled(EDebugDrawLayer layer) const;
+
+    static FScreenPt ProjectToScreen(const FMatrix4& VP,
+                                 const FVector3& world,
+                                 int vx, int vy, int vw, int vh);
 
     /**
      * @brief mouseX_px/mouseY_px are absolute pixels in the same coordinate space as view.viewportX/Y/W/H.

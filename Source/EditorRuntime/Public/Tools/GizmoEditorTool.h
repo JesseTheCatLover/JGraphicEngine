@@ -79,6 +79,9 @@ public:
     [[nodiscard]] uint32_t HandleToHitId(uint32_t baseHitId, EHandle h) const;
     [[nodiscard]] EHandle HitIdToHandle(uint32_t baseHitId, uint32_t hitId) const;
 
+    static void BuildBasis(const FTransform& xf, ESpace space,
+                           FVector3& outX, FVector3& outY, FVector3& outZ);
+
 private:
     // Visual tuning (in "gizmo units" before scaling)
     struct FVisualConfig
@@ -100,10 +103,10 @@ private:
         float uniformBoxHalf = 0.10f;
         float scaleArmThicknessPx = 2.0f;
 
-        float axisThicknessPx = 2.0f;
-        float highlightMul = 1.35f;  // brighten hovered/active colors
+        float axisThicknessPx = 5.0f;
+        float highlightMul = 4.35f;  // brighten hovered/active colors
         float activeMul    = 1.65f;
-        float planeAlpha   = 0.4f;
+        float planeAlpha   = 0.3f;
         float sphereHintAlpha = 0.01f;
 
         EDebugShading shading = EDebugShading::FixedLit;
@@ -114,8 +117,6 @@ private:
     static FVector4 Brighten(const FVector4& c, float mul);
     static float ComputeGizmoScale(const FVector3& camPos, const FVector3& gizmoPos);
 
-    static void BuildBasis(const FTransform& xf, ESpace space,
-                           FVector3& outX, FVector3& outY, FVector3& outZ);
 
     void DrawTranslate(DebugDraw& dd,
                        uint32_t viewKey,

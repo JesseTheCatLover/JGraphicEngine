@@ -59,10 +59,10 @@ void ViewportSubsystem::ApplySurfaceCursorCapture(const bool bShouldCapture)
 {
     if (bShouldCapture && !m_bCursorCaptured)
     {
-        m_Runtime.GetSurface().SetCursorDisabled();
+        //m_Runtime.GetSurface().SetCursorDisabled();
         m_bCursorCaptured = true;
     }
-    else if (m_bCursorCaptured)
+    else if (!bShouldCapture && m_bCursorCaptured)
     {
         m_Runtime.GetSurface().SetCursorVisible();
         m_bCursorCaptured = false;

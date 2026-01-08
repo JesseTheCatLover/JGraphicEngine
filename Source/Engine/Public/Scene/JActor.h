@@ -230,6 +230,13 @@ public:
             m_RootComponent->SetWorldRotation(worldRot);
     }
 
+    /** Set world rotation (FQuat) of the actor. */
+    void SetActorRotation(const FQuat& worldRot)
+    {
+        if (m_RootComponent)
+            m_RootComponent->SetWorldRotation(worldRot);
+    }
+
     /** Set world rotation from pitch/yaw/roll (degrees). */
     void SetActorRotation(float pitch, float yaw, float roll)
     {

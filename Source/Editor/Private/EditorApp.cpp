@@ -1,3 +1,5 @@
+//  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
+
 #include "EditorApp.h"
 
 #include <Core/CoreMinimal.h>
@@ -242,6 +244,7 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
     m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++));
     m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++)); // Second viewport
+    m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++)); // Third viewport
 
     // Call OnCreate for all panels now that Context/Core exist
     for (auto& panel : m_Panels)

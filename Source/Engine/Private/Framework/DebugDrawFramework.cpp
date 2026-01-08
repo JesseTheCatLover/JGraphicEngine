@@ -1,4 +1,4 @@
-//  Copyright 2025 JesseTheCatLover. All Rights Reserved.
+//  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "Framework/DebugDrawFramework.h"
 #include "Rendering/IRenderDevice.h"
@@ -40,7 +40,6 @@ void DebugDraw::Tick(float dt)
         ++i;
     }
 }
-
 
 // ----------------------------
 // Render
@@ -347,15 +346,13 @@ FScreenPt DebugDraw::ProjectToScreen(const FMatrix4& VP,
     FScreenPt out{};
 
     const FVector4 clip = VP * FVector4(world.x, world.y, world.z, 1.0f);
-    if (clip.w <= 1e-6f) return out; // behind / invalid
+
+    if (std::fabs(clip.w) <= 1e-6f) // behind/invalid
+        return out;
 
     const float ndcX = clip.x / clip.w;
     const float ndcY = clip.y / clip.w;
-    const float ndcZ = clip.z / clip.w; // OpenGL-style: -1..1
-
-    // Optionally reject if far outside; for gizmos you may allow some slack.
-    if (ndcX < -1.5f || ndcX > 1.5f || ndcY < -1.5f || ndcY > 1.5f)
-        return out;
+    const float ndcZ = clip.z / clip.w; // -1..1
 
     // NDC -> viewport pixels (origin top-left)
     const float sx = float(vx) + (ndcX * 0.5f + 0.5f) * float(vw);
@@ -363,7 +360,7 @@ FScreenPt DebugDraw::ProjectToScreen(const FMatrix4& VP,
 
     out.x = sx;
     out.y = sy;
-    out.depth01 = ndcZ * 0.5f + 0.5f;
+    out.depth01 = std::clamp(ndcZ * 0.5f + 0.5f, 0.0f, 1.0f);
     out.valid = true;
     return out;
 }

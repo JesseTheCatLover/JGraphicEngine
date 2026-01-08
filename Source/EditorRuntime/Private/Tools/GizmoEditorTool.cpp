@@ -28,9 +28,13 @@ void GizmoEditorTool::BuildBasis(const FTransform& xf, ESpace space, // TODO: Ma
 {
     // LH: +X forward, +Y right, +Z up
     const FQuat q = (space == ESpace::Local) ? xf.GetRotation() : FQuat{};
-    outX = q.RotateVector(FVector3(1,0,0)).Normalized();
-    outY = q.RotateVector(FVector3(0,1,0)).Normalized();
-    outZ = q.RotateVector(FVector3(0,0,1)).Normalized();
+    const FVector3 AX = FVector3::Forward(); // "X axis" in your engine meaning
+    const FVector3 AY = FVector3::Right();   // "Y axis"
+    const FVector3 AZ = FVector3::Up();      // "Z axis"
+
+    outX = q.RotateVector(AX).Normalized();
+    outY = q.RotateVector(AY).Normalized();
+    outZ = q.RotateVector(AZ).Normalized();
 }
 
 void GizmoEditorTool::DrawPlaneSquareWire(DebugDraw& dd, const FVector3& origin, const FVector3& axisA, const FVector3& axisB,

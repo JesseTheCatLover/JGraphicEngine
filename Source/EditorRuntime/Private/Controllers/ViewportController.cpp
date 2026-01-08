@@ -1,3 +1,7 @@
+//  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
+
+#pragma once
+
 #include "Controllers/ViewportController.h"
 #include <cstdint>
 #include <iostream>
@@ -124,10 +128,180 @@ bool ViewportController::AllowBeginGizmoCapture(const FViewportPanelInput& input
 
 void ViewportController::CancelGizmoCapture()
 {
+    EndGizmoEditSession(false);
+
     if (IsMyCapture(EMouseCaptureKind::GizmoTransform))
         m_ViewportSubsystem.EndCapture(m_PanelID);
 
     m_Gizmo.CancelCapture();
+}
+
+void ViewportController::BeginGizmoEditSession(const SelectionService &selection, const FTransform &gizmoXf)
+{
+    m_GizmoSession.Reset();
+    m_GizmoSession.bActive = true;
+
+    m_GizmoSession.mode   = m_ViewportSubsystem.GetGizmoMode();
+    m_GizmoSession.space  = m_ViewportSubsystem.GetGizmoSpace();
+    m_GizmoSession.handle = m_Gizmo.IsCapturing() ? GizmoEditorTool::EHandle::None : GizmoEditorTool::EHandle::None; // optional
+
+    m_GizmoSession.gizmoStartXf = gizmoXf;
+    m_GizmoSession.pivotWS = gizmoXf.GetPosition();
+
+    GizmoEditorController::BuildBasisWS(gizmoXf, m_GizmoSession.space,
+                 m_GizmoSession.basisX, m_GizmoSession.basisY, m_GizmoSession.basisZ);
+
+    // Snapshot selection + start transforms
+    auto& queries = m_Host.GetService<SceneQueryService>();
+    const auto& sel = selection.GetSelection();
+
+    m_GizmoSession.actors.reserve(sel.size());
+    m_GizmoSession.startXfs.reserve(sel.size());
+
+    for (ActorID id : sel)
+    {
+        FTransform xf{};
+        if (!queries.TryGetActorWorldTransform(id, xf))
+            continue;
+
+        m_GizmoSession.actors.push_back(id);
+        m_GizmoSession.startXfs.push_back(xf);
+    }
+
+    if (m_GizmoSession.actors.empty())
+        m_GizmoSession.Reset();
+}
+
+void ViewportController::UpdateGizmoEditSession(const GizmoEditorController::FGizmoTransformDelta &delta)
+{
+    if (!m_GizmoSession.bActive)
+        return;
+
+    if (!delta.bHasDelta)
+        return;
+
+    auto& queries = m_Host.GetService<SceneQueryService>();
+
+    // Apply preview from start transforms every frame (stable, no drift)
+    for (size_t i = 0; i < m_GizmoSession.actors.size(); ++i)
+    {
+        const ActorID id = m_GizmoSession.actors[i];
+        const FTransform& startXf = m_GizmoSession.startXfs[i];
+
+        const FTransform newXf = ApplyDeltaToTransformWS(startXf, m_GizmoSession, delta);
+
+        queries.TrySetActorWorldTransform(id, newXf);
+    }
+}
+
+void ViewportController::EndGizmoEditSession(bool bCommit)
+{
+    if (!m_GizmoSession.bActive)
+        return;
+
+    auto& queries = m_Host.GetService<SceneQueryService>();
+
+    if (!bCommit)
+    {
+        // revert preview
+        for (size_t i = 0; i < m_GizmoSession.actors.size(); ++i)
+            queries.TrySetActorWorldTransform(m_GizmoSession.actors[i], m_GizmoSession.startXfs[i]);
+    }
+    else
+    {
+        // Commit point:
+        // Here is where we'd build an undoable command:
+        // - capture end transforms
+        // - push command to EditorHost command stack
+        //
+        // For now: do nothing because preview already applied.
+        //
+        // TODO:
+        // std::vector<FTransform> endXfs = ...
+        // m_Host.ExecuteCommand(MakeUnique<FTransformActorsCommand>(actors, startXfs, endXfs));
+    }
+
+    m_GizmoSession.Reset();
+}
+
+FTransform ViewportController::ApplyDeltaToTransformWS(const FTransform &start, const FGizmoEditSession &session,
+    const GizmoEditorController::FGizmoTransformDelta &delta)
+{
+    FTransform out = start;
+
+    const FVector3 pivot = session.pivotWS;
+
+    // --- TRANSLATE ---
+    if (delta.mode == GizmoEditorTool::EMode::Translate)
+    {
+        out.SetPosition(start.GetPosition() + delta.deltaTranslationWS);
+        return out;
+    }
+
+    // --- ROTATE (world space around pivot) ---
+    if (delta.mode == GizmoEditorTool::EMode::Rotate)
+    {
+        const FVector3 axis = delta.rotationAxisWS.Normalized();
+        const float angle = delta.rotationAngleRad;
+
+        if (std::fabs(angle) < 1e-8f)
+            return out;
+
+        const FQuat qDelta(axis, angle);
+
+        // rotate position around pivot
+        const FVector3 p0 = start.GetPosition();
+        const FVector3 v  = p0 - pivot;
+        const FVector3 v2 = qDelta.RotateVector(v);
+        out.SetPosition(pivot + v2);
+
+        // rotate orientation in world space (pre-multiply is typical for world delta)
+        // If your convention is opposite, swap order: startRot * qDelta
+        const FQuat startRot = start.GetRotation();
+        out.SetRotation(qDelta * startRot);
+
+        return out;
+    }
+
+    // --- SCALE (around pivot, in gizmo basis) ---
+    if (delta.mode == GizmoEditorTool::EMode::Scale)
+    {
+        const FVector3 mul = delta.deltaScaleMul;
+
+        // 1) Scale position around pivot in gizmo basis (works for any selection count)
+        const FVector3 p0 = start.GetPosition();
+        const FVector3 off = p0 - pivot;
+
+        const float x = off.Dot(session.basisX);
+        const float y = off.Dot(session.basisY);
+        const float z = off.Dot(session.basisZ);
+
+        const FVector3 offScaled =
+            session.basisX * (x * mul.x) +
+            session.basisY * (y * mul.y) +
+            session.basisZ * (z * mul.z);
+
+        out.SetPosition(pivot + offScaled);
+
+        // 2) Scale the actor itself.
+        // “Pro” path is matrix decomposition; for now we keep it predictable:
+        // - Local gizmo: scale local components directly (matches most editors)
+        // - World gizmo: apply uniform mul to avoid weird rotation-coupling
+        const FVector3 s0 = start.GetScale();
+
+        if (session.space == GizmoEditorTool::ESpace::Local)
+        {
+            out.SetScale(FVector3(s0.x * mul.x, s0.y * mul.y, s0.z * mul.z));
+        }
+        else
+        {
+            out.SetScale(FVector3(s0.x * mul.x, s0.y * mul.y, s0.z * mul.z));
+        }
+
+        return out;
+    }
+
+    return out;
 }
 
 void ViewportController::UpdateInputPolicy(const FViewportPanelInput& input)
@@ -321,15 +495,30 @@ bool ViewportController::HandleGizmo(const FViewportPanelInput& input,
     const auto gizmoResult = m_Gizmo.UpdateAndDraw(debugDraw, view, viewMat, projMat,
                                           camPos, camFwd, gizmoXf, bDrawGizmo, bAllowBeginCapture, input);
 
-    // If gizmo started capturing this frame, claim global capture
+    // Claim global capture if local capture started
     if (m_Gizmo.IsCapturing() && !IsMyCapture(EMouseCaptureKind::GizmoTransform))
     {
         // If this fails, immediately cancel local capture so we don't desync
         if (!m_ViewportSubsystem.TryBeginCapture(m_PanelID, EMouseCaptureKind::GizmoTransform))
+        {
+            EndGizmoEditSession(false);
             m_Gizmo.CancelCapture();
+        }
     }
 
-    // If gizmo stopped capturing and I own global gizmo capture, release
+    // Session begin
+    if (gizmoResult.bBeganCapture && m_Gizmo.IsCapturing())
+        BeginGizmoEditSession(selection, gizmoXf);
+
+    // Session update (preview apply)
+    if (m_Gizmo.IsCapturing() && gizmoResult.manipulation.bHasDelta)
+        UpdateGizmoEditSession(gizmoResult.manipulation);
+
+    // Session end
+    if (gizmoResult.bEndedCapture)
+        EndGizmoEditSession(true);
+
+    // If local capture stopped, release global capture
     if (!m_Gizmo.IsCapturing() && IsMyCapture(EMouseCaptureKind::GizmoTransform))
         m_ViewportSubsystem.EndCapture(m_PanelID);
 
@@ -402,10 +591,12 @@ void ViewportController::Update(float deltaTime, const FViewportPanelInput& inpu
     CameraEditorTool* cam = m_Tools.GetCameraTool(m_CameraToolID);
     if (!cam) return;
 
+    bool bBlockPick = false;
     if (bHasView)
-        HandleGizmo(input, *cam, view, m_Selection);
+        bBlockPick = HandleGizmo(input, *cam, view, m_Selection);
 
-    HandleActorPicking(input, cam, m_Picker, m_Selection, m_Hierarchy);
+    if (!bBlockPick)
+        HandleActorPicking(input, cam, m_Picker, m_Selection, m_Hierarchy);
 
     // Tick camera
     TickCamera(deltaTime);

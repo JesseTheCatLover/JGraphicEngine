@@ -32,6 +32,43 @@ bool EditorSceneAPI::TryGetActorWorldTransform(ActorID id, FTransform& outXf) co
     return true;
 }
 
+bool EditorSceneAPI::TrySetActorWorldTransform(ActorID id, const FTransform &xf)
+{
+    JActor* a = m_SceneManager.FindActorByID(id);
+    if (!a) return false;
+
+    a->SetActorTransform(xf);
+
+    return true;
+}
+
+bool EditorSceneAPI::TrySetActorWorldLocation(ActorID id, const FVector3& p)
+{
+    JActor* a = m_SceneManager.FindActorByID(id);
+    if (!a) return false;
+
+    a->SetActorLocation(p);
+    return true;
+}
+
+bool EditorSceneAPI::TrySetActorWorldRotation(ActorID id, const FQuat& q)
+{
+    JActor* a = m_SceneManager.FindActorByID(id);
+    if (!a) return false;
+
+    a->SetActorRotation(q);
+    return true;
+}
+
+bool EditorSceneAPI::TrySetActorWorldScale(ActorID id, const FVector3& s)
+{
+    JActor* a = m_SceneManager.FindActorByID(id);
+    if (!a) return false;
+
+    a->SetActorScale(s);
+    return true;
+}
+
 std::vector<FHierarchySnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
 {
     std::vector<FHierarchySnapshot> result;
