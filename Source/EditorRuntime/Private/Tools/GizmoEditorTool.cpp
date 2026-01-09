@@ -5,22 +5,66 @@
 #include <algorithm>
 #include <cmath>
 
-FVector4 GizmoEditorTool::Brighten(const FVector4& c, float mul)
-{
-    return FVector4(
-        std::min(1.0f, c.x * mul),
-        std::min(1.0f, c.y * mul),
-        std::min(1.0f, c.z * mul),
-        c.w
-    );
-}
-
 float GizmoEditorTool::ComputeGizmoScale(const FVector3& camPos, const FVector3& gizmoPos)
 {
     // Simple constant-size heuristic.
     // Tune these later; feels decent in practice.
     const float dist = (gizmoPos - camPos).Length();
     return std::max(0.3f, dist * 0.10f);
+}
+
+FVector4 GizmoEditorTool::LerpRGB(const FVector4 &a, const FVector4 &b, float t)
+{
+    const float it = 1.0f - t;
+    return FVector4(
+        a.x * it + b.x * t,
+        a.y * it + b.y * t,
+        a.z * it + b.z * t,
+        a.w // keep alpha managed outside
+    );
+}
+
+FVector4 GizmoEditorTool::ApplyHandleTint(EHandle h, const FDrawParams &p, const FVisualConfig &v,
+    const FVector4 &base) const
+{
+    FVector4 c = base;
+    c.w *= p.alphaMul;
+
+    // Active wins over hover
+    if (h != EHandle::None && h == p.activeHandle)
+    {
+        // Blend base->activeColor (activeBlend usually 1.0)
+        const FVector4 target = v.activeColor;
+
+        c = LerpRGB(c, target, std::clamp(v.activeBlend, 0.0f, 1.0f));
+
+        // Alpha: base alpha * global alpha * activeAlphaMul * target alpha
+        c.w = std::min(1.0f, c.w * v.activeAlphaMul * target.w);
+        return c;
+    }
+
+    if (h != EHandle::None && h == p.hoveredHandle)
+    {
+        // Tint the handle color itself toward white
+        const FVector4 white(1, 1, 1, 1);
+        c = LerpRGB(c, white, std::clamp(v.hoverToWhite, 0.0f, 1.0f));
+
+        // Hollow feeling: reduce alpha (should be < 1)
+        c.w = std::min(1.0f, c.w * v.hoverAlphaMul);
+        return c;
+    }
+
+    return c;
+}
+
+FDebugDrawStyle GizmoEditorTool::ApplyHandleStyle(EHandle h, const FDrawParams &p, const FVisualConfig &v,
+                                                  FDebugDrawStyle s) const
+{
+    if (h != EHandle::None && h == p.hoveredHandle)
+    {
+        s.thicknessPx += v.hoverThickAddPx;
+    }
+    return s;
 }
 
 void GizmoEditorTool::BuildBasis(const FTransform& xf, ESpace space, // TODO: Make this adjust to the camera and make it always face the cam
@@ -200,32 +244,38 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
     FVector4 cz(0.10f, 0.10f, 0.85f, 1);
     FVector4 cCenter(0.85f, 0.85f, 0.85f, 1.0f);
 
-    auto applyHL = [&](EHandle h, FVector4 col) -> FVector4
-    {
-        col.w *= p.alphaMul;
-
-        if (h == p.activeHandle) {
-            col = Brighten(col, v.activeMul);
-            col.w = std::min(1.0f, col.w * 1.6f);
-            return col;
-        }
-        if (h == p.hoveredHandle) {
-            col = Brighten(col, v.highlightMul);
-            col.w = std::min(1.0f, col.w * 1.35f);
-            return col;
-        }
-        return col;
-    };
-
     // Axis arrows
-    s.hitId = HandleToHitId(p.baseHitID, EHandle::T_X);
-    dd.DrawArrow(o, o + X * axisLen, applyHL(EHandle::T_X, cx), headLen, headRad, 16, s);
 
-    s.hitId = HandleToHitId(p.baseHitID, EHandle::T_Y);
-    dd.DrawArrow(o, o + Y * axisLen, applyHL(EHandle::T_Y, cy), headLen, headRad, 16, s);
+    // X
+    {
+        FDebugDrawStyle ps = s;
+        ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_X);
+        ps = ApplyHandleStyle(EHandle::T_X, p, v, ps);
 
-    s.hitId = HandleToHitId(p.baseHitID, EHandle::T_Z);
-    dd.DrawArrow(o, o + Z * axisLen, applyHL(EHandle::T_Z, cz), headLen, headRad, 16, s);
+        const FVector4 col = ApplyHandleTint(EHandle::T_X, p, v, cx);
+        dd.DrawArrow(o, o + X * axisLen, col, headLen, headRad, 16, ps);
+    }
+
+    // Y
+    {
+        FDebugDrawStyle ps = s;
+        ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_Y);
+        ps = ApplyHandleStyle(EHandle::T_Y, p, v, ps);
+
+        const FVector4 col = ApplyHandleTint(EHandle::T_Y, p, v, cy);
+        dd.DrawArrow(o, o + Y * axisLen, col, headLen, headRad, 16, ps);
+    }
+
+    // Z
+    {
+        FDebugDrawStyle ps = s;
+        ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_Z);
+        ps = ApplyHandleStyle(EHandle::T_Z, p, v, ps);
+
+        const FVector4 col = ApplyHandleTint(EHandle::T_Z, p, v, cz);
+        dd.DrawArrow(o, o + Z * axisLen, col, headLen, headRad, 16, ps);
+    }
+
 
     // Center sphere (free move)
     if (p.bDrawCenter)
@@ -233,30 +283,32 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
         FDebugDrawStyle cs = s;
         cs.thicknessPx = 1.0f;
         cs.hitId = HandleToHitId(p.baseHitID, EHandle::T_Center);
+        cs = ApplyHandleStyle(EHandle::T_Center, p, v, cs);
 
-        FVector4 col = applyHL(EHandle::T_Center, cCenter);
+        const FVector4 col = ApplyHandleTint(EHandle::T_Center, p, v, cCenter);
         dd.DrawSphere(o, centerRad, col, 24, cs);
     }
 
     // Plane handles (wire squares)
     if (p.bDrawPlanes)
     {
-        // Make planes slightly transparent
-        FVector4 cxy = FVector4(0, 0, 1, v.planeAlpha);  // XY: blue
-        FVector4 cxz = FVector4(0, 1, 0, v.planeAlpha);  // XZ: green
-        FVector4 cyz = FVector4(1, 0, 0, v.planeAlpha);  // YZ: red
+        FVector4 cxy(0, 0, 1, v.planeAlpha);
+        FVector4 cxz(0, 1, 0, v.planeAlpha);
+        FVector4 cyz(1, 0, 0, v.planeAlpha);
 
         const float half = (v.planeSize * 0.5f) * gizmoScale;
         const float off  = v.planeOffset * gizmoScale;
 
-        // XY plane square (axes X,Y), offset away from origin to avoid clutter
+        // XY
         {
             FDebugDrawStyle ps = s;
             ps.thicknessPx = 2.0f;
             ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_XY);
+            ps = ApplyHandleStyle(EHandle::T_XY, p, v, ps);
 
             const FVector3 c = o + (X + Y) * off;
-            const FVector4 col = applyHL(EHandle::T_XY, cxy);
+            const FVector4 col = ApplyHandleTint(EHandle::T_XY, p, v, cxy);
+
             DrawPlaneSquareWire(dd, c, X, Y, half, col, ps);
             DrawPlaneSquareSolid(dd, c, X, Y, half, col, ps);
         }
@@ -266,9 +318,11 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
             FDebugDrawStyle ps = s;
             ps.thicknessPx = 2.0f;
             ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_XZ);
+            ps = ApplyHandleStyle(EHandle::T_XZ, p, v, ps);
 
             const FVector3 c = o + (X + Z) * off;
-            const FVector4 col = applyHL(EHandle::T_XZ, cxz);
+            const FVector4 col = ApplyHandleTint(EHandle::T_XZ, p, v, cxz);
+
             DrawPlaneSquareWire(dd, c, X, Z, half, col, ps);
             DrawPlaneSquareSolid(dd, c, X, Z, half, col, ps);
         }
@@ -278,9 +332,11 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd, uint32_t viewKey, const FVect
             FDebugDrawStyle ps = s;
             ps.thicknessPx = 2.0f;
             ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_YZ);
+            ps = ApplyHandleStyle(EHandle::T_YZ, p, v, ps);
 
             const FVector3 c = o + (Y + Z) * off;
-            const FVector4 col = applyHL(EHandle::T_YZ, cyz);
+            const FVector4 col = ApplyHandleTint(EHandle::T_YZ, p, v, cyz);
+
             DrawPlaneSquareWire(dd, c, Y, Z, half, col, ps);
             DrawPlaneSquareSolid(dd, c, Y, Z, half, col, ps);
         }
@@ -323,23 +379,6 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
     FVector4 cy(0.10f, 0.85f, 0.10f, 1);
     FVector4 cz(0.10f, 0.10f, 0.85f, 1);
 
-    auto applyHL = [&](EHandle h, FVector4 col) -> FVector4
-    {
-        col.w *= p.alphaMul;
-
-        if (h == p.activeHandle) {
-            col = Brighten(col, v.activeMul);
-            col.w = std::min(1.0f, col.w * 1.6f);
-            return col;
-        }
-        if (h == p.hoveredHandle) {
-            col = Brighten(col, v.highlightMul);
-            col.w = std::min(1.0f, col.w * 1.35f);
-            return col;
-        }
-        return col;
-    };
-
     // Optional faint sphere hint
     if (p.bDrawSphereHint)
     {
@@ -352,17 +391,37 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
         dd.DrawSphere(o, r, hint, v.ringSegments, hs);
     }
 
-    // X ring (normal = X axis => circle lies in YZ)
-    s.hitId = HandleToHitId(p.baseHitID, EHandle::R_X);
-    dd.DrawCircle(o, X, r, applyHL(EHandle::R_X, cx), v.ringSegments, s);
+    // X ring
+    {
+        FDebugDrawStyle rs = s;
+        rs.hitId = HandleToHitId(p.baseHitID, EHandle::R_X);
+        rs = ApplyHandleStyle(EHandle::R_X, p, v, rs);
+
+        const FVector4 col = ApplyHandleTint(EHandle::R_X, p, v, cx);
+        dd.DrawCircle(o, X, r, col, v.ringSegments, rs);
+    }
+
 
     // Y ring
-    s.hitId = HandleToHitId(p.baseHitID, EHandle::R_Y);
-    dd.DrawCircle(o, Y, r, applyHL(EHandle::R_Y, cy), v.ringSegments, s);
+    {
+        FDebugDrawStyle rs = s;
+        rs.hitId = HandleToHitId(p.baseHitID, EHandle::R_Y);
+        rs = ApplyHandleStyle(EHandle::R_Y, p, v, rs);
+
+        const FVector4 col = ApplyHandleTint(EHandle::R_Y, p, v, cy);
+        dd.DrawCircle(o, Y, r, col, v.ringSegments, rs);
+    }
 
     // Z ring
-    s.hitId = HandleToHitId(p.baseHitID, EHandle::R_Z);
-    dd.DrawCircle(o, Z, r, applyHL(EHandle::R_Z, cz), v.ringSegments, s);
+    {
+        FDebugDrawStyle rs = s;
+        rs.hitId = HandleToHitId(p.baseHitID, EHandle::R_Z);
+        rs = ApplyHandleStyle(EHandle::R_Z, p, v, rs);
+
+        const FVector4 col = ApplyHandleTint(EHandle::R_Z, p, v, cz);
+        dd.DrawCircle(o, Z, r, col, v.ringSegments, rs);
+    }
+
 }
 
 // ----------------------
@@ -404,59 +463,80 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     FVector4 cz(0.10f, 0.10f, 0.85f, 1);
     FVector4 cU(0.9f,0.9f,0.9f,1);
 
-    auto applyHL = [&](EHandle h, FVector4 col) -> FVector4
-    {
-        col.w *= p.alphaMul;
-
-        if (h == p.activeHandle) {
-            col = Brighten(col, v.activeMul);
-            col.w = std::min(1.0f, col.w * 1.6f);
-            return col;
-        }
-        if (h == p.hoveredHandle) {
-            col = Brighten(col, v.highlightMul);
-            col.w = std::min(1.0f, col.w * 1.35f);
-            return col;
-        }
-        return col;
-    };
-
     const FVector3 ex = o + X * axisLen;
     const FVector3 ey = o + Y * axisLen;
     const FVector3 ez = o + Z * axisLen;
 
-    // Arms (lines)
-    sLine.hitId = HandleToHitId(p.baseHitID, EHandle::S_X);
-    dd.DrawLine(o, ex, applyHL(EHandle::S_X, cx), sLine);
-
-    sLine.hitId = HandleToHitId(p.baseHitID, EHandle::S_Y);
-    dd.DrawLine(o, ey, applyHL(EHandle::S_Y, cy), sLine);
-
-    sLine.hitId = HandleToHitId(p.baseHitID, EHandle::S_Z);
-    dd.DrawLine(o, ez, applyHL(EHandle::S_Z, cz), sLine);
-
-    // Heads (boxes)
+    // X
     {
-        sBox.hitId = HandleToHitId(p.baseHitID, EHandle::S_X);
+        // Arm
+        FDebugDrawStyle ls = sLine;
+        ls.hitId = HandleToHitId(p.baseHitID, EHandle::S_X);
+        ls = ApplyHandleStyle(EHandle::S_X, p, v, ls);
+
+        const FVector4 colL = ApplyHandleTint(EHandle::S_X, p, v, cx);
+        dd.DrawLine(o, ex, colL, ls);
+
+        // Head
+        FDebugDrawStyle bs = sBox;
+        bs.hitId = HandleToHitId(p.baseHitID, EHandle::S_X);
+        bs = ApplyHandleStyle(EHandle::S_X, p, v, bs);
+
+        const FVector4 colB = ApplyHandleTint(EHandle::S_X, p, v, cx);
         const float h = v.scaleBoxHalf * gizmoScale;
-        dd.DrawBox(ex, FVector3(h,h,h), applyHL(EHandle::S_X, cx), sBox);
-    }
-    {
-        sBox.hitId = HandleToHitId(p.baseHitID, EHandle::S_Y);
-        const float h = v.scaleBoxHalf * gizmoScale;
-        dd.DrawBox(ey, FVector3(h,h,h), applyHL(EHandle::S_Y, cy), sBox);
-    }
-    {
-        sBox.hitId = HandleToHitId(p.baseHitID, EHandle::S_Z);
-        const float h = v.scaleBoxHalf * gizmoScale;
-        dd.DrawBox(ez, FVector3(h,h,h), applyHL(EHandle::S_Z, cz), sBox);
+        dd.DrawBox(ex, FVector3(h,h,h), colB, bs);
     }
 
-    // Center uniform scale box
+    // Y
+    {
+        // Arm
+        FDebugDrawStyle ls = sLine;
+        ls.hitId = HandleToHitId(p.baseHitID, EHandle::S_Y);
+        ls = ApplyHandleStyle(EHandle::S_Y, p, v, ls);
+
+        const FVector4 colL = ApplyHandleTint(EHandle::S_Y, p, v, cy);
+        dd.DrawLine(o, ey, colL, ls);
+
+        // Head
+        FDebugDrawStyle bs = sBox;
+        bs.hitId = HandleToHitId(p.baseHitID, EHandle::S_Y);
+        bs = ApplyHandleStyle(EHandle::S_Y, p, v, bs);
+
+        const FVector4 colB = ApplyHandleTint(EHandle::S_Y, p, v, cy);
+        const float h = v.scaleBoxHalf * gizmoScale;
+        dd.DrawBox(ey, FVector3(h,h,h), colB, bs);
+    }
+
+    // Z
+    {
+        // Arm
+        FDebugDrawStyle ls = sLine;
+        ls.hitId = HandleToHitId(p.baseHitID, EHandle::S_Z);
+        ls = ApplyHandleStyle(EHandle::S_Z, p, v, ls);
+
+        const FVector4 colL = ApplyHandleTint(EHandle::S_Z, p, v, cz);
+        dd.DrawLine(o, ez, colL, ls);
+
+        // Head
+        FDebugDrawStyle bs = sBox;
+        bs.hitId = HandleToHitId(p.baseHitID, EHandle::S_Z);
+        bs = ApplyHandleStyle(EHandle::S_Z, p, v, bs);
+
+        const FVector4 colB = ApplyHandleTint(EHandle::S_Z, p, v, cz);
+        const float h = v.scaleBoxHalf * gizmoScale;
+        dd.DrawBox(ez, FVector3(h,h,h), colB, bs);
+    }
+
+    // Uniform center
     if (p.bDrawCenter)
     {
-        sBox.hitId = HandleToHitId(p.baseHitID, EHandle::S_Uniform);
+        FDebugDrawStyle bs = sBox;
+        bs.hitId = HandleToHitId(p.baseHitID, EHandle::S_Uniform);
+        bs = ApplyHandleStyle(EHandle::S_Uniform, p, v, bs);
+
+        const FVector4 colB = ApplyHandleTint(EHandle::S_Uniform, p, v, cU);
         const float h = v.uniformBoxHalf * gizmoScale;
-        dd.DrawBox(o, FVector3(h,h,h), applyHL(EHandle::S_Uniform, cU), sBox);
+        dd.DrawBox(o, FVector3(h,h,h), colB, bs);
     }
+
 }

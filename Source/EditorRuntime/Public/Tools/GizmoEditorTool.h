@@ -104,9 +104,16 @@ private:
         float scaleArmThicknessPx = 2.0f;
 
         float axisThicknessPx = 5.0f;
-        float highlightMul = 4.35f;  // brighten hovered/active colors
-        float activeMul    = 1.65f;
-        float planeAlpha   = 0.3f;
+
+        float hoverToWhite     = 0.5f; // 0..1: tint base color toward white
+        float hoverAlphaMul    = 1.2f; // < 1.0 => more transparent => "hollow"
+        float hoverThickAddPx  = 0.0f;  // slight emphasis on line primitives
+
+        FVector4 activeColor = FVector4(1.0f, 1.0f, 0.15f, 1.f); // "warm yellow"
+        float activeBlend = 1.f;  // 1.0 = fully activeColor, 0.0 = base color
+        float activeAlphaMul = 1.2f;
+
+        float planeAlpha = 0.3f;
         float sphereHintAlpha = 0.01f;
 
         EDebugShading shading = EDebugShading::FixedLit;
@@ -114,8 +121,13 @@ private:
     };
 
 private:
-    static FVector4 Brighten(const FVector4& c, float mul);
     static float ComputeGizmoScale(const FVector3& camPos, const FVector3& gizmoPos);
+
+    static FVector4 LerpRGB(const FVector4& a, const FVector4& b, float t);
+
+    [[nodiscard]] FVector4 ApplyHandleTint(EHandle h, const FDrawParams& p, const FVisualConfig& v, const FVector4& base) const;
+    static FVector4 ApplyActiveColor(const FVector4 &baseColor, const FVisualConfig &v);
+    [[nodiscard]] FDebugDrawStyle ApplyHandleStyle(EHandle h, const FDrawParams& p, const FVisualConfig& v, FDebugDrawStyle s) const;
 
 
     void DrawTranslate(DebugDraw& dd,
