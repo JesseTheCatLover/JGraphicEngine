@@ -29,9 +29,6 @@ void EditorApp::BeginFrame()
 
 void EditorApp::RenderPanels()
 {
-    // Engine has already rendered the 3D scene by now.
-    // Here we build the full editor UI.
-
     ImGuiIO& io = ImGui::GetIO();
     ImGuiViewport* viewport = ImGui::GetMainViewport();
 
@@ -40,7 +37,36 @@ void EditorApp::RenderPanels()
     {
         if (ImGui::BeginMenu("File"))
         {
-            // TODO: New Scene, Open, Save, etc.
+            if (ImGui::MenuItem("Save", "Ctrl+S"))
+            {
+
+            }
+            if (ImGui::MenuItem("Save As", "Ctrl+Alt+s"))
+            {
+
+            }
+            if (ImGui::MenuItem("Save All", "Ctrl+Shift+s"))
+            {
+
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("New Scene", "Ctrl+N"))
+            {
+
+            }
+            if (ImGui::MenuItem("Open Scene", "Ctrl+O"))
+            {
+
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("New Project"))
+            {
+
+            }
+            if (ImGui::MenuItem("Open Project"))
+            {
+
+            }
             ImGui::EndMenu();
         }
 
@@ -50,11 +76,15 @@ void EditorApp::RenderPanels()
             {
                 // bool canUndo = m_EditorHost->CanUndo();
                 // bool canRedo = m_EditorHost->CanRedo();
-                //
-                // if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo))
-                //     m_EditorHost->Undo();
-                // if (ImGui::MenuItem("Redo", "Ctrl+Y", false, canRedo))
-                //     m_EditorHost->Redo();
+
+                if (ImGui::MenuItem("Undo", "Ctrl+Z", false, true))
+                {
+
+                }
+                if (ImGui::MenuItem("Redo", "Ctrl+Y", false, true))
+                {
+
+                }
             }
             ImGui::EndMenu();
         }
@@ -66,15 +96,96 @@ void EditorApp::RenderPanels()
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Viewport"))
+        {
+            if (ImGui::BeginMenu("Multi-View Modes", "Ctrl+M+V"))
+            {
+                static int sViewportCount = 1;
+                if (ImGui::MenuItem("Single View", "Ctrl+V+1"))
+                {
+                    for (int i = 1; i < sViewportCount; i++)
+                    {
+                        m_Panels.pop_back();
+                    }
+                    sViewportCount = 1;
+                }
+                if (ImGui::MenuItem("Double View", "Ctrl+V+2"))
+                {
+                    for (int i = 1; i < sViewportCount; i++)
+                    {
+                        m_Panels.pop_back();
+                    }
+
+                    m_Panels.emplace_back(MakeUnique<ViewportPanel>(1))->OnCreate(*m_EditorHost);
+                    sViewportCount = 2;
+                }
+                if (ImGui::MenuItem("Triple View", "Ctrl+V+3"))
+                {
+                    for (int i = 1; i < sViewportCount; i++)
+                    {
+                        m_Panels.pop_back();
+                    }
+
+                    m_Panels.emplace_back(MakeUnique<ViewportPanel>(1))->OnCreate(*m_EditorHost);
+                    m_Panels.emplace_back(MakeUnique<ViewportPanel>(2))->OnCreate(*m_EditorHost);
+                    sViewportCount = 3;
+                }
+                if (ImGui::MenuItem("Quad View", "Ctrl+V+4"))
+                {
+                    for (int i = 1; i < sViewportCount; i++)
+                    {
+                        m_Panels.pop_back();
+                    }
+
+                    m_Panels.emplace_back(MakeUnique<ViewportPanel>(1))->OnCreate(*m_EditorHost);
+                    m_Panels.emplace_back(MakeUnique<ViewportPanel>(2))->OnCreate(*m_EditorHost);
+                    m_Panels.emplace_back(MakeUnique<ViewportPanel>(3))->OnCreate(*m_EditorHost);
+                    sViewportCount = 4;
+                }
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Window"))
         {
-            // Window management / layout reset
+            if (ImGui::BeginMenu("Docking Layout"))
+            {
+                if (ImGui::MenuItem("Apply User Defaults"))
+                {
+
+                }
+
+                if (ImGui::MenuItem("Load Layout File"))
+                {
+
+                }
+                if (ImGui::BeginMenu("Recent Layouts"))
+                {
+                    ImGui::EndMenu();
+                }
+
+                ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
+
+                if (ImGui::MenuItem("Reset To Editor Defaults"))
+                {
+
+                }
+
+                ImGui::EndMenu();
+            }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Help"))
         {
-            // About, Docs, etc.
+            if (ImGui::MenuItem("About"))
+            {
+
+            }
+
             ImGui::EndMenu();
         }
 
@@ -96,44 +207,12 @@ void EditorApp::RenderPanels()
         ImGuiWindowFlags_NoScrollbar |
         ImGuiWindowFlags_NoScrollWithMouse |
         ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoBringToFrontOnFocus;
+        ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoDocking;
 
     ImGui::Begin("##Toolbar", nullptr, toolbarFlags);
 
-    if (ImGui::Button("Load"))  { /* */ }
-    ImGui::SameLine();
-    if (ImGui::Button("Save"))  { /* */ }
 
-    ImGui::SameLine();
-    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-    ImGui::SameLine();
-
-    // Transform tools (Select / Move / Rotate / Scale)
-    static int gCurrentTool = 0;
-    const char* toolNames[] = { "Select", "Move", "Rotate", "Scale" };
-    for (int i = 0; i < 4; ++i)
-    {
-        if (i > 0) ImGui::SameLine();
-        bool selected = (gCurrentTool == i);
-        if (ImGui::Selectable(toolNames[i], selected, 0, ImVec2(0, 0)))
-        {
-            gCurrentTool = i;
-            // TODO: tell EditorCore about current gizmo tool
-        }
-    }
-
-    // Right side: toggles for panels (e.g. Asset Browser)
-    ImGui::SameLine(ImGui::GetWindowWidth() - 150.0f);
-    ImGui::TextUnformatted("Panels:");
-
-    ImGui::SameLine();
-    if (ImGui::Button("Assets"))
-    {
-        // toggle asset browser panel visibility
-        //m_ShowAssetBrowser = !m_ShowAssetBrowser;
-    }
-
-    // You can add icons instead of text later (FontAwesome / custom icon font).
     ImGui::End();
     ImGui::PopStyleVar(3);
 
@@ -238,13 +317,9 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     // Create EditorCore to drive context & commands
     m_EditorHost = TUniquePtr<EditorHost>(new EditorHost(*m_EditorRuntime));
 
-    int viewportIndex = 0;
-
     // Register panels
     m_Panels.emplace_back(MakeUnique<SceneHierarchyPanel>());
-    m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++));
-    m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++)); // Second viewport
-    m_Panels.emplace_back(MakeUnique<ViewportPanel>(viewportIndex++)); // Third viewport
+    m_Panels.emplace_back(MakeUnique<ViewportPanel>(0));
 
     // Call OnCreate for all panels now that Context/Core exist
     for (auto& panel : m_Panels)
