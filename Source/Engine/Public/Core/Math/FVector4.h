@@ -21,7 +21,7 @@ struct FVector4
     constexpr FVector4() : x(0), y(0), z(0), w(0) {}
 
     /** Constructs a vector with the given X, Y, Z, and W values. */
-    constexpr FVector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+    constexpr FVector4(float x, float y, float z, float w = 1.f) : x(x), y(y), z(z), w(w) {}
 
     /** Constructs a vector with all components equal to the given scalar. */
     explicit constexpr FVector4(float scalar) : x(scalar), y(scalar), z(scalar), w(scalar) {}

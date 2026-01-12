@@ -10,7 +10,7 @@ float GizmoEditorTool::ComputeGizmoScale(const FVector3& camPos, const FVector3&
     // Simple constant-size heuristic.
     // Tune these later; feels decent in practice.
     const float dist = (gizmoPos - camPos).Length();
-    return std::max(0.3f, dist * 0.10f);
+    return std::max(0.15f, dist * 0.10f);
 }
 
 FVector4 GizmoEditorTool::LerpRGB(const FVector4 &a, const FVector4 &b, float t)
@@ -144,7 +144,10 @@ uint32_t GizmoEditorTool::HandleToHitId(uint32_t baseHitId, EHandle h) const
         case EHandle::S_X:      return baseHitId + 20;
         case EHandle::S_Y:      return baseHitId + 21;
         case EHandle::S_Z:      return baseHitId + 22;
-        case EHandle::S_Uniform:return baseHitId + 23;
+        case EHandle::S_XY:      return baseHitId + 23;
+        case EHandle::S_XZ:      return baseHitId + 24;
+        case EHandle::S_YZ:      return baseHitId + 25;
+        case EHandle::S_Uniform:return baseHitId + 26;
 
         default: return 0;
     }
@@ -177,7 +180,10 @@ GizmoEditorTool::EHandle GizmoEditorTool::HitIdToHandle(uint32_t baseHitId, uint
         case 20: return EHandle::S_X;
         case 21: return EHandle::S_Y;
         case 22: return EHandle::S_Z;
-        case 23: return EHandle::S_Uniform;
+        case 23: return EHandle::S_XY;
+        case 24: return EHandle::S_XZ;
+        case 25: return EHandle::S_YZ;
+        case 26: return EHandle::S_Uniform;
 
         default: return EHandle::None;
     }
@@ -461,7 +467,7 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     FVector4 cx(0.85f, 0.10f, 0.10f, 1);
     FVector4 cy(0.10f, 0.85f, 0.10f, 1);
     FVector4 cz(0.10f, 0.10f, 0.85f, 1);
-    FVector4 cU(0.9f,0.9f,0.9f,1);
+    FVector4 cU(0.9f,0.9f,0.9f,0.85f);
 
     const FVector3 ex = o + X * axisLen;
     const FVector3 ey = o + Y * axisLen;
@@ -539,4 +545,48 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
         dd.DrawBox(o, FVector3(h,h,h), colB, bs);
     }
 
+    // Plane handles (wire squares)
+    if (p.bDrawPlanes)
+    {
+        FVector4 cxy(0.10f, 0.10f, 0.85f, v.planeAlpha);
+        FVector4 cxz(0.10f, 0.85f, 0.10f, v.planeAlpha);
+        FVector4 cyz(0.85f, 0.10f, 0.10f, v.planeAlpha);
+
+        const float off = v.scaleBiAxisLineScale * gizmoScale;
+
+        sBox.thicknessPx = 2.f;
+
+        // XY
+        {
+            FDebugDrawStyle ps = sBox;
+            ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_XY);
+            ps = ApplyHandleStyle(EHandle::T_XY, p, v, ps);
+
+            const FVector4 col = ApplyHandleTint(EHandle::T_XY, p, v, cxy);
+
+            dd.DrawLine(o + X*off, o + Y*off, col, ps);
+        }
+
+        // XZ
+        {
+            FDebugDrawStyle ps = sBox;
+            ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_XZ);
+            ps = ApplyHandleStyle(EHandle::T_XZ, p, v, ps);
+
+            const FVector4 col = ApplyHandleTint(EHandle::T_XZ, p, v, cxz);
+
+            dd.DrawLine(o + X*off, o + Z*off, col, ps);
+        }
+
+        // YZ
+        {
+            FDebugDrawStyle ps = sBox;
+            ps.hitId = HandleToHitId(p.baseHitID, EHandle::T_YZ);
+            ps = ApplyHandleStyle(EHandle::T_YZ, p, v, ps);
+
+            const FVector4 col = ApplyHandleTint(EHandle::T_YZ, p, v, cyz);
+
+            dd.DrawLine(o + Y*off, o + Z*off, col, ps);
+        }
+    }
 }

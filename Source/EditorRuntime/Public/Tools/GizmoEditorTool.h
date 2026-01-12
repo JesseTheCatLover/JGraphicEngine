@@ -38,6 +38,9 @@ public:
         S_X,
         S_Y,
         S_Z,
+        S_XY,
+        S_XZ,
+        S_YZ,
         S_Uniform
     };
 
@@ -100,8 +103,9 @@ private:
 
         float scaleArmLen = 1.1f;
         float scaleBoxHalf = 0.09f;  // axis box head half extent
-        float uniformBoxHalf = 0.10f;
+        float uniformBoxHalf = 0.1f;
         float scaleArmThicknessPx = 2.0f;
+        float scaleBiAxisLineScale = 0.85f;
 
         float axisThicknessPx = 5.0f;
 
