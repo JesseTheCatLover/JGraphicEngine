@@ -164,6 +164,86 @@ void GizmoEditorTool::DrawPlaneSquareSolid(DebugDraw& dd,
     dd.DrawQuad(p0, p1, p2, p3, color, style);
 }
 
+static void DrawCircleArc(DebugDraw& dd,
+                          const FVector3& center,
+                          const FVector3& planeNormalUnit,
+                          const FVector3& inPlaneZeroDirUnit, // direction at angle=0 in the plane
+                          float radius,
+                          float startAngleRad,
+                          float endAngleRad,
+                          int segments,
+                          const FVector4& color,
+                          const FDebugDrawStyle& style)
+{
+    const FVector3 N = planeNormalUnit.Normalized();
+
+    // Build in-plane orthonormal basis (U,V) where U is angle=0 direction
+    FVector3 U = inPlaneZeroDirUnit - N * inPlaneZeroDirUnit.Dot(N);
+    if (U.Dot(U) < 1e-6f)
+    {
+        // pick any stable in-plane axis if caller gave degenerate vector
+        FVector3 any = (std::fabs(N.z) < 0.9f) ? FVector3(0,0,1) : FVector3(0,1,0);
+        U = any - N * any.Dot(N);
+    }
+    U = U.Normalized();
+    const FVector3 V = N.Cross(U).Normalized();
+
+    segments = std::max(8, segments);
+
+    FVector3 prev{};
+    bool hasPrev = false;
+
+    for (int i = 0; i <= segments; ++i)
+    {
+        const float a = float(i) / float(segments);
+        const float t = startAngleRad + (endAngleRad - startAngleRad) * a;
+
+        const float ct = std::cos(t);
+        const float st = std::sin(t);
+
+        const FVector3 pt = center + (U * ct + V * st) * radius;
+
+        if (hasPrev)
+            dd.DrawLine(prev, pt, color, style);
+
+        prev = pt;
+        hasPrev = true;
+    }
+}
+
+static void DrawCircleFrontHalf(DebugDraw& dd,
+                                const FVector3& center,
+                                const FVector3& ringPlaneNormalUnit,
+                                float radius,
+                                const FVector3& camPos,
+                                int segments,
+                                const FVector4& color,
+                                const FDebugDrawStyle& style,
+                                float arcHalfAngleRad = 0.5f) // default = half circle
+{
+    arcHalfAngleRad *= 3.14159265358979323846f;
+    const FVector3 N = ringPlaneNormalUnit.Normalized();
+
+    FVector3 toCam = camPos - center;
+    FVector3 p = toCam - N * toCam.Dot(N); // projection into plane
+
+    if (p.Dot(p) < 1e-6f)
+    {
+        FVector3 any = (std::fabs(N.z) < 0.9f) ? FVector3(0,0,1) : FVector3(0,1,0);
+        p = any - N * any.Dot(N);
+        if (p.Dot(p) < 1e-6f)
+            p = FVector3(1,0,0) - N * FVector3(1,0,0).Dot(N);
+    }
+
+    const FVector3 U = p.Normalized(); // angle=0 faces camera in plane
+
+    // Draw an arc centered around U, with total angle = 2*arcHalfAngleRad
+    const float start = -arcHalfAngleRad;
+    const float end   = +arcHalfAngleRad;
+
+    DrawCircleArc(dd, center, N, U, radius, start, end, segments, color, style);
+}
+
 // ----------------------
 // HitId mapping
 // ----------------------
@@ -397,16 +477,6 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
     const FVector4 cy(0.10f, 0.85f, 0.10f, 1.0f);
     const FVector4 cz(0.10f, 0.10f, 0.85f, 1.0f);
 
-    const auto DrawRing = [&](EHandle handle, const FVector3& axisUnit, const FVector4& baseCol)
-    {
-        FDebugDrawStyle rs = s;
-        rs.hitId = HandleToHitId(p.baseHitID, handle);
-        rs = ApplyHandleStyle(handle, p, v, rs);
-
-        const FVector4 col = ApplyHandleTint(handle, p, v, baseCol);
-        dd.DrawCircle(o, axisUnit, r, col, v.ringSegments, rs);
-    };
-
     if (p.bDrawSphereHint)
     {
         FDebugDrawStyle hs = s;
@@ -417,10 +487,65 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
         const FVector4 hint(0.9f, 0.9f, 0.9f, v.sphereHintAlpha);
         dd.DrawSphere(o, r, hint, v.ringSegments, hs);
     }
+    // X ring (plane normal = X)
+    {
+        FDebugDrawStyle rs = s;
+        rs.hitId = HandleToHitId(p.baseHitID, EHandle::R_X);
+        rs = ApplyHandleStyle(EHandle::R_X, p, v, rs);
 
-    DrawRing(EHandle::R_X, X, cx);
-    DrawRing(EHandle::R_Y, Y, cy);
-    DrawRing(EHandle::R_Z, Z, cz);
+        const FVector4 col = ApplyHandleTint(EHandle::R_X, p, v, cx);
+        DrawCircleFrontHalf(dd, o, X, r, camPos, v.ringSegments, col, rs, v.ringArcHalfLength);
+    }
+
+    // Y ring
+    {
+        FDebugDrawStyle rs = s;
+        rs.hitId = HandleToHitId(p.baseHitID, EHandle::R_Y);
+        rs = ApplyHandleStyle(EHandle::R_Y, p, v, rs);
+
+        const FVector4 col = ApplyHandleTint(EHandle::R_Y, p, v, cy);
+        DrawCircleFrontHalf(dd, o, Y, r, camPos, v.ringSegments, col, rs, v.ringArcHalfLength);
+    }
+
+    // Z ring
+    {
+        FDebugDrawStyle rs = s;
+        rs.hitId = HandleToHitId(p.baseHitID, EHandle::R_Z);
+        rs = ApplyHandleStyle(EHandle::R_Z, p, v, rs);
+
+        const FVector4 col = ApplyHandleTint(EHandle::R_Z, p, v, cz);
+        DrawCircleFrontHalf(dd, o, Z, r, camPos, v.ringSegments, col, rs, v.ringArcHalfLength);
+    }
+
+    // Free rotate ring (camera-facing)
+    {
+        // Plane normal points toward camera
+        FVector3 N = (camPos - o).Normalized();  // better than camFwd for orbit cameras
+        if (N.Dot(N) < 1e-6f) N = camFwd.Normalized();
+
+        FDebugDrawStyle rs = s;
+        rs.thicknessPx *= 0.8;
+        rs.hitId = HandleToHitId(p.baseHitID, EHandle::R_Free);
+        rs = ApplyHandleStyle(EHandle::R_Free, p, v, rs);
+
+        // White like center handles
+        FVector4 cFree(0.85f, 0.85f, 0.85f, 0.75f);
+        const FVector4 col = ApplyHandleTint(EHandle::R_Free, p, v, cFree);
+
+        // pick a stable in-plane direction for angle=0:
+        // project X basis into the plane so it doesn't spin randomly
+        FVector3 ref = X; // or FVector3::Right() etc.
+        ref = (ref - N * ref.Dot(N));
+        if (ref.Dot(ref) < 1e-6f) ref = (Y - N * Y.Dot(N));
+        ref = ref.Normalized();
+
+        const float rFree = r * 1.1f; // slight outer rim feel
+
+         DrawCircleFrontHalf(dd, o, N, rFree, camPos, v.ringSegments, col, rs,
+             v.ringArcHalfLength * 0.5f);
+    }
+
+
 }
 
 // ----------------------

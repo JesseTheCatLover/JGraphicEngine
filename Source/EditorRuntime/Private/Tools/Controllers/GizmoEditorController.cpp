@@ -23,6 +23,7 @@ namespace
     inline bool IsTranslateCenter(EHandle h) { return h == EHandle::T_Center; }
 
     inline bool IsRotateAxis(EHandle h)      { return h == EHandle::R_X || h == EHandle::R_Y || h == EHandle::R_Z; }
+    inline bool IsRotateFree(EHandle h) { return h == EHandle::R_Free; }
 
     inline bool IsScaleAxis(EHandle h)       { return h == EHandle::S_X || h == EHandle::S_Y || h == EHandle::S_Z; }
     inline bool IsScalePlane(EHandle h)      { return h == EHandle::S_XY || h == EHandle::S_XZ || h == EHandle::S_YZ; }
@@ -79,6 +80,7 @@ namespace
 
     inline bool IsAnyPlaneHandle(EHandle h) { return IsTranslatePlane(h) || IsScalePlane(h); }
     inline bool IsAnyAxisHandle(EHandle h)  { return IsTranslateAxis(h) || IsRotateAxis(h) || IsScaleAxis(h); }
+    inline bool IsRotateHandle(EHandle h) { return IsRotateAxis(h) || IsRotateFree(h); }
 } // namespace
 
 // ----------------------
@@ -212,7 +214,13 @@ bool GizmoEditorController::BeginDrag(const FRay& rayWS, const FVector3& camFwd,
     const FVector3 camFwdUnit = camFwd.Normalized();
 
     // Setup constraints
-    if (IsAnyAxisHandle(m_Active))
+    if (IsRotateFree(m_Active))
+    {
+        const FVector3 viewAxis = camFwdUnit;
+        m_Drag.axisWS       = viewAxis;
+        m_Drag.planeNormalWS = viewAxis; // drag plane perpendicular to view axis
+    }
+    else if (IsAnyAxisHandle(m_Active))
     {
         m_Drag.axisWS = HandleAxisWS(m_Active, m_Drag.X, m_Drag.Y, m_Drag.Z).Normalized();
 
@@ -263,6 +271,7 @@ bool GizmoEditorController::BeginDrag(const FRay& rayWS, const FVector3& camFwd,
                 const float len = v.Length();
                 m_Drag.prevVecWS = (len > 1e-6f) ? (v / len) : FVector3(1,0,0);
                 m_Drag.angleAccumRad = 0.0f;
+                m_Drag.bSkipFirstRotateUpdate = true;
             }
 
             if (IsScaleUniform(m_Active))
@@ -311,7 +320,7 @@ bool GizmoEditorController::BeginDrag(const FRay& rayWS, const FVector3& camFwd,
     // Validate required start data
     if (IsTranslateCenter(m_Active) && !m_Drag.bHasStartHit) return false;
     if (IsTranslatePlane(m_Active)  && !m_Drag.bHasStartHit) return false;
-    if (IsRotateAxis(m_Active)      && !m_Drag.bHasStartHit) return false;
+    if (IsRotateHandle(m_Active)    && !m_Drag.bHasStartHit) return false;
 
     if (IsScaleUniform(m_Active) && (!m_Drag.bHasStartHit || !m_Drag.bHasUniformDir)) return false;
     if (IsScalePlane(m_Active)   && (!m_Drag.bHasStartHit || !m_Drag.bHasPlaneScaleStart)) return false;
@@ -382,7 +391,7 @@ bool GizmoEditorController::UpdateDrag(const FRay& rayWS, const FVector3& /*camF
     }
 
     // ----- ROTATE -----
-    if (m_Drag.mode == GizmoEditorTool::EMode::Rotate && IsRotateAxis(m_Drag.handle))
+    if (m_Drag.mode == GizmoEditorTool::EMode::Rotate && IsRotateHandle(m_Drag.handle))
     {
         FVector3 hit{};
         if (!RayPlaneThroughPoint(rayWS, m_Drag.pivotWS, m_Drag.planeNormalWS, hit))
@@ -393,6 +402,17 @@ bool GizmoEditorController::UpdateDrag(const FRay& rayWS, const FVector3& /*camF
         if (len < 1e-6f) return true;
 
         const FVector3 vCur = v / len;
+
+        if (m_Drag.bSkipFirstRotateUpdate)
+        {
+            // Re-anchor rotation to *current* cursor sample so no snap happens.
+            m_Drag.prevVecWS = vCur;
+            m_Drag.angleAccumRad = 0.0f;
+            m_Drag.bSkipFirstRotateUpdate = false;
+
+            // Don’t output a delta this frame.
+            return true;
+        }
 
         const float dAng = SignedAngleAroundAxis(m_Drag.prevVecWS, vCur, m_Drag.axisWS);
         m_Drag.angleAccumRad += dAng;

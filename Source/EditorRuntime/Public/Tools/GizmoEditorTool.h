@@ -94,14 +94,17 @@ private:
         float axisLen      = 1.5f;
         float headLen      = 0.3f;  // translate arrow head
         float headRadius   = 0.10f;
+        float planeAlpha = 0.3f;
 
         float centerRadius = 0.1f;  // translate center sphere
         float planeSize    = 0.25f;  // translate plane square half size-ish
         float planeOffset  = 0.9f;  // how far from origin plane handle sits
 
-        float ringRadius   = 1.3f;   // rotate ring radius
+        float ringRadius   = 1.2f;   // rotate ring radius
         float ringThicknessPx = 5.0f;
         int   ringSegments = 64;
+        float ringArcHalfLength = 0.4f;
+        float sphereHintAlpha = 0.01f;
 
         float scaleArmLen = 1.1f;
         float scaleBoxHalf = 0.09f;  // axis box head half extent
@@ -122,9 +125,6 @@ private:
         float inactiveAlphaMulWhenActive = 0.25f;  // dim transparency
         float inactiveToGrayWhenActive   = 0.75f;  // 0..1 lerp toward gray
         FVector4 inactiveGray            = FVector4(0.55f, 0.55f, 0.55f, 1.0f);
-
-        float planeAlpha = 0.3f;
-        float sphereHintAlpha = 0.01f;
 
         EDebugShading shading = EDebugShading::FixedLit;
         EDebugNormalMode normalMode = EDebugNormalMode::Flat;

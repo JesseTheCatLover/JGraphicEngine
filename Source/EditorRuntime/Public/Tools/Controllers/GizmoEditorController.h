@@ -107,6 +107,7 @@ private:
         float axisSStart = 0.0f;
 
         // Rotation accumulation for smoothness
+        bool bSkipFirstRotateUpdate = false;
         FVector3 prevVecWS{1,0,0};
         float angleAccumRad = 0.0f;
 
