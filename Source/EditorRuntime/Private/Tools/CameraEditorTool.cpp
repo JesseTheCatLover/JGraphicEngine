@@ -74,7 +74,10 @@ void CameraEditorTool::Tick(float deltaTime, bool bActive, float viewportAspect)
     FVector2 moveInput = input->GetAxis2D("Editor_Move");   // X = W/S, Y = A/D
     float moveZ = input->GetAxis1D("Editor_MoveUpDown"); // Space / Shift
 
-    move += forward * moveInput.x;      // W/S -> forward/back
+    if (m_ProjectionType == EProjectionType::Perspective)
+    {
+        move += forward * moveInput.x;      // W/S -> forward/back
+    }
     move += right   * moveInput.y;      // A/D -> strafe right/left
     move += up * moveZ;     // Space/Shift -> up/down
 
