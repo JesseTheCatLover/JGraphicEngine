@@ -112,6 +112,14 @@ private:
 
         bool bHasUniformDir = false;
         FVector3 uniformDirWS{1,0,0};
+
+        // Plane-scale start (in gizmo basis)
+        bool  bHasPlaneScaleStart = false;
+        float planeU0 = 0.0f;
+        float planeV0 = 0.0f;
+        FVector3 planeAxisU{1,0,0};
+        FVector3 planeAxisV{0,1,0};
+
     };
 
     FGizmoDragState m_Drag{};
