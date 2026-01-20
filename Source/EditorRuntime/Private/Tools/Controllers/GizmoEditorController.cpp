@@ -265,11 +265,14 @@ bool GizmoEditorController::BeginDrag(const FRay& rayWS, const FVector3& camFwd,
             m_Drag.bHasStartHit = true;
             m_Drag.startHitWS = hit;
 
-            if (IsRotateAxis(m_Active))
+            if (IsRotateHandle(m_Active))
             {
                 FVector3 v = (hit - m_Drag.pivotWS);
                 const float len = v.Length();
-                m_Drag.prevVecWS = (len > 1e-6f) ? (v / len) : FVector3(1,0,0);
+                if (len < 1e-6f)
+                    return false; // can't define a direction reliably
+
+                m_Drag.prevVecWS = v / len;
                 m_Drag.angleAccumRad = 0.0f;
                 m_Drag.bSkipFirstRotateUpdate = true;
             }
