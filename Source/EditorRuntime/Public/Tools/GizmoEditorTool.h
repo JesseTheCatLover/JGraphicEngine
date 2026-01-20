@@ -62,6 +62,8 @@ public:
         bool bDrawPlanes  = true;   // translate plane handles
         bool bDrawSphereHint = true; // rotate: faint sphere
 
+        bool bDimOthersWhenActive = true;
+
         float scaleMul = 1.0f;
         float alphaMul = 1.0f;
     };
@@ -116,6 +118,10 @@ private:
         FVector4 activeColor = FVector4(1.0f, 1.0f, 0.15f, 1.f); // "warm yellow"
         float activeBlend = 1.f;  // 1.0 = fully activeColor, 0.0 = base color
         float activeAlphaMul = 1.2f;
+
+        float inactiveAlphaMulWhenActive = 0.25f;  // dim transparency
+        float inactiveToGrayWhenActive   = 0.75f;  // 0..1 lerp toward gray
+        FVector4 inactiveGray            = FVector4(0.55f, 0.55f, 0.55f, 1.0f);
 
         float planeAlpha = 0.3f;
         float sphereHintAlpha = 0.01f;

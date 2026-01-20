@@ -26,22 +26,73 @@ FVector4 GizmoEditorTool::LerpRGB(const FVector4& a, const FVector4& b, float t)
     );
 }
 
-FVector4 GizmoEditorTool::ApplyHandleTint(EHandle h, const FDrawParams& p, const FVisualConfig& v, const FVector4& base) const
+static bool IsInActiveGroup(GizmoEditorTool::EHandle active, GizmoEditorTool::EHandle h)
+{
+    using H = GizmoEditorTool::EHandle;
+    if (active == H::None || h == H::None) return false;
+    if (h == active) return true;
+
+    // Translate planes -> include both axes
+    if (active == H::T_XY) return (h == H::T_X || h == H::T_Y);
+    if (active == H::T_XZ) return (h == H::T_X || h == H::T_Z);
+    if (active == H::T_YZ) return (h == H::T_Y || h == H::T_Z);
+
+    // Scale planes -> include both axes
+    if (active == H::S_XY) return (h == H::S_X || h == H::S_Y);
+    if (active == H::S_XZ) return (h == H::S_X || h == H::S_Z);
+    if (active == H::S_YZ) return (h == H::S_Y || h == H::S_Z);
+
+    // Rotate: usually only the ring itself is active
+
+    // Center/uniform: treat only itself as active group
+    return false;
+}
+FVector4 GizmoEditorTool::ApplyHandleTint(EHandle h,
+                                         const FDrawParams& p,
+                                         const FVisualConfig& v,
+                                         const FVector4& base) const
 {
     FVector4 c = base;
     c.w *= p.alphaMul;
 
-    if (h != EHandle::None && h == p.activeHandle)
+    const bool hasActive = (p.activeHandle != EHandle::None);
+    const bool inActiveGroup = IsInActiveGroup(p.activeHandle, h);
+    const bool isActiveHandle = (h != EHandle::None && h == p.activeHandle);
+    const bool isHover = (h != EHandle::None && h == p.hoveredHandle);
+
+    // While dragging: dim everything NOT in the active group
+    if (p.bDimOthersWhenActive && hasActive && !inActiveGroup)
     {
-        const FVector4 target = v.activeColor;
-        c = LerpRGB(c, target, std::clamp(v.activeBlend, 0.0f, 1.0f));
-        c.w = std::min(1.0f, c.w * v.activeAlphaMul * target.w);
+        c = LerpRGB(c, v.inactiveGray, std::clamp(v.inactiveToGrayWhenActive, 0.0f, 1.0f));
+        c.w = std::min(1.0f, c.w * v.inactiveAlphaMulWhenActive);
         return c;
     }
 
-    if (h != EHandle::None && h == p.hoveredHandle)
+    // Active handle itself becomes yellow
+    if (isActiveHandle)
     {
-        const FVector4 white(1, 1, 1, 1);
+        c = LerpRGB(c, v.activeColor, std::clamp(v.activeBlend, 0.0f, 1.0f));
+        c.w = std::min(1.0f, c.w * v.activeAlphaMul * v.activeColor.w);
+        return c;
+    }
+
+    // If it’s in the active group (axis mates), make it “active-ish” too.
+    // Two options:
+    // A) Make mates fully yellow like the plane (UE-ish)
+    // B) Make mates partially yellow (so you can still tell which handle is actually grabbed)
+    if (p.bDimOthersWhenActive && hasActive && inActiveGroup)
+    {
+        constexpr float kMateBlend = 0.75f; // tweak; 1.0 == identical to active
+        c = LerpRGB(c, v.activeColor, kMateBlend);
+        c.w = std::min(1.0f, c.w * v.activeAlphaMul);
+        // still allow hover (rare during drag)
+        return c;
+    }
+
+    // Hover (only meaningful when not dragging)
+    if (isHover)
+    {
+        const FVector4 white(1,1,1,1);
         c = LerpRGB(c, white, std::clamp(v.hoverToWhite, 0.0f, 1.0f));
         c.w = std::min(1.0f, c.w * v.hoverAlphaMul);
         return c;

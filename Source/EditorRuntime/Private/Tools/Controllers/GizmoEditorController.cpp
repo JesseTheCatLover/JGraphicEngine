@@ -584,6 +584,7 @@ GizmoEditorController::FResult GizmoEditorController::UpdateAndDraw(DebugDraw& d
     finalP.hoveredHandle = m_Hovered;
     finalP.activeHandle  = m_Active;
     finalP.bDrawSphereHint = true;
+    finalP.bDimOthersWhenActive = m_bCapturing;
     finalP.scaleMul = ComputeGizmoScaleMulFromProjection(projMat, view.viewportH);
     finalP.alphaMul = ComputeFadeMul(viewMat, gizmoXf.GetPosition());
 
