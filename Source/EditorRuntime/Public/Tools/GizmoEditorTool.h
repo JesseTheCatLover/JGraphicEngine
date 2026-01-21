@@ -62,6 +62,8 @@ public:
         bool bDrawPlanes  = true;   // translate plane handles
         bool bDrawSphereHint = true; // rotate: faint sphere
 
+        bool bFaceCameraAxes = true;
+
         bool bDimOthersWhenActive = true;
 
         float scaleMul = 1.0f;

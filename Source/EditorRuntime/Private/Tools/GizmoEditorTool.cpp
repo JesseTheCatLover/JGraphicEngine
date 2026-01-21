@@ -121,6 +121,12 @@ void GizmoEditorTool::BuildBasis(const FTransform& xf, ESpace space, FVector3& o
     outZ = q.RotateVector(AZ).Normalized();
 }
 
+static inline FVector3 FaceCameraAxis(const FVector3& axisUnit, const FVector3& toCamWS)
+{
+    // If camera is on the negative side of the axis, flip so the handle appears on the camera-facing side.
+    return (axisUnit.Dot(toCamWS) >= 0.0f) ? axisUnit : (-axisUnit);
+}
+
 void GizmoEditorTool::DrawPlaneSquareWire(DebugDraw& dd,
                                           const FVector3& origin,
                                           const FVector3& axisA,
@@ -361,6 +367,15 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd,
     BuildBasis(xf, p.space, X, Y, Z);
 
     const FVector3 o = xf.GetPosition();
+    const FVector3 toCam = (camPos - o); // not normalized is fine for dot sign
+
+    FVector3 Xd = X, Yd = Y, Zd = Z; // draw axes
+    if (p.bFaceCameraAxes)
+    {
+        Xd = FaceCameraAxis(X, toCam);
+        Yd = FaceCameraAxis(Y, toCam);
+        Zd = FaceCameraAxis(Z, toCam);
+    }
 
     const float axisLen   = v.axisLen       * gizmoScale;
     const float headLen   = v.headLen       * gizmoScale;
@@ -412,9 +427,9 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd,
     };
 
     // Axis arrows
-    DrawAxisArrow(EHandle::T_X, X, cx);
-    DrawAxisArrow(EHandle::T_Y, Y, cy);
-    DrawAxisArrow(EHandle::T_Z, Z, cz);
+    DrawAxisArrow(EHandle::T_X, Xd, cx);
+    DrawAxisArrow(EHandle::T_Y, Yd, cy);
+    DrawAxisArrow(EHandle::T_Z, Zd, cz);
 
     // Center
     if (p.bDrawCenter)
@@ -435,9 +450,9 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd,
         const FVector4 cxz(0.0f, 1.0f, 0.0f, v.planeAlpha);
         const FVector4 cyz(1.0f, 0.0f, 0.0f, v.planeAlpha);
 
-        DrawPlaneHandle(EHandle::T_XY, X, Y, cxy);
-        DrawPlaneHandle(EHandle::T_XZ, X, Z, cxz);
-        DrawPlaneHandle(EHandle::T_YZ, Y, Z, cyz);
+        DrawPlaneHandle(EHandle::T_XY, Xd, Yd, cxy);
+        DrawPlaneHandle(EHandle::T_XZ, Xd, Zd, cxz);
+        DrawPlaneHandle(EHandle::T_YZ, Yd, Zd, cyz);
     }
 }
 
@@ -566,6 +581,16 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     BuildBasis(xf, p.space, X, Y, Z);
 
     const FVector3 o = xf.GetPosition();
+    const FVector3 toCam = (camPos - o);
+
+    FVector3 Xd = X, Yd = Y, Zd = Z;
+    if (p.bFaceCameraAxes)
+    {
+        Xd = FaceCameraAxis(X, toCam);
+        Yd = FaceCameraAxis(Y, toCam);
+        Zd = FaceCameraAxis(Z, toCam);
+    }
+
     const float axisLen = v.scaleArmLen * gizmoScale;
 
     // Base styles
@@ -631,9 +656,9 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
     };
 
     // Axis handles
-    DrawAxisScale(EHandle::S_X, X, cx);
-    DrawAxisScale(EHandle::S_Y, Y, cy);
-    DrawAxisScale(EHandle::S_Z, Z, cz);
+    DrawAxisScale(EHandle::S_X, Xd, cx);
+    DrawAxisScale(EHandle::S_Y, Yd, cy);
+    DrawAxisScale(EHandle::S_Z, Zd, cz);
 
     // Uniform center
     if (p.bDrawCenter)
@@ -657,8 +682,8 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
         const FVector4 cxz(0.10f, 0.85f, 0.10f, v.planeAlpha);
         const FVector4 cyz(0.85f, 0.10f, 0.10f, v.planeAlpha);
 
-        DrawBiAxisScaleLine(EHandle::S_XY, X, Y, cxy, off);
-        DrawBiAxisScaleLine(EHandle::S_XZ, X, Z, cxz, off);
-        DrawBiAxisScaleLine(EHandle::S_YZ, Y, Z, cyz, off);
+        DrawBiAxisScaleLine(EHandle::S_XY, Xd, Yd, cxy, off);
+        DrawBiAxisScaleLine(EHandle::S_XZ, Xd, Zd, cxz, off);
+        DrawBiAxisScaleLine(EHandle::S_YZ, Yd, Zd, cyz, off);
     }
 }
