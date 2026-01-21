@@ -127,6 +127,35 @@ static inline FVector3 FaceCameraAxis(const FVector3& axisUnit, const FVector3& 
     return (axisUnit.Dot(toCamWS) >= 0.0f) ? axisUnit : (-axisUnit);
 }
 
+static inline bool WasAxisFlipped(const FVector3& basisAxisUnit, const FVector3& drawAxisUnit)
+{
+    // If we flipped, drawAxisUnit == -basisAxisUnit (within fp error)
+    return basisAxisUnit.Dot(drawAxisUnit) < 0.0f;
+}
+
+static inline FVector3 SafeCameraRightUnit(const FVector3& toCamWS)
+{
+    // Build a stable camera "right" in world space using world-up as reference.
+    // (If camera is near vertical, fallback to another axis.)
+    const FVector3 toCamUnit = toCamWS.Normalized();
+    FVector3 right = FVector3::Up().Cross(toCamUnit); // worldUp x toCam
+    if (right.Dot(right) < 1e-6f)
+        right = FVector3::Right().Cross(toCamUnit);   // fallback
+    return right.Normalized();
+}
+
+static void DrawMinusMarker(DebugDraw& dd,
+                            const FVector3& centerWS,
+                            const FVector3& toCamWS,
+                            float halfLenWS,
+                            const FVector4& color,
+                            FDebugDrawStyle style)
+{
+    style.hitId = 0; // never pickable
+    const FVector3 right = SafeCameraRightUnit(toCamWS);
+    dd.DrawLine(centerWS - right * halfLenWS, centerWS + right * halfLenWS, color, style);
+}
+
 void GizmoEditorTool::DrawPlaneSquareWire(DebugDraw& dd,
                                           const FVector3& origin,
                                           const FVector3& axisA,
@@ -391,6 +420,13 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd,
     s.normalMode = v.normalMode;
     s.viewKey = viewKey;
 
+    // marker tuning (world units)
+    const float minusHalfLen = v.headRadius * 0.65f * gizmoScale; // reads like "-" near arrow head
+    const float minusOffset  = v.headLen    * 0.45f * gizmoScale; // push slightly past arrow tip
+
+    FDebugDrawStyle minusStyle = s;
+    minusStyle.thicknessPx = 2.f; // make it readable
+
     const FVector4 cx(0.85f, 0.10f, 0.10f, 1.0f);
     const FVector4 cy(0.10f, 0.85f, 0.10f, 1.0f);
     const FVector4 cz(0.10f, 0.10f, 0.85f, 1.0f);
@@ -404,6 +440,24 @@ void GizmoEditorTool::DrawTranslate(DebugDraw& dd,
 
         const FVector4 col = ApplyHandleTint(handle, p, v, baseCol);
         dd.DrawArrow(o, o + axisUnit * axisLen, col, headLen, headRad, 16, ps);
+
+        if (p.bFaceCameraAxes && p.bDrawMinusMark)
+        {
+            const bool flipped =
+                (handle == EHandle::T_X && WasAxisFlipped(X, axisUnit)) ||
+                (handle == EHandle::T_Y && WasAxisFlipped(Y, axisUnit)) ||
+                (handle == EHandle::T_Z && WasAxisFlipped(Z, axisUnit));
+
+            if (flipped)
+            {
+                const FVector3 end = o + axisUnit * axisLen;
+                const FVector3 markerPos = end + axisUnit * minusOffset;
+
+                // match the handle tint so active/hover/dim states carry over
+                const FVector4 mcol = ApplyHandleTint(handle, p, v, baseCol);
+                DrawMinusMarker(dd, markerPos, toCam, minusHalfLen, mcol, minusStyle);
+            }
+        }
     };
 
     const auto DrawPlaneHandle = [&](EHandle handle,
@@ -559,8 +613,6 @@ void GizmoEditorTool::DrawRotate(DebugDraw& dd,
          DrawCircleFrontHalf(dd, o, N, rFree, camPos, v.ringSegments, col, rs,
              v.ringArcHalfLength * 0.5f);
     }
-
-
 }
 
 // ----------------------
@@ -608,6 +660,13 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
 
     const float headHalf = v.scaleBoxHalf * gizmoScale;
 
+    const float minusHalfLen = headHalf * 0.65f;          // use box size as reference
+    const float minusOffset  = headHalf * 3.25f;          // push a bit past the box
+
+    FDebugDrawStyle minusStyle = sLine;
+    minusStyle.thicknessPx = 2.f;
+    minusStyle.hitId = 0;
+
     // Colors
     const FVector4 cx(0.85f, 0.10f, 0.10f, 1.0f);
     const FVector4 cy(0.10f, 0.85f, 0.10f, 1.0f);
@@ -637,6 +696,25 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
 
             const FVector4 col = ApplyHandleTint(handle, p, v, baseCol);
             dd.DrawBox(end, FVector3(headHalf, headHalf, headHalf), col, bs);
+        }
+
+        // Minus
+        {
+            if (p.bFaceCameraAxes && p.bDrawMinusMark)
+            {
+                const bool flipped =
+                    (handle == EHandle::S_X && WasAxisFlipped(X, axisUnit)) ||
+                    (handle == EHandle::S_Y && WasAxisFlipped(Y, axisUnit)) ||
+                    (handle == EHandle::S_Z && WasAxisFlipped(Z, axisUnit));
+
+                if (flipped)
+                {
+                    const FVector3 markerPos = end + axisUnit * minusOffset;
+
+                    const FVector4 mcol = ApplyHandleTint(handle, p, v, baseCol);
+                    DrawMinusMarker(dd, markerPos, toCam, minusHalfLen, mcol, minusStyle);
+                }
+            }
         }
     };
 

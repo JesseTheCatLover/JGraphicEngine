@@ -63,6 +63,7 @@ public:
         bool bDrawSphereHint = true; // rotate: faint sphere
 
         bool bFaceCameraAxes = true;
+        bool bDrawMinusMark = true;
 
         bool bDimOthersWhenActive = true;
 
