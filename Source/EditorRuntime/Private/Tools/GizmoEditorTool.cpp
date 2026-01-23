@@ -724,7 +724,7 @@ void GizmoEditorTool::DrawScale(DebugDraw& dd,
                                          const FVector4& baseCol,
                                          float off)
     {
-        FDebugDrawStyle ps = sBox; // using sBox because you wanted "thicker" line + solid config
+        FDebugDrawStyle ps = sBox; // using sBox because we want "thicker" line + solid config
         ps.thicknessPx = 2.0f;
         ps.hitId = HandleToHitId(p.baseHitID, handle);
         ps = ApplyHandleStyle(handle, p, v, ps);

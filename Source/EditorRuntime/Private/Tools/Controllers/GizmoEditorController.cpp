@@ -181,7 +181,7 @@ float GizmoEditorController::ComputeFadeMul(const FMatrix4& viewMat, const FVect
 {
     const FVector4 pVS4 = viewMat * FVector4(gizmoPosWS.x, gizmoPosWS.y, gizmoPosWS.z, 1.0f);
 
-    // LH: X forward => depth is X in your convention
+    // LH: X forward => depth is X in engine's convention
     const float zVS = std::fabs(pVS4.x);
 
     constexpr float kFadeStart = 3.f;
