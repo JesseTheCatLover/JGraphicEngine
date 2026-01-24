@@ -65,7 +65,7 @@ std::string_view EditorLayoutModel::ViewportKey(int index)
 {
     // string literals so views stay valid forever
     static constexpr std::string_view keys[4] = {
-        "Viewport0", "Viewport1", "Viewport2", "Viewport3"
+        "Viewport:0", "Viewport:1", "Viewport:2", "Viewport:3"
     };
     if (index < 0 || index > 3) return "Viewport?";
     return keys[index];

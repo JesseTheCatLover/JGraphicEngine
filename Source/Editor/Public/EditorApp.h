@@ -8,13 +8,14 @@
 #include "Core/IEditorBridge.h"
 #include "Core/Memory/SmartPointers.h"
 
+class IEditorUIBackend;
+class EditorPanelTracker;
+class EditorAssetCache;
+class EditorLayoutModel;
+class ImGuiRenderer;
 class IEditorPanel;
-class DockSpace;
 class EditorHost;
 struct GLFWwindow;
-class EditorContext;
-class ImGuiLayer;
-class SceneHierarchyPanel;
 
 class EditorApp : public IEditorBridge
 {
@@ -30,7 +31,7 @@ public:
 
     void OnEngineInitialized(IPlatformSurface* surface) override;
     void OnSceneLoaded(const std::string &sceneName) override;
-    void OnRenderOverlay() override;
+    void OnRenderOverlay(float deltaTime) override;
     void OnTick(float deltaTime) override;
 
 private:
@@ -41,11 +42,10 @@ private:
     TUniquePtr<EditorHost> m_EditorHost;
 
     // Backend
-    TUniquePtr<ImGuiLayer> m_ImGuiLayer;
+    TUniquePtr<IEditorUIBackend> m_EditorUIBackend;
 
-    // Dock
-    TUniquePtr<DockSpace> m_DockSpace;
-
-    // Panel pool
-    std::vector<TUniquePtr<IEditorPanel>> m_Panels;
+    TUniquePtr<ImGuiRenderer> m_Renderer;
+    TUniquePtr<EditorPanelTracker> m_PanelTracker;
+    TUniquePtr<EditorLayoutModel> m_LayoutModel;
+    TUniquePtr<EditorAssetCache> m_EditorCache;
 };

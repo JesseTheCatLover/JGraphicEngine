@@ -14,6 +14,6 @@ public:
     virtual ~IEditorBridge() = default;
     virtual void OnEngineInitialized(IPlatformSurface* surface) = 0;
     virtual void OnSceneLoaded(const std::string& sceneName) = 0;
-    virtual void OnRenderOverlay() = 0;
+    virtual void OnRenderOverlay(float deltaTime) = 0;
     virtual void OnTick(float deltaTime) = 0;
 };

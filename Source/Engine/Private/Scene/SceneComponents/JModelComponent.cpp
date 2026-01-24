@@ -14,7 +14,7 @@
 void JModelComponent::SetModel(const std::string& assetID)
 {
     m_ModelKey = assetID;
-    m_Model = JEngine::Get().GetResourceSystem()->Load<ModelResource>(assetID, assetID);
+    m_Model = JEngine::Get().GetResourceSubsystem()->Load<ModelResource>(assetID, assetID);
 }
 
 void JModelComponent::GatherProxies(IRenderSubmission& submission,

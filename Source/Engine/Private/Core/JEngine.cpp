@@ -170,13 +170,13 @@ bool JEngine::InitializeSubsystems()
     }
     m_Renderer->SetPostProcessManager(GetPostProcessManager());
 
-    m_ResourceSystem = TUniquePtr<ResourceSubsystem>(new ResourceSubsystem());
-    if (!m_ResourceSystem)
+    m_ResourceSubSystem = TUniquePtr<ResourceSubsystem>(new ResourceSubsystem());
+    if (!m_ResourceSubSystem)
     {
         std::cerr << "[JEngine]: Failed to initialize resource subsystem" << std::endl;
         return false;
     }
-    m_ResourceSystem->SetRenderDevice(m_Renderer.get());
+    m_ResourceSubSystem->SetRenderDevice(m_Renderer.get());
 
     m_InputSystem = TUniquePtr<InputSubsystem>(new InputSubsystem());
     if (!m_InputSystem)
@@ -403,7 +403,7 @@ void JEngine::RunMainLoop()
 
         // Editor overlay after 3D views being rendered
         if (m_EditorBridge)
-            m_EditorBridge->OnRenderOverlay();
+            m_EditorBridge->OnRenderOverlay(m_Context->GetDeltaTime());
 
         // Swap front/back buffers (show rendered frame)
         m_PlatformSurface->SwapBuffers();
@@ -417,7 +417,7 @@ void JEngine::Shutdown()
 {
     GEngine = nullptr;
     m_Renderer->Shutdown();
-    m_ResourceSystem->Shutdown();
+    m_ResourceSubSystem->Shutdown();
     m_InputSystem->Shutdown();
     m_PlatformSurface->Shutdown();
 }
@@ -579,9 +579,9 @@ RendererSubsystem * JEngine::GetRenderer()
     return m_Renderer.get();
 }
 
-ResourceSubsystem* JEngine::GetResourceSystem()
+ResourceSubsystem* JEngine::GetResourceSubsystem()
 {
-    return m_ResourceSystem.get();
+    return m_ResourceSubSystem.get();
 }
 
 SceneManager* JEngine::GetSceneManager()

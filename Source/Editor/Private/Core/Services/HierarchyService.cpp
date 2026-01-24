@@ -6,8 +6,8 @@
 
 #include "SceneQueryService.h"
 #include "SelectionService.h"
+#include "Controllers/Outputs/FHierarchyOutput.h"
 #include "Core/EditorHost.h"
-#include "UI/Panels/SceneHierarchyPanel.h"
 
 static void BuildVisibleOrderRecursive(
     ActorID parent,

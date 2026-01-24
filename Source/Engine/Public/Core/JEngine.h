@@ -46,7 +46,7 @@ public:
 
     IPlatformSurface* GetPlatformSurface();
     RendererSubsystem* GetRenderer();
-    ResourceSubsystem* GetResourceSystem();
+    ResourceSubsystem* GetResourceSubsystem();
 
     SceneManager* GetSceneManager();
     PostProcessManager* GetPostProcessManager();
@@ -68,7 +68,7 @@ private:
     TUniquePtr<IPlatformSurface> m_PlatformSurface;
     TUniquePtr<IRenderBackend> m_RenderBackend;
     TUniquePtr<RendererSubsystem> m_Renderer;
-    TUniquePtr<ResourceSubsystem> m_ResourceSystem;
+    TUniquePtr<ResourceSubsystem> m_ResourceSubSystem;
     TUniquePtr<IInputBackend> m_InputBackend;
     TUniquePtr<InputSubsystem> m_InputSystem;
 

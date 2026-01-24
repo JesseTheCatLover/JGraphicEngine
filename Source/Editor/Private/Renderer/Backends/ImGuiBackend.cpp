@@ -1,13 +1,13 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "ImGuiLayer.h"
+#include "ImGuiBackend.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "Utilities/UPathFinder.h"
 
-ImGuiLayer::ImGuiLayer(GLFWwindow *window):
+ImGuiBackend::ImGuiBackend(GLFWwindow *window):
     m_Window(window)
 {
     IMGUI_CHECKVERSION();
@@ -17,7 +17,7 @@ ImGuiLayer::ImGuiLayer(GLFWwindow *window):
 
     std::string defaultFontName = "FunnelSans";
     io.FontDefault = io.Fonts->AddFontFromFileTTF
-    (UPathFinder::ResolvePath(UPathFinder::Join("Assets" ,"Fonts", defaultFontName + ".ttf")).string().c_str(), 16.0f);
+    (UPathFinder::ResolvePath(UPathFinder::Join("Assets/Editor" ,"Fonts", defaultFontName + ".ttf")).string().c_str(), 16.0f);
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
@@ -77,24 +77,24 @@ ImGuiLayer::ImGuiLayer(GLFWwindow *window):
     ImGui_ImplOpenGL3_Init("#version 330");
 }
 
-ImGuiLayer::~ImGuiLayer()
+ImGuiBackend::~ImGuiBackend()
 {
 }
 
-void ImGuiLayer::BeginFrame()
+void ImGuiBackend::BeginFrame()
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
 
-void ImGuiLayer::EndFrame()
+void ImGuiBackend::EndFrame()
 {
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void ImGuiLayer::Shutdown()
+void ImGuiBackend::Shutdown()
 {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

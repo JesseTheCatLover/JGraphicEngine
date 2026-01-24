@@ -14,7 +14,7 @@ public:
         m_PanelKey = "Viewport:" + std::to_string(index);
 
         char buf[64];
-        snprintf(buf, sizeof(buf), "Viewport %d###Viewport_%d", index, index);
+        snprintf(buf, sizeof(buf), "Viewport %d##Viewport%d", index, index);
         m_WindowName = buf;
     }
 
