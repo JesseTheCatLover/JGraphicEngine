@@ -1,7 +1,10 @@
 // Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include <unordered_map>
+#include <string>
 #include "IEditorRenderer.h"
+#include "imgui.h"
 
 class ImGuiRenderer final : public IEditorRenderer
 {
@@ -23,4 +26,10 @@ private:
     EditorAssetCache* m_Cache = nullptr;
 
     bool m_ShowViewportDockTabs = true;
+
+    ImGuiWindowClass m_ToolsDockClass{};
+    ImGuiWindowClass m_ViewportDockClass{};
+    ImGuiWindowClass m_ViewportHostDockClass{};
+    bool m_BuiltDefaultLayout = false; // optional for DockBuilder defaults
+    const ImGuiWindowClass* GetDockClassForPanel(const IEditorPanel& panel);
 };

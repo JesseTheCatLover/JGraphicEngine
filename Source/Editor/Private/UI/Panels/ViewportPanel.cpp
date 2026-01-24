@@ -20,6 +20,7 @@ const char* ViewportPanel::GetPanelKey() const
 {
     return m_PanelKey.c_str();
 }
+
 void ViewportPanel::Draw(EditorHost& host)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));

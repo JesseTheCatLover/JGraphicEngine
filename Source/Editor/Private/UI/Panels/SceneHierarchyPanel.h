@@ -32,6 +32,8 @@ public:
     [[nodiscard]] const char* GetName() const override { return "Scene Hierarchy###SceneHierarchy"; }
     [[nodiscard]] const char* GetPanelKey() const override { return m_PanelKey.c_str(); }
 
+    EPanelDockGroup GetDockGroup() const override { return EPanelDockGroup::Single; }
+
     void OnDestroy(EditorHost& host) override;
     void Draw(EditorHost& host) override;
 };

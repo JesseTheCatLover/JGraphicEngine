@@ -11,12 +11,38 @@
 #include "../Core/EditorAssetCache.h"
 #include "UI/IEditorPanels.h"
 
+static bool IsViewportKey(const char* key)
+{
+    return (std::strncmp(key, "Viewport", 8) == 0);
+}
+
 void ImGuiRenderer::Initialize(EditorHost& host, EditorRuntime& runtime, EditorLayoutModel& layout, EditorAssetCache& cache)
 {
     m_Host = &host;
     m_Runtime = &runtime;
     m_Layout = &layout;
     m_Cache = &cache;
+
+    // Tools dockspace: accept tool windows
+    m_ToolsDockClass = {};
+    m_ToolsDockClass.ClassId = ImHashStr("DockClass_Tools");
+    m_ToolsDockClass.DockingAllowUnclassed = false;
+
+    // Viewport dockspace: only viewports may dock here
+    m_ViewportDockClass = {};
+    m_ViewportDockClass.ClassId = ImHashStr("DockClass_Viewports");
+    m_ViewportDockClass.DockingAllowUnclassed = false;
+
+    // ViewportDockHost: MUST use same ClassId as Tools so it can dock with tool panels.
+    m_ViewportHostDockClass = m_ToolsDockClass; // copies ClassId + settings
+
+
+    // Hide the dock tab bar for the node containing this window
+    m_ViewportHostDockClass.DockNodeFlagsOverrideSet |= ImGuiDockNodeFlags_NoTabBar;
+
+
+    // Optional: prevent other windows docking "over" it
+    m_ViewportHostDockClass.DockNodeFlagsOverrideSet |= ImGuiDockNodeFlags_NoDockingOverMe;
 }
 
 void ImGuiRenderer::RenderChrome(float deltaTime)
@@ -29,7 +55,14 @@ void ImGuiRenderer::RenderChrome(float deltaTime)
 void ImGuiRenderer::RenderPanels(std::span<IEditorPanel * const> panels)
 {
     for (IEditorPanel* p : panels)
-        if (p) p->Draw(*m_Host);
+    {
+        if (!p) continue;
+
+        if (const ImGuiWindowClass* wc = GetDockClassForPanel(*p))
+            ImGui::SetNextWindowClass(wc);
+
+        p->Draw(*m_Host);
+    }
 }
 
 void ImGuiRenderer::DrawMainMenuBar()
@@ -201,38 +234,88 @@ void ImGuiRenderer::DrawToolbar()
     ImGui::PopStyleVar(4);
 }
 
-void ImGuiRenderer::DrawDockspaceAndPanels(float deltaTime)
+void ImGuiRenderer::DrawDockspaceAndPanels(float /*deltaTime*/)
 {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-
+    ImGuiViewport *viewport = ImGui::GetMainViewport();
     float topOffset = ImGui::GetFrameHeight() + 32.0f;
+
 
     ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + topOffset));
     ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - topOffset));
     ImGui::SetNextWindowViewport(viewport->ID);
 
-    ImGuiWindowFlags dockspaceFlags =
-        ImGuiWindowFlags_NoDocking |
-        ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoBringToFrontOnFocus |
-        ImGuiWindowFlags_NoNavFocus;
 
-    // Optionally hide tabs
-    ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_PassthruCentralNode;
-    if (!m_ShowViewportDockTabs)
-        dockFlags |= ImGuiDockNodeFlags_NoTabBar;
+    ImGuiWindowFlags rootFlags =
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoNavFocus;
+
+
+    ImGuiDockNodeFlags toolsDockFlags = ImGuiDockNodeFlags_PassthruCentralNode;
+
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-    ImGui::Begin("DockSpaceRoot", nullptr, dockspaceFlags);
+
+    ImGui::Begin("DockSpaceRoot", nullptr, rootFlags);
     ImGui::PopStyleVar(3);
 
-    ImGuiID dockspaceID = ImGui::GetID("MainDockSpace");
-    ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), dockFlags);
+
+    // 1) ROOT / TOOLS DOCKSPACE
+    ImGuiID toolsDockspaceID = ImGui::GetID("ToolsDockSpace");
+    ImGui::DockSpace(toolsDockspaceID, ImVec2(0, 0), toolsDockFlags, &m_ToolsDockClass);
+
+
+    // 2) VIEWPORT DOCK HOST WINDOW (this window docks into ToolsDockSpace)
+    // Make this window a "tool-class" participant so it can live in the main layout.
+    ImGui::SetNextWindowClass(&m_ViewportHostDockClass);
+
+
+    // Optional: ensure first time it goes to the central node of tools dockspace.
+    // (Works nicely with DockBuilder too.)
+    ImGui::SetNextWindowDockID(toolsDockspaceID, ImGuiCond_FirstUseEver);
+
+
+    ImGuiWindowFlags vpHostFlags =
+            ImGuiWindowFlags_NoTitleBar | // no header/title
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse |
+            ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoNavFocus;
+
+    // IMPORTANT: remove inner padding so the dockspace fills it perfectly
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+    // A normal window that contains a nested dockspace:
+    if (ImGui::Begin("ViewportDockHost", nullptr, vpHostFlags))
+    {
+        ImGuiDockNodeFlags vpDockFlags = ImGuiDockNodeFlags_None;
+        if (!m_ShowViewportDockTabs)
+            vpDockFlags |= ImGuiDockNodeFlags_NoTabBar;
+
+
+        ImGuiID viewportDockspaceID = ImGui::GetID("ViewportDockSpace");
+        ImGui::DockSpace(viewportDockspaceID, ImVec2(0, 0), vpDockFlags, &m_ViewportDockClass);
+    }
     ImGui::End();
+    ImGui::PopStyleVar(2);
+
+    ImGui::End();
+}
+
+const ImGuiWindowClass* ImGuiRenderer::GetDockClassForPanel(const IEditorPanel& panel)
+{
+    if (panel.GetDockGroup() == EPanelDockGroup::Viewport)
+        return &m_ViewportDockClass;
+
+
+    // Everything else (hierarchy/inspector/console/etc.)
+    return &m_ToolsDockClass;
 }

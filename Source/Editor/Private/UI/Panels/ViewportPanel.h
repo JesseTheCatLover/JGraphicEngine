@@ -18,13 +18,15 @@ public:
         m_WindowName = buf;
     }
 
+    void Draw(EditorHost& host) override;
+    void OnCreate(EditorHost& host) override;
+    void OnDestroy(EditorHost& host) override;
+
     const char* GetName() const override { return m_WindowName.c_str(); }
 
     [[nodiscard]] const char* GetPanelKey() const override;
 
-    void Draw(EditorHost& host) override;
-    void OnCreate(EditorHost& host) override;
-    void OnDestroy(EditorHost& host) override;
+    EPanelDockGroup GetDockGroup() const override { return EPanelDockGroup::Viewport; }
 
 private:
     std::string m_PanelKey;

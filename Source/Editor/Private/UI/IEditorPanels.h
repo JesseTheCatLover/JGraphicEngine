@@ -2,6 +2,12 @@
 
 #pragma once
 
+enum class EPanelDockGroup : uint8_t
+{
+    Viewport,
+    Single ///< must be isolated (no tabbing with anything)
+    };
+
 class EditorHost;
 
 /** @class IEditorPanel
@@ -12,11 +18,6 @@ class IEditorPanel
 public:
     virtual ~IEditorPanel() = default;
 
-    // Unique name of the panel, used for window titles, debugging, etc.
-    [[nodiscard]] virtual const char* GetName() const = 0;
-
-    [[nodiscard]] virtual const char* GetPanelKey() const = 0;
-
     // Called when the panel is added/created
     virtual void OnCreate(EditorHost& host) {}
 
@@ -25,4 +26,11 @@ public:
 
     // Panels should only use EditorHost to interact with the engine/editor.
     virtual void Draw(EditorHost& host) = 0;
+
+    // Unique name of the panel, used for window titles, debugging, etc.
+    [[nodiscard]] virtual const char* GetName() const = 0;
+
+    [[nodiscard]] virtual const char* GetPanelKey() const = 0;
+
+    [[nodiscard]] virtual EPanelDockGroup GetDockGroup() const { return EPanelDockGroup::Single; }
 };
