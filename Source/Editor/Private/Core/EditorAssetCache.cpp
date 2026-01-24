@@ -1,23 +1,19 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "EditorAssetCache.h"
+
+#include <iostream>
 #include <filesystem>
-#include <cctype>
 
 #include "EditorRuntime.h"
 #include "File/FileAPI.h"
+#include "Utilities/UPath.h"
 
-static bool IsTextureFile(const std::filesystem::path& p)
-{
-    std::string ext = p.extension().string();
-    for (char& c : ext) c = (char)std::tolower((unsigned char)c);
-    return ext == ".png" || ext == ".jpg" || ext == ".jpeg";
-}
+namespace fs = std::filesystem;
 
-static std::string NormalizeKey(std::string s)
+static bool IsTextureExt(const std::string& extLowerNoDot)
 {
-    for (char& c : s) if (c == '\\') c = '/';
-    return s;
+    return extLowerNoDot == "png" || extLowerNoDot == "jpg" || extLowerNoDot == "jpeg";
 }
 
 void EditorAssetCache::PreloadAll(EditorRuntime& runtime)
@@ -28,39 +24,60 @@ void EditorAssetCache::PreloadAll(EditorRuntime& runtime)
     ScanAndLoadTextures(runtime, "Assets/Editor/Textures");
 }
 
-void EditorAssetCache::ScanAndLoadTextures(EditorRuntime& runtime, const std::string& rootDir)
+void EditorAssetCache::ScanAndLoadTextures(EditorRuntime& runtime, const std::string& rootDirRel)
 {
-    namespace fs = std::filesystem;
-
-    fs::path root(rootDir);
-    if (!fs::exists(root) || !fs::is_directory(root))
-        return;
-
-    for (const auto& entry : fs::recursive_directory_iterator(root))
+    if (!UPath::DirectoryExists(rootDirRel))
     {
-        if (!entry.is_regular_file())
+        std::cerr << "[EditorAssetCache]: Texture dir missing: " << rootDirRel << "\n";
+        return;
+    }
+
+    // UPath returns ABSOLUTE paths (per your docs)
+    const std::vector<std::string> filesAbs = UPath::ListFiles(
+        rootDirRel,
+        /*extension*/ "",
+        /*recursive*/ true,
+        /*case-insensitive*/ true
+    );
+
+    const fs::path rootAbs = UPath::ResolvePath(rootDirRel);
+
+    size_t loaded = 0;
+
+    for (const std::string& absStr : filesAbs)
+    {
+        const std::string ext = UPath::GetExtension(absStr); // no dot
+        std::string extLower = ext;
+        for (char& c : extLower) c = (char)std::tolower((unsigned char)c);
+
+        if (!IsTextureExt(extLower))
             continue;
 
-        const fs::path path = entry.path();
-        if (!IsTextureFile(path))
-            continue;
+        const fs::path absPath(absStr);
 
-        fs::path rel = fs::relative(path, root);
-        rel.replace_extension(); // drop .png/.jpg/.jpeg
+        // rel file path WITH extension relative to root (Toolbar/Save.png)
+        fs::path relFile = fs::relative(absPath, rootAbs);
 
-        std::string key = NormalizeKey(rel.string());   // Icons/Move
-        std::string src = NormalizeKey(path.string());  // Assets/Editor/Icons/Move.png
+        // Key WITHOUT extension (Toolbar/Save)
+        fs::path relNoExt = relFile;
+        relNoExt.replace_extension();
 
-        // ✅ load through dedicated API
-        RTextureHandle handle = runtime.GetFile().LoadEditorTextureFromFile(src.c_str(), /*srgb*/ true);
+        std::string keyNorm = relNoExt.generic_string();
+        for (char& c : keyNorm) if (c == '\\') c = '/'; // stable key: Toolbar/Run
+
+        // Project-relative source path (Assets/Editor/Textures/Toolbar/Save.png)
+        const std::string srcRel = UPath::Join(rootDirRel, relFile.generic_string());
+
+        RTextureHandle handle = runtime.GetFile().LoadEditorTextureFromFile(srcRel.c_str(), true);
         if (!handle.IsValid())
+        {
+            std::cerr << "[EditorAssetCache]: Failed to load: " << srcRel << "\n";
             continue;
+        }
 
-        // if duplicates exist, keep first
-        if (m_TextureMap.find(key) == m_TextureMap.end())
-            m_TextureMap[key] = handle;
-
-        m_Textures.push_back(FEditorTextureAsset{ key, src, handle });
+        m_TextureMap[keyNorm] = handle;
+        m_Textures.push_back(FEditorTextureAsset{ keyNorm, srcRel, handle });
+        ++loaded;
     }
 }
 

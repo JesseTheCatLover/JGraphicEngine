@@ -169,7 +169,7 @@ void ImGuiRenderer::DrawToolbar()
         ImVec2 avail = ImGui::GetContentRegionAvail();
         float hh = (avail.y > 0.f) ? avail.y : 0.f;
 
-        ImTextureID texId = (ImTextureID)m_Runtime->GetViewport().GetNativeTexture(h);
+        auto texId = (ImTextureID)m_Runtime->GetViewport().GetNativeTexture(h);
         ImGui::Image(texId, ImVec2(hh, hh), uv0, uv1);
     }
 
