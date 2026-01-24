@@ -17,4 +17,7 @@ public:
 
 private:
     GLFWwindow* m_Window;
+
+    void SetupFonts();
+    void SetupStyle();
 };

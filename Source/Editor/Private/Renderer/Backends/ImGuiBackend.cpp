@@ -12,12 +12,51 @@ ImGuiBackend::ImGuiBackend(GLFWwindow *window):
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+
+    SetupFonts();
+    SetupStyle();
+
+    ImGui_ImplGlfw_InitForOpenGL(m_Window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+}
+
+ImGuiBackend::~ImGuiBackend()
+{
+}
+
+void ImGuiBackend::BeginFrame()
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+}
+
+void ImGuiBackend::EndFrame()
+{
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void ImGuiBackend::Shutdown()
+{
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void ImGuiBackend::SetupFonts()
+{
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    ImGuiStyle& style = ImGui::GetStyle();
 
     std::string defaultFontName = "FunnelSans";
     io.FontDefault = io.Fonts->AddFontFromFileTTF
     (UPath::ResolvePath(UPath::Join("Assets/Editor" ,"Fonts", defaultFontName + ".ttf")).string().c_str(), 16.0f);
+}
+
+void ImGuiBackend::SetupStyle()
+{
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiStyle& style = ImGui::GetStyle();
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
@@ -72,31 +111,4 @@ ImGuiBackend::ImGuiBackend(GLFWwindow *window):
     colors[ImGuiCol_TabUnfocusedActive]   = bg_light;
 
     style.TabRounding = 3.0f;
-
-    ImGui_ImplGlfw_InitForOpenGL(m_Window, true);
-    ImGui_ImplOpenGL3_Init("#version 330");
-}
-
-ImGuiBackend::~ImGuiBackend()
-{
-}
-
-void ImGuiBackend::BeginFrame()
-{
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-}
-
-void ImGuiBackend::EndFrame()
-{
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-void ImGuiBackend::Shutdown()
-{
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
 }
