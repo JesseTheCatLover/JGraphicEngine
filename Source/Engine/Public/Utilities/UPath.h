@@ -6,7 +6,7 @@
 #include <filesystem>
 
 /**
- * @class UPathFinder
+ * @class UPath
  * @brief Utility for handling file paths and directories in the engine.
  *
  * Provides cross-platform helpers for:
@@ -14,7 +14,7 @@
  * - Listing files and directories (recursive and filtered)
  * - Path manipulations
  */
-class UPathFinder
+class UPath
 {
 private:
     /** Default marker folder for automatic project root detection */

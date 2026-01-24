@@ -1,7 +1,7 @@
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Utilities/UFileSystem.h"
-#include "Utilities/UPathFinder.h"
+#include "Utilities/UPath.h"
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 
 std::optional<std::string> UFileSystem::ReadTextFile(const std::string& path)
 {
-    std::string fullPath = UPathFinder::Normalize(path);
+    std::string fullPath = UPath::Normalize(path);
     std::ifstream file(fullPath, std::ios::in);
     if (!file.is_open())
         return std::nullopt;
@@ -24,7 +24,7 @@ std::optional<std::string> UFileSystem::ReadTextFile(const std::string& path)
 
 std::optional<std::vector<uint8_t>> UFileSystem::ReadBinaryFile(const std::string& path)
 {
-    std::string fullPath = UPathFinder::Normalize(path);
+    std::string fullPath = UPath::Normalize(path);
     std::ifstream file(fullPath, std::ios::binary);
     if (!file.is_open())
         return std::nullopt;
@@ -44,7 +44,7 @@ std::optional<std::vector<uint8_t>> UFileSystem::ReadBinaryFile(const std::strin
 
 bool UFileSystem::WriteTextFile(const std::string& path, const std::string& data, bool bAppend)
 {
-    std::string fullPath = UPathFinder::Normalize(path);
+    std::string fullPath = UPath::Normalize(path);
     std::ofstream file(fullPath, bAppend ? std::ios::app : std::ios::trunc);
     if (!file.is_open())
         return false;
@@ -55,7 +55,7 @@ bool UFileSystem::WriteTextFile(const std::string& path, const std::string& data
 
 bool UFileSystem::WriteBinaryFile(const std::string& path, const std::vector<uint8_t>& data, bool bAppend)
 {
-    std::string fullPath = UPathFinder::Normalize(path);
+    std::string fullPath = UPath::Normalize(path);
     std::ofstream file(fullPath, std::ios::binary | (bAppend ? std::ios::app : std::ios::trunc));
     if (!file.is_open())
         return false;
@@ -68,15 +68,15 @@ bool UFileSystem::WriteBinaryFile(const std::string& path, const std::vector<uin
 
 bool UFileSystem::DeleteFile(const std::string& path)
 {
-    std::string fullPath = UPathFinder::Normalize(path);
+    std::string fullPath = UPath::Normalize(path);
     std::error_code ec;
     return fs::remove(fullPath, ec);
 }
 
 bool UFileSystem::MoveFile(const std::string& source, const std::string& destination)
 {
-    std::string fullSrc = UPathFinder::Normalize(source);
-    std::string fullDst = UPathFinder::Normalize(destination);
+    std::string fullSrc = UPath::Normalize(source);
+    std::string fullDst = UPath::Normalize(destination);
 
     std::error_code ec;
     fs::rename(fullSrc, fullDst, ec);
@@ -92,14 +92,14 @@ bool UFileSystem::RenameFile(const std::string& source, const std::string& newNa
 
 bool UFileSystem::CreateDirectory(const std::string& path)
 {
-    std::string fullPath = UPathFinder::Normalize(path);
+    std::string fullPath = UPath::Normalize(path);
     std::error_code ec;
     return fs::create_directories(fullPath, ec);
 }
 
 bool UFileSystem::DeleteDirectory(const std::string& path, bool bRecursive)
 {
-    std::string fullPath = UPathFinder::Normalize(path);
+    std::string fullPath = UPath::Normalize(path);
     std::error_code ec;
 
     if (bRecursive)

@@ -7,7 +7,7 @@
 
 #include "Rendering/IRenderDevice.h"
 #include "stb/stb_image.h"
-#include "Utilities/UPathFinder.h"
+#include "Utilities/UPath.h"
 
 namespace
 {
@@ -29,11 +29,11 @@ namespace
         fs::path fp(p);
 
         if (fp.is_absolute())
-            return UPathFinder::Normalize(p);
+            return UPath::Normalize(p);
 
         // Treat as project-relative
-        const std::string projectRoot = UPathFinder::ResolvePath("");
-        return UPathFinder::Normalize(UPathFinder::Join(projectRoot, p));
+        const std::string projectRoot = UPath::ResolvePath("");
+        return UPath::Normalize(UPath::Join(projectRoot, p));
     }
 }
 

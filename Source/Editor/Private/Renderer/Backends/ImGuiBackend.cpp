@@ -5,7 +5,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include "Utilities/UPathFinder.h"
+#include "Utilities/UPath.h"
 
 ImGuiBackend::ImGuiBackend(GLFWwindow *window):
     m_Window(window)
@@ -17,7 +17,7 @@ ImGuiBackend::ImGuiBackend(GLFWwindow *window):
 
     std::string defaultFontName = "FunnelSans";
     io.FontDefault = io.Fonts->AddFontFromFileTTF
-    (UPathFinder::ResolvePath(UPathFinder::Join("Assets/Editor" ,"Fonts", defaultFontName + ".ttf")).string().c_str(), 16.0f);
+    (UPath::ResolvePath(UPath::Join("Assets/Editor" ,"Fonts", defaultFontName + ".ttf")).string().c_str(), 16.0f);
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 

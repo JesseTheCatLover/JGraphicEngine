@@ -1,10 +1,10 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "Utilities/UPathFinder.h"
+#include "Utilities/UPath.h"
 #include <algorithm>
 
 // ----------------- Automatic Getter -----------------
-std::string UPathFinder::GetProjectRootByFolder()
+std::string UPath::GetProjectRootByFolder()
 {
     if (!GProjectRootFolderCached.empty())
         return GProjectRootFolderCached;
@@ -14,7 +14,7 @@ std::string UPathFinder::GetProjectRootByFolder()
     return GProjectRootFolderCached;
 }
 
-std::string UPathFinder::GetProjectRootByFile()
+std::string UPath::GetProjectRootByFile()
 {
     if (!GProjectRootFileCached.empty())
         return GProjectRootFileCached;
@@ -25,7 +25,7 @@ std::string UPathFinder::GetProjectRootByFile()
 }
 
 // ----------------- Flexible Finder -----------------
-std::string UPathFinder::FindProjectRootByFolder(const std::string& startPath, const std::string& markerFolder)
+std::string UPath::FindProjectRootByFolder(const std::string& startPath, const std::string& markerFolder)
 {
     std::filesystem::path path = startPath;
 
@@ -42,7 +42,7 @@ std::string UPathFinder::FindProjectRootByFolder(const std::string& startPath, c
     return startPath;
 }
 
-std::string UPathFinder::FindProjectRootByFile(const std::string& startPath, const std::string& markerFile)
+std::string UPath::FindProjectRootByFile(const std::string& startPath, const std::string& markerFile)
 {
     std::filesystem::path path = startPath;
 
@@ -59,19 +59,19 @@ std::string UPathFinder::FindProjectRootByFile(const std::string& startPath, con
     return startPath;
 }
 
-bool UPathFinder::FileExists(const std::string& path)
+bool UPath::FileExists(const std::string& path)
 {
     auto resolved = ResolvePath(path);
     return std::filesystem::exists(resolved) && std::filesystem::is_regular_file(resolved);
 }
 
-bool UPathFinder::DirectoryExists(const std::string& path)
+bool UPath::DirectoryExists(const std::string& path)
 {
     auto resolved = ResolvePath(path);
     return std::filesystem::exists(resolved) && std::filesystem::is_directory(resolved);
 }
 
-std::vector<std::string> UPathFinder::ListFiles(
+std::vector<std::string> UPath::ListFiles(
     const std::string& directory,
     const std::string& extension,
     bool bRecursive,
@@ -133,30 +133,30 @@ std::vector<std::string> UPathFinder::ListFiles(
     return result;
 }
 
-std::string UPathFinder::Normalize(const std::string& path)
+std::string UPath::Normalize(const std::string& path)
 {
     return std::filesystem::weakly_canonical(ResolvePath(path)).string();
 }
 
-std::string UPathFinder::GetParent(const std::string& path)
+std::string UPath::GetParent(const std::string& path)
 {
     return ResolvePath(path).empty() ? "" : std::filesystem::path(ResolvePath(path)).parent_path().string();
 }
 
-std::string UPathFinder::GetFileName(const std::string& path, bool bIncludeExtension)
+std::string UPath::GetFileName(const std::string& path, bool bIncludeExtension)
 {
     std::filesystem::path p(ResolvePath(path));
     return bIncludeExtension ? p.filename().string() : p.stem().string();
 }
 
-std::string UPathFinder::GetExtension(const std::string& path)
+std::string UPath::GetExtension(const std::string& path)
 {
     std::string ext = std::filesystem::path(ResolvePath(path)).extension().string();
     if (!ext.empty() && ext[0] == '.') ext.erase(0, 1);
     return ext;
 }
 
-std::filesystem::path UPathFinder::ResolvePath(const std::string& path)
+std::filesystem::path UPath::ResolvePath(const std::string& path)
 {
     std::filesystem::path p(path);
     if (p.is_relative())
@@ -164,7 +164,7 @@ std::filesystem::path UPathFinder::ResolvePath(const std::string& path)
     return p;
 }
 
-std::string UPathFinder::FindProjectRoot(const std::string& startPath, const std::string& markerFolder)
+std::string UPath::FindProjectRoot(const std::string& startPath, const std::string& markerFolder)
 {
     std::filesystem::path path = startPath;
     while (!path.empty())

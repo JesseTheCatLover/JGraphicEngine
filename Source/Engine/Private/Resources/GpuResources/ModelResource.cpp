@@ -14,7 +14,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
-#include "Utilities/UPathFinder.h"
+#include "Utilities/UPath.h"
 #include "Rendering/IRenderDevice.h"
 #include "Rendering/FSurfaceDesc.h"
 
@@ -63,9 +63,9 @@ void ModelResource::LoadCPU()
     m_MaterialsCPU.clear();
     m_TexIndexByPath.clear();
 
-    std::string meshesDirectory = UPathFinder::Join(UPathFinder::ResolvePath(""), "Assets", "Meshes");
-    const std::string absPath = UPathFinder::Join(meshesDirectory, m_Source);
-    const std::string modelDir = UPathFinder::GetParent(absPath);
+    std::string meshesDirectory = UPath::Join(UPath::ResolvePath(""), "Assets", "Meshes");
+    const std::string absPath = UPath::Join(meshesDirectory, m_Source);
+    const std::string modelDir = UPath::GetParent(absPath);
 
     Assimp::Importer importer;
     const aiScene* sc;
@@ -108,7 +108,7 @@ void ModelResource::LoadCPU()
             const char* p = texPath.C_Str();
             if (p && p[0] != '*')
             {
-                std::string abs = UPathFinder::Normalize(modelDir + "/" + p);
+                std::string abs = UPath::Normalize(modelDir + "/" + p);
                 // Treat color as sRGB
                 mc.baseColorTex = AcquireTexture(abs, /*srgb*/true);
             }
