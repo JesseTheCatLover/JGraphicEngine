@@ -8,11 +8,11 @@
 #include "Core/IEditorBridge.h"
 #include "Core/Memory/SmartPointers.h"
 
+class IEditorRenderer;
 class IEditorUIBackend;
 class EditorPanelTracker;
 class EditorAssetCache;
 class EditorLayoutModel;
-class ImGuiRenderer;
 class IEditorPanel;
 class EditorHost;
 struct GLFWwindow;
@@ -44,7 +44,7 @@ private:
     // Backend
     TUniquePtr<IEditorUIBackend> m_EditorUIBackend;
 
-    TUniquePtr<ImGuiRenderer> m_Renderer;
+    TUniquePtr<IEditorRenderer> m_Renderer;
     TUniquePtr<EditorPanelTracker> m_PanelTracker;
     TUniquePtr<EditorLayoutModel> m_LayoutModel;
     TUniquePtr<EditorAssetCache> m_EditorCache;

@@ -201,7 +201,7 @@ void ImGuiRenderer::DrawToolbar()
     ImGui::PopStyleVar(4);
 }
 
-void ImGuiRenderer::DrawDockspaceAndPanels(float dt)
+void ImGuiRenderer::DrawDockspaceAndPanels(float deltaTime)
 {
     ImGuiViewport* viewport = ImGui::GetMainViewport();
 
