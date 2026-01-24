@@ -15,7 +15,7 @@ struct FHierarchySnapshot;
 
 class SceneHierarchyPanel : public IEditorPanel
 {
-    std::string m_PanelKey = "Hierarchy:0";
+    std::string m_PanelKey = "SceneHierarchy";
     bool m_bClickedAnyItemThisFrame = false;
 
     // UI-only persistent state
@@ -29,7 +29,7 @@ class SceneHierarchyPanel : public IEditorPanel
                        const SelectionService& selection);
 
 public:
-    [[nodiscard]] const char* GetName() const override { return "Scene Hierarchy"; }
+    [[nodiscard]] const char* GetName() const override { return "Scene Hierarchy###SceneHierarchy"; }
     [[nodiscard]] const char* GetPanelKey() const override { return m_PanelKey.c_str(); }
 
     void OnDestroy(EditorHost& host) override;

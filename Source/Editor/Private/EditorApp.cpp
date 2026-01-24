@@ -85,6 +85,8 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     m_LayoutModel->ResetToDefaults();
 
     m_PanelTracker = MakeUnique<EditorPanelTracker>();
+    m_PanelTracker->Initialize(*m_EditorHost);
+    m_PanelTracker->ApplyLayout(*m_EditorHost, *m_LayoutModel); // initial sync
 
     m_EditorCache = MakeUnique<EditorAssetCache>();
     m_EditorCache->PreloadAll(*m_EditorRuntime);
