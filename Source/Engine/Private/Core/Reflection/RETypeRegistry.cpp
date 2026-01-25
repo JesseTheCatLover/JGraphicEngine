@@ -1,6 +1,6 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
-#include "../../../Public/Core/Reflection/RETypeRegistry.h"
+#include "Core/Reflection/RETypeRegistry.h"
 
 #include <iostream>
 #include <utility>

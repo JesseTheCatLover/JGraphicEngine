@@ -23,6 +23,11 @@ std::vector<FHierarchySnapshot> SceneQueryService::BuildHierarchySnapshot()
     return m_Runtime.GetScene().BuildHierarchySnapshot();
 }
 
+JActor * SceneQueryService::TryGetActor(ActorID id) const
+{
+    return m_Runtime.GetScene().TryGetActor(id);
+}
+
 bool SceneQueryService::TrySetActorWorldTransform(ActorID id, const FTransform &xf)
 {
     return m_Runtime.GetScene().TrySetActorWorldTransform(id, xf);
@@ -41,4 +46,9 @@ bool SceneQueryService::TrySetActorWorldRotation(ActorID id, const FQuat &q)
 bool SceneQueryService::TrySetActorWorldScale(ActorID id, const FVector3 &s)
 {
     return m_Runtime.GetScene().TrySetActorWorldScale(id, s);
+}
+
+bool SceneQueryService::TryGetActorComponents(ActorID id, std::vector<JCoreObject *> &outObjects) const
+{
+    return m_Runtime.GetScene().TryGetActorComponents(id, outObjects);
 }

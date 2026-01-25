@@ -7,6 +7,8 @@
 #include "Core/IEditorService.h"
 #include "Scene/FHierarchySnapshot.h"
 
+class JCoreObject;
+class JActor;
 struct FQuat;
 struct FVector3;
 struct FTransform;
@@ -30,8 +32,12 @@ public:
     std::vector<FHierarchySnapshot> BuildHierarchySnapshot();
 
     // Returns false if actor doesn't exist.
+
+    JActor* TryGetActor(ActorID id) const;
     bool TrySetActorWorldTransform(ActorID id, const FTransform& xf);
     bool TrySetActorWorldLocation(ActorID id, const FVector3& p);
     bool TrySetActorWorldRotation(ActorID id, const FQuat& q);
     bool TrySetActorWorldScale(ActorID id, const FVector3& s);
+
+    bool TryGetActorComponents(ActorID id, std::vector<JCoreObject*>& outObjects) const;
 };

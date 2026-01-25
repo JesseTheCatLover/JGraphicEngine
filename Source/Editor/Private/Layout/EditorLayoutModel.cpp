@@ -14,6 +14,7 @@ void EditorLayoutModel::ResetToDefaults()
     m_ViewportCount = 1;
     m_ToolVisible.fill(false);
     m_ToolVisible[(size_t)EEditorPanelType::SceneHierarchy] = true;
+    m_ToolVisible[(size_t)EEditorPanelType::Inspector] = true;
 
     m_ViewportCountDirty = true;
     m_ToolDirty.fill(true);

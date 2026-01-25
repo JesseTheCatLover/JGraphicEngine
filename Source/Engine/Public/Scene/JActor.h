@@ -516,6 +516,9 @@ public:
         return nullptr;
     }
 
+    [[nodiscard]] const std::vector<TSharedPtr<JActorComponent>>& GetActorComponents() const { return m_ActorComponents; }
+    [[nodiscard]] const std::vector<TSharedPtr<JSceneComponent>>& GetSceneComponents() const { return m_SceneComponents; }
+
     // -------------------- Rendering --------------------
 
     void GatherRenderables(IRenderSubmission& submission, const FRenderContext& ctx) const;

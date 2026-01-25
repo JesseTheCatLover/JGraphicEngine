@@ -7,6 +7,8 @@
 #include "FHierarchySnapshot.h"
 #include "FRaycast.h"
 
+class JCoreObject;
+class JActor;
 struct FQuat;
 struct FTransform;
 class DebugDraw;
@@ -31,11 +33,13 @@ public:
     JScene* GetActiveScene();
     DebugDraw& GetDebugDraw();
 
+    JActor* TryGetActor(ActorID id) const;
     bool TryGetActorWorldTransform(ActorID id, FTransform& outXf) const;
     bool TrySetActorWorldTransform(ActorID id, const FTransform& xf);
     bool TrySetActorWorldLocation(ActorID id, const FVector3& p);
     bool TrySetActorWorldRotation(ActorID id, const FQuat& q);
     bool TrySetActorWorldScale(ActorID id, const FVector3& s);
+    bool TryGetActorComponents(ActorID id, std::vector<JCoreObject*>& outObjects) const;
 
     [[nodiscard]] std::vector<FHierarchySnapshot>
         BuildHierarchySnapshot() const;

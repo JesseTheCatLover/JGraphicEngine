@@ -23,6 +23,11 @@ DebugDraw& EditorSceneAPI::GetDebugDraw()
     return m_DebugDraw;
 }
 
+JActor* EditorSceneAPI::TryGetActor(ActorID id) const
+{
+    return m_SceneManager.FindActorByID(id);
+}
+
 bool EditorSceneAPI::TryGetActorWorldTransform(ActorID id, FTransform& outXf) const
 {
     JActor* a = m_SceneManager.FindActorByID(id);
@@ -66,6 +71,39 @@ bool EditorSceneAPI::TrySetActorWorldScale(ActorID id, const FVector3& s)
     if (!a) return false;
 
     a->SetActorScale(s);
+    return true;
+}
+
+bool EditorSceneAPI::TryGetActorComponents(ActorID id, std::vector<JCoreObject*>& outObjects) const
+{
+    outObjects.clear();
+
+    JActor* a = m_SceneManager.FindActorByID(id);
+    if (!a)
+        return false;
+
+    // Reserve to reduce allocations
+    const size_t reserveCount =
+    a->GetActorComponents().size() + a->GetSceneComponents().size();
+    outObjects.reserve(reserveCount);
+
+
+    // Actor (logic) components
+    for (const auto& comp : a->GetActorComponents())
+    {
+        if (!comp) continue;
+        outObjects.push_back(comp.get()); // JActorComponent -> JCoreObject*
+    }
+
+
+    // Scene components (including root + children)
+    for (const auto& comp : a->GetSceneComponents())
+    {
+        if (!comp) continue;
+        outObjects.push_back(comp.get()); // JSceneComponent -> JCoreObject*
+    }
+
+
     return true;
 }
 

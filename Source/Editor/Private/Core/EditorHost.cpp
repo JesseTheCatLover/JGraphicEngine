@@ -8,6 +8,7 @@
 #include "Services/PickingService.h"
 #include "Services/SceneQueryService.h"
 #include "Services/SelectionService.h"
+#include "Subsystems/InspectorSubsystem.h"
 #include "Subsystems/SceneHierarchySubsystem.h"
 #include "Subsystems/ViewportSubsystem.h"
 
@@ -27,6 +28,7 @@ void EditorHost::RegisterCoreSubsystems()
     // Core subsystems
     m_PanelContainer->RegisterSubsystem<ViewportSubsystem>(*this, m_EditorRuntime, *m_ToolService);
     m_PanelContainer->RegisterSubsystem<SceneHierarchySubsystem>(*this);
+    m_PanelContainer->RegisterSubsystem<InspectorSubsystem>(*this);
 }
 
 void EditorHost::RegisterCoreServices()
