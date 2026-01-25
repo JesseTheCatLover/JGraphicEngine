@@ -53,6 +53,7 @@ add_subdirectory(Source/Engine)
 add_subdirectory(Source/EditorRuntime)
 add_subdirectory(Source/Editor)
 add_subdirectory(Source/Launch) # Executable is defined in this module
+add_subdirectory(Tools/JReflectGen) # Reflection CodeGen
 
 # --- Engine directory macro ---
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
