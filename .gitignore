@@ -5,3 +5,5 @@ cmake-build-release/
 .DS_Store
 /.idea
 /cmake-build-release-mingw
+/Tools/JReflectGen/target/
+Cargo.lock
