@@ -8,7 +8,7 @@
 #include "Subsystems/InspectorSubsystem.h"
 #include "Controllers/Outputs/FInspectorOutput.h"
 #include "Controllers/Outputs/FInspectorSnapshot.h"
-#include "Core/Reflection/JReflectionMetaData.h"
+#include "Core/Reflection/ReflectionMeta.h"
 
 // ---------------- helpers ----------------
 

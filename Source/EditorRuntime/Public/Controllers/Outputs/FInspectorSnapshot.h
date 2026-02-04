@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "Core/Reflection/JReflectionMetaData.h"
+#include "Core/Reflection/ReflectionMeta.h"
 
 struct FInspectorRow
 {

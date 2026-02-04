@@ -1,139 +1,175 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+
+#include <cstdint>
 #include <functional>
 #include <string>
-#include <unordered_map>
 #include <typeindex>
-#include "Core/Reflection/JReflectionMetaData.h"
+#include <typeinfo>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+#include "REMeta.h"
 
 class JCoreObject;
+
+// ---------------- Reflection structures ----------------
 
 struct REProperty
 {
     std::string name;
-    std::type_index type;
-    size_t offset;
-    FPropertyMetadata metadata;
+
+    std::string typeName;
+
+    size_t offset = 0;
+
+    REMetaList meta;
+};
+
+struct REFunction
+{
+    std::string name;
+
+    // Raw signature strings are perfect for MVP:
+    // e.g. "void()", "const Vec3&() const noexcept", etc.
+    std::string signature;
+
+    // Later: add invoker pointer, flags, param info, etc.
+    uint32_t flags = 0;
+
+    REMetaList meta;
+};
+
+struct REEnumValue
+{
+    std::string name;
+    std::string valueExpr; // raw expression string (optional)
+};
+
+struct REEnum
+{
+    std::string name;
+    bool isScoped = false;
+    std::string underlyingType; // raw, optional
+    REMetaList meta;
+    std::vector<REEnumValue> values;
 };
 
 struct REType
 {
     std::string name;
+
     std::type_index cppType{ typeid(void) };
     std::type_index baseCppType{ typeid(void) };
+
+    REMetaList meta; // class-level attributes from JCLASS/JSTRUCT
+
     std::vector<REProperty> properties;
+    std::vector<REFunction> functions;
+
+    // Optional: if this is an enum type, store enum data here
+    // (We can also store enums separately; this is convenient for lookup-by-name)
+    bool isEnum = false;
+    REEnum enumInfo;
+
     std::function<JCoreObject*()> factory;
 };
 
 class RETypeRegistry
 {
 public:
-    static void BeginType(const char* name, const std::type_info& typeInfo, const std::type_info& baseType);
+    // ---------------- Lifetime / access ----------------
+    static RETypeRegistry& Get();
 
-    template<typename SelfType, typename T>
-    static void AddProperty(const char* propName, T SelfType::*member,
-                            const FPropertyMetadata& metadata)
-    {
-        auto& t = s_Types[std::type_index(typeid(SelfType))];
-        t.properties.push_back(REProperty{
-            propName,
-            std::type_index(typeid(T)),
-            size_t(&( ((SelfType*)0)->*member )),  // offset
-            metadata
-        });
-    }
+    // ---------------- Registration API (used by generated .refl.gen.cpp) ----------------
 
-    static const REType* FindType(const std::type_index& idx)
-    {
-        auto it = s_Types.find(idx);
-        return (it != s_Types.end()) ? &it->second : nullptr;
-    }
+    // Register a type (class/struct) with RTTI identity + base type
+    void BeginType(const char* name,
+                   const std::type_info& selfType,
+                   const std::type_info& baseType);
 
-    static const REType* FindType(const std::type_info& typeInfo)
-    {
-        return FindType(std::type_index(typeInfo));
-    }
+    // Add class-level meta (from JCLASS/JSTRUCT args)
+    void AddTypeMeta(const std::type_info& ownerType,
+                     const char* key,
+                     const char* value = "");
 
-    template<typename T>
-    static const REType* GetType()
-    {
-        return FindType(typeid(T));
-    }
+    // Property registration by raw offset
+    void AddProperty(const std::type_info& ownerType,
+                     const char* propName,
+                     const char* propTypeName,
+                     size_t offset);
 
-    // Small helper to walk up the inheritance chain
-    static const REType* GetBaseType(const REType* type)
-    {
-        if (!type)
-            return nullptr;
+    // Optional legacy convenience overload (not used by codegen)
+    void AddProperty(const std::type_info& ownerType,
+                     const char* propName,
+                     const std::type_info& propType,
+                     size_t offset);
 
-        // Sentinel for "no base"
-        if (type->baseCppType == std::type_index(typeid(void)))
-            return nullptr;
+    void AddPropertyMeta(const std::type_info& ownerType,
+                         const char* propName,
+                         const char* key,
+                         const char* value = "");
 
-        return FindType(type->baseCppType);
-    }
+    // Function registration (no invoker in MVP)
+    void AddFunction(const std::type_info& ownerType,
+                     const char* funcName,
+                     const char* signature,
+                     uint32_t flags = 0);
 
-    static const REType* FindTypeByTypeName(const std::string& name)
-    {
-        for (auto& [key, value] : s_Types)
-        {
-            if (value.name == name)
-                return &value;
-        }
-        return nullptr;
-    }
+    void AddFunctionMeta(const std::type_info& ownerType,
+                         const char* funcName,
+                         const char* signature,
+                         const char* key,
+                         const char* value = "");
 
-    // Generic: set factory from any callable
-    template<typename T, typename FactoryFn>
-    static void SetFactory(FactoryFn fn)
-    {
-        auto typeIndex = std::type_index(typeid(T));
-        auto it = s_Types.find(typeIndex);
-        if (it == s_Types.end())
-            it = s_Types.emplace(typeIndex, REType{}).first;
+    // Enum registration (optional but included for full integration)
+    void BeginEnum(const char* name,
+                   bool isScoped,
+                   const char* underlyingType = "");
 
-        it->second.factory = fn;
-    }
+    void AddEnumMeta(const char* enumName,
+                     const char* key,
+                     const char* value = "");
 
-    // Default: new T() (for concrete types)
-    template<typename T>
-    static void SetDefaultFactory()
-    {
-        if constexpr (std::is_abstract_v<T>)
-        {
-            ClearFactory<T>();
-        }
-        else
-        {
-            SetFactory<T>([]() -> JCoreObject*
-            {
-                return new T();
-            });
-        }
-    }
+    void AddEnumValue(const char* enumName,
+                      const char* valueName,
+                      const char* valueExpr = "");
 
-    template<typename T>
-    static void ClearFactory()
-    {
-        auto ti = std::type_index(typeid(T));
-        auto it = s_Types.find(ti);
-        if (it == s_Types.end())
-            return;
+    // Factory registration
+    void SetFactory(const std::type_info& ownerType,
+                    std::function<JCoreObject*()> factory);
 
-        it->second.factory = nullptr;
-    }
+    // ---------------- Lookup ----------------
 
-    static JCoreObject* CreateInstanceByTypeName(const std::string& name)
-    {
-        const REType* type = FindTypeByTypeName(name);
-        if (!type || !type->factory)
-            return nullptr;
-        return type->factory();
-    }
+    const REType* FindType(const std::type_info& ti) const;
+    const REType* FindType(const std::type_index& idx) const;
 
-    static void DebugDumpAllTypes();
+    const REType* FindTypeByName(const std::string& name) const;
+
+    // Inheritance helpers
+    const REType* GetBaseType(const REType* type) const;
+
+    bool IsDerivedFrom(const REType* type, const REType* base) const;
+
+    // Factory helper
+    JCoreObject* CreateInstanceByTypeName(const std::string& name) const;
+
+    // Debug
+    void DebugDumpAllTypes() const;
 
 private:
-    static std::unordered_map<std::type_index, REType> s_Types;
+    RETypeRegistry() = default;
+
+    // internal helpers
+    REType& EnsureTypeEntry(const std::type_index& idx);
+    REType* FindTypeMutable(const std::type_index& idx);
+
+    // For name->type lookup we store type_index to avoid raw pointers invalidation concerns.
+    std::unordered_map<std::type_index, REType> m_Types;
+    std::unordered_map<std::string, std::type_index> m_NameToType;
+
+    // Enums are name-driven (no RTTI necessarily)
+    std::unordered_map<std::string, REEnum> m_Enums;
 };
