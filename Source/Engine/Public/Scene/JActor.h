@@ -8,6 +8,7 @@
 #include <string>
 #include <type_traits>
 #include "Core/Memory/SmartPointers.h"
+#include "JActor.generated.h"
 
 class JCameraComponent;
 struct FRenderContext;
@@ -25,20 +26,25 @@ class JScene;
  * Each actor owns a root scene component defining its transform
  * and may contain additional logic or scene components for behavior.
  */
+JCLASS()
 class JActor : public JCoreObject
 {
-    DECLARE_JOBJECT(JActor)
-
+    JGENERATED_BODY()
     friend class JScene;
     friend class SceneManager;
 
 private:
+    JPROPERTY()
     std::string m_Name; ///< Actor name
+
+    JPROPERTY()
     size_t m_VectorIndex; ///< internal index for O(1) removal from scene
+
     TSharedPtr<JSceneComponent> m_RootComponent; ///< Root of the scene component hierarchy
     std::vector<TSharedPtr<JSceneComponent>> m_SceneComponents; ///< Scene components attached to this actor
     std::vector<TSharedPtr<JActorComponent>> m_ActorComponents; ///< Actor components attached to this actor
 
+    JPROPERTY()
     bool m_bIsVisible = true;
 
     bool m_bPendingDestroy = false;

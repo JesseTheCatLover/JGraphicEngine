@@ -6,14 +6,17 @@
 #include "Rendering/IRenderSubmission.h"
 #include "Rendering/RRenderProxies.h"
 #include "Rendering/RCommandQueue.h"
+#include "JRenderableComponent.generated.h"
 
 class IRendererSubmission;
 
+JCLASS()
 class JRenderableComponent : public JSceneComponent
 {
-    DECLARE_JOBJECT(JRenderableComponent, JSceneComponent)
+    JGENERATED_BODY()
 
 private:
+    JPROPERTY()
     bool m_Visible{true};
     ERenderLayer m_RenderLayer{ERenderLayer::Opaque};
 

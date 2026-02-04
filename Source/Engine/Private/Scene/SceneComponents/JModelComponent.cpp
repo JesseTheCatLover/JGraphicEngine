@@ -70,8 +70,3 @@ void JModelComponent::AllocateGpuResources()
         SetModel(m_ModelKey);
     }
 }
-
-JREFLECT_TYPE(JModelComponent)
-{
-    JPROPERTY(m_ModelKey);
-}}

@@ -119,12 +119,3 @@ void JCameraComponent::LookAt(const FVector3& worldTarget, const FVector3& world
 
     m_bViewDirty = true;
 }
-
-JREFLECT_TYPE(JCameraComponent)
-{
-    JPROPERTY(m_FOV);
-    JPROPERTY(m_NearClip);
-    JPROPERTY(m_FarClip);
-    JPROPERTY(m_ProjectionType); // TODO: implement enum reflection support + structs for future
-    JPROPERTY(m_OrthoHalfHeight);
-}}

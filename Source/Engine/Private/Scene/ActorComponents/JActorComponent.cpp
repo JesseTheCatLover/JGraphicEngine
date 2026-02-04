@@ -37,8 +37,3 @@ bool JActorComponent::DestroyComponent()
     m_bPendingDestroy = true;
     return true;
 }
-
-JREFLECT_TYPE(JActorComponent)
-{
-    JPROPERTY(m_Name);
-}}

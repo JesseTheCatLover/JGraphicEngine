@@ -7,12 +7,14 @@
 #include "Core/Memory/SmartPointers.h"
 #include "Scene/SceneComponents/JRenderableComponent.h"
 #include "Rendering/IRenderSubmission.h"
+#include "JModelComponent.generated.h"
 
 class ModelResource;
 
+JCLASS()
 class JModelComponent : public JRenderableComponent
 {
-    DECLARE_JOBJECT(JModelComponent, JRenderableComponent)
+    JGENERATED_BODY()
 
 public:
     JModelComponent() = default;
@@ -30,6 +32,7 @@ public:
     void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const override;
 
 private:
+    JPROPERTY()
     std::string m_ModelKey;
     TSharedPtr<ModelResource> m_Model;
     RShaderHandle m_Shader{}; // shader used for all submeshes (for now)

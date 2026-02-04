@@ -14,9 +14,10 @@
  * functionality with parent/child relationships. This allows components to be
  * positioned relative to each other.
  */
+JCLASS()
 class JSceneComponent : public JTransformComponent
 {
-    DECLARE_JOBJECT(JSceneComponent, JTransformComponent)
+    JGENERATED_BODY()
 
 private:
     friend class JActor;

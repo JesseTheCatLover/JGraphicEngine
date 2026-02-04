@@ -16,7 +16,7 @@ JActor::JActor() : m_VectorIndex(0)
 
 void JActor::SetupRootComponent()
 {
-    if (!m_RootComponent)
+    if (!m_RootComponen
     {
         m_RootComponent = MakeShared<JSceneComponent>();
         m_RootComponent->SetOwnerActor(this);
@@ -245,10 +245,3 @@ JCameraComponent* JActor::GetCameraComponent()
     }
     return nullptr;
 }
-
-JREFLECT_TYPE(JActor)
-{
-    JPROPERTY(m_Name);
-    JPROPERTY(m_VectorIndex);
-    JPROPERTY(m_bIsVisible);
-}}

@@ -6,7 +6,8 @@
 
 #include "Serialization/SerializeUtilities.h"
 #include "Reflection/RETypeRegistry.h"
-#include "Reflection/JReflectionSerialization.h"
+#include "Reflection/ReflectMarkers.h"
+#include "Reflection/ReflectSerialize.h"
 #include "Utilities/UUUID.h"
 
 struct REType;
@@ -79,13 +80,13 @@ private:
 
     void SerializeJObject(class JsonWriter& writer) const
     {
-        JReflectionSerialization::SerializeReflectedProperties(writer, *this);
+        ReflectSerialize::SerializeReflectedProperties(writer, *this);
         SerializeCustom(writer);
     }
 
     void DeserializeJObject(const class JsonReader& reader)
     {
-        JReflectionSerialization::DeserializeReflectedProperties(reader, *this);
+        ReflectSerialize::DeserializeReflectedProperties(reader, *this);
         DeserializeCustom(reader);
         PostLoad();
     }

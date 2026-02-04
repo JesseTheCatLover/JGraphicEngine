@@ -4,6 +4,7 @@
 
 #include "Scene/ActorComponents/JActorComponent.h"
 #include "Core/Math/FTransform.h"
+#include "JTransformComponent.generated.h"
 
 /**
  * @class JTransformComponent
@@ -13,12 +14,14 @@
  * storing translation, rotation, and scale. It is the foundation for all
  * scene-related components (e.g., mesh, camera, light) that need spatial data.
  */
+JCLASS()
 class JTransformComponent : public JActorComponent
 {
-    DECLARE_JOBJECT(JTransformComponent, JActorComponent)
+    JGENERATED_BODY()
 
 private:
     /** Local transform storing position, rotation, and scale. */
+    JPROPERTY()
     FTransform m_LocalTransform;
 
 public:

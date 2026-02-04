@@ -8,6 +8,7 @@
 
 #include "Core/JCoreObject.h"
 #include "JActor.h"
+#include "JScene.generated.h"
 
 /**
  * @class JScene
@@ -22,9 +23,10 @@
  *
  * @note This class is read-only. To modify a scene, use SceneManager.h exclusively.
  */
+JCLASS()
 class JScene : public JCoreObject
 {
-    DECLARE_JOBJECT(JScene)
+    JGENERATED_BODY()
 
     friend class SceneManager;
 

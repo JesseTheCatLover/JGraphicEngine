@@ -6,22 +6,30 @@
 #include "Core/Math/FVector3.h"
 
 #include "Rendering/ICameraViewSource.h"
+#include "JCameraComponent.generated.h"
 
 /**
  * @brief Camera component for runtime/gameplay rendering in the scene
  */
+JCLASS()
 class JCameraComponent : public JSceneComponent, public ICameraViewSource
 {
-    DECLARE_JOBJECT(JCameraComponent, JSceneComponent)
+    JGENERATED_BODY()
+
 protected:
+    JPROPERTY()
     EProjectionType m_ProjectionType = EProjectionType::Perspective;
 
     // Perspective
+    JPROPERTY()
     float m_FOV = 60.0f;
+    JPROPERTY()
     float m_NearClip = 0.01f;
+    JPROPERTY()
     float m_FarClip = 1000.0f;
 
     // Orthographic
+    JPROPERTY()
     float m_OrthoHalfHeight = 10.0f;
 
     // Cached matrices

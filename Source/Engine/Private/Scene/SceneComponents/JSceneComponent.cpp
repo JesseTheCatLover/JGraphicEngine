@@ -200,7 +200,3 @@ void JSceneComponent::Initialize()
 {
     JTransformComponent::Initialize();
 }
-
-JREFLECT_TYPE(JSceneComponent)
-{
-}}
