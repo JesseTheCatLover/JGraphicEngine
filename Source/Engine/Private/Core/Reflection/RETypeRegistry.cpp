@@ -2,7 +2,10 @@
 
 #include "Core/Reflection/RETypeRegistry.h"
 
+#include <algorithm>
 #include <iostream>
+
+static const std::type_index kVoidType = std::type_index(typeid(void));
 
 RETypeRegistry& RETypeRegistry::Get()
 {
@@ -14,20 +17,24 @@ REType& RETypeRegistry::EnsureTypeEntry(const std::type_index& idx)
 {
     auto it = m_Types.find(idx);
     if (it != m_Types.end())
-        return it->second;
+        return *it->second;
 
-    auto [insIt, _] = m_Types.emplace(idx, REType{});
-    insIt->second.cppType = idx;
-    return insIt->second;
+    auto ptr = std::make_unique<REType>();
+    ptr->cppType = idx;
+
+    REType& ref = *ptr;
+    m_Types.emplace(idx, std::move(ptr));
+    return ref;
 }
 
 REType* RETypeRegistry::FindTypeMutable(const std::type_index& idx)
 {
     auto it = m_Types.find(idx);
-    return (it != m_Types.end()) ? &it->second : nullptr;
+    return (it != m_Types.end()) ? it->second.get() : nullptr;
 }
 
 void RETypeRegistry::BeginType(const char* name,
+                              RETypeKind kind,
                               const std::type_info& selfType,
                               const std::type_info& baseType)
 {
@@ -35,12 +42,20 @@ void RETypeRegistry::BeginType(const char* name,
     const auto baseIdx = std::type_index(baseType);
 
     REType& t = EnsureTypeEntry(selfIdx);
-    t.name = name;
+    t.name = name ? name : "";
+    t.kind = kind;
     t.cppType = selfIdx;
     t.baseCppType = baseIdx;
 
-    // Don't use operator[] (std::type_index has no default ctor)
-    m_NameToType.insert_or_assign(t.name, selfIdx);
+    // Store pointer (stable because REType is heap-allocated)
+    if (!t.name.empty())
+        m_NameToType.insert_or_assign(t.name, &t);
+}
+
+void RETypeRegistry::SetUpcast(const std::type_info& selfType, REUpcastFn upcastFn)
+{
+    REType& t = EnsureTypeEntry(std::type_index(selfType));
+    t.upcastFromMostDerived = upcastFn;
 }
 
 void RETypeRegistry::AddTypeMeta(const std::type_info& ownerType,
@@ -49,7 +64,11 @@ void RETypeRegistry::AddTypeMeta(const std::type_info& ownerType,
 {
     const auto ownerIdx = std::type_index(ownerType);
     REType& t = EnsureTypeEntry(ownerIdx);
-    REAddMeta(t.meta, key ? key : "", value ? value : "");
+
+    if (!key || !*key)
+        return;
+
+    REAddMeta(t.meta, key, value ? value : "");
 }
 
 void RETypeRegistry::AddProperty(const std::type_info& ownerType,
@@ -57,13 +76,19 @@ void RETypeRegistry::AddProperty(const std::type_info& ownerType,
                                 const char* propTypeName,
                                 size_t offset)
 {
-    auto ownerIdx = std::type_index(ownerType);
+    const auto ownerIdx = std::type_index(ownerType);
     REType& t = EnsureTypeEntry(ownerIdx);
 
     REProperty p;
     p.name = propName ? propName : "";
     p.typeName = propTypeName ? propTypeName : "";
     p.offset = offset;
+
+    // kind + links resolved later in Finalize()
+    p.kind = REPropKind::Unknown;
+    p.reflectedType = nullptr;
+    p.enumType = nullptr;
+    p.objectType = nullptr;
 
     t.properties.push_back(std::move(p));
 }
@@ -73,7 +98,6 @@ void RETypeRegistry::AddProperty(const std::type_info& ownerType,
                                 const std::type_info& propType,
                                 size_t offset)
 {
-    // convenience wrapper
     AddProperty(ownerType, propName, propType.name(), offset);
 }
 
@@ -85,20 +109,23 @@ void RETypeRegistry::AddPropertyMeta(const std::type_info& ownerType,
     const auto ownerIdx = std::type_index(ownerType);
     REType& t = EnsureTypeEntry(ownerIdx);
 
-    for (auto& p : t.properties)
+    if (!propName || !*propName || !key || !*key)
+        return;
+
+    // Attach to most recent matching property (supports repeated names in edge cases)
+    for (auto it = t.properties.rbegin(); it != t.properties.rend(); ++it)
     {
-        if (p.name == (propName ? propName : ""))
+        if (it->name == propName)
         {
-            REAddMeta(p.meta, key ? key : "", value ? value : "");
+            REAddMeta(it->meta, key, value ? value : "");
             return;
         }
     }
 
-    // If metadata arrives before property (shouldn't happen, but be robust)
-    REProperty p;
-    p.name = propName ? propName : "";
-    REAddMeta(p.meta, key ? key : "", value ? value : "");
-    t.properties.push_back(std::move(p));
+#ifndef NDEBUG
+    std::cerr << "[RETypeRegistry] AddPropertyMeta: property not found: " << propName
+              << " on type: " << t.name << "\n";
+#endif
 }
 
 void RETypeRegistry::AddFunction(const std::type_info& ownerType,
@@ -126,29 +153,33 @@ void RETypeRegistry::AddFunctionMeta(const std::type_info& ownerType,
     const auto ownerIdx = std::type_index(ownerType);
     REType& t = EnsureTypeEntry(ownerIdx);
 
-    const std::string n = funcName ? funcName : "";
+    if (!funcName || !*funcName || !key || !*key)
+        return;
+
+    const std::string n = funcName;
     const std::string sig = signature ? signature : "";
 
-    for (auto& f : t.functions)
+    for (auto it = t.functions.rbegin(); it != t.functions.rend(); ++it)
     {
-        if (f.name == n && f.signature == sig)
+        if (it->name == n && it->signature == sig)
         {
-            REAddMeta(f.meta, key ? key : "", value ? value : "");
+            REAddMeta(it->meta, key, value ? value : "");
             return;
         }
     }
 
-    // Robust fallback: create stub entry
-    REFunction f;
-    f.name = n;
-    f.signature = sig;
-    REAddMeta(f.meta, key ? key : "", value ? value : "");
-    t.functions.push_back(std::move(f));
+#ifndef NDEBUG
+    std::cerr << "[RETypeRegistry] AddFunctionMeta: function not found: " << n
+              << " sig: " << sig << " on type: " << t.name << "\n";
+#endif
 }
 
 void RETypeRegistry::BeginEnum(const char* name, bool isScoped, const char* underlyingType)
 {
     const std::string en = name ? name : "";
+    if (en.empty())
+        return;
+
     REEnum& e = m_Enums[en];
     e.name = en;
     e.isScoped = isScoped;
@@ -160,9 +191,12 @@ void RETypeRegistry::AddEnumMeta(const char* enumName,
                                 const char* value)
 {
     const std::string en = enumName ? enumName : "";
+    if (en.empty() || !key || !*key)
+        return;
+
     REEnum& e = m_Enums[en];
     e.name = en;
-    REAddMeta(e.meta, key ? key : "", value ? value : "");
+    REAddMeta(e.meta, key, value ? value : "");
 }
 
 void RETypeRegistry::AddEnumValue(const char* enumName,
@@ -170,12 +204,16 @@ void RETypeRegistry::AddEnumValue(const char* enumName,
                                  const char* valueExpr)
 {
     const std::string en = enumName ? enumName : "";
+    if (en.empty() || !valueName || !*valueName)
+        return;
+
     REEnum& e = m_Enums[en];
     e.name = en;
 
     REEnumValue v;
-    v.name = valueName ? valueName : "";
+    v.name = valueName;
     v.valueExpr = valueExpr ? valueExpr : "";
+
     e.values.push_back(std::move(v));
 }
 
@@ -195,23 +233,34 @@ const REType* RETypeRegistry::FindType(const std::type_info& ti) const
 const REType* RETypeRegistry::FindType(const std::type_index& idx) const
 {
     auto it = m_Types.find(idx);
-    return (it != m_Types.end()) ? &it->second : nullptr;
+    return (it != m_Types.end()) ? it->second.get() : nullptr;
 }
 
 const REType* RETypeRegistry::FindTypeByName(const std::string& name) const
 {
     auto it = m_NameToType.find(name);
-    if (it == m_NameToType.end())
-        return nullptr;
+    return (it != m_NameToType.end()) ? it->second : nullptr;
+}
 
-    return FindType(it->second);
+const REEnum* RETypeRegistry::FindEnumByName(const std::string& name) const
+{
+    auto it = m_Enums.find(name);
+    return (it != m_Enums.end()) ? &it->second : nullptr;
 }
 
 const REType* RETypeRegistry::GetBaseType(const REType* type) const
 {
     if (!type) return nullptr;
-    if (type->baseCppType == std::type_index(typeid(void))) return nullptr;
+    if (type->baseCppType == kVoidType) return nullptr;
     return FindType(type->baseCppType);
+}
+
+bool RETypeRegistry::IsDerivedFrom(const REType* type, const REType* base) const
+{
+    if (!type || !base) return false;
+    for (auto t = type; t != nullptr; t = GetBaseType(t))
+        if (t == base) return true;
+    return false;
 }
 
 JCoreObject* RETypeRegistry::CreateInstanceByTypeName(const std::string& name) const
@@ -222,16 +271,119 @@ JCoreObject* RETypeRegistry::CreateInstanceByTypeName(const std::string& name) c
     return t->factory();
 }
 
+// ---------------- Finalization / resolution ----------------
+
+// Very MVP heuristics. We can later upgrade to token parsing for types.
+static bool TypeLooksLikePointer(const std::string& tn)
+{
+    return tn.find('*') != std::string::npos;
+}
+
+static std::string StripSpaces(std::string s)
+{
+    s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); }), s.end());
+    return s;
+}
+
+static std::string StripPointerStars(std::string s)
+{
+    s.erase(std::remove(s.begin(), s.end(), '*'), s.end());
+    return s;
+}
+
+void RETypeRegistry::ResolvePropertyKinds(REType& owner)
+{
+    for (auto& p : owner.properties)
+    {
+        p.kind = REPropKind::Unknown;
+        p.reflectedType = nullptr;
+        p.enumType = nullptr;
+        p.objectType = nullptr;
+
+        // 1) Enum by exact name match
+        if (const REEnum* e = FindEnumByName(p.typeName))
+        {
+            p.kind = REPropKind::Enum;
+            p.enumType = e;
+            continue;
+        }
+
+        // 2) Reflected type by exact name match (struct/class)
+        if (const REType* rt = FindTypeByName(p.typeName))
+        {
+            if (rt->kind == RETypeKind::Struct)
+            {
+                p.kind = REPropKind::ReflectedStruct;
+                p.reflectedType = rt;
+            }
+            else
+            {
+                // If someone uses a reflected class as a value member (rare), treat as Value for now.
+                // If we want to forbid: assert here.
+                p.kind = REPropKind::Value;
+                p.reflectedType = rt;
+            }
+            continue;
+        }
+
+        // 3) Pointer: try to detect "SomeType*" where SomeType is a reflected class
+        if (TypeLooksLikePointer(p.typeName))
+        {
+            // best-effort strip: remove spaces then remove '*'
+            std::string base = StripPointerStars(StripSpaces(p.typeName));
+
+            if (const REType* objT = FindTypeByName(base))
+            {
+                // If it's a reflected class, we treat as object pointer
+                p.kind = REPropKind::ObjectPtr;
+                p.objectType = objT;
+                continue;
+            }
+        }
+
+        // 4) Default to Value (handled later by the value IO + hardcoded types)
+        p.kind = REPropKind::Value;
+    }
+}
+
+void RETypeRegistry::Finalize()
+{
+    // Resolve property kinds for all types
+    for (auto& [idx, uptr] : m_Types)
+    {
+        ResolvePropertyKinds(*uptr);
+
+        // If this REType is an Enum type, link enum payload by name (optional)
+        if (uptr->kind == RETypeKind::Enum)
+        {
+            if (const REEnum* e = FindEnumByName(uptr->name))
+                uptr->enumInfo = e;
+        }
+    }
+}
+
+// ---------------- Debug ----------------
+
 void RETypeRegistry::DebugDumpAllTypes() const
 {
     std::cout << "=== Registered RE Types ===\n";
 
-    for (const auto& [idx, t] : m_Types)
+    for (const auto& [idx, uptr] : m_Types)
     {
+        const REType& t = *uptr;
+
         std::cout << "Type: " << t.name << "\n";
 
+        std::cout << "  Kind: ";
+        switch (t.kind)
+        {
+        case RETypeKind::Class:  std::cout << "Class\n"; break;
+        case RETypeKind::Struct: std::cout << "Struct\n"; break;
+        case RETypeKind::Enum:   std::cout << "Enum\n"; break;
+        }
+
         std::cout << "  Base: ";
-        if (t.baseCppType == std::type_index(typeid(void)))
+        if (t.baseCppType == kVoidType)
             std::cout << "<none>\n";
         else
         {
@@ -242,18 +394,29 @@ void RETypeRegistry::DebugDumpAllTypes() const
         if (!t.meta.empty())
         {
             std::cout << "  Meta:\n";
-            for (auto& m : t.meta)
+            for (const auto& m : t.meta)
                 std::cout << "    - " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
         }
 
         if (!t.properties.empty())
         {
             std::cout << "  Properties:\n";
-            for (auto& p : t.properties)
+            for (const auto& p : t.properties)
             {
                 std::cout << "    - " << p.name << " : " << p.typeName
                           << " (offset=" << p.offset << ")\n";
-                for (auto& m : p.meta)
+
+                std::cout << "      kind: ";
+                switch (p.kind)
+                {
+                case REPropKind::Value:           std::cout << "Value\n"; break;
+                case REPropKind::ReflectedStruct: std::cout << "ReflectedStruct\n"; break;
+                case REPropKind::Enum:            std::cout << "Enum\n"; break;
+                case REPropKind::ObjectPtr:       std::cout << "ObjectPtr\n"; break;
+                default:                          std::cout << "Unknown\n"; break;
+                }
+
+                for (const auto& m : p.meta)
                     std::cout << "        meta: " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
             }
         }
@@ -261,12 +424,23 @@ void RETypeRegistry::DebugDumpAllTypes() const
         if (!t.functions.empty())
         {
             std::cout << "  Functions:\n";
-            for (auto& f : t.functions)
+            for (const auto& f : t.functions)
             {
                 std::cout << "    - " << f.name << "  sig: " << f.signature << "  flags=" << f.flags << "\n";
-                for (auto& m : f.meta)
+                for (const auto& m : f.meta)
                     std::cout << "        meta: " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
             }
+        }
+
+        if (t.kind == RETypeKind::Enum && t.enumInfo)
+        {
+            const REEnum& e = *t.enumInfo;
+            std::cout << "  EnumInfo: " << e.name
+                      << (e.isScoped ? " (scoped)" : "")
+                      << (e.underlyingType.empty() ? "" : (" : " + e.underlyingType))
+                      << "\n";
+            for (const auto& v : e.values)
+                std::cout << "    - " << v.name << (v.valueExpr.empty() ? "" : (" = " + v.valueExpr)) << "\n";
         }
 
         std::cout << "\n";
@@ -275,17 +449,17 @@ void RETypeRegistry::DebugDumpAllTypes() const
     if (!m_Enums.empty())
     {
         std::cout << "=== Registered Enums ===\n";
-        for (auto& [name, e] : m_Enums)
+        for (const auto& [name, e] : m_Enums)
         {
             std::cout << "Enum: " << e.name
                       << (e.isScoped ? " (scoped)" : "")
                       << (e.underlyingType.empty() ? "" : (" : " + e.underlyingType))
                       << "\n";
 
-            for (auto& m : e.meta)
+            for (const auto& m : e.meta)
                 std::cout << "  meta: " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
 
-            for (auto& v : e.values)
+            for (const auto& v : e.values)
                 std::cout << "  - " << v.name << (v.valueExpr.empty() ? "" : (" = " + v.valueExpr)) << "\n";
 
             std::cout << "\n";

@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
@@ -17,11 +18,64 @@ class JCoreObject;
 
 // ---------------- Reflection structures ----------------
 
+// What kind of reflected type this is (needed for correct serialization & tooling)
+enum class RETypeKind : uint8_t
+{
+    Class,
+    Struct,
+    Enum
+};
+
+// How to interpret a property at runtime (auto-serialization + object refs + enums)
+enum class REPropKind : uint8_t
+{
+    Unknown,
+    Value,           // serialize via value IO (by typeName)
+    ReflectedStruct, // recursively serialize using reflectedType
+    Enum,            // serialize via enum info (enumType)
+    ObjectPtr        // serialize object reference (UUID/type/etc) using objectType
+};
+
+// Optional hooks (future-proof; can be null in MVP)
+using RESerializeFn   = void(*)(class JsonWriter&, const void* obj);
+using REDeserializeFn = void(*)(const class JsonReader&, void* obj);
+
+// Optional upcast helper (future-proof for safe base walking; can be null for normal single inheritance)
+using REUpcastFn = const void*(*)(const void* mostDerived);
+
+struct REEnumValue
+{
+    std::string name;
+    std::string valueExpr; // raw expression string (optional)
+};
+
+struct REEnum
+{
+    std::string name;
+    bool isScoped = false;
+    std::string underlyingType; // raw, optional
+    REMetaList meta;
+    std::vector<REEnumValue> values;
+};
+
 struct REProperty
 {
     std::string name;
 
+    // Raw token string from generator (e.g. "int", "FTransform", "EThing", "JActor*")
     std::string typeName;
+
+    // Resolved classification (filled in Finalize())
+    REPropKind kind = REPropKind::Unknown;
+
+    // If kind == ReflectedStruct: points to the reflected struct type
+    const struct REType* reflectedType = nullptr;
+
+    // If kind == Enum: points to enum info
+    const REEnum* enumType = nullptr;
+
+    // If kind == ObjectPtr: points to reflected class type of the pointee (best effort)
+    const struct REType* objectType = nullptr;
 
     size_t offset = 0;
 
@@ -42,37 +96,28 @@ struct REFunction
     REMetaList meta;
 };
 
-struct REEnumValue
-{
-    std::string name;
-    std::string valueExpr; // raw expression string (optional)
-};
-
-struct REEnum
-{
-    std::string name;
-    bool isScoped = false;
-    std::string underlyingType; // raw, optional
-    REMetaList meta;
-    std::vector<REEnumValue> values;
-};
-
 struct REType
 {
     std::string name;
+    RETypeKind kind = RETypeKind::Class;
 
     std::type_index cppType{ typeid(void) };
     std::type_index baseCppType{ typeid(void) };
+
+    // Optional safe base-walk helper (for now null is fine)
+    REUpcastFn upcastFromMostDerived = nullptr;
 
     REMetaList meta; // class-level attributes from JCLASS/JSTRUCT
 
     std::vector<REProperty> properties;
     std::vector<REFunction> functions;
 
-    // Optional: if this is an enum type, store enum data here
-    // (We can also store enums separately; this is convenient for lookup-by-name)
-    bool isEnum = false;
-    REEnum enumInfo;
+    // If this type represents an enum, link enum info here (filled in Finalize())
+    const REEnum* enumInfo = nullptr;
+
+    // Optional hooks (can stay null in MVP; serializer can use reflection data instead)
+    RESerializeFn serializeFn = nullptr;
+    REDeserializeFn deserializeFn = nullptr;
 
     std::function<JCoreObject*()> factory;
 };
@@ -85,17 +130,22 @@ public:
 
     // ---------------- Registration API (used by generated .refl.gen.cpp) ----------------
 
-    // Register a type (class/struct) with RTTI identity + base type
+    // Register a type (class/struct/enum) with RTTI identity + base type
+    // NOTE: for enums we can pass baseType = typeid(void)
     void BeginType(const char* name,
+                   RETypeKind kind,
                    const std::type_info& selfType,
                    const std::type_info& baseType);
+
+    // Optional safe base-walk helper (future-proof; can be omitted)
+    void SetUpcast(const std::type_info& selfType, REUpcastFn upcastFn);
 
     // Add class-level meta (from JCLASS/JSTRUCT args)
     void AddTypeMeta(const std::type_info& ownerType,
                      const char* key,
                      const char* value = "");
 
-    // Property registration by raw offset
+    // Property registration by raw offset (codegen should prefer this string-based overload)
     void AddProperty(const std::type_info& ownerType,
                      const char* propName,
                      const char* propTypeName,
@@ -124,7 +174,7 @@ public:
                          const char* key,
                          const char* value = "");
 
-    // Enum registration (optional but included for full integration)
+    // Enum registration (name-driven; no RTTI required)
     void BeginEnum(const char* name,
                    bool isScoped,
                    const char* underlyingType = "");
@@ -141,12 +191,18 @@ public:
     void SetFactory(const std::type_info& ownerType,
                     std::function<JCoreObject*()> factory);
 
+    // Finalize type graph (resolve property kinds: struct/enum/object pointers)
+    // Call once after static registration, early in engine startup.
+    void Finalize();
+
     // ---------------- Lookup ----------------
 
     const REType* FindType(const std::type_info& ti) const;
     const REType* FindType(const std::type_index& idx) const;
 
     const REType* FindTypeByName(const std::string& name) const;
+
+    const REEnum* FindEnumByName(const std::string& name) const;
 
     // Inheritance helpers
     const REType* GetBaseType(const REType* type) const;
@@ -165,10 +221,13 @@ private:
     // internal helpers
     REType& EnsureTypeEntry(const std::type_index& idx);
     REType* FindTypeMutable(const std::type_index& idx);
+    void ResolvePropertyKinds(REType& owner);
 
-    // For name->type lookup we store type_index to avoid raw pointers invalidation concerns.
-    std::unordered_map<std::type_index, REType> m_Types;
-    std::unordered_map<std::string, std::type_index> m_NameToType;
+    // We store REType in unique_ptr to make returned const REType* stable forever.
+    std::unordered_map<std::type_index, std::unique_ptr<REType>> m_Types;
+
+    // Name->type pointer (stable because REType is heap-allocated)
+    std::unordered_map<std::string, const REType*> m_NameToType;
 
     // Enums are name-driven (no RTTI necessarily)
     std::unordered_map<std::string, REEnum> m_Enums;
