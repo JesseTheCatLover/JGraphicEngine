@@ -16,7 +16,7 @@ JActor::JActor() : m_VectorIndex(0)
 
 void JActor::SetupRootComponent()
 {
-    if (!m_RootComponen
+    if (!m_RootComponent)
     {
         m_RootComponent = MakeShared<JSceneComponent>();
         m_RootComponent->SetOwnerActor(this);

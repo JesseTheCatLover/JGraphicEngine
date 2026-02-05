@@ -3,32 +3,48 @@
 // JReflectGen MVP Token Parser (macro-anchored; NOT a full C++ parser)
 //
 // Goals:
-//  - Fast, no clang/libtooling.
-//  - Robust to "real header mess": API macros, attributes, access labels, spacing.
-//  - Support JCLASS/JSTRUCT/JENUM discovery.
+//  - Fast, standalone codegen (no clang, no libtooling, no compiler plugins).
+//  - Robust against real-world headers: API macros, attributes, access labels,
+//    formatting noise, and mixed declaration styles.
+//  - Support discovery of JCLASS / JSTRUCT / JENUM markers.
 //  - Support JPROPERTY + JFUNCTION scanning inside class/struct bodies.
-//  - Support enum values scanning inside enum bodies.
-//  - Token-based (much more reliable than line heuristics).
+//  - Support enum value scanning inside enum bodies.
+//  - Token-based parsing (far more reliable than line-based heuristics).
 //
-// MVP limitations (by design):
-//  - Not a full C++ parser (templates/decltype/complex declarators are "raw strings").
-//  - One reflected type per header is recommended, but we can detect multiple.
+// MVP limitations (intentional):
+//  - NOT a full C++ parser:
+//      * Templates, decltype, complex declarators are preserved as raw token strings.
+//      * No semantic type checking during parsing.
+//  - One reflected type per header is recommended (multiple are tolerated but discouraged).
 //  - JPROPERTY expects a single declarator ending with ';'.
-//  - JFUNCTION supports typical member functions; overloads are allowed but signature is stored raw.
-//  - Nested reflected types not supported yet.
+//  - JFUNCTION supports typical member functions; overloads are allowed,
+//    but signatures are stored as raw text.
+//  - Nested reflected types are not supported yet.
+//  - No automatic include-dependency tracking (handled at build-system level).
 //
-// Current integration target (TypeRegistry design):
-//  - Generated .refl.gen.cpp calls:
-//      BeginType(name, typeid(Self), typeid(Base))
+// Current integration target (RETypeRegistry):
+//  - Generated .refl.gen.cpp performs static registration via:
+//      BeginType(name, RETypeKind::{Class|Struct}, typeid(Self), typeid(Base))
 //      AddTypeMeta(typeid(Self), key, value)
-//      AddProperty(typeid(Self), propName, propTypeName /*raw*/, offsetof(Self, field))
+//      AddProperty(typeid(Self), propName, propTypeName /* raw */, &Self::field)
 //      AddPropertyMeta(...)
 //      AddFunction(typeid(Self), funcName, signature)
 //      AddFunctionMeta(...)
 //      BeginEnum / AddEnumMeta / AddEnumValue
-//      SetFactory(typeid(Self), []{ return new Self(); })
+//      SetFactory(typeid(Self), [] { return new Self(); })   // only when valid
+//
+//    NOTE:
+//      Properties are registered using pointer-to-member (not offsetof),
+//      making the system safe for:
+//        - private / protected fields
+//        - non-standard-layout types
+//        - future hot-reload and live editing
+//
 //  - Generated .generated.h injects:
-//      StaticREType() + GetREType() override for JCoreObject casting / serialization pipelines.
+//      * StaticREType()
+//      * virtual GetREType() override
+//    enabling RTTI-free reflection, serialization, editor inspection,
+//    and future hot-reload workflows.
 
 use std::path::{Path, PathBuf};
 
@@ -764,10 +780,11 @@ fn parse_property_after_marker(
     // Remove trailing ';'
     decl.pop();
 
-    // If there is '=', drop initializer tokens from '=' onward
+    // Drop initializer tokens from the first '=' OR '{' onward.
+    // This fixes brace-init fields like: `bool m_Visible { true };`
     let mut end = decl.len();
     for (idx, t) in decl.iter().enumerate() {
-        if t.text == "=" {
+        if t.text == "=" || t.text == "{" {
             end = idx;
             break;
         }
@@ -1036,7 +1053,8 @@ fn emit_generated_h_for_class(class_name: &str, super_name: &str) -> String {
     out.push_str("#pragma once\n\n");
     out.push_str("#include <typeinfo>\n");
     out.push_str("#include \"Core/Reflection/RETypeRegistry.h\"\n\n");
-    out.push_str("struct REType;\n\n");
+    out.push_str("struct REType;\n");
+    out.push_str("namespace JReflectGen { template<class T> struct AutoReg; }\n\n");
 
     out.push_str("#ifdef Super\n#  undef Super\n#endif\n");
     out.push_str("#define Super ");
@@ -1051,14 +1069,20 @@ fn emit_generated_h_for_class(class_name: &str, super_name: &str) -> String {
     out.push_str("#undef JGENERATED_BODY\n");
     out.push_str("#define JGENERATED_BODY() \\\n");
     out.push_str("public: \\\n");
+    out.push_str("    friend struct JReflectGen::AutoReg<ThisClass>; \\\n");
     out.push_str("    static const REType* StaticREType() { return RETypeRegistry::Get().FindType(typeid(ThisClass)); } \\\n");
-    out.push_str("    virtual const REType* GetREType() const override { return ThisClass::StaticREType(); }\n");
-
+    out.push_str("    virtual const REType* GetREType() const override { return ThisClass::StaticREType(); } \\\n");
+    out.push_str("private: \\\n");
+    out.push_str("    struct _JReflect_PrivateAccess { \\\n");
+    out.push_str("        template<class M> static constexpr M ThisClass::* MemberPtr(M ThisClass::* m) { return m; } \\\n");
+    out.push_str("    }; \\\n");
+    out.push_str("    friend struct _JReflect_PrivateAccess;\n");
     out
 }
 fn emit_generated_cpp_for_class(header_path: &str, class: &ClassInfo) -> String {
     let class_name = &class.name;
     let base_name = guess_base_type_name(&class.bases_raw);
+    let mut no_factory = false;
 
     let mut out = String::new();
     out.push_str("// This file is auto-generated by JReflectGen. DO NOT EDIT.\n\n");
@@ -1066,13 +1090,15 @@ fn emit_generated_cpp_for_class(header_path: &str, class: &ClassInfo) -> String 
     out.push_str("#include <cstddef>\n");
     out.push_str("#include \"Core/Reflection/RETypeRegistry.h\"\n\n");
 
-    out.push_str("namespace {\n");
-    out.push_str(&format!("    struct _JReflect_AutoReg_{} {{\n", class_name));
-    out.push_str(&format!("        _JReflect_AutoReg_{}() {{\n", class_name));
+    out.push_str("namespace JReflectGen {\n");
+    out.push_str("    template<class T> struct AutoReg;\n\n");
+    out.push_str(&format!("    template<> struct AutoReg<{}> {{\n", class_name));
+    out.push_str(&format!("        AutoReg() {{\n"));
     out.push_str("            auto& R = RETypeRegistry::Get();\n");
     out.push_str(&format!(
-        "            R.BeginType(\"{}\", typeid({}), typeid({}));\n",
+        "            R.BeginType(\"{}\", RETypeKind::{}, typeid({}), typeid({}));\n",
         escape_cpp_string(class_name),
+        match class.kind { TypeKind::Struct => "Struct", _ => "Class" },
         class_name,
         base_name
     ));
@@ -1097,6 +1123,9 @@ fn emit_generated_cpp_for_class(header_path: &str, class: &ClassInfo) -> String 
                         escape_cpp_string(value)
                     ));
                 } else {
+                    if t == "NoFactory" || t == "NoDefaultCtor" {
+                        no_factory = true;
+                    }
                     out.push_str(&format!(
                         "            R.AddTypeMeta(typeid({}), \"{}\", \"\");\n",
                         class_name,
@@ -1110,10 +1139,11 @@ fn emit_generated_cpp_for_class(header_path: &str, class: &ClassInfo) -> String 
     // Properties
     for p in &class.properties {
         out.push_str(&format!(
-            "            R.AddProperty(typeid({}), \"{}\", \"{}\", offsetof({}, {}));\n",
+            "            R.AddProperty(typeid({}), \"{}\", \"{}\", {}::_JReflect_PrivateAccess::MemberPtr(&{}::{}));\n",
             class_name,
             escape_cpp_string(&p.name),
             escape_cpp_string(&p.ty.raw),
+            class_name,
             class_name,
             p.name
         ));
@@ -1211,19 +1241,35 @@ fn emit_generated_cpp_for_class(header_path: &str, class: &ClassInfo) -> String 
         }
     }
 
+    let has_any_ctor = class.functions.iter().any(|f| f.name == *class_name);
+
+    let has_default_ctor = class.functions.iter().any(|f| {
+        f.name == *class_name && f.return_ty.is_none() && f.params_raw.trim() == "()"
+    });
+
+    // Pure virtual shows up as tail like "= 0" (spaces vary)
+    let is_abstract = class.functions.iter().any(|f| {
+        let t = f.tail_raw.replace(' ', "");
+        t.contains("=0")
+    });
+
+    let can_factory = !is_abstract && (!has_any_ctor || has_default_ctor);
+
     // Factory:
     // MVP rule:
     //  - If class has no default ctor, you can set meta "NoDefaultCtor" and runtime can skip factory.
     //  - For now: always register default factory (new Type()).
-    out.push_str(&format!(
-        "            R.SetFactory(typeid({}), []() -> JCoreObject* {{ return new {}(); }});\n",
-        class_name, class_name
-    ));
+    if can_factory && !no_factory {
+        out.push_str(&format!(
+            "            R.SetFactory(typeid({}), []() -> JCoreObject* {{ return new {}(); }});\n",
+            class_name, class_name
+        ));
+    }
 
     out.push_str("        }\n");
     out.push_str("    };\n");
     out.push_str(&format!(
-        "    static _JReflect_AutoReg_{} _JReflect_AutoReg_Instance_{};\n",
+        "    static AutoReg<{}> _JReflect_AutoReg_Instance_{};\n",
         class_name, class_name
     ));
     out.push_str("}\n");

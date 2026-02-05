@@ -110,7 +110,10 @@ endif()
 add_dependencies(Engine EngineReflectionGen)
 
 # So headers can do: #include "JActor.generated.h"
-target_include_directories(Engine PRIVATE ${JREFLECT_GEN_DIR})
+target_include_directories(Engine
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Public ${JREFLECT_GEN_DIR}
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Private
+)
 
 # Compile all generated .cpp files
 if (JREFLECT_GEN_CPP)

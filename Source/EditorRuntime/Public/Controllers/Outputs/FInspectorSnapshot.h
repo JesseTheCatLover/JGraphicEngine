@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "Core/Reflection/ReflectionMeta.h"
+#include "Core/Reflection/REMeta.h"
 
 struct FInspectorRow
 {
@@ -13,7 +13,7 @@ struct FInspectorRow
     std::string declaringTypeName;
     std::string typeName;
     std::string valueText;
-    FPropertyMetadata metadata;
+    //FPropertyMetadata metadata;
 };
 
 struct FInspectorCategorySnapshot

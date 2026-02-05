@@ -79,6 +79,10 @@ struct REProperty
 
     size_t offset = 0;
 
+    // Get pointer to the member from an object instance
+    std::function<void*(void*)> getPtr;
+    std::function<const void*(const void*)> getConstPtr;
+
     REMetaList meta;
 };
 
@@ -144,6 +148,39 @@ public:
     void AddTypeMeta(const std::type_info& ownerType,
                      const char* key,
                      const char* value = "");
+
+    // Codegen path: register by pointer-to-member
+    template<class TOwner, class TMember>
+    void AddProperty(const std::type_info& ownerType,
+                     const char* propName,
+                     const char* propTypeName,
+                     TMember TOwner::* memberPtr)
+    {
+        // Safety: ensure the registration call matches the template owner
+        // (optional, but nice to catch accidental mismatches)
+        const std::type_index idx(ownerType);
+        const std::type_index expected(typeid(TOwner));
+        // JASSERT(idx == expected);
+
+        REType& T = EnsureTypeEntry(idx);
+
+        REProperty P;
+        P.name = propName;
+        P.typeName = propTypeName;
+        P.offset = 0;
+
+        // Capture member pointer safely; works for private/protected when called in friend context
+        P.getPtr = [memberPtr](void* obj) -> void* {
+            auto* o = static_cast<TOwner*>(obj);
+            return &(o->*memberPtr);
+        };
+        P.getConstPtr = [memberPtr](const void* obj) -> const void* {
+            auto* o = static_cast<const TOwner*>(obj);
+            return &(o->*memberPtr);
+        };
+
+        T.properties.emplace_back(std::move(P));
+    }
 
     // Property registration by raw offset (codegen should prefer this string-based overload)
     void AddProperty(const std::type_info& ownerType,
