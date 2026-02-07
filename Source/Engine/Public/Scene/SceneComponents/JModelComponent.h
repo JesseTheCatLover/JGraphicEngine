@@ -18,6 +18,8 @@ class JModelComponent : public JRenderableComponent
 
 public:
     JModelComponent() = default;
+    JFUNCTION()
+    explicit JModelComponent(const FObjectInitializer& Init): JRenderableComponent(Init){}
     ~JModelComponent() = default;
 
     /// Set by project-relative key; ResourceManager resolves & loads.

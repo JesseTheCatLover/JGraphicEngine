@@ -55,6 +55,8 @@ public:
         return instance;
     }
 
+    void Initialize();
+
     bool SaveScene(const FSceneSaveInfo& info, const std::string& filePath);
     bool LoadScene(const std::string& filePath, FSceneLoadResult& outResult);
 

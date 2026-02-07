@@ -6,6 +6,7 @@
 
 #include "Serialization/SerializeUtilities.h"
 #include "Reflection/RETypeRegistry.h"
+#include "FObjectInitializer.h"
 #include "Reflection/ReflectMarkers.h"
 #include "Reflection/ReflectSerialize.h"
 #include "Utilities/UUUID.h"
@@ -31,6 +32,8 @@ class JCoreObject
     friend class SceneManager;
 
 public:
+    // Default path: engine calls this
+    explicit JCoreObject(const FObjectInitializer& Init):JCoreObject() {}
     virtual ~JCoreObject() = default;
 
     // ---------------- Reflection ----------------

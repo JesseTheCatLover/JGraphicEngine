@@ -31,7 +31,16 @@
 //      AddFunction(typeid(Self), funcName, signature)
 //      AddFunctionMeta(...)
 //      BeginEnum / AddEnumMeta / AddEnumValue
-//      SetFactory(typeid(Self), [] { return new Self(); })   // only when valid
+//
+//      // Spawn factory is ObjectInitializer-based:
+//      // Only emitted when valid.
+//      SetFactory(typeid(Self), [](const FObjectInitializer& Init) -> JCoreObject* {
+//          return new Self(Init);
+//      });
+//
+//    Auto meta emitted by codegen (for tooling/debug):
+//      - "Abstract"      if the type contains a pure virtual (=0) member
+//      - "NoSpawnCtor"   if it has no ctor that takes FObjectInitializer
 //
 //    NOTE:
 //      Properties are registered using pointer-to-member (not offsetof),
@@ -1123,7 +1132,7 @@ fn emit_generated_cpp_for_class(header_path: &str, class: &ClassInfo) -> String 
                         escape_cpp_string(value)
                     ));
                 } else {
-                    if t == "NoFactory" || t == "NoDefaultCtor" {
+                    if t == "NoFactory" {
                         no_factory = true;
                     }
                     out.push_str(&format!(
@@ -1241,29 +1250,44 @@ fn emit_generated_cpp_for_class(header_path: &str, class: &ClassInfo) -> String 
         }
     }
 
-    let has_any_ctor = class.functions.iter().any(|f| f.name == *class_name);
+    // ---------------- Factory analysis (ObjectInitializer spawn) ----------------
 
-    let has_default_ctor = class.functions.iter().any(|f| {
-        f.name == *class_name && f.return_ty.is_none() && f.params_raw.trim() == "()"
+    // Spawn ctor: ctor that takes FObjectInitializer
+    let has_spawn_ctor = class.functions.iter().any(|f| {
+        f.name == *class_name
+            && f.return_ty.is_none()
+            && f.params_raw.replace(' ', "").contains("FObjectInitializer")
     });
 
-    // Pure virtual shows up as tail like "= 0" (spaces vary)
-    let is_abstract = class.functions.iter().any(|f| {
-        let t = f.tail_raw.replace(' ', "");
-        t.contains("=0")
-    });
+    // Auto-meta for tooling/debug
+    out.push_str(&format!(
+        "            if constexpr (std::is_abstract_v<{}>) {{\n",
+        class_name
+    ));
+    out.push_str(&format!(
+        "                R.AddTypeMeta(typeid({}), \"Abstract\", \"\");\n",
+        class_name
+    ));
+    out.push_str("            }\n");
 
-    let can_factory = !is_abstract && (!has_any_ctor || has_default_ctor);
-
-    // Factory:
-    // MVP rule:
-    //  - If class has no default ctor, you can set meta "NoDefaultCtor" and runtime can skip factory.
-    //  - For now: always register default factory (new Type()).
-    if can_factory && !no_factory {
+    if !has_spawn_ctor {
         out.push_str(&format!(
-            "            R.SetFactory(typeid({}), []() -> JCoreObject* {{ return new {}(); }});\n",
+            "            R.AddTypeMeta(typeid({}), \"NoSpawnCtor\", \"\");\n",
+            class_name
+        ));
+    }
+
+    // Factory only if NOT abstract, HAS spawn ctor, and user didn't force-disable
+    if !no_factory && has_spawn_ctor {
+        out.push_str(&format!(
+            "            if constexpr (!std::is_abstract_v<{}>) {{\n",
+            class_name
+        ));
+        out.push_str(&format!(
+            "                R.SetFactory(typeid({}), [](const FObjectInitializer& Init) -> JCoreObject* {{ return new {}(Init); }});\n",
             class_name, class_name
         ));
+        out.push_str("            }\n");
     }
 
     out.push_str("        }\n");

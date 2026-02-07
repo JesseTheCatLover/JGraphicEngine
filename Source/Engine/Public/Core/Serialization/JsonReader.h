@@ -76,6 +76,9 @@ public:
         return m_Data.contains(key);
     }
 
+    bool IsObject(const std::string& key) const { return Has(key) && m_Data[key].is_object(); }
+    bool IsValid() const { return !m_Data.is_null(); }
+
     /** @brief Read a glm::vec2 from JSON. */
     [[nodiscard]] glm::vec2 ReadVec2(const std::string &key, const glm::vec2 &defaultVal = glm::vec2(0)) const;
 

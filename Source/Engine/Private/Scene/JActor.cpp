@@ -14,15 +14,27 @@ JActor::JActor() : m_VectorIndex(0)
     SetupRootComponent();
 }
 
+JActor::JActor(const FObjectInitializer &Init)
+{
+    SetupRootComponent();
+}
+
 void JActor::SetupRootComponent()
 {
-    if (!m_RootComponent)
-    {
-        m_RootComponent = MakeShared<JSceneComponent>();
-        m_RootComponent->SetOwnerActor(this);
-        m_RootComponent->SetName("RootComponent");
-        m_SceneComponents.push_back(m_RootComponent);
-    }
+    if (m_RootComponent)
+        return;
+
+    FObjectInitializer Init;
+    Init.Scene = m_OwningScene;     // can be null during early construction; fine
+    Init.Owner = this;
+    Init.Name  = "RootComponent";
+
+    m_RootComponent = MakeShared<JSceneComponent>(Init);
+
+    m_RootComponent->SetOwnerActor(this);
+    m_RootComponent->SetName("RootComponent");
+
+    m_SceneComponents.push_back(m_RootComponent);
 }
 
 void JActor::Initialize()

@@ -5,6 +5,7 @@
 #include "Scene/ActorComponents/JTransformComponent.h"
 #include <vector>
 #include "glm/matrix.hpp"
+#include "JSceneComponent.generated.h"
 
 /**
  * @class JSceneComponent
@@ -44,7 +45,10 @@ protected:
     mutable bool m_WorldDirty;
 
 public:
-    JSceneComponent(): m_WorldDirty(true) {};
+    JFUNCTION()
+    JSceneComponent(const FObjectInitializer& Init): m_WorldDirty(true),
+    JTransformComponent(Init)
+    {}
     virtual ~JSceneComponent() = default;
 
     /**

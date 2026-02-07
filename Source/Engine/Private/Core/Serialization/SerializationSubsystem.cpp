@@ -2,6 +2,7 @@
 
 #include "Core/Serialization/SerializationSubsystem.h"
 
+#include "Core/FObjectInitializer.h"
 #include "Core/Serialization/SerializeUtilities.h"
 #include "Core/JCoreObject.h"
 
@@ -25,6 +26,18 @@ static JCoreObject* ResolveObjectByUUID_MVP(const std::string& uuid)
 
     auto it = g_LoadUUIDMap->find(uuid);
     return (it == g_LoadUUIDMap->end()) ? nullptr : it->second;
+}
+
+void SerializationSubsystem::Initialize()
+{
+    // Must be called once, early (engine init).
+    RETypeRegistry::Get().Finalize();
+
+    // Optional: default resolver is null; LoadScene installs a scoped one anyway.
+    ReflectSerialize::SetObjectResolver(nullptr);
+#ifndef NDEBUG
+    // RETypeRegistry::Get().DebugDumpAllTypes();
+#endif
 }
 
 bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::string& filePath)
@@ -205,5 +218,10 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
 
 JCoreObject* SerializationSubsystem::CreateObjectByTypeName(const char* typeName)
 {
-    return RETypeRegistry::Get().CreateInstanceByTypeName(typeName ? std::string(typeName) : std::string());
+    const std::string name = typeName ? std::string(typeName) : std::string();
+
+    // however you create your default initializer:
+    FObjectInitializer Init{};
+
+    return RETypeRegistry::Get().CreateInstanceByTypeName(name, Init);
 }

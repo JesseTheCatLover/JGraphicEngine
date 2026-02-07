@@ -21,6 +21,10 @@ private:
     ERenderLayer m_RenderLayer{ERenderLayer::Opaque};
 
 public:
+    JRenderableComponent(const FObjectInitializer& Init): JSceneComponent(Init)
+    {
+    }
+
     void SetVisible(bool v) { m_Visible = v; }
     bool IsVisible() const { return m_Visible; }
 

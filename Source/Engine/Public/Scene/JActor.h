@@ -30,6 +30,7 @@ JCLASS()
 class JActor : public JCoreObject
 {
     JGENERATED_BODY()
+
     friend class JScene;
     friend class SceneManager;
 
@@ -131,6 +132,8 @@ private:
 
 public:
     JActor();
+    JFUNCTION()
+    JActor(const FObjectInitializer& Init);
     virtual ~JActor() = default;
 
     // -------------------- Playtime API --------------------
@@ -473,19 +476,38 @@ public:
     {
         static_assert(std::is_base_of_v<JActorComponent, T>, "T must derive from JActorComponent");
 
-        // Create the component
-        auto component = MakeShared<T>(std::forward<Args>(args)...);
+        FObjectInitializer Init;
+        Init.Scene = m_OwningScene;
+        Init.Owner = this;
+        Init.Name  = "";
+        Init.bIsCDO = false;
+
+        TSharedPtr<T> component;
+
+        // Prefer Init-based construction when available
+        if constexpr (std::is_constructible_v<T, const FObjectInitializer&, Args...>)
+        {
+            component = MakeShared<T>(Init, std::forward<Args>(args)...);
+        }
+        else if constexpr (std::is_constructible_v<T, Args...>)
+        {
+            // Back-compat fallback (lets old components still work)
+            component = MakeShared<T>(std::forward<Args>(args)...);
+        }
+        else
+        {
+            static_assert(sizeof(T) == 0,
+                "AddRuntimeComponent: T is not constructible. Provide T(const FObjectInitializer&, ...) or a matching ctor.");
+        }
+
         component->SetOwnerActor(this);
 
         if constexpr (std::is_base_of_v<JSceneComponent, T>)
         {
             auto sceneComp = std::static_pointer_cast<JSceneComponent>(component);
 
-            // Attach to specified parent or root by default
-            if (parent)
-                sceneComp->AttachToComponent(parent);
-            else
-                sceneComp->AttachToComponent(m_RootComponent.get());
+            if (parent) sceneComp->AttachToComponent(parent);
+            else        sceneComp->AttachToComponent(m_RootComponent.get());
 
             m_SceneComponents.push_back(sceneComp);
         }

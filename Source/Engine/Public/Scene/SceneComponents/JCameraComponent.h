@@ -16,7 +16,6 @@ class JCameraComponent : public JSceneComponent, public ICameraViewSource
 {
     JGENERATED_BODY()
 
-protected:
     JPROPERTY()
     EProjectionType m_ProjectionType = EProjectionType::Perspective;
 
@@ -40,7 +39,8 @@ protected:
     mutable float m_LastAspect = -1.0f;
 
 public:
-    JCameraComponent();
+    JFUNCTION()
+    JCameraComponent(const FObjectInitializer& Init) : JSceneComponent(Init) {}
     virtual ~JCameraComponent() = default;
 
 protected:

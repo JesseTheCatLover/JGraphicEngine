@@ -25,6 +25,9 @@ private:
     FTransform m_LocalTransform;
 
 public:
+    JFUNCTION()
+    JTransformComponent(const FObjectInitializer& Init) : Super(Init) {}
+
     //==================================================
     // Position
     //==================================================

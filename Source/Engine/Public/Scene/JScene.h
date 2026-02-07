@@ -41,7 +41,8 @@ private:
      * @brief Construct a new JScene with the given name.
      * @param name The name of the scene.
      */
-    explicit JScene(const std::string& name);
+    JFUNCTION()
+    explicit JScene(const FObjectInitializer& Init);
 
     /**
      * @brief Called when the scene is first about to load.

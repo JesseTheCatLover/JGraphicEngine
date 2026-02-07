@@ -23,7 +23,7 @@ public:
         : m_Host(host)
         , m_Channel([this](PanelID id)
         {
-            return std::make_unique<InspectorController>(id, m_Host);
+            return MakeUnique<InspectorController>(id, m_Host);
         })
     {}
 

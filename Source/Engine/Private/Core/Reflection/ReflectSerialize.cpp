@@ -303,141 +303,138 @@ void ReflectSerialize::DeserializeTypeProperties(const JsonReader& reader, const
     }
 }
 
+static const void* GetFieldPtrConst(const REProperty& prop, const void* basePtr)
+{
+    if (prop.getConstPtr)
+        return prop.getConstPtr(basePtr);
+}
+
+static void* GetFieldPtr(const REProperty& prop, void* basePtr)
+{
+    if (prop.getPtr)
+        return prop.getPtr(basePtr);
+}
+
 void ReflectSerialize::SerializeProperty(JsonWriter& writer, const REProperty& prop, const void* basePtr)
 {
     const char* fieldName = prop.name.c_str();
-    const char* byteBase = reinterpret_cast<const char*>(basePtr);
-    const void* fieldPtr = byteBase + prop.offset;
+    const void* fieldPtr  = GetFieldPtrConst(prop, basePtr);
 
     switch (prop.kind)
     {
-    case REPropKind::Value:
-    {
-        if (!WriteValueByTypeName(writer, fieldName, fieldPtr, prop.typeName))
+        case REPropKind::Value:
         {
-            std::cerr << "[JReflection]: SerializeReflectedProperties: unsupported Value type for "
-                      << fieldName << " : " << prop.typeName << "\n";
-        }
-        break;
-    }
-
-    case REPropKind::ReflectedStruct:
-    {
-        if (!prop.reflectedType)
-        {
-            std::cerr << "[JReflection]: SerializeReflectedProperties: ReflectedStruct missing reflectedType for "
-                      << fieldName << "\n";
+            if (!WriteValueByTypeName(writer, fieldName, fieldPtr, prop.typeName))
+            {
+                std::cerr << "[JReflection]: SerializeProperty: unsupported Value type for "
+                          << fieldName << " : " << prop.typeName << "\n";
+            }
             break;
         }
 
-        // Struct is embedded by value; fieldPtr points at the struct memory
-        SerializeTypeProperties(writer, *prop.reflectedType, fieldPtr);
-        break;
-    }
-
-    case REPropKind::Enum:
-    {
-        if (!prop.enumType)
+        case REPropKind::ReflectedStruct:
         {
-            std::cerr << "[JReflection]: SerializeReflectedProperties: Enum missing enumType for "
-                      << fieldName << "\n";
+            if (!prop.reflectedType)
+            {
+                std::cerr << "[JReflection]: SerializeProperty: ReflectedStruct missing reflectedType for "
+                          << fieldName << "\n";
+                break;
+            }
+
+            // IMPORTANT: wrap struct as nested object under the property name.
+            writer.BeginObject(fieldName);
+            SerializeTypeProperties(writer, *prop.reflectedType, fieldPtr);
+            writer.EndObject();
             break;
         }
 
-        // Serialize enum as underlying integer (MVP-safe)
-        // We do not rely on evaluating valueExpr yet.
-        const size_t sz = EnumUnderlyingSizeBytes(*prop.enumType);
+        case REPropKind::Enum:
+        {
+            if (!prop.enumType)
+            {
+                std::cerr << "[JReflection]: SerializeProperty: Enum missing enumType for "
+                          << fieldName << "\n";
+                break;
+            }
 
-        int64_t v = 0;
-        std::memcpy(&v, fieldPtr, std::min(sz, sizeof(v)));
+            const size_t sz = EnumUnderlyingSizeBytes(*prop.enumType);
 
-        writer.Write(fieldName, v);
-        break;
-    }
+            int64_t v = 0;
+            std::memcpy(&v, fieldPtr, std::min(sz, sizeof(v)));
 
-    case REPropKind::ObjectPtr:
-    {
-        // Serialize object reference as UUID string (empty for null)
-        // Field is expected to be a pointer-sized slot (e.g. JActor*)
-        const JCoreObject* obj = nullptr;
+            writer.Write(fieldName, v);
+            break;
+        }
 
-        // prop.typeName could be "JActor*" or "JCoreObject *"
-        // We treat it as "JCoreObject*" storage here.
-        obj = *reinterpret_cast<JCoreObject* const*>(fieldPtr);
+        case REPropKind::ObjectPtr:
+        {
+            const JCoreObject* obj = *reinterpret_cast<JCoreObject* const*>(fieldPtr);
 
-        std::string uuid;
-        if (obj)
-            uuid = obj->GetUUID();
+            std::string uuid;
+            if (obj)
+                uuid = obj->GetUUID();
 
-        writer.Write(fieldName, uuid);
-        break;
-    }
+            writer.Write(fieldName, uuid);
+            break;
+        }
 
-    default:
-        // Unknown => do nothing
-        break;
+        default:
+            break;
     }
 }
-
 void ReflectSerialize::DeserializeProperty(const JsonReader& reader, const REProperty& prop, void* basePtr)
 {
     const char* fieldName = prop.name.c_str();
-    char* byteBase = reinterpret_cast<char*>(basePtr);
-    void* fieldPtr = byteBase + prop.offset;
+    void* fieldPtr = GetFieldPtr(prop, basePtr);
 
     switch (prop.kind)
     {
-    case REPropKind::Value:
-    {
-        if (!ReadValueByTypeName(reader, fieldName, fieldPtr, prop.typeName))
+        case REPropKind::Value:
         {
-            // keep silent by default to avoid spam, or log in debug
-            // std::cerr << "[JReflection]: DeserializeReflectedProperties: unsupported Value type for "
-            //           << fieldName << " : " << prop.typeName << "\n";
+            ReadValueByTypeName(reader, fieldName, fieldPtr, prop.typeName);
+            break;
         }
-        break;
-    }
 
-    case REPropKind::ReflectedStruct:
-    {
-        if (!prop.reflectedType)
+        case REPropKind::ReflectedStruct:
+        {
+            if (!prop.reflectedType)
+                break;
+
+            JsonReader sub = reader.GetObject(fieldName);
+            if (!sub.IsValid()) break;
+            DeserializeTypeProperties(sub, *prop.reflectedType, fieldPtr);
             break;
+        }
 
-        DeserializeTypeProperties(reader, *prop.reflectedType, fieldPtr);
-        break;
-    }
+        case REPropKind::Enum:
+        {
+            if (!prop.enumType)
+                break;
 
-    case REPropKind::Enum:
-    {
-        if (!prop.enumType)
+            const size_t sz = EnumUnderlyingSizeBytes(*prop.enumType);
+
+            int64_t cur = 0;
+            int64_t v = reader.Read(fieldName, cur);
+
+            std::memcpy(fieldPtr, &v, std::min(sz, sizeof(v)));
             break;
+        }
 
-        // Read underlying integer and memcpy into enum storage
-        const size_t sz = EnumUnderlyingSizeBytes(*prop.enumType);
+        case REPropKind::ObjectPtr:
+        {
+            std::string cur;
+            std::string uuid = reader.Read(fieldName, cur);
 
-        int64_t cur = 0;
-        int64_t v = reader.Read(fieldName, cur);
+            JCoreObject* resolved = nullptr;
+            if (!uuid.empty() && g_ObjectResolver)
+                resolved = g_ObjectResolver(uuid);
 
-        std::memcpy(fieldPtr, &v, std::min(sz, sizeof(v)));
-        break;
-    }
+            *reinterpret_cast<JCoreObject**>(fieldPtr) = resolved;
+            break;
+        }
 
-    case REPropKind::ObjectPtr:
-    {
-        // Read UUID string and resolve it to pointer (if resolver is set)
-        std::string cur;
-        std::string uuid = reader.Read(fieldName, cur);
-
-        JCoreObject* resolved = nullptr;
-        if (!uuid.empty() && g_ObjectResolver)
-            resolved = g_ObjectResolver(uuid);
-
-        *reinterpret_cast<JCoreObject**>(fieldPtr) = resolved;
-        break;
-    }
-
-    default:
-        break;
+        default:
+            break;
     }
 }
 

@@ -71,36 +71,6 @@ void RETypeRegistry::AddTypeMeta(const std::type_info& ownerType,
     REAddMeta(t.meta, key, value ? value : "");
 }
 
-void RETypeRegistry::AddProperty(const std::type_info& ownerType,
-                                const char* propName,
-                                const char* propTypeName,
-                                size_t offset)
-{
-    const auto ownerIdx = std::type_index(ownerType);
-    REType& t = EnsureTypeEntry(ownerIdx);
-
-    REProperty p;
-    p.name = propName ? propName : "";
-    p.typeName = propTypeName ? propTypeName : "";
-    p.offset = offset;
-
-    // kind + links resolved later in Finalize()
-    p.kind = REPropKind::Unknown;
-    p.reflectedType = nullptr;
-    p.enumType = nullptr;
-    p.objectType = nullptr;
-
-    t.properties.push_back(std::move(p));
-}
-
-void RETypeRegistry::AddProperty(const std::type_info& ownerType,
-                                const char* propName,
-                                const std::type_info& propType,
-                                size_t offset)
-{
-    AddProperty(ownerType, propName, propType.name(), offset);
-}
-
 void RETypeRegistry::AddPropertyMeta(const std::type_info& ownerType,
                                      const char* propName,
                                      const char* key,
@@ -218,7 +188,7 @@ void RETypeRegistry::AddEnumValue(const char* enumName,
 }
 
 void RETypeRegistry::SetFactory(const std::type_info& ownerType,
-                               std::function<JCoreObject*()> factory)
+    std::function<JCoreObject*(const FObjectInitializer&)> factory)
 {
     const auto ownerIdx = std::type_index(ownerType);
     REType& t = EnsureTypeEntry(ownerIdx);
@@ -263,12 +233,33 @@ bool RETypeRegistry::IsDerivedFrom(const REType* type, const REType* base) const
     return false;
 }
 
-JCoreObject* RETypeRegistry::CreateInstanceByTypeName(const std::string& name) const
+JCoreObject* RETypeRegistry::CreateInstanceByTypeName(const std::string& name,
+                                                      const FObjectInitializer& Init) const
 {
-    const REType* t = FindTypeByName(name);
-    if (!t || !t->factory)
+    const REType* T = FindTypeByName(name);
+    if (!T)
+    {
+#ifndef NDEBUG
+        std::cerr << "[RETypeRegistry] CreateInstanceByTypeName: type not found: " << name << "\n";
+#endif
         return nullptr;
-    return t->factory();
+    }
+
+    if (!T->factory)
+    {
+#ifndef NDEBUG
+        std::cerr << "[RETypeRegistry] CreateInstanceByTypeName: no factory for type: " << name << "\n";
+        // Optional: print common meta reasons if you want
+        for (const auto& m : T->meta)
+        {
+            if (m.key == "Abstract" || m.key == "NoSpawnCtor" || m.key == "NoFactory")
+                std::cerr << "  reason meta: " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
+        }
+#endif
+        return nullptr;
+    }
+
+    return T->factory(Init);
 }
 
 // ---------------- Finalization / resolution ----------------
@@ -291,6 +282,50 @@ static std::string StripPointerStars(std::string s)
     return s;
 }
 
+static std::string Trim(std::string s)
+{
+    auto is_ws = [](unsigned char c){ return std::isspace(c) != 0; };
+    while (!s.empty() && is_ws((unsigned char)s.front())) s.erase(s.begin());
+    while (!s.empty() && is_ws((unsigned char)s.back()))  s.pop_back();
+    return s;
+}
+
+static void ReplaceAll(std::string& s, const std::string& from, const std::string& to)
+{
+    if (from.empty()) return;
+    size_t pos = 0;
+    while ((pos = s.find(from, pos)) != std::string::npos)
+    {
+        s.replace(pos, from.size(), to);
+        pos += to.size();
+    }
+}
+
+static std::string NormalizeTypeName(std::string s)
+{
+    // 1) collapse whitespace
+    s = Trim(s);
+    // cheap collapse: remove all spaces then reinsert none (your registry uses exact names anyway)
+    // BUT we *do* want to preserve namespaces and templates: removing spaces is fine.
+    s = StripSpaces(std::move(s));
+
+    // 2) remove common cv/ref qualifiers (after space-strip)
+    // examples:
+    //   "constFObjectInitializer&" -> "FObjectInitializer"
+    //   "FObjectInitializerconst&" -> "FObjectInitializer"
+    ReplaceAll(s, "const", "");
+    ReplaceAll(s, "volatile", "");
+    ReplaceAll(s, "&&", "");
+    ReplaceAll(s, "&", "");
+
+    // 3) remove leading tag keywords that sometimes appear in raw token strings
+    ReplaceAll(s, "class", "");
+    ReplaceAll(s, "struct", "");
+    ReplaceAll(s, "enum", "");
+
+    s = Trim(s);
+    return s;
+}
 void RETypeRegistry::ResolvePropertyKinds(REType& owner)
 {
     for (auto& p : owner.properties)
@@ -300,16 +335,19 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
         p.enumType = nullptr;
         p.objectType = nullptr;
 
-        // 1) Enum by exact name match
-        if (const REEnum* e = FindEnumByName(p.typeName))
+        const std::string raw = p.typeName;
+        const std::string norm = NormalizeTypeName(raw);
+
+        // 1) Enum by name
+        if (const REEnum* e = FindEnumByName(norm))
         {
             p.kind = REPropKind::Enum;
             p.enumType = e;
             continue;
         }
 
-        // 2) Reflected type by exact name match (struct/class)
-        if (const REType* rt = FindTypeByName(p.typeName))
+        // 2) Reflected struct/class by name
+        if (const REType* rt = FindTypeByName(norm))
         {
             if (rt->kind == RETypeKind::Struct)
             {
@@ -318,30 +356,34 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
             }
             else
             {
-                // If someone uses a reflected class as a value member (rare), treat as Value for now.
-                // If we want to forbid: assert here.
+                // value-member of reflected class is weird; keep as Value for now
                 p.kind = REPropKind::Value;
                 p.reflectedType = rt;
             }
             continue;
         }
 
-        // 3) Pointer: try to detect "SomeType*" where SomeType is a reflected class
-        if (TypeLooksLikePointer(p.typeName))
+        // 3) Pointer: treat as object pointer if pointee is a reflected class
+        if (TypeLooksLikePointer(raw))
         {
-            // best-effort strip: remove spaces then remove '*'
-            std::string base = StripPointerStars(StripSpaces(p.typeName));
+            // strip spaces then strip '*', then normalize again for const/etc
+            std::string base = StripPointerStars(StripSpaces(raw));
+            base = NormalizeTypeName(base);
 
             if (const REType* objT = FindTypeByName(base))
             {
-                // If it's a reflected class, we treat as object pointer
-                p.kind = REPropKind::ObjectPtr;
-                p.objectType = objT;
-                continue;
+                // Only treat reflected *classes* as ObjectPtr.
+                // (Struct pointers can be "Value" or a later feature; your choice.)
+                if (objT->kind == RETypeKind::Class)
+                {
+                    p.kind = REPropKind::ObjectPtr;
+                    p.objectType = objT;
+                    continue;
+                }
             }
         }
 
-        // 4) Default to Value (handled later by the value IO + hardcoded types)
+        // 4) Default
         p.kind = REPropKind::Value;
     }
 }
@@ -403,17 +445,19 @@ void RETypeRegistry::DebugDumpAllTypes() const
             std::cout << "  Properties:\n";
             for (const auto& p : t.properties)
             {
-                std::cout << "    - " << p.name << " : " << p.typeName
-                          << " (offset=" << p.offset << ")\n";
+                std::cout << "    - " << p.name << " : " << p.typeName;
+
+                const bool hasGetter = (bool)p.getPtr && (bool)p.getConstPtr;
+                std::cout << (hasGetter ? "  [memberptr]" : "  [no-accessor]") << "\n";
 
                 std::cout << "      kind: ";
                 switch (p.kind)
                 {
-                case REPropKind::Value:           std::cout << "Value\n"; break;
-                case REPropKind::ReflectedStruct: std::cout << "ReflectedStruct\n"; break;
-                case REPropKind::Enum:            std::cout << "Enum\n"; break;
-                case REPropKind::ObjectPtr:       std::cout << "ObjectPtr\n"; break;
-                default:                          std::cout << "Unknown\n"; break;
+                    case REPropKind::Value:           std::cout << "Value\n"; break;
+                    case REPropKind::ReflectedStruct: std::cout << "ReflectedStruct\n"; break;
+                    case REPropKind::Enum:            std::cout << "Enum\n"; break;
+                    case REPropKind::ObjectPtr:       std::cout << "ObjectPtr\n"; break;
+                    default:                          std::cout << "Unknown\n"; break;
                 }
 
                 for (const auto& m : p.meta)

@@ -19,6 +19,7 @@
 #include "Rendering/RendererSubsystem.h"
 #include "Resources/ResourceSubsystem.h"
 #include "Core/Math/FMath.h"
+#include "Core/Serialization/SerializationSubsystem.h"
 #include "Framework/DebugDrawFramework.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Scene/SceneComponents/JModelComponent.h"
@@ -177,6 +178,8 @@ bool JEngine::InitializeSubsystems()
         return false;
     }
     m_ResourceSubSystem->SetRenderDevice(m_Renderer.get());
+
+    SerializationSubsystem::Get().Initialize();
 
     m_InputSystem = TUniquePtr<InputSubsystem>(new InputSubsystem());
     if (!m_InputSystem)

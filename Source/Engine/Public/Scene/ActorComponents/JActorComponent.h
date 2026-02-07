@@ -32,7 +32,8 @@ private:
 
 public:
     JActorComponent() = default;
-
+    JFUNCTION()
+    JActorComponent(const FObjectInitializer& Init) : JCoreObject(Init) {}
     virtual ~JActorComponent() = default;
 
     /**

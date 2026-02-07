@@ -5,10 +5,6 @@
 
 #include "Core/Math/FMath.h"
 
-JCameraComponent::JCameraComponent()
-{
-}
-
 void JCameraComponent::Initialize()
 {
     Super::Initialize();

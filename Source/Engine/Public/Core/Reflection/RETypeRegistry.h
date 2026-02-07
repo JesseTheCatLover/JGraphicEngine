@@ -14,6 +14,7 @@
 
 #include "REMeta.h"
 
+struct FObjectInitializer;
 class JCoreObject;
 
 // ---------------- Reflection structures ----------------
@@ -77,8 +78,6 @@ struct REProperty
     // If kind == ObjectPtr: points to reflected class type of the pointee (best effort)
     const struct REType* objectType = nullptr;
 
-    size_t offset = 0;
-
     // Get pointer to the member from an object instance
     std::function<void*(void*)> getPtr;
     std::function<const void*(const void*)> getConstPtr;
@@ -123,7 +122,7 @@ struct REType
     RESerializeFn serializeFn = nullptr;
     REDeserializeFn deserializeFn = nullptr;
 
-    std::function<JCoreObject*()> factory;
+    std::function<JCoreObject*(const FObjectInitializer&)> factory;
 };
 
 class RETypeRegistry
@@ -167,7 +166,6 @@ public:
         REProperty P;
         P.name = propName;
         P.typeName = propTypeName;
-        P.offset = 0;
 
         // Capture member pointer safely; works for private/protected when called in friend context
         P.getPtr = [memberPtr](void* obj) -> void* {
@@ -181,18 +179,6 @@ public:
 
         T.properties.emplace_back(std::move(P));
     }
-
-    // Property registration by raw offset (codegen should prefer this string-based overload)
-    void AddProperty(const std::type_info& ownerType,
-                     const char* propName,
-                     const char* propTypeName,
-                     size_t offset);
-
-    // Optional legacy convenience overload (not used by codegen)
-    void AddProperty(const std::type_info& ownerType,
-                     const char* propName,
-                     const std::type_info& propType,
-                     size_t offset);
 
     void AddPropertyMeta(const std::type_info& ownerType,
                          const char* propName,
@@ -226,7 +212,7 @@ public:
 
     // Factory registration
     void SetFactory(const std::type_info& ownerType,
-                    std::function<JCoreObject*()> factory);
+                std::function<JCoreObject*(const FObjectInitializer&)> factory);
 
     // Finalize type graph (resolve property kinds: struct/enum/object pointers)
     // Call once after static registration, early in engine startup.
@@ -247,7 +233,8 @@ public:
     bool IsDerivedFrom(const REType* type, const REType* base) const;
 
     // Factory helper
-    JCoreObject* CreateInstanceByTypeName(const std::string& name) const;
+    JCoreObject* CreateInstanceByTypeName(const std::string& name,
+                                          const FObjectInitializer& Init) const;
 
     // Debug
     void DebugDumpAllTypes() const;

@@ -5,9 +5,9 @@
 #include "Rendering/RRenderProxies.h"
 #include "Scene/JActor.h"
 
-JScene::JScene(const std::string &name):
-m_Name(name)
+JScene::JScene(const FObjectInitializer &Init) : JCoreObject(Init)
 {
+    SetName(Init.Name);
 }
 
 void JScene::Initialize()

@@ -2,6 +2,7 @@
 
 #include <fstream>
 
+#include "Core/FObjectInitializer.h"
 #include "Core/Serialization/SerializationSubsystem.h"
 #include "Scene/JActor.h"
 #include "Utilities/UFileSystem.h"
@@ -245,18 +246,26 @@ void SceneManager::ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, 
     }
 }
 
-bool SceneManager::CreateSceneFile(const std::string &name, const std::string &filename, bool bOverwrite) const
+bool SceneManager::CreateSceneFile(const std::string& name,
+                                  const std::string& filename,
+                                  bool bOverwrite) const
 {
     std::string scenePath = UPath::ResolvePath(UPath::Join("Assets", "Scenes", filename + ".jscene"));
 
     if (UFileSystem::FileExists(scenePath) && !bOverwrite)
         return false;
 
-    JScene scene(name);
-    return SaveSceneFile(&scene, filename);
-}
+    FObjectInitializer Init = FObjectInitializer::ForSceneRoot(name);
 
-JScene* SceneManager::LoadSceneFile(const std::string &filename)
+    // Create by typename (or by typeid(JScene))
+    JCoreObject* obj = RETypeRegistry::Get().CreateInstanceByTypeName("JScene", Init);
+    auto* scene = dynamic_cast<JScene*>(obj);
+    if (!scene)
+        return false;
+
+    return SaveSceneFile(scene, filename);
+}
+JScene* SceneManager::LoadSceneFile(const std::string& filename)
 {
     std::string scenePath = UPath::ResolvePath(UPath::Join("Assets", "Scenes", filename + ".jscene")).string();
 
@@ -271,13 +280,19 @@ JScene* SceneManager::LoadSceneFile(const std::string &filename)
                           ? std::string("UnnamedScene")
                           : loadResult.sceneName;
 
-    auto newScene = std::unique_ptr<JScene>(new JScene(sceneName));
+    FObjectInitializer Init{};
+    Init.Name  = sceneName;
+    Init.Scene = nullptr; // this is the scene itself
+    Init.Owner = nullptr;
+
+    auto newScene = TUniquePtr<JScene>(new JScene(Init));
+
     ApplyLoadedResultToScene(loadResult, *newScene);
 
     if (OnSceneLoaded)
         OnSceneLoaded(newScene.get());
 
-    m_ActiveScene = std::move(newScene);
+    m_ActiveScene = TakeUniqueOwnership(newScene);
     return m_ActiveScene.get();
 }
 
