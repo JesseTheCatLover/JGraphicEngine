@@ -18,7 +18,7 @@ class JActor;
 JCLASS()
 class JActorComponent : public JCoreObject
 {
-    JGENERATED_BODY()
+    GENERATED_BODY()
 
     friend class JActor;
     friend class JSceneComponent;
@@ -32,8 +32,6 @@ private:
 
 public:
     JActorComponent() = default;
-    JFUNCTION()
-    JActorComponent(const FObjectInitializer& Init) : JCoreObject(Init) {}
     virtual ~JActorComponent() = default;
 
     /**

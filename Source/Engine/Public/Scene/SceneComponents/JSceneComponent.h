@@ -18,7 +18,7 @@
 JCLASS()
 class JSceneComponent : public JTransformComponent
 {
-    JGENERATED_BODY()
+    GENERATED_BODY()
 
 private:
     friend class JActor;
@@ -39,17 +39,29 @@ protected:
     JSceneComponent* m_Parent = nullptr; ///< Parent component in the hierarchy
     std::vector<JSceneComponent*> m_Children; ///< Child components
 
+    // ---- SetupAttachment style (intent-only) ----
+    // Set during construction; actual attach happens when actor registers components.
+    JSceneComponent* m_PendingAttachParent = nullptr;
+
     void MarkWorldDirty();
 
     mutable FTransform m_WorldTransform;
     mutable bool m_WorldDirty;
 
 public:
-    JFUNCTION()
-    JSceneComponent(const FObjectInitializer& Init): m_WorldDirty(true),
-    JTransformComponent(Init)
+    JSceneComponent(): m_WorldDirty(true)
     {}
+
     virtual ~JSceneComponent() = default;
+
+    void SetupAttachment(JSceneComponent* parent)
+    {
+        // Allow nullptr meaning "root" or "detach intent" depending on how actor finalizes.
+        m_PendingAttachParent = parent;
+    }
+
+    JSceneComponent* GetPendingAttachParent() const { return m_PendingAttachParent; }
+    void ClearPendingAttachParent() { m_PendingAttachParent = nullptr; }
 
     /**
      * @brief Attach this component to a parent component.

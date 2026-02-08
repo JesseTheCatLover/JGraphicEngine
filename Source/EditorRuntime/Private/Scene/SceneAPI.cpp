@@ -92,7 +92,7 @@ bool EditorSceneAPI::TryGetActorComponents(ActorID id, std::vector<JCoreObject*>
     for (const auto& comp : a->GetActorComponents())
     {
         if (!comp) continue;
-        outObjects.push_back(comp.get()); // JActorComponent -> JCoreObject*
+        outObjects.push_back(comp); // JActorComponent -> JCoreObject*
     }
 
 
@@ -100,7 +100,7 @@ bool EditorSceneAPI::TryGetActorComponents(ActorID id, std::vector<JCoreObject*>
     for (const auto& comp : a->GetSceneComponents())
     {
         if (!comp) continue;
-        outObjects.push_back(comp.get()); // JSceneComponent -> JCoreObject*
+        outObjects.push_back(comp); // JSceneComponent -> JCoreObject*
     }
 
 
@@ -127,7 +127,7 @@ std::vector<FHierarchySnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
         info.parentID = actor->GetParentActor()
                             ? actor->GetParentActor()->GetRuntimeID()
                             : 0;
-        info.name = actor->GetName();
+        info.name = actor->GetActorName();
         info.hasChildren = !actor->GetChildActors().empty();
 
         result.push_back(std::move(info));

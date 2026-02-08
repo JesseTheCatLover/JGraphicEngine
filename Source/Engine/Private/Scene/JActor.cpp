@@ -14,27 +14,64 @@ JActor::JActor() : m_VectorIndex(0)
     SetupRootComponent();
 }
 
-JActor::JActor(const FObjectInitializer &Init)
-{
-    SetupRootComponent();
-}
-
 void JActor::SetupRootComponent()
 {
     if (m_RootComponent)
         return;
 
-    FObjectInitializer Init;
-    Init.Scene = m_OwningScene;     // can be null during early construction; fine
-    Init.Owner = this;
-    Init.Name  = "RootComponent";
+    auto* root = CreateDefaultSubobject<JSceneComponent>("RootComponent");
 
-    m_RootComponent = MakeShared<JSceneComponent>(Init);
+    // Root pointer must be set BEFORE registration so ResolveAttachParent can avoid self-attach
+    m_RootComponent = root;
 
-    m_RootComponent->SetOwnerActor(this);
-    m_RootComponent->SetName("RootComponent");
+    RegisterComponent(root, nullptr); // will NOT attach root to anything
+}
+void JActor::RegisterComponent(JActorComponent* comp, JSceneComponent* attachParent)
+{
+    assert(comp);
 
-    m_SceneComponents.push_back(m_RootComponent);
+    // Ensure base ownership metadata is consistent
+    comp->SetOwnerActor(this);
+
+    auto contains = [](auto* ptr, const auto& vec)
+    {
+        return std::find(vec.begin(), vec.end(), ptr) != vec.end();
+    };
+
+    if (auto* sc = dynamic_cast<JSceneComponent*>(comp))
+    {
+        // Root rule: first scene component becomes root if not set
+        if (!m_RootComponent)
+            m_RootComponent = sc;
+
+        if (sc == m_RootComponent)
+        {
+            sc->ClearPendingAttachParent();
+            if (!contains(sc, m_SceneComponents))
+                m_SceneComponents.push_back(sc);
+            return; // root never attaches
+        }
+
+        // Resolve parent using: explicit > pending SetupAttachment > root fallback
+        JSceneComponent* parent = ResolveAttachParent(sc, attachParent);
+
+        // Finalize attach (or detach if null)
+        if (parent && parent != sc)
+            sc->AttachToComponent(parent);
+        else
+            sc->AttachToComponent(nullptr);
+
+        // Ensure pending intent is consumed even if parent ended up null
+        sc->ClearPendingAttachParent();
+
+        if (!contains(sc, m_SceneComponents))
+            m_SceneComponents.push_back(sc);
+    }
+    else
+    {
+        if (!contains(comp, m_ActorComponents))
+            m_ActorComponents.push_back(comp);
+    }
 }
 
 void JActor::Initialize()
@@ -96,6 +133,57 @@ bool JActor::DestroyActor()
     return true;
 }
 
+void JActor::TakeComponentOwnershipFromLoad(JActorComponent *comp, JSceneComponent *explicitAttachParent)
+{
+    if (!comp) return;
+
+    comp->SetOwnerActor(this);
+
+    // Loaded components are runtime-owned (not default subobjects)
+    m_RuntimeComponentsOwned.emplace_back(TUniquePtr<JActorComponent>(comp));
+
+    // Register exactly once; for scene components, this also finalizes attachment.
+    RegisterComponent(comp, explicitAttachParent);
+
+    // Ensure SetupAttachment doesn't interfere after explicit load wiring
+    if (auto* sc = dynamic_cast<JSceneComponent*>(comp))
+        sc->ClearPendingAttachParent();
+}
+
+JSceneComponent* JActor::ResolveAttachParent(JSceneComponent *sc, JSceneComponent *explicitParent) const
+{
+    if (!sc) return nullptr;
+
+    // Root must never auto-attach to itself
+    if (sc == m_RootComponent)
+        return explicitParent; // usually nullptr
+
+    // 1) Explicit parent passed into RegisterComponent wins
+    if (explicitParent)
+        return explicitParent;
+
+    // 2) SetupAttachment intent (construction-time)
+    if (auto* pending = sc->GetPendingAttachParent())
+        return pending;
+
+    // 3) Default fallback: attach to root if we have one
+    return m_RootComponent;
+}
+
+void JActor::RemoveRuntimeOwnedComponent(JActorComponent *ptr)
+{
+    if (!ptr) return;
+
+    auto it = std::find_if(
+        m_RuntimeComponentsOwned.begin(),
+        m_RuntimeComponentsOwned.end(),
+        [&](const TUniquePtr<JActorComponent>& p) { return p.get() == ptr; }
+    );
+
+    if (it != m_RuntimeComponentsOwned.end())
+        m_RuntimeComponentsOwned.erase(it); // deletes if runtime-owned
+}
+
 bool JActor::AttachToActor(JActor* newParent)
 {
     if (newParent == nullptr)
@@ -127,7 +215,7 @@ bool JActor::AttachToActor(JActor* newParent)
 
     // Transform parenting: attach this actor's root to parent's root
     if (m_RootComponent && m_ParentActor->m_RootComponent)
-        m_RootComponent->AttachToComponent(m_ParentActor->m_RootComponent.get());
+        m_RootComponent->AttachToComponent(m_ParentActor->m_RootComponent);
 
     return true;
 }
@@ -173,7 +261,10 @@ void JActor::ExecuteDestroy()
 
     m_ActorComponents.clear();
     m_SceneComponents.clear();
-    m_RootComponent.reset();
+    m_RootComponent = nullptr;
+
+    // Runtime-owned components get deleted here
+    m_RuntimeComponentsOwned.clear();
 }
 
 void JActor::FlushDestroyedComponents()
@@ -181,53 +272,58 @@ void JActor::FlushDestroyedComponents()
     // Actor components
     for (size_t i = 0; i < m_ActorComponents.size(); )
     {
-        auto& comp = m_ActorComponents[i];
+        JActorComponent* comp = m_ActorComponents[i];
+
         if (!comp || comp->IsPendingDestroy())
         {
-            // Give it a chance to clean up
-            comp->EndPlay();
-            comp->OnDestroy();
+            if (comp)
+            {
+                comp->EndPlay();
+                comp->OnDestroy();
+            }
 
-            // Drop from list (swap + pop)
+            // Remove from view list (swap+pop)
             if (i != m_ActorComponents.size() - 1)
                 std::swap(m_ActorComponents[i], m_ActorComponents.back());
-
             m_ActorComponents.pop_back();
-            // do NOT increment i; we just swapped a new element into this index
+
+            // Delete if runtime-owned
+            RemoveRuntimeOwnedComponent(comp);
+            continue;
         }
-        else
-        {
-            ++i;
-        }
+
+        ++i;
     }
 
     // Scene components
     for (size_t i = 0; i < m_SceneComponents.size(); )
     {
-        auto& comp = m_SceneComponents[i];
+        JSceneComponent* comp = m_SceneComponents[i];
+
         if (!comp || comp->IsPendingDestroy())
         {
-            // EndPlay for safety
-            comp->EndPlay();
-            comp->OnDestroy();
-
-            // If it has a parent, detach from it
-            if (auto* sceneComp = comp.get())
+            if (comp)
             {
-                sceneComp->UnlinkFromParent();
+                comp->EndPlay();
+                comp->OnDestroy();
+                comp->UnlinkFromParent();
             }
 
-            // Swap + pop from actor's list
             if (i != m_SceneComponents.size() - 1)
                 std::swap(m_SceneComponents[i], m_SceneComponents.back());
-
             m_SceneComponents.pop_back();
-            // DO NOT increment i
+
+            // If a scene component was runtime-owned, delete it here
+            RemoveRuntimeOwnedComponent(comp);
+
+            // If root was destroyed, clear root pointer (optional safety)
+            if (comp == m_RootComponent)
+                m_RootComponent = nullptr;
+
+            continue;
         }
-        else
-        {
-            ++i;
-        }
+
+        ++i;
     }
 }
 
@@ -238,7 +334,7 @@ void JActor::GatherRenderables(IRenderSubmission &submission, const FRenderConte
 
     for (auto& comp : m_SceneComponents)
     {
-        if (auto* renderable = dynamic_cast<JRenderableComponent*>(comp.get())) // TODO: Should make a custom cast for future
+        if (auto* renderable = dynamic_cast<JRenderableComponent*>(comp)) // TODO: Should make a custom cast for future
         {
             // Let the component turn itself into proxies / draw commands
             renderable->GatherProxies(submission, ctx);
@@ -250,7 +346,7 @@ JCameraComponent* JActor::GetCameraComponent()
 {
     for (auto& comp : m_SceneComponents)
     {
-        if (auto* camera = dynamic_cast<JCameraComponent*>(comp.get())) // TODO: Also a custom RTTI for future
+        if (auto* camera = dynamic_cast<JCameraComponent*>(comp)) // TODO: Also a custom RTTI for future
         {
             return camera;
         }

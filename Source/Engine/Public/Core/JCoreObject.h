@@ -2,14 +2,20 @@
 
 #pragma once
 #include <cstdint>
+#include <cassert>
+#include <type_traits>
 #include <string>
+#include <unordered_map>
 
 #include "Serialization/SerializeUtilities.h"
 #include "Reflection/RETypeRegistry.h"
 #include "FObjectInitializer.h"
+#include "FObjectInitTLS.h"
+#include "Memory/SmartPointers.h"
 #include "Reflection/ReflectMarkers.h"
 #include "Reflection/ReflectSerialize.h"
 #include "Utilities/UUUID.h"
+
 
 struct REType;
 
@@ -32,8 +38,38 @@ class JCoreObject
     friend class SceneManager;
 
 public:
+    // Default ctor is allowed, but it reads TLS if available.
+    JCoreObject()
+    {
+        // Identity always valid
+        m_ID = ++m_NextID;
+        m_UUID = UUUID::GenerateUUID();
+
+        // Optional context from TLS
+        if (const FObjectInitializer* init = FObjectInitTLS::Get())
+        {
+            m_Scene      = init->Scene;
+            m_Owner      = init->Owner;
+            m_ObjectName = init->Name;
+            m_bIsCDO     = init->bIsCDO;
+
+            // stamp which object is currently being constructed in this TLS scope
+            if (init->ConstructingObject == nullptr)
+                init->ConstructingObject = this;
+        }
+    }
+
     // Default path: engine calls this
-    explicit JCoreObject(const FObjectInitializer& Init):JCoreObject() {}
+    explicit JCoreObject(const FObjectInitializer& Init)
+       : JCoreObject() // still initializes identity + reads TLS if set
+    {
+        // Explicit init overrides TLS (nice for manual construction)
+        m_Scene      = Init.Scene;
+        m_Owner      = Init.Owner;
+        m_ObjectName = Init.Name;
+        m_bIsCDO     = Init.bIsCDO;
+   }
+
     virtual ~JCoreObject() = default;
 
     // ---------------- Reflection ----------------
@@ -66,15 +102,59 @@ public:
 
     [[nodiscard]] const std::string& GetUUID() const { return m_UUID; }
 
+    [[nodiscard]] std::string GetObjectName() const { return m_ObjectName; }
+
+    JScene* GetOwningScene() const { return m_Scene; }
+    JCoreObject* GetOwner() const { return m_Owner; }
+    bool IsCDO() const { return m_bIsCDO; }
+
 protected:
-    JCoreObject()
-        : m_ID(++m_NextID)
-        , m_UUID(UUUID::GenerateUUID())
-    {}
+    JScene* m_Scene = nullptr;
+    JCoreObject* m_Owner = nullptr;
+    std::string m_ObjectName;
+    bool m_bIsCDO = false;
+    std::unordered_map<std::string, TUniquePtr<JCoreObject>> m_DefaultSubobjectsOwned;
 
     virtual void SerializeCustom(class JsonWriter& writer) const {}
     virtual void DeserializeCustom(const class JsonReader& reader) {}
+    void SetObjectName(const std::string& name) { m_ObjectName = name; }
+    void SetOwningScene(JScene* scene) { m_Scene = scene; }
     virtual void PostLoad() {}
+
+    template<typename T>
+    T* CreateDefaultSubobject(const std::string& name)
+    {
+        static_assert(std::is_base_of_v<JCoreObject, T>,
+            "CreateDefaultSubobject: T must derive from JCoreObject");
+
+        assert(!name.empty());
+
+        // Return existing
+        if (auto it = m_DefaultSubobjectsOwned.find(name); it != m_DefaultSubobjectsOwned.end())
+            return static_cast<T*>(it->second.get());
+
+        const FObjectInitializer* parent = FObjectInitTLS::Get();
+        // If called outside of a construction scope, this is programmer error.
+        assert(parent && "CreateDefaultSubobject called with no active FObjectInitializer scope");
+
+        assert(parent->ConstructingObject == this &&
+           "CreateDefaultSubobject must be called from THIS object's constructor");
+
+        FObjectInitializer child{};
+        child.Scene  = parent->Scene;
+        child.Owner  = this;
+        child.Name   = name;
+        child.bIsCDO = parent->bIsCDO;
+
+        // Registry will push TLS( child ) internally
+        JCoreObject* raw = RETypeRegistry::Get().CreateInstanceByTypeName(T::StaticREType()->name, child);
+
+        auto* created = dynamic_cast<T*>(raw);
+        assert(created && "CreateDefaultSubobject: factory returned wrong type");
+
+        m_DefaultSubobjectsOwned[name].reset(created);
+        return created;
+    }
 
 private:
     uint64_t m_ID = 0;         ///< runtime-only ID

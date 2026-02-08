@@ -8,12 +8,10 @@
 #include "Rendering/RCommandQueue.h"
 #include "JRenderableComponent.generated.h"
 
-class IRendererSubmission;
-
 JCLASS()
 class JRenderableComponent : public JSceneComponent
 {
-    JGENERATED_BODY()
+    GENERATED_BODY()
 
 private:
     JPROPERTY()
@@ -21,9 +19,6 @@ private:
     ERenderLayer m_RenderLayer{ERenderLayer::Opaque};
 
 public:
-    JRenderableComponent(const FObjectInitializer& Init): JSceneComponent(Init)
-    {
-    }
 
     void SetVisible(bool v) { m_Visible = v; }
     bool IsVisible() const { return m_Visible; }

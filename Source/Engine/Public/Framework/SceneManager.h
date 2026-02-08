@@ -85,16 +85,22 @@ public:
     /**
      * @brief Spawn a new actor in the active scene.
      * @tparam T Actor type (must derive from JActor)
+     * @param name Optional actor name.
      * @tparam Args Constructor argument types
      * @param args Arguments forwarded to T’s constructor
      * @return Pointer to the newly spawned actor, or nullptr if no active scene
      */
     template<typename T, typename... Args>
-    T *SpawnActor(Args &&... args)
+    T* SpawnActor(std::string name = {}, Args&&... args)
     {
         if (!m_ActiveScene) return nullptr;
-        T *actor = m_ActiveScene->SpawnActor<T>(std::forward<Args>(args)...);
-        if (actor && OnActorAdded) OnActorAdded(actor);
+
+        // Forward name first, then args
+        T* actor = m_ActiveScene->SpawnActor<T>(std::move(name), std::forward<Args>(args)...);
+
+        if (actor && OnActorAdded)
+            OnActorAdded(actor);
+
         return actor;
     }
 

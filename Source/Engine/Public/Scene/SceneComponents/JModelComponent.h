@@ -14,12 +14,10 @@ class ModelResource;
 JCLASS()
 class JModelComponent : public JRenderableComponent
 {
-    JGENERATED_BODY()
+    GENERATED_BODY()
 
 public:
     JModelComponent() = default;
-    JFUNCTION()
-    explicit JModelComponent(const FObjectInitializer& Init): JRenderableComponent(Init){}
     ~JModelComponent() = default;
 
     /// Set by project-relative key; ResourceManager resolves & loads.

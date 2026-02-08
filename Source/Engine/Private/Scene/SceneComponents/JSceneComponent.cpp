@@ -6,6 +6,17 @@
 #include <algorithm>
 #include "Scene/JActor.h"
 
+static bool IsDescendantOf(const JSceneComponent* candidateChild, const JSceneComponent* possibleAncestor)
+{
+    if (!candidateChild || !possibleAncestor) return false;
+
+    for (auto* p = candidateChild->GetParent(); p != nullptr; p = p->GetParent())
+    {
+        if (p == possibleAncestor) return true;
+    }
+    return false;
+}
+
 void JSceneComponent::UnlinkFromParent()
 {
     if (!m_Parent) return;
@@ -36,34 +47,58 @@ void JSceneComponent::MarkWorldDirty()
 
 void JSceneComponent::AttachToComponent(JSceneComponent* parent)
 {
-    if (parent == this) return; // avoid self-attachment
-    if (parent && parent->m_Parent == this) return; // avoid immediate cycle
+    if (parent == this)
+        return;
 
+    // Prevent cycles: cannot attach under one of our descendants
+    if (parent && IsDescendantOf(parent, this))
+        return;
+
+    // No-op if same parent
+    if (m_Parent == parent)
+        return;
+
+    // Detach from current parent
     if (m_Parent)
         UnlinkFromParent();
 
+    // Attach to new parent
     m_Parent = parent;
     if (m_Parent)
-        m_Parent->m_Children.push_back(this);
+    {
+        // Avoid duplicates
+        auto& kids = m_Parent->m_Children;
+        if (std::find(kids.begin(), kids.end(), this) == kids.end())
+            kids.push_back(this);
+    }
+
+    // Attachment intent is now consumed
+    m_PendingAttachParent = nullptr;
+
+    MarkWorldDirty();
 }
 
 void JSceneComponent::Detach()
 {
     if (m_Parent)
+        UnlinkFromParent();
+
+    // Reparent to actor root if exists and isn't this
+    if (auto* owner = GetOwnerActor())
     {
-        auto& siblings = m_Parent->m_Children;
-        siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+        if (auto* root = owner->GetRootComponent())
+        {
+            if (root != this)
+            {
+                AttachToComponent(root);
+                return;
+            }
+        }
     }
 
-    // Reparent to actor root if exists
-    if (GetOwnerActor() && GetOwnerActor()->GetRootComponent())
-    {
-        AttachToComponent(GetOwnerActor()->GetRootComponent());
-    }
-    else
-    {
-        m_Parent = nullptr; // truly detached
-    }
+    // Truly detached
+    m_Parent = nullptr;
+    MarkWorldDirty();
 }
 
 bool JSceneComponent::DestroyComponent()
@@ -73,9 +108,14 @@ bool JSceneComponent::DestroyComponent()
 
     m_bPendingDestroy = true;
 
+    // Mark children too (actor will later flush/remove them from lists)
     for (auto* child : m_Children)
         if (child)
             child->DestroyComponent();
+
+    // Important: detach from parent now to avoid parent keeping a dead pointer
+    UnlinkFromParent();
+    MarkWorldDirty();
 
     return true;
 }

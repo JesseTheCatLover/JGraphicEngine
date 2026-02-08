@@ -51,7 +51,7 @@ if (NOT DEFINED JREFLECTGEN_EXE)
     message(FATAL_ERROR "JReflectGen executable is not set. Ensure add_subdirectory(Tools/JReflectGen) is called before Source/Engine.")
 endif()
 
-# 1) Discover reflected headers automatically by scanning for ".generated.h" include
+# 1) Discover reflected headers automatically by scanning for reflection markers (JCLASS/JSTRUCT/JENUM)
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h"  "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.hpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.hpp"
@@ -60,8 +60,10 @@ list(REMOVE_DUPLICATES ENGINE_HEADERS)
 
 set(JREFLECT_HEADERS "")
 foreach(H ${ENGINE_HEADERS})
-    file(STRINGS "${H}" _refl_include REGEX "\\.generated\\.h\"")
-    if (_refl_include)
+    # Match marker invocations: JCLASS(...), JSTRUCT(...), JENUM(...)
+    # Tolerates whitespace before marker.
+    file(STRINGS "${H}" _refl_markers REGEX "^[ \t]*J(CLASS|STRUCT|ENUM)[ \t]*\\(")
+    if (_refl_markers)
         list(APPEND JREFLECT_HEADERS "${H}")
     endif()
 endforeach()

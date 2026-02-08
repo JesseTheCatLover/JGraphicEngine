@@ -26,23 +26,15 @@
 JCLASS()
 class JScene : public JCoreObject
 {
-    JGENERATED_BODY()
+    GENERATED_BODY()
 
     friend class SceneManager;
 
 private:
-    std::string m_Name;  ///< Name of the scene (e.g. "Lake", "Level1").
     std::vector<std::unique_ptr<JActor>> m_Actors; ///< Storage of all actors in the scene.
     std::unordered_map<uint64_t, JActor*> m_ActorsByID; ///< Fast lookup map from ID -> actor.
 
     mutable bool m_bIsDirty = true; ///< track if cache needs rebuilding
-
-    /**
-     * @brief Construct a new JScene with the given name.
-     * @param name The name of the scene.
-     */
-    JFUNCTION()
-    explicit JScene(const FObjectInitializer& Init);
 
     /**
      * @brief Called when the scene is first about to load.
@@ -94,9 +86,6 @@ private:
         AddActorToList(std::move(ptr));
     }
 
-    /** @brief Rename the scene. */
-    void SetName(const std::string& name);
-
     /**
      * @brief Spawns a new actor of type T into the scene.
      *
@@ -109,15 +98,25 @@ private:
      * @return Pointer to the newly spawned actor.
      */
     template<typename T, typename... Args>
-    T* SpawnActor(Args &&... args)
+    T* SpawnActor(std::string name = {}, Args&&... args)
     {
-        static_assert(std::is_base_of<JActor, T>::value, "T must derive from JActor");
+        static_assert(std::is_base_of_v<JActor, T>, "T must derive from JActor");
 
-        // Construct actor — ID is automatically assigned in JCoreObject
-        auto actor = std::make_unique<T>(std::forward<Args>(args)...);
+        // Build initializer for the actor
+        FObjectInitializer init{};
+        init.Scene = this;
+        init.Owner = nullptr;           // scene is "outer"; no owner actor
+        init.Name  = std::move(name);
+        init.bIsCDO = false;
 
-        T* ptr = actor.get();
-        AddActorToList(std::move(actor));
+        // Create via registry so construction rules apply + TLS scope is set
+        JCoreObject* raw = RETypeRegistry::Get().CreateInstanceByTypeName(T::StaticREType()->name, init);
+        auto* actor = dynamic_cast<T*>(raw);
+        assert(actor && "SpawnActor: factory returned wrong type (or type not registered)");
+
+        TUniquePtr<T> owned(actor);
+        T* ptr = owned.get();
+        AddActorToList(std::move(owned));
         return ptr;
     }
 
@@ -136,12 +135,11 @@ private:
     bool RemoveActor(uint64_t id);
 
 public:
+    explicit JScene() = default;
+
     void GatherRenderables(IRenderSubmission& submission, const FRenderContext& baseCtx) const;
 
     JCameraComponent* GetCameraComponent() const;
-
-    /** @return The scene’s name. */
-    inline const std::string& GetName() const { return m_Name;}
 
     /**
      * @brief Gathers all actors in the scene.

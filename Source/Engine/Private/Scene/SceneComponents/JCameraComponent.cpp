@@ -5,6 +5,15 @@
 
 #include "Core/Math/FMath.h"
 
+JCameraComponent::JCameraComponent():
+m_ProjectionType(EProjectionType::Perspective),
+m_FOV(60.f),
+m_NearClip(0.01f),
+m_FarClip(1000.0f),
+m_OrthoHalfHeight(10.0f)
+{
+}
+
 void JCameraComponent::Initialize()
 {
     Super::Initialize();

@@ -68,7 +68,7 @@ void SceneManager::BuildSaveInfoFromScene(const JScene* scene, FSceneSaveInfo& o
         return;
 
     // Name & actor count
-    outInfo.sceneName = scene->GetName();
+    outInfo.sceneName = scene->GetObjectName();
     outInfo.actorCount = static_cast<unsigned int>(scene->m_Actors.size());
     outInfo.thumbnail = "thumbnail.png";
 
@@ -120,130 +120,99 @@ void SceneManager::ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, 
     // 1) Scene takes ownership of all actors
     for (JCoreObject* obj : loadResult.objects)
     {
-        if (!obj) continue;
         if (auto* actor = dynamic_cast<JActor*>(obj))
-        {
             scene.TakeActorOwnershipFromLoad(actor);
-        }
     }
 
-    // 2) Restore actor hierarchy
+    // 2) Restore components (scene + logic). Scene components first.
     for (const FSceneObjectRelation& rel : loadResult.relations)
     {
-        if (!rel.object)
-            continue;
+        if (!rel.object) continue;
 
-        auto* actor = dynamic_cast<JActor*>(rel.object);
-        if (!actor)
-            continue; // this relation isn't for an actor
-
-        if (rel.parentActorUUID.empty())
+        // Scene component
+        if (auto* sc = dynamic_cast<JSceneComponent*>(rel.object))
         {
-            // Root actor; ensure no parent
-            actor->DetachFromParentActor();
-            continue;
-        }
-
-        // Find parent actor by UUID
-        auto itParent = loadResult.uuidMap.find(rel.parentActorUUID);
-        if (itParent == loadResult.uuidMap.end())
-            continue;
-
-        auto* parentActor = dynamic_cast<JActor*>(itParent->second);
-        if (!parentActor)
-            continue;
-
-        actor->AttachToActor(parentActor);
-    }
-
-    // 3) Restore components (logic + scene) (Note: SCENE FIRST, then pure logic)
-    for (const FSceneObjectRelation& rel : loadResult.relations)
-    {
-        if (!rel.object)
-            continue;
-
-        // -------- Scene components (transform/render) --------
-        if (auto* sceneComp = dynamic_cast<JSceneComponent*>(rel.object))
-        {
-            if (rel.ownerActorUUID.empty())
-                continue;
+            if (rel.ownerActorUUID.empty()) continue;
 
             auto itOwner = loadResult.uuidMap.find(rel.ownerActorUUID);
-            if (itOwner == loadResult.uuidMap.end())
-                continue;
+            if (itOwner == loadResult.uuidMap.end()) continue;
 
             auto* ownerActor = dynamic_cast<JActor*>(itOwner->second);
-            if (!ownerActor)
-                continue;
+            if (!ownerActor) continue;
 
             JSceneComponent* parentComp = nullptr;
             if (!rel.parentComponentUUID.empty())
             {
-                auto itParentComp = loadResult.uuidMap.find(rel.parentComponentUUID);
-                if (itParentComp != loadResult.uuidMap.end())
-                    parentComp = dynamic_cast<JSceneComponent*>(itParentComp->second);
+                auto itParent = loadResult.uuidMap.find(rel.parentComponentUUID);
+                if (itParent != loadResult.uuidMap.end())
+                    parentComp = dynamic_cast<JSceneComponent*>(itParent->second);
             }
 
-            ownerActor->AttachSceneComponentFromLoad(sceneComp, parentComp);
-            continue;  // IMPORTANT: don't also treat it as logic
+            // Own + register exactly once
+            ownerActor->TakeComponentOwnershipFromLoad(sc, parentComp);
+            continue;
         }
 
-        // -------- Actor components (logic) --------
-        if (auto* logic = dynamic_cast<JActorComponent*>(rel.object))
+        // Actor component (logic)
+        if (auto* ac = dynamic_cast<JActorComponent*>(rel.object))
         {
-            if (rel.ownerActorUUID.empty())
-                continue;
+            if (rel.ownerActorUUID.empty()) continue;
 
             auto itOwner = loadResult.uuidMap.find(rel.ownerActorUUID);
-            if (itOwner == loadResult.uuidMap.end())
-                continue;
+            if (itOwner == loadResult.uuidMap.end()) continue;
 
             auto* ownerActor = dynamic_cast<JActor*>(itOwner->second);
-            if (!ownerActor)
-                continue;
+            if (!ownerActor) continue;
 
-            ownerActor->AttachActorComponentFromLoad(logic);
-            //continue; // done with this relation
+            ownerActor->TakeComponentOwnershipFromLoad(ac, nullptr);
+            continue;
         }
     }
 
-    // 4) Fix up root components from explicit rootComponentUUID
+    // 3) Fix root components from explicit rootComponentUUID
     for (const FSceneObjectRelation& rel : loadResult.relations)
     {
         auto* actor = dynamic_cast<JActor*>(rel.object);
-        if (!actor)
-            continue;
+        if (!actor) continue;
 
-        if (rel.rootComponentUUID.empty())
-            continue; // this actor didn't serialize a root
+        if (rel.rootComponentUUID.empty()) continue;
 
-        // Look up the root component object via the global uuidMap
         auto itRootObj = loadResult.uuidMap.find(rel.rootComponentUUID);
-        if (itRootObj == loadResult.uuidMap.end())
-            continue;
+        if (itRootObj == loadResult.uuidMap.end()) continue;
 
         auto* rootComp = dynamic_cast<JSceneComponent*>(itRootObj->second);
-        if (!rootComp)
-            continue;
+        if (!rootComp) continue;
 
-        // Find the shared_ptr that owns this raw pointer inside this actor
-        // SceneManager is a friend of JActor, so this is allowed.
-        for (auto& compPtr : actor->m_SceneComponents)
-        {
-            if (compPtr.get() == rootComp)
-            {
-                actor->m_RootComponent = compPtr;
-                break;
-            }
-        }
+        actor->m_RootComponent = rootComp;
+
+        // Root should not have a parent component (actor root semantics)
+        rootComp->AttachToComponent(nullptr);
     }
 
-    // 5) Now that the graph is fully wired, call PostLoad for every object
-    for (JCoreObject* obj : loadResult.objects)
+    // 4) Restore actor hierarchy (now root pointers are correct)
+    for (const FSceneObjectRelation& rel : loadResult.relations)
     {
-        if (obj)
-            obj->PostLoad();
+        auto* actor = dynamic_cast<JActor*>(rel.object);
+        if (!actor) continue;
+
+        if (rel.parentActorUUID.empty())
+        {
+            actor->DetachFromParentActor();
+            continue;
+        }
+
+        auto itParent = loadResult.uuidMap.find(rel.parentActorUUID);
+        if (itParent == loadResult.uuidMap.end()) continue;
+
+        auto* parentActor = dynamic_cast<JActor*>(itParent->second);
+        if (!parentActor) continue;
+
+        actor->AttachToActor(parentActor);
     }
+
+    // 5) PostLoad last: graph is fully wired
+    for (JCoreObject* obj : loadResult.objects)
+        if (obj) obj->PostLoad();
 }
 
 bool SceneManager::CreateSceneFile(const std::string& name,
@@ -255,16 +224,17 @@ bool SceneManager::CreateSceneFile(const std::string& name,
     if (UFileSystem::FileExists(scenePath) && !bOverwrite)
         return false;
 
-    FObjectInitializer Init = FObjectInitializer::ForSceneRoot(name);
+    const FObjectInitializer init = FObjectInitializer::ForSceneRoot(name);
 
-    // Create by typename (or by typeid(JScene))
-    JCoreObject* obj = RETypeRegistry::Get().CreateInstanceByTypeName("JScene", Init);
-    auto* scene = dynamic_cast<JScene*>(obj);
-    if (!scene)
-        return false;
+    TUniquePtr<JScene> scene;
+    {
+        FObjectInitTLS::FScope scope(init);
+        scene = MakeUnique<JScene>(); // ctor consumes TLS
+    }
 
-    return SaveSceneFile(scene, filename);
-}
+    return SaveSceneFile(scene.get(), filename);
+    }
+
 JScene* SceneManager::LoadSceneFile(const std::string& filename)
 {
     std::string scenePath = UPath::ResolvePath(UPath::Join("Assets", "Scenes", filename + ".jscene")).string();
@@ -276,16 +246,19 @@ JScene* SceneManager::LoadSceneFile(const std::string& filename)
     if (!SerializationSubsystem::Get().LoadScene(scenePath, loadResult))
         return nullptr;
 
-    std::string sceneName = loadResult.sceneName.empty()
-                          ? std::string("UnnamedScene")
-                          : loadResult.sceneName;
+    std::string sceneName = loadResult.sceneName.empty() ? "UnnamedScene" : loadResult.sceneName;
 
-    FObjectInitializer Init{};
-    Init.Name  = sceneName;
-    Init.Scene = nullptr; // this is the scene itself
-    Init.Owner = nullptr;
+    FObjectInitializer init{};
+    init.Name   = sceneName;
+    init.Scene  = nullptr; // the scene itself
+    init.Owner  = nullptr;
+    init.bIsCDO = false;
 
-    auto newScene = TUniquePtr<JScene>(new JScene(Init));
+    TUniquePtr<JScene> newScene;
+    {
+        FObjectInitTLS::FScope scope(init);
+        newScene = MakeUnique<JScene>(); // default ctor
+    }
 
     ApplyLoadedResultToScene(loadResult, *newScene);
 
@@ -321,9 +294,9 @@ bool SceneManager::SaveSceneFile(const JScene *scene, const std::string &filenam
 bool SceneManager::RenameScene(JScene *scene, const std::string &newName)
 {
     if (!scene || newName.empty()) return false;
-    if (scene->m_Name == newName) return false;
+    if (scene->GetObjectName() == newName) return false;
 
-    scene->SetName(newName);
+    scene->SetObjectName(newName);
     if (OnSceneRenamed) OnSceneRenamed(scene, newName);
     return true;
 }

@@ -236,6 +236,9 @@ public:
     JCoreObject* CreateInstanceByTypeName(const std::string& name,
                                           const FObjectInitializer& Init) const;
 
+    JCoreObject* CreateInstanceByTypeName(const std::string& name,
+                                      FObjectInitializer&& Init) const = delete;
+
     // Debug
     void DebugDumpAllTypes() const;
 

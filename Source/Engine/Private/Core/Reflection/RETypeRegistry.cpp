@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <iostream>
 
+#include "Core/FObjectInitTLS.h"
+
 static const std::type_index kVoidType = std::type_index(typeid(void));
 
 RETypeRegistry& RETypeRegistry::Get()
@@ -232,34 +234,19 @@ bool RETypeRegistry::IsDerivedFrom(const REType* type, const REType* base) const
         if (t == base) return true;
     return false;
 }
-
 JCoreObject* RETypeRegistry::CreateInstanceByTypeName(const std::string& name,
                                                       const FObjectInitializer& Init) const
 {
     const REType* T = FindTypeByName(name);
-    if (!T)
-    {
-#ifndef NDEBUG
-        std::cerr << "[RETypeRegistry] CreateInstanceByTypeName: type not found: " << name << "\n";
-#endif
+    if (!T || !T->factory)
         return nullptr;
-    }
 
-    if (!T->factory)
-    {
-#ifndef NDEBUG
-        std::cerr << "[RETypeRegistry] CreateInstanceByTypeName: no factory for type: " << name << "\n";
-        // Optional: print common meta reasons if you want
-        for (const auto& m : T->meta)
-        {
-            if (m.key == "Abstract" || m.key == "NoSpawnCtor" || m.key == "NoFactory")
-                std::cerr << "  reason meta: " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
-        }
-#endif
-        return nullptr;
-    }
+    // Local copy lives for the full construction call (safe for TLS pointers)
+    FObjectInitializer LocalInit = Init;
+    LocalInit.ConstructingObject = nullptr;
 
-    return T->factory(Init);
+    FObjectInitTLS::FScope scope(LocalInit);
+    return T->factory(LocalInit);
 }
 
 // ---------------- Finalization / resolution ----------------

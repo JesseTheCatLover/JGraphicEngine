@@ -17,7 +17,7 @@
 JCLASS()
 class JTransformComponent : public JActorComponent
 {
-    JGENERATED_BODY()
+    GENERATED_BODY()
 
 private:
     /** Local transform storing position, rotation, and scale. */
@@ -25,8 +25,7 @@ private:
     FTransform m_LocalTransform;
 
 public:
-    JFUNCTION()
-    JTransformComponent(const FObjectInitializer& Init) : Super(Init) {}
+    JTransformComponent() = default;
 
     //==================================================
     // Position

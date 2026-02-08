@@ -6,6 +6,7 @@
 #define JCLASS(...)
 #define JSTRUCT(...)
 #define JENUM(...)
+#define JMETA(...)
 #define JFUNCTION(...)
 #define JPROPERTY(...)
-#define JGENERATED_BODY()
+#define GENERATED_BODY()

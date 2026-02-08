@@ -14,22 +14,22 @@
 JCLASS()
 class JCameraComponent : public JSceneComponent, public ICameraViewSource
 {
-    JGENERATED_BODY()
+    GENERATED_BODY()
 
     JPROPERTY()
-    EProjectionType m_ProjectionType = EProjectionType::Perspective;
+    EProjectionType m_ProjectionType;
 
     // Perspective
     JPROPERTY()
-    float m_FOV = 60.0f;
+    float m_FOV;
     JPROPERTY()
-    float m_NearClip = 0.01f;
+    float m_NearClip;
     JPROPERTY()
-    float m_FarClip = 1000.0f;
+    float m_FarClip;
 
     // Orthographic
     JPROPERTY()
-    float m_OrthoHalfHeight = 10.0f;
+    float m_OrthoHalfHeight;
 
     // Cached matrices
     mutable FMatrix4 m_ViewMatrix = FMatrix4::Identity();
@@ -39,8 +39,7 @@ class JCameraComponent : public JSceneComponent, public ICameraViewSource
     mutable float m_LastAspect = -1.0f;
 
 public:
-    JFUNCTION()
-    JCameraComponent(const FObjectInitializer& Init) : JSceneComponent(Init) {}
+    JCameraComponent();
     virtual ~JCameraComponent() = default;
 
 protected:

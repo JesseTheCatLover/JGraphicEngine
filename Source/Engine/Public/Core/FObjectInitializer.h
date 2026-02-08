@@ -5,13 +5,17 @@
 
 class JActor;
 class JScene;
+class JCoreObject;
 
 struct FObjectInitializer
 {
     JScene* Scene = nullptr;
-    JActor* Owner = nullptr;
+    JCoreObject* Owner = nullptr;
     std::string Name;
     bool bIsCDO = false;
+
+    // Set by JCoreObject base ctor automatically (via TLS)
+    mutable JCoreObject* ConstructingObject = nullptr;
 
     static FObjectInitializer ForSceneRoot(const std::string& name)
     {
@@ -20,7 +24,7 @@ struct FObjectInitializer
         return I;
     }
 
-    static FObjectInitializer ForObject(JScene* scene, JActor* owner, const std::string& name)
+    static FObjectInitializer ForObject(JScene* scene, JCoreObject* owner, const std::string& name)
     {
         FObjectInitializer I{};
         I.Scene = scene;

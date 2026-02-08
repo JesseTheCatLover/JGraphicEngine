@@ -686,10 +686,10 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
         JActor* actor = GetSceneManager()->SpawnActor<JActor>();
         if (!actor) return nullptr;
 
-        actor->SetName(actorName ? actorName : "ModelActor");
+        actor->SetActorName(actorName ? actorName : "ModelActor");
 
         // Attach a model component at runtime to the actor’s root (uses route rendering)
-        auto* modelComp = actor->AddRuntimeComponent<JModelComponent>();
+        auto* modelComp = actor->AddRuntimeComponent<JModelComponent>("ModelComponent");
         modelComp->SetModel(modelKey);
 
         return actor;
@@ -700,10 +700,10 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
     // ---------------------------------------------------------------------
     JActor* actor1 = GetSceneManager()->SpawnActor<JActor>();
 
-    actor1->SetName("TheArmoury");
+    actor1->SetActorName("TheArmoury");
 
     // Attach a model component at runtime to the actor’s root (uses route rendering)
-    auto* modelArmoury = actor1->AddRuntimeComponent<JModelComponent>();
+    auto* modelArmoury = actor1->AddRuntimeComponent<JModelComponent>("ModelArmouryComponent");
     modelArmoury->SetModel("TheArmoury/model.obj");
 
     auto actor2 = spawnModelActor("Tape", "Tape/Tape.obj");
@@ -722,8 +722,8 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
     actor4dup->SetActorScale(FVector3(0.5f));
 
     JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
-    cameraActor->SetName("CameraActor");
-    cameraActor->AddRuntimeComponent<JCameraComponent>();
+    cameraActor->SetActorName("CameraActor");
+    cameraActor->AddRuntimeComponent<JCameraComponent>("CameraComponent");
     cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
 
     auto chair = spawnModelActor("WoodenChair", "DiningChair/DiningChair.obj");

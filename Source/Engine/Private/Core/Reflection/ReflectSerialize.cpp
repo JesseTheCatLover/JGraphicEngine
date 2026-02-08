@@ -10,6 +10,7 @@
 
 #include "Core/JCoreObject.h"
 #include "Core/Reflection/RETypeRegistry.h"
+using REUpcastFn = const void*(*)(const void* thisAsDerived); // returns base subobject ptr
 
 // ---------------- Resolver ----------------
 
@@ -276,43 +277,59 @@ static bool ReadValueByTypeName(const JsonReader& reader, const char* name, void
 
 // ---------------- Main dispatch ----------------
 
-void ReflectSerialize::SerializeTypeProperties(JsonWriter& writer, const REType& type, const void* basePtr)
+void ReflectSerialize::SerializeTypeProperties(JsonWriter& writer, const REType& type, const void* ptr)
 {
-    // Walk from derived up through all base types (uses registry graph)
     const RETypeRegistry& reg = RETypeRegistry::Get();
 
-    for (const REType* t = &type; t != nullptr; t = reg.GetBaseType(t))
+    const REType* cur = &type;
+    const void* curPtr = ptr; // starts as most-derived pointer
+
+    while (cur)
     {
-        for (const REProperty& prop : t->properties)
-        {
-            SerializeProperty(writer, prop, basePtr);
-        }
+        for (const REProperty& prop : cur->properties)
+            SerializeProperty(writer, prop, curPtr);
+
+        const REType* base = reg.GetBaseType(cur);
+        if (!base) break;
+
+        // IMPORTANT: adjust pointer for the next base step
+        if (cur->upcastFromMostDerived) // rename later if you want
+            curPtr = cur->upcastFromMostDerived(curPtr);
+
+        cur = base;
     }
 }
 
-void ReflectSerialize::DeserializeTypeProperties(const JsonReader& reader, const REType& type, void* basePtr)
+void ReflectSerialize::DeserializeTypeProperties(const JsonReader& reader, const REType& type, void* ptr)
 {
     const RETypeRegistry& reg = RETypeRegistry::Get();
 
-    for (const REType* t = &type; t != nullptr; t = reg.GetBaseType(t))
+    const REType* cur = &type;
+    void* curPtr = ptr;
+
+    while (cur)
     {
-        for (const REProperty& prop : t->properties)
-        {
-            DeserializeProperty(reader, prop, basePtr);
-        }
+        for (const REProperty& prop : cur->properties)
+            DeserializeProperty(reader, prop, curPtr);
+
+        const REType* base = reg.GetBaseType(cur);
+        if (!base) break;
+
+        if (cur->upcastFromMostDerived)
+            curPtr = const_cast<void*>(cur->upcastFromMostDerived(curPtr));
+
+        cur = base;
     }
 }
 
 static const void* GetFieldPtrConst(const REProperty& prop, const void* basePtr)
 {
-    if (prop.getConstPtr)
-        return prop.getConstPtr(basePtr);
+    return prop.getConstPtr ? prop.getConstPtr(basePtr) : nullptr;
 }
 
 static void* GetFieldPtr(const REProperty& prop, void* basePtr)
 {
-    if (prop.getPtr)
-        return prop.getPtr(basePtr);
+    return prop.getPtr ? prop.getPtr(basePtr) : nullptr;
 }
 
 void ReflectSerialize::SerializeProperty(JsonWriter& writer, const REProperty& prop, const void* basePtr)

@@ -47,7 +47,7 @@ bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::st
     writer.BeginObject(); // root {}
 
     // ------- Metadata at root -------
-    writer.Write("name", info.sceneName);
+    writer.Write("scene_name", info.sceneName);
     writer.Write("actor_count", info.actorCount);
 
     writer.BeginObject("meta");
@@ -69,6 +69,7 @@ bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::st
         // Type name comes from reflection (used for factory creation on load)
         const REType* t = obj->GetREType();
         writer.Write("type", std::string(t ? t->name : ""));
+        writer.Write("object_name", obj->GetObjectName());
 
         // ---------- Relations ----------
         writer.BeginObject("relation");
@@ -123,7 +124,7 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
         return false;
 
     // --- Metadata ---
-    outResult.sceneName  = reader.Read<std::string>("name", "");
+    outResult.sceneName  = reader.Read<std::string>("scene_name", "");
     outResult.actorCount = reader.Read<unsigned int>("actor_count", 0u);
 
     if (reader.Has("meta"))
@@ -150,11 +151,19 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
     {
         auto uuid = objReader.Read<std::string>("uuid", "");
         auto typeName = objReader.Read<std::string>("type", "");
+        const auto objectName = objReader.Read<std::string>("object_name", "");
 
         if (uuid.empty() || typeName.empty())
             continue;
 
-        JCoreObject* obj = CreateObjectByTypeName(typeName.c_str());
+        // Load-time initializer (Scene/Owner will be fixed by SceneManager wiring later)
+        FObjectInitializer init{};
+        init.Scene  = nullptr;     // unknown until the scene is built / applied
+        init.Owner  = nullptr;     // unknown until relations are wired
+        init.Name   = objectName;
+        init.bIsCDO = false;
+
+        JCoreObject* obj = RETypeRegistry::Get().CreateInstanceByTypeName(typeName, init);
         if (!obj)
             continue;
 

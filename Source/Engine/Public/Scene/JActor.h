@@ -29,33 +29,33 @@ class JScene;
 JCLASS()
 class JActor : public JCoreObject
 {
-    JGENERATED_BODY()
+    GENERATED_BODY()
 
     friend class JScene;
     friend class SceneManager;
 
 private:
     JPROPERTY()
-    std::string m_Name; ///< Actor name
-
-    JPROPERTY()
     size_t m_VectorIndex; ///< internal index for O(1) removal from scene
 
-    TSharedPtr<JSceneComponent> m_RootComponent; ///< Root of the scene component hierarchy
-    std::vector<TSharedPtr<JSceneComponent>> m_SceneComponents; ///< Scene components attached to this actor
-    std::vector<TSharedPtr<JActorComponent>> m_ActorComponents; ///< Actor components attached to this actor
+    JSceneComponent* m_RootComponent = nullptr; ///< Root of the scene component hierarchy
+    std::vector<JSceneComponent*> m_SceneComponents; ///< Scene components attached to this actor
+    std::vector<JActorComponent*> m_ActorComponents; ///< Actor components attached to this actor
+
+    // ---- Runtime ownership (OWNING) ----
+    // Default subobjects are owned by JCoreObject (m_DefaultSubobjectsOwned).
+    // Runtime-added components must be owned here.
+    std::vector<TUniquePtr<JActorComponent>> m_RuntimeComponentsOwned;
 
     JPROPERTY()
     bool m_bIsVisible = true;
 
     bool m_bPendingDestroy = false;
-    JScene* m_OwningScene = nullptr; // Set by JScene when adding actor
 
     JActor* m_ParentActor = nullptr;
     std::vector<JActor*> m_ChildActors;
 
-    void FlushDestroyedComponents();
-
+private:
     /**
     * @brief Initializes and assigns the root scene component for this actor.
     *
@@ -74,6 +74,11 @@ private:
     */
     void SetupRootComponent();
 
+    // Central registration path (used by default + runtime + load)
+    void RegisterComponent(JActorComponent* comp, JSceneComponent* attachParent = nullptr);
+
+    void FlushDestroyedComponents();
+
     /**
      * @brief Only called internally from JScene, and completely destroys the actor and its components.
      */
@@ -85,7 +90,7 @@ private:
         result.reserve(m_SceneComponents.size());
         for (const auto& comp : m_SceneComponents)
             if (comp)
-                result.push_back(comp.get());
+                result.push_back(comp);
         return result;
     }
 
@@ -95,45 +100,18 @@ private:
         result.reserve(m_ActorComponents.size());
         for (const auto& comp : m_ActorComponents)
             if (comp)
-                result.push_back(comp.get());
+                result.push_back(comp);
         return result;
     }
 
-    // Attach an already-constructed logic component (from load) to this actor
-    void AttachActorComponentFromLoad(JActorComponent* comp)
-    {
-        if (!comp) return;
+    // For load: restore parent relationship and register
+    void TakeComponentOwnershipFromLoad(JActorComponent* comp, JSceneComponent* explicitAttachParent = nullptr);
 
-        comp->SetOwnerActor(this);
-
-        // Take ownership via TSharedPtr
-        TSharedPtr<JActorComponent> ptr(comp);
-        m_ActorComponents.push_back(std::move(ptr));
-    }
-
-    // Attach an already-constructed scene component (from load) to this actor
-    void AttachSceneComponentFromLoad(JSceneComponent* comp, JSceneComponent* parent = nullptr)
-    {
-        if (!comp) return;
-
-        comp->SetOwnerActor(this);
-
-        // Wrap raw pointer
-        TSharedPtr<JSceneComponent> ptr(comp);
-
-        // Restore parent relationship (for now: parent or root)
-        if (parent)
-            comp->AttachToComponent(parent);
-        else if (m_RootComponent)
-            comp->AttachToComponent(m_RootComponent.get());
-
-        m_SceneComponents.push_back(std::move(ptr));
-    }
+    JSceneComponent* ResolveAttachParent(JSceneComponent* sc, JSceneComponent* explicitParent) const;
+    void RemoveRuntimeOwnedComponent(JActorComponent* ptr);
 
 public:
     JActor();
-    JFUNCTION()
-    JActor(const FObjectInitializer& Init);
     virtual ~JActor() = default;
 
     // -------------------- Playtime API --------------------
@@ -183,8 +161,8 @@ public:
         return m_ParentActor == nullptr;
     }
 
-    [[nodiscard]] JSceneComponent* GetRootComponent() const { return m_RootComponent.get(); }
-    void SetRootComponent(TSharedPtr<JSceneComponent> root) { m_RootComponent = std::move(root); }
+    [[nodiscard]] JSceneComponent* GetRootComponent() const { return m_RootComponent; }
+    void SetRootComponent(JSceneComponent* root) { m_RootComponent = root; }
 
     /** Attach this actor under another actor (parental actor hierarchy). */
     bool AttachToActor(JActor* newParent);
@@ -419,43 +397,28 @@ public:
     * Called only during actor construction, to define the actor's
     * default component hierarchy before the game begins.
     *
-    * Components created through this function are owned by the actor
-    * and automatically added to the correct internal list:
+    * Components created through this function are automatically added to the
+    * correct internal list:
     *  - If @p T derives from JSceneComponent, it is attached to the root
     *    scene component.
     *  - Otherwise, it is added as an actor component.
     *
     * @tparam T Component type to create (must derive from JActorComponent)
-    * @tparam Args Constructor argument types
     * @param name Component name for identification or debugging
-    * @param args Arguments forwarded to T's constructor
     * @return Raw pointer to the created component (Non-owning)
     *
     * @note This is intended for defining an actor's built-in components in the constructor,
     * not for spawning or adding components dynamically at runtime.
     */
-    template<typename T, typename... Args>
-    T* CreateDefaultComponent(const std::string& name, Args&&... args)
+    template<typename T>
+    T* CreateDefaultComponent(const std::string& name)
     {
         static_assert(std::is_base_of_v<JActorComponent, T>, "T must derive from JActorComponent");
 
-        // Create the component
-        auto component = MakeShared<T>(std::forward<Args>(args)...);
-        component->SetOwnerActor(this);
-        component->SetName(name);
+        T* comp = CreateDefaultSubobject<T>(name);
 
-        // Handle special case for JSceneComponent
-        if constexpr (std::is_base_of_v<JSceneComponent, T>)
-        {
-            auto sceneComp = std::static_pointer_cast<JSceneComponent>(component);
-            m_SceneComponents.push_back(sceneComp);
-        }
-        else
-        {
-            m_ActorComponents.push_back(component);
-        }
-
-        return component.get();
+        RegisterComponent(comp);
+        return comp;
     }
 
     /**
@@ -468,55 +431,41 @@ public:
     * @tparam T Component type (must derive from JActorComponent)
     * @tparam Args Constructor argument types
     * @param args Arguments forwarded to T's constructor
-    * @param parent Optional parent for scene components (defaults to root scene component)
+    * @param attachParent Optional parent for scene components (defaults to root scene component)
     * @return Raw pointer to the created component (Non-owning)
     */
     template<typename T, typename... Args>
-    T* AddRuntimeComponent(Args&&... args, JSceneComponent* parent = nullptr)
+    T* AddRuntimeComponent(const std::string& name, JSceneComponent* attachParent = nullptr, Args&&... args)
     {
         static_assert(std::is_base_of_v<JActorComponent, T>, "T must derive from JActorComponent");
 
-        FObjectInitializer Init;
-        Init.Scene = m_OwningScene;
-        Init.Owner = this;
-        Init.Name  = "";
-        Init.bIsCDO = false;
+        // Build Init (TLS is nice but not required for runtime add; still we can push it)
+        FObjectInitializer init{};
+        init.Scene = GetOwningScene();
+        init.Owner = this;
+        init.Name  = name;
+        init.bIsCDO = false;
 
-        TSharedPtr<T> component;
+        // Construct directly using Init if ctor exists; else fallback
+        TUniquePtr<T> owned;
 
-        // Prefer Init-based construction when available
         if constexpr (std::is_constructible_v<T, const FObjectInitializer&, Args...>)
-        {
-            component = MakeShared<T>(Init, std::forward<Args>(args)...);
-        }
+            owned = MakeUnique<T>(init, std::forward<Args>(args)...);
         else if constexpr (std::is_constructible_v<T, Args...>)
-        {
-            // Back-compat fallback (lets old components still work)
-            component = MakeShared<T>(std::forward<Args>(args)...);
-        }
+            owned = MakeUnique<T>(std::forward<Args>(args)...);
         else
-        {
-            static_assert(sizeof(T) == 0,
-                "AddRuntimeComponent: T is not constructible. Provide T(const FObjectInitializer&, ...) or a matching ctor.");
-        }
+            static_assert(sizeof(T) == 0, "AddRuntimeComponent: no compatible ctor");
 
-        component->SetOwnerActor(this);
+        T* ptr = owned.get();
 
-        if constexpr (std::is_base_of_v<JSceneComponent, T>)
-        {
-            auto sceneComp = std::static_pointer_cast<JSceneComponent>(component);
+        // Ensure base fields are correct even if fallback ctor was used
+        ptr->SetOwnerActor(this);
+        ptr->SetName(name);
 
-            if (parent) sceneComp->AttachToComponent(parent);
-            else        sceneComp->AttachToComponent(m_RootComponent.get());
-
-            m_SceneComponents.push_back(sceneComp);
-        }
-        else
-        {
-            m_ActorComponents.push_back(component);
-        }
-
-        return component.get();
+        // Ownership + view registration
+        m_RuntimeComponentsOwned.emplace_back(std::move(owned));
+        RegisterComponent(ptr, attachParent);
+        return ptr;
     }
 
     /**
@@ -531,21 +480,17 @@ public:
     template<typename T>
     T* GetComponent() const
     {
-        // Search actor components
-        for (auto& comp : m_ActorComponents)
-            if (auto casted = dynamic_cast<T*>(comp.get()))
-                return casted;
+        for (auto* c : m_ActorComponents)
+            if (auto* casted = dynamic_cast<T*>(c)) return casted;
 
-        // Search scene components
-        for (auto& comp : m_SceneComponents)
-            if (auto casted = dynamic_cast<T*>(comp.get()))
-                return casted;
+        for (auto* c : m_SceneComponents)
+            if (auto* casted = dynamic_cast<T*>(c)) return casted;
 
         return nullptr;
     }
 
-    [[nodiscard]] const std::vector<TSharedPtr<JActorComponent>>& GetActorComponents() const { return m_ActorComponents; }
-    [[nodiscard]] const std::vector<TSharedPtr<JSceneComponent>>& GetSceneComponents() const { return m_SceneComponents; }
+    [[nodiscard]] const std::vector<JActorComponent*>& GetActorComponents() const { return m_ActorComponents; }
+    [[nodiscard]] const std::vector<JSceneComponent*>& GetSceneComponents() const { return m_SceneComponents; }
 
     // -------------------- Rendering --------------------
 
@@ -555,16 +500,14 @@ public:
 
     // -------------------- Getter/Setter --------------------
 
-    [[nodiscard]] std::string GetName() const { return m_Name; }
-    void SetName(const std::string& name) { m_Name = name; }
-
     [[nodiscard]] size_t GetVectorIndex() const { return m_VectorIndex; }
     void SetVectorIndex(size_t index) { m_VectorIndex = index; }
 
     [[nodiscard]] bool IsVisible() const { return m_bIsVisible; }
     void SetVisible(bool bIsVisible) { m_bIsVisible = bIsVisible; }
 
-    [[nodiscard]] JScene* GetOwningScene() const { return m_OwningScene; }
+    [[nodiscard]] std::string GetActorName() const { return GetObjectName(); }
+    void SetActorName(const std::string& n) { SetObjectName(n); }
 
     [[nodiscard]] JActor* GetParentActor() const { return m_ParentActor; }
     [[nodiscard]] const std::vector<JActor*>& GetChildActors() const { return m_ChildActors; }

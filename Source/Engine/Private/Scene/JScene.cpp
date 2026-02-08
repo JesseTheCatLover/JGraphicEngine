@@ -5,11 +5,6 @@
 #include "Rendering/RRenderProxies.h"
 #include "Scene/JActor.h"
 
-JScene::JScene(const FObjectInitializer &Init) : JCoreObject(Init)
-{
-    SetName(Init.Name);
-}
-
 void JScene::Initialize()
 {
     // Scene setup logic before BeginPlay
@@ -70,16 +65,10 @@ void JScene::FlushDestroyedActors()
     }
 }
 
-void JScene::SetName(const std::string &name)
-{
-    m_Name = name;
-    m_bIsDirty = true; // mark cache stale
-}
-
 void JScene::AddActorToList(std::unique_ptr<JActor> actor)
 {
     actor->SetVectorIndex(m_Actors.size()); // track index
-    actor->m_OwningScene = this; // takes ownership
+    actor->SetOwningScene(this); // takes ownership
     m_ActorsByID[actor->GetRuntimeID()] = actor.get();
     m_Actors.push_back(std::move(actor));
 }
@@ -110,6 +99,9 @@ bool JScene::RemoveActor(uint64_t id)
     {
         std::swap(m_Actors[idx], m_Actors.back());
         m_Actors[idx]->SetVectorIndex(idx); // update swapped actor index
+
+        // IMPORTANT: update map entry for the swapped actor
+        m_ActorsByID[m_Actors[idx]->GetRuntimeID()] = m_Actors[idx].get();
     }
     m_Actors.pop_back();
     m_ActorsByID.erase(it);
