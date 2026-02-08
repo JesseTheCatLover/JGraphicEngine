@@ -8,6 +8,8 @@
 void JScene::Initialize()
 {
     // Scene setup logic before BeginPlay
+    for (auto& actor : m_Actors)
+        actor->Initialize();
 }
 
 void JScene::BeginPlay()
