@@ -32,7 +32,7 @@ namespace
             return UPath::Normalize(p);
 
         // Treat as project-relative
-        const std::string projectRoot = UPath::ResolvePath("");
+        const std::string projectRoot = UPath::ResolvePath("").string();
         return UPath::Normalize(UPath::Join(projectRoot, p));
     }
 }

@@ -12,7 +12,7 @@ struct FRay
 struct FRaycastHit
 {
     bool bHit = false;
-    uint64_t actorID = -1;
+    uint64_t actorID = 0;
     float distance = 0.0f;
     FVector3 position;
     FVector3 normal;

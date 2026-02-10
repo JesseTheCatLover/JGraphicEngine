@@ -4,13 +4,14 @@
 #include <functional>
 #include <unordered_map>
 
+#include "Core/Memory/SmartPointers.h"
 #include "PanelRegistry.h"
 
 template<typename TInput, typename TOutput, typename TController>
 class TPanelChannel
 {
 public:
-    using ControllerPtr = std::unique_ptr<TController>;
+    using ControllerPtr = TUniquePtr<TController>;
     using ControllerFactory = std::function<ControllerPtr(PanelID)>;
 
     explicit TPanelChannel(ControllerFactory factory)

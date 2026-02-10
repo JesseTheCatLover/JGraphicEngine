@@ -219,7 +219,7 @@ bool SceneManager::CreateSceneFile(const std::string& name,
                                   const std::string& filename,
                                   bool bOverwrite) const
 {
-    std::string scenePath = UPath::ResolvePath(UPath::Join("Assets", "Scenes", filename + ".jscene"));
+    std::string scenePath = UPath::ResolvePath(UPath::Join("Assets", "Scenes", filename + ".jscene")).string();
 
     if (UFileSystem::FileExists(scenePath) && !bOverwrite)
         return false;
