@@ -19,21 +19,38 @@ void JsonWriter::BeginObject(const std::string& key)
             m_Data[key] = JJson::object();
             m_Stack.push(&m_Data[key]);
         }
+        return;
     }
-    else
+
+    JJson& parent = *m_Stack.top();
+
+    if (key.empty())
     {
-        JJson& parent = *m_Stack.top();
-        if (key.empty())
+        // If we're inside an ARRAY, BeginObject() means "append object element"
+        if (parent.is_array())
         {
             parent.push_back(JJson::object());
             m_Stack.push(&parent.back());
+            return;
         }
-        else
+
+        // If we're inside an OBJECT, BeginObject() means "enter current object scope"
+        // (no new node created)
+        if (parent.is_object())
         {
-            parent[key] = JJson::object();
-            m_Stack.push(&parent[key]);
+            m_Stack.push(&parent);
+            return;
         }
+
+        // If parent is null or something weird, force it to object.
+        parent = JJson::object();
+        m_Stack.push(&parent);
+        return;
     }
+
+    // Keyed child object
+    parent[key] = JJson::object();
+    m_Stack.push(&parent[key]);
 }
 
 void JsonWriter::EndObject()

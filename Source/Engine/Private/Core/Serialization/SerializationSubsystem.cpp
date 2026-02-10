@@ -46,7 +46,7 @@ bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::st
 
     writer.BeginObject(); // root {}
 
-    // ------- Metadata at root -------
+    // ------- Scene metadata at root -------
     writer.Write("scene_name", info.sceneName);
     writer.Write("actor_count", info.actorCount);
 
@@ -66,34 +66,48 @@ bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::st
 
         // Identity + type
         writer.Write("uuid", obj->GetUUID());
+
         // Type name comes from reflection (used for factory creation on load)
         const REType* t = obj->GetREType();
         if (!t) t = RETypeRegistry::Get().FindType(typeid(*obj)); // note: typeid(*obj) not typeid(obj)
         writer.Write("type", t ? t->name : "");
+
         writer.Write("object_name", obj->GetObjectName());
+
+        // ------------------------------------------------------------
+        // overrides:
+        //   *reflected* properties that differ from the type's CDO defaults.
+        //   This keeps scene files small and diff-friendly.
+        // ------------------------------------------------------------
         writer.BeginObject("overrides");
 
         JCoreObject* cdo = RETypeRegistry::Get().GetCDO(t);
 
-        RETypeRegistry::Get().ForEachProperty_BaseToDerived(t, [&](const REType &declaring, const REProperty &prop)
+        RETypeRegistry::Get().ForEachProperty_BaseToDerived(t, [&](const REType& declaring, const REProperty& prop)
         {
             if (!cdo) return;
 
-            const void *instBase = obj;
-            const void *cdoBase = cdo;
+            const void* instBase = obj;
+            const void* cdoBase  = cdo;
 
             // If declaring is not the most-derived, you need base pointers
             if (&declaring != t && declaring.upcastFromMostDerived)
             {
                 instBase = declaring.upcastFromMostDerived(obj);
-                cdoBase = declaring.upcastFromMostDerived(cdo);
+                cdoBase  = declaring.upcastFromMostDerived(cdo);
             }
 
             if (ReflectSerialize::IsPropertyOverridden(prop, instBase, cdoBase))
                 ReflectSerialize::SerializeProperty(writer, prop, instBase);
         });
 
-        // ---------- Relations ----------
+        writer.EndObject(); // overrides
+
+        // ------------------------------------------------------------
+        // relation:
+        //   references that connect objects together (actor hierarchy,
+        //   component ownership/attachment). Stored as UUID links.
+        // ------------------------------------------------------------
         writer.BeginObject("relation");
 
         // Actor hierarchy
@@ -125,10 +139,20 @@ bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::st
 
         writer.EndObject(); // relation
 
-        // ---------- Data (reflected + custom) ----------
-        writer.BeginObject("data");
-        obj->SerializeJObject(writer); // reflection + SerializeCustom()
-        writer.EndObject(); // data
+        // ------------------------------------------------------------
+        // custom:
+        //   object-defined extra JSON written by SerializeCustom()
+        //   (and read by DeserializeCustom()).
+        //
+        //   This is for non-reflected or special-case data you don't want
+        //   in the reflection system yet.
+        //
+        //   NOTE: reflected properties should NOT be written here—those go
+        //   into "overrides".
+        // ------------------------------------------------------------
+        writer.BeginObject("custom");
+        obj->SerializeJObject(writer); // reflection layer + SerializeCustom()
+        writer.EndObject(); // custom
 
         writer.EndObject(); // object entry
     }
@@ -171,18 +195,18 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
     // ---------------- PASS 1: Create all objects + UUID map + relations ----------------
     for (const JsonReader& objReader : objectReaders)
     {
-        auto uuid = objReader.Read<std::string>("uuid", "");
-        auto typeName = objReader.Read<std::string>("type", "");
-        const auto objectName = objReader.Read<std::string>("object_name", "");
+        auto uuid       = objReader.Read<std::string>("uuid", "");
+        auto typeName   = objReader.Read<std::string>("type", "");
+        const auto name = objReader.Read<std::string>("object_name", "");
 
         if (uuid.empty() || typeName.empty())
             continue;
 
         // Load-time initializer (Scene/Owner will be fixed by SceneManager wiring later)
         FObjectInitializer init{};
-        init.Scene  = nullptr;     // unknown until the scene is built / applied
-        init.Owner  = nullptr;     // unknown until relations are wired
-        init.Name   = objectName;
+        init.Scene  = nullptr; // unknown until the scene is built / applied
+        init.Owner  = nullptr; // unknown until relations are wired
+        init.Name   = name;
         init.bIsCDO = false;
 
         JCoreObject* obj = RETypeRegistry::Get().CreateInstanceByTypeName(typeName, init);
@@ -211,7 +235,7 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
         outResult.relations.push_back(std::move(rel));
     }
 
-    // ---------------- PASS 2: Deserialize data (now UUID map is complete) ----------------
+    // ---------------- PASS 2: Deserialize payload (now UUID map is complete) ----------------
     // Install resolver for this load
     g_LoadUUIDMap = &outResult.uuidMap;
     ReflectSerialize::SetObjectResolver(&ResolveObjectByUUID_MVP);
@@ -233,7 +257,7 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
         if (!obj)
             continue;
 
-        // Apply reflected overrides first so custom deserialization sees the final values.
+        // Apply reflected overrides first so custom deserialization sees final values.
         if (objReader.Has("overrides"))
         {
             JsonReader over = objReader.GetObject("overrides");
@@ -241,10 +265,14 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
                 ReflectSerialize::DeserializeTypeProperties(over, *obj->GetREType(), obj);
         }
 
-        if (objReader.Has("data"))
+        // Backward compat: accept old key name "data" as fallback.
+        if (objReader.Has("custom") || objReader.Has("data"))
         {
-            JsonReader dataReader = objReader.GetObject("data");
-            obj->DeserializeJObject(dataReader);
+            JsonReader customReader = objReader.Has("custom")
+                ? objReader.GetObject("custom")
+                : objReader.GetObject("data"); // legacy
+
+            obj->DeserializeJObject(customReader);
         }
     }
 
@@ -260,7 +288,6 @@ JCoreObject* SerializationSubsystem::CreateObjectByTypeName(const char* typeName
 {
     const std::string name = typeName ? std::string(typeName) : std::string();
 
-    // however you create your default initializer:
     FObjectInitializer Init{};
 
     return RETypeRegistry::Get().CreateInstanceByTypeName(name, Init);
