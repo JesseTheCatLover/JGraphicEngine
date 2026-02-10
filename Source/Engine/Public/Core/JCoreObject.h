@@ -163,7 +163,6 @@ private:
 
     void SerializeJObject(class JsonWriter& writer) const
     {
-        ReflectSerialize::SerializeReflectedProperties(writer, *this);
         SerializeCustom(writer);
     }
 
@@ -171,6 +170,5 @@ private:
     {
         ReflectSerialize::DeserializeReflectedProperties(reader, *this);
         DeserializeCustom(reader);
-        PostLoad();
     }
 };

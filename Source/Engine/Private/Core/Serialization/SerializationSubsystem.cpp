@@ -68,8 +68,30 @@ bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::st
         writer.Write("uuid", obj->GetUUID());
         // Type name comes from reflection (used for factory creation on load)
         const REType* t = obj->GetREType();
-        writer.Write("type", std::string(t ? t->name : ""));
+        if (!t) t = RETypeRegistry::Get().FindType(typeid(*obj)); // note: typeid(*obj) not typeid(obj)
+        writer.Write("type", t ? t->name : "");
         writer.Write("object_name", obj->GetObjectName());
+        writer.BeginObject("overrides");
+
+        JCoreObject* cdo = RETypeRegistry::Get().GetCDO(t);
+
+        RETypeRegistry::Get().ForEachProperty_BaseToDerived(t, [&](const REType &declaring, const REProperty &prop)
+        {
+            if (!cdo) return;
+
+            const void *instBase = obj;
+            const void *cdoBase = cdo;
+
+            // If declaring is not the most-derived, you need base pointers
+            if (&declaring != t && declaring.upcastFromMostDerived)
+            {
+                instBase = declaring.upcastFromMostDerived(obj);
+                cdoBase = declaring.upcastFromMostDerived(cdo);
+            }
+
+            if (ReflectSerialize::IsPropertyOverridden(prop, instBase, cdoBase))
+                ReflectSerialize::SerializeProperty(writer, prop, instBase);
+        });
 
         // ---------- Relations ----------
         writer.BeginObject("relation");
@@ -211,6 +233,14 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
         if (!obj)
             continue;
 
+        // Apply reflected overrides first so custom deserialization sees the final values.
+        if (objReader.Has("overrides"))
+        {
+            JsonReader over = objReader.GetObject("overrides");
+            if (over.IsValid())
+                ReflectSerialize::DeserializeTypeProperties(over, *obj->GetREType(), obj);
+        }
+
         if (objReader.Has("data"))
         {
             JsonReader dataReader = objReader.GetObject("data");
@@ -220,6 +250,7 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
 
     // Remove resolver context (avoid dangling pointer use)
     g_LoadUUIDMap = nullptr;
+    ReflectSerialize::SetObjectResolver(nullptr);
 
     // SceneManager wires relationships using outResult.objects + uuidMap + relations.
     return true;

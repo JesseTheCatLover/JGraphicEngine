@@ -5,12 +5,19 @@
 #include <functional>
 #include <string>
 
+struct REVariant;
 class JsonReader;
 class JsonWriter;
 
 class JCoreObject;
 struct REType;
 struct REProperty;
+
+enum class RESerializeMode : uint8_t
+{
+    All,
+    SaveGameOnly,
+};
 
 /**
  * Reflection-based serialization for JCoreObject and reflected structs.
@@ -25,6 +32,7 @@ class ReflectSerialize
 {
 private:
     friend class JCoreObject;
+    friend class SerializationSubsystem;
 
     // Serialize all reflected properties of a reflected object
     static void SerializeReflectedProperties(JsonWriter& writer, const JCoreObject& obj);
@@ -40,6 +48,12 @@ public:
 
     static void SetObjectResolver(ResolveObjectByUUIDFn fn);
 
+    // Public getters
+    static bool TryGet(const JCoreObject& obj, const REProperty& prop, REVariant& out);
+    static bool TrySet(JCoreObject& obj, const REProperty& prop, const REVariant& in);
+
+    static bool ShouldSerializeProperty(const REProperty& p, RESerializeMode mode);
+
 private:
     // Internal helpers (work for classes and reflected structs)
     static void SerializeTypeProperties(JsonWriter& writer, const REType& type, const void* basePtr);
@@ -47,4 +61,6 @@ private:
 
     static void SerializeProperty(JsonWriter& writer, const REProperty& prop, const void* basePtr);
     static void DeserializeProperty(const JsonReader& reader, const REProperty& prop, void* basePtr);
+
+    static bool IsPropertyOverridden(const REProperty& prop, const void* instBase, const void* cdoBase);
 };

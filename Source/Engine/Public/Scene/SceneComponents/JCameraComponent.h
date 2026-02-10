@@ -16,19 +16,19 @@ class JCameraComponent : public JSceneComponent, public ICameraViewSource
 {
     GENERATED_BODY()
 
-    JPROPERTY()
+    JPROPERTY(Category("Projection"))
     EProjectionType m_ProjectionType;
 
     // Perspective
-    JPROPERTY()
+    JPROPERTY(Category("Projection"))
     float m_FOV;
-    JPROPERTY()
+    JPROPERTY(Category("Projection"))
     float m_NearClip;
-    JPROPERTY()
+    JPROPERTY(Category("Projection"))
     float m_FarClip;
 
     // Orthographic
-    JPROPERTY()
+    JPROPERTY(Category("Projection"))
     float m_OrthoHalfHeight;
 
     // Cached matrices

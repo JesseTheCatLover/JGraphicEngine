@@ -13,6 +13,11 @@
 #include <vector>
 
 #include "REMeta.h"
+#include "Core/Math/FQuat.h"
+#include "Core/Math/FTransform.h"
+#include "Core/Math/FVector2.h"
+#include "Core/Math/FVector3.h"
+#include "Core/Math/FVector4.h"
 
 struct FObjectInitializer;
 class JCoreObject;
@@ -47,7 +52,8 @@ using REUpcastFn = const void*(*)(const void* mostDerived);
 struct REEnumValue
 {
     std::string name;
-    std::string valueExpr; // raw expression string (optional)
+    std::string valueExpr;
+    REMetaList meta;
 };
 
 struct REEnum
@@ -83,6 +89,63 @@ struct REProperty
     std::function<const void*(const void*)> getConstPtr;
 
     REMetaList meta;
+
+    // Cached resolved view (editor/script/serialization). Computed on demand.
+    mutable bool bResolvedMetaCached = false;
+    mutable REPropertyMetaResolved ResolvedMeta;
+
+    // Note: last-wins behavior is handled by REMetaSchema.
+    const REPropertyMetaResolved& GetResolvedMeta() const
+    {
+        if (!bResolvedMetaCached)
+        {
+            ResolvedMeta = REMetaSchema::Get().ResolvePropertyMeta(meta);
+            bResolvedMetaCached = true;
+        }
+        return ResolvedMeta;
+    }
+
+    void InvalidateResolvedMetaCache() const
+    {
+        bResolvedMetaCached = false;
+    }
+};
+
+enum class REValueTag : uint8_t
+{
+    Invalid,
+    Int,
+    Int64,
+    Float,
+    Double,
+    Bool,
+    String,
+
+    Vec2, Vec3, Vec4,
+    Quat,
+    Transform,
+
+    EnumInt64,     // enum numeric
+    ObjectUUID     // for ObjectPtr set by UUID
+};
+
+struct REVariant
+{
+    REValueTag tag = REValueTag::Invalid;
+
+    int        i32 = 0;
+    int64_t    i64 = 0;
+    float      f32 = 0.f;
+    double     f64 = 0.0;
+    bool       b   = false;
+
+    std::string s;
+
+    FVector2   v2{};
+    FVector3   v3{};
+    FVector4   v4{};
+    FQuat      q{};
+    FTransform t{};
 };
 
 struct REFunction
@@ -111,6 +174,16 @@ struct REType
     REUpcastFn upcastFromMostDerived = nullptr;
 
     REMetaList meta; // class-level attributes from JCLASS/JSTRUCT
+
+    // Cached resolved view for type-level meta (future-proof; currently schema focuses on properties).
+    mutable bool bResolvedTypeMetaCached = false;
+
+    void InvalidateResolvedTypeMetaCache() const
+    {
+        bResolvedTypeMetaCached = false;
+    }
+
+    mutable JCoreObject* cdo = nullptr; // owned by registry; never freed until shutdown
 
     std::vector<REProperty> properties;
     std::vector<REFunction> functions;
@@ -210,6 +283,11 @@ public:
                       const char* valueName,
                       const char* valueExpr = "");
 
+    void AddEnumValueMeta(const char* enumName,
+                      const char* valueName,
+                      const char* key,
+                      const char* value = "");
+
     // Factory registration
     void SetFactory(const std::type_info& ownerType,
                 std::function<JCoreObject*(const FObjectInitializer&)> factory);
@@ -217,6 +295,9 @@ public:
     // Finalize type graph (resolve property kinds: struct/enum/object pointers)
     // Call once after static registration, early in engine startup.
     void Finalize();
+
+    void ForEachProperty_BaseToDerived(const REType* type,
+        const std::function<void(const REType&, const REProperty&)>& fn) const;
 
     // ---------------- Lookup ----------------
 
@@ -231,6 +312,9 @@ public:
     const REType* GetBaseType(const REType* type) const;
 
     bool IsDerivedFrom(const REType* type, const REType* base) const;
+
+    JCoreObject* GetCDO(const REType* type);
+    const REType* FindMostDerivedType(const JCoreObject& obj) const;
 
     // Factory helper
     JCoreObject* CreateInstanceByTypeName(const std::string& name,

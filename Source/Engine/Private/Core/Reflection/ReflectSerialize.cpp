@@ -275,50 +275,256 @@ static bool ReadValueByTypeName(const JsonReader& reader, const char* name, void
     return false;
 }
 
-// ---------------- Main dispatch ----------------
-
-void ReflectSerialize::SerializeTypeProperties(JsonWriter& writer, const REType& type, const void* ptr)
+static bool EqualsValueByTypeName(const void* a, const void* b, const std::string& typeName)
 {
-    const RETypeRegistry& reg = RETypeRegistry::Get();
+    if (typeName == "int" || typeName == "int32" || typeName == "int32_t")
+        return *reinterpret_cast<const int*>(a) == *reinterpret_cast<const int*>(b);
+    if (typeName == "float")
+        return *reinterpret_cast<const float*>(a) == *reinterpret_cast<const float*>(b);
+    if (typeName == "double")
+        return *reinterpret_cast<const double*>(a) == *reinterpret_cast<const double*>(b);
+    if (typeName == "bool")
+        return *reinterpret_cast<const bool*>(a) == *reinterpret_cast<const bool*>(b);
+    if (typeName == "std::string" || typeName == "string")
+        return *reinterpret_cast<const std::string*>(a) == *reinterpret_cast<const std::string*>(b);
 
-    const REType* cur = &type;
-    const void* curPtr = ptr; // starts as most-derived pointer
+    if (typeName == "FVector2") return *reinterpret_cast<const FVector2*>(a) == *reinterpret_cast<const FVector2*>(b);
+    if (typeName == "FVector3") return *reinterpret_cast<const FVector3*>(a) == *reinterpret_cast<const FVector3*>(b);
+    if (typeName == "FVector4") return *reinterpret_cast<const FVector4*>(a) == *reinterpret_cast<const FVector4*>(b);
+    if (typeName == "FQuat")    return *reinterpret_cast<const FQuat*>(a)    == *reinterpret_cast<const FQuat*>(b);
+    if (typeName == "FTransform") return *reinterpret_cast<const FTransform*>(a) == *reinterpret_cast<const FTransform*>(b);
 
-    while (cur)
+    return false; // unsupported -> treat as different (forces save)
+}
+
+static bool TryGetValueByTypeName(const void* fieldPtr, const std::string& typeName, REVariant& out)
+{
+    if (typeName == "int" || typeName == "int32" || typeName == "int32_t")
+    { out.tag = REValueTag::Int; out.i32 = *reinterpret_cast<const int*>(fieldPtr); return true; }
+
+    if (typeName == "float")
+    { out.tag = REValueTag::Float; out.f32 = *reinterpret_cast<const float*>(fieldPtr); return true; }
+
+    if (typeName == "double")
+    { out.tag = REValueTag::Double; out.f64 = *reinterpret_cast<const double*>(fieldPtr); return true; }
+
+    if (typeName == "bool")
+    { out.tag = REValueTag::Bool; out.b = *reinterpret_cast<const bool*>(fieldPtr); return true; }
+
+    if (typeName == "std::string" || typeName == "string")
+    { out.tag = REValueTag::String; out.s = *reinterpret_cast<const std::string*>(fieldPtr); return true; }
+
+    if (typeName == "FVector2")
+    { out.tag = REValueTag::Vec2; out.v2 = *reinterpret_cast<const FVector2*>(fieldPtr); return true; }
+
+    if (typeName == "FVector3")
+    { out.tag = REValueTag::Vec3; out.v3 = *reinterpret_cast<const FVector3*>(fieldPtr); return true; }
+
+    if (typeName == "FVector4")
+    { out.tag = REValueTag::Vec4; out.v4 = *reinterpret_cast<const FVector4*>(fieldPtr); return true; }
+
+    if (typeName == "FQuat")
+    { out.tag = REValueTag::Quat; out.q = *reinterpret_cast<const FQuat*>(fieldPtr); return true; }
+
+    if (typeName == "FTransform")
+    { out.tag = REValueTag::Transform; out.t = *reinterpret_cast<const FTransform*>(fieldPtr); return true; }
+
+    return false;
+}
+
+static bool TrySetValueByTypeName(void* fieldPtr, const std::string& typeName, const REVariant& in)
+{
+    if (typeName == "int" || typeName == "int32" || typeName == "int32_t")
     {
-        for (const REProperty& prop : cur->properties)
-            SerializeProperty(writer, prop, curPtr);
+        if (in.tag != REValueTag::Int) return false;
+        *reinterpret_cast<int*>(fieldPtr) = in.i32; return true;
+    }
 
-        const REType* base = reg.GetBaseType(cur);
-        if (!base) break;
+    if (typeName == "float")
+    {
+        if (in.tag != REValueTag::Float) return false;
+        *reinterpret_cast<float*>(fieldPtr) = in.f32; return true;
+    }
 
-        // IMPORTANT: adjust pointer for the next base step
-        if (cur->upcastFromMostDerived) // rename later if you want
-            curPtr = cur->upcastFromMostDerived(curPtr);
+    if (typeName == "double")
+    {
+        if (in.tag != REValueTag::Double) return false;
+        *reinterpret_cast<double*>(fieldPtr) = in.f64; return true;
+    }
 
-        cur = base;
+    if (typeName == "bool")
+    {
+        if (in.tag != REValueTag::Bool) return false;
+        *reinterpret_cast<bool*>(fieldPtr) = in.b; return true;
+    }
+
+    if (typeName == "std::string" || typeName == "string")
+    {
+        if (in.tag != REValueTag::String) return false;
+        *reinterpret_cast<std::string*>(fieldPtr) = in.s; return true;
+    }
+
+    if (typeName == "FVector2")
+    {
+        if (in.tag != REValueTag::Vec2) return false;
+        *reinterpret_cast<FVector2*>(fieldPtr) = in.v2; return true;
+    }
+
+    if (typeName == "FVector3")
+    {
+        if (in.tag != REValueTag::Vec3) return false;
+        *reinterpret_cast<FVector3*>(fieldPtr) = in.v3; return true;
+    }
+
+    if (typeName == "FVector4")
+    {
+        if (in.tag != REValueTag::Vec4) return false;
+        *reinterpret_cast<FVector4*>(fieldPtr) = in.v4; return true;
+    }
+
+    if (typeName == "FQuat")
+    {
+        if (in.tag != REValueTag::Quat) return false;
+        *reinterpret_cast<FQuat*>(fieldPtr) = in.q; return true;
+    }
+
+    if (typeName == "FTransform")
+    {
+        if (in.tag != REValueTag::Transform) return false;
+        *reinterpret_cast<FTransform*>(fieldPtr) = in.t; return true;
+    }
+
+    return false;
+}
+
+bool ReflectSerialize::TryGet(const JCoreObject& obj, const REProperty& prop, REVariant& out)
+{
+    const void* basePtr = &obj;
+    const void* fieldPtr = prop.getConstPtr ? prop.getConstPtr(basePtr) : nullptr;
+    if (!fieldPtr) return false;
+
+    switch (prop.kind)
+    {
+        case REPropKind::Value:
+            return TryGetValueByTypeName(fieldPtr, prop.typeName, out);
+
+        case REPropKind::Enum:
+        {
+            if (!prop.enumType) return false;
+            const size_t sz = EnumUnderlyingSizeBytes(*prop.enumType);
+            int64_t v = 0;
+            std::memcpy(&v, fieldPtr, std::min(sz, sizeof(v)));
+            out.tag = REValueTag::EnumInt64;
+            out.i64 = v;
+            return true;
+        }
+
+        case REPropKind::ObjectPtr:
+        {
+            auto* o = *reinterpret_cast<JCoreObject* const*>(fieldPtr);
+            out.tag = REValueTag::ObjectUUID;
+            out.s = o ? o->GetUUID() : "";
+            return true;
+        }
+
+        // ReflectedStruct: UI should recurse; you can return false here.
+        default:
+            return false;
     }
 }
 
-void ReflectSerialize::DeserializeTypeProperties(const JsonReader& reader, const REType& type, void* ptr)
+bool ReflectSerialize::TrySet(JCoreObject& obj, const REProperty& prop, const REVariant& in)
+{
+    void* basePtr = &obj;
+    void* fieldPtr = prop.getPtr ? prop.getPtr(basePtr) : nullptr;
+    if (!fieldPtr) return false;
+
+    switch (prop.kind)
+    {
+        case REPropKind::Value:
+            return TrySetValueByTypeName(fieldPtr, prop.typeName, in);
+
+        case REPropKind::Enum:
+        {
+            if (!prop.enumType) return false;
+            if (in.tag != REValueTag::EnumInt64) return false;
+
+            const size_t sz = EnumUnderlyingSizeBytes(*prop.enumType);
+            int64_t v = in.i64;
+            std::memcpy(fieldPtr, &v, std::min(sz, sizeof(v)));
+            return true;
+        }
+
+        case REPropKind::ObjectPtr:
+        {
+            if (in.tag != REValueTag::ObjectUUID) return false;
+
+            // set by UUID using current resolver (editor can install one too)
+            JCoreObject* resolved = nullptr;
+            if (!in.s.empty() && g_ObjectResolver)
+                resolved = g_ObjectResolver(in.s);
+
+            *reinterpret_cast<JCoreObject**>(fieldPtr) = resolved;
+            return true;
+        }
+
+        default:
+            return false;
+    }
+}
+
+bool ReflectSerialize::ShouldSerializeProperty(const REProperty &p, RESerializeMode mode)
+{
+    const auto& S = REMetaSchema::Get();
+
+    if (S.Has(p.meta, REMetaID::SkipSerialization)) return false;
+    if (S.Has(p.meta, REMetaID::Transient)) return false;
+
+    if (mode == RESerializeMode::SaveGameOnly)
+        return S.Has(p.meta, REMetaID::SaveGame);
+
+    return true;
+}
+
+// ---------------- Main dispatch ----------------
+
+void ReflectSerialize::SerializeTypeProperties(JsonWriter& writer, const REType& type, const void* mostPtr)
 {
     const RETypeRegistry& reg = RETypeRegistry::Get();
 
-    const REType* cur = &type;
-    void* curPtr = ptr;
+    // Build chain base->derived
+    std::vector<const REType*> chain;
+    for (auto t = &type; t != nullptr; t = reg.GetBaseType(t))
+        chain.push_back(t);
+    std::reverse(chain.begin(), chain.end());
 
-    while (cur)
+    for (const REType* t : chain)
     {
-        for (const REProperty& prop : cur->properties)
-            DeserializeProperty(reader, prop, curPtr);
+        const void* thisPtr = (t == &type) ? mostPtr
+                                  : (t->upcastFromMostDerived ? t->upcastFromMostDerived(mostPtr) : mostPtr);
 
-        const REType* base = reg.GetBaseType(cur);
-        if (!base) break;
+        for (const REProperty& prop : t->properties)
+            SerializeProperty(writer, prop, thisPtr);
+    }
+}
 
-        if (cur->upcastFromMostDerived)
-            curPtr = const_cast<void*>(cur->upcastFromMostDerived(curPtr));
+void ReflectSerialize::DeserializeTypeProperties(const JsonReader& reader, const REType& type, void* mostPtr)
+{
+    const RETypeRegistry& reg = RETypeRegistry::Get();
 
-        cur = base;
+    std::vector<const REType*> chain;
+    for (auto t = &type; t != nullptr; t = reg.GetBaseType(t))
+        chain.push_back(t);
+    std::reverse(chain.begin(), chain.end());
+
+    for (const REType* t : chain)
+    {
+        void* thisPtr = mostPtr;
+        if (t != &type && t->upcastFromMostDerived)
+            thisPtr = const_cast<void*>(t->upcastFromMostDerived(mostPtr));
+
+        for (const REProperty& prop : t->properties)
+            DeserializeProperty(reader, prop, thisPtr);
     }
 }
 
@@ -330,6 +536,54 @@ static const void* GetFieldPtrConst(const REProperty& prop, const void* basePtr)
 static void* GetFieldPtr(const REProperty& prop, void* basePtr)
 {
     return prop.getPtr ? prop.getPtr(basePtr) : nullptr;
+}
+
+bool ReflectSerialize::IsPropertyOverridden(const REProperty& prop, const void* instBase, const void* cdoBase)
+{
+    const void* a = prop.getConstPtr ? prop.getConstPtr(instBase) : nullptr;
+    const void* b = prop.getConstPtr ? prop.getConstPtr(cdoBase)  : nullptr;
+    if (!a || !b) return false;
+
+    switch (prop.kind)
+    {
+        case REPropKind::Value:
+            return !EqualsValueByTypeName(a, b, prop.typeName);
+
+        case REPropKind::Enum:
+        {
+            const size_t sz = EnumUnderlyingSizeBytes(*prop.enumType);
+            return std::memcmp(a, b, sz) != 0;
+        }
+
+        case REPropKind::ObjectPtr:
+        {
+            auto* oa = *reinterpret_cast<JCoreObject* const*>(a);
+            auto* ob = *reinterpret_cast<JCoreObject* const*>(b);
+            const std::string ua = oa ? oa->GetUUID() : "";
+            const std::string ub = ob ? ob->GetUUID() : "";
+            return ua != ub;
+        }
+
+        case REPropKind::ReflectedStruct:
+        {
+            // MVP option A: always treat as overridden if we don't have deep compare
+            // return true;
+
+            // Better: recurse compare (recommended)
+            const REType& st = *prop.reflectedType;
+            const RETypeRegistry& reg = RETypeRegistry::Get();
+
+            bool anyDiff = false;
+            reg.ForEachProperty_BaseToDerived(&st, [&](const REType&, const REProperty& sp)
+            {
+                if (anyDiff) return;
+                anyDiff = IsPropertyOverridden(sp, a, b);
+            });
+            return anyDiff;
+        }
+
+        default: return false;
+    }
 }
 
 void ReflectSerialize::SerializeProperty(JsonWriter& writer, const REProperty& prop, const void* basePtr)
@@ -439,8 +693,14 @@ void ReflectSerialize::DeserializeProperty(const JsonReader& reader, const REPro
 
         case REPropKind::ObjectPtr:
         {
-            std::string cur;
-            std::string uuid = reader.Read(fieldName, cur);
+            JCoreObject* current = *reinterpret_cast<JCoreObject**>(fieldPtr);
+
+            std::string curUuid;
+            if (current) curUuid = current->GetUUID();
+
+            std::string uuid = reader.Read(fieldName, curUuid); // default keeps
+            if (uuid == curUuid)
+                return; // unchanged (covers missing too)
 
             JCoreObject* resolved = nullptr;
             if (!uuid.empty() && g_ObjectResolver)

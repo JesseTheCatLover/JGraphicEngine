@@ -101,6 +101,7 @@ struct FunctionInfo {
 struct EnumValueInfo {
     name: String,
     value_expr: Option<String>,
+    attrs: Vec<Attr>, // for JMETA(...) on this value
 }
 
 #[derive(Debug, Clone)]
@@ -546,13 +547,16 @@ fn parse_enum_decl(tokens: &[Token], i: &mut usize, attrs: Vec<Attr>) -> Result<
 }
 
 fn parse_enum_values(body: &[Token]) -> Vec<EnumValueInfo> {
-    // very token-simple:
-    // Enumerator := Ident [ '=' <expr tokens> ] (',' | end)
+    // Enumerator := Ident [ '=' <expr tokens> ] [ trailing meta ] (',' | end)
+    //
+    // MVP enum value meta:
+    //   Value, // JMETA(Key("V"), Flag)
+    // We scan tokens after the value (and optional '= expr') until ',' and extract JMETA(...).
+
     let mut out = Vec::new();
     let mut i = 0;
 
     while i < body.len() {
-        // skip stray commas
         while i < body.len() && body[i].text == "," {
             i += 1;
         }
@@ -561,7 +565,6 @@ fn parse_enum_values(body: &[Token]) -> Vec<EnumValueInfo> {
         }
 
         if body[i].kind != TokKind::Ident {
-            // not an enumerator start; skip token
             i += 1;
             continue;
         }
@@ -570,29 +573,42 @@ fn parse_enum_values(body: &[Token]) -> Vec<EnumValueInfo> {
         i += 1;
 
         let mut value_expr: Option<String> = None;
+
         if i < body.len() && body[i].text == "=" {
             i += 1;
             let start = i;
             while i < body.len() && body[i].text != "," {
-                // stop at end-of-enum-body handled by loop
+                // stop if we encounter JMETA (so meta isn't eaten into expr)
+                if body[i].kind == TokKind::Ident && body[i].text == "JMETA" {
+                    break;
+                }
                 i += 1;
             }
             let expr = tok_text(&body[start..i]).trim().to_string();
             if !expr.is_empty() {
                 value_expr = Some(expr);
             }
-        } else {
-            // consume tokens until ',' if weird stuff occurs (defensive)
-            while i < body.len() && body[i].text != "," {
-                // if we hit another ident directly, likely next enumerator missing comma; break
-                if body[i].kind == TokKind::Ident {
-                    break;
-                }
-                i += 1;
-            }
         }
 
-        out.push(EnumValueInfo { name, value_expr });
+        // trailing meta scan until comma
+        let mut attrs: Vec<Attr> = Vec::new();
+        let mut j = i;
+        while j < body.len() && body[j].text != "," {
+            if body[j].kind == TokKind::Ident && body[j].text == "JMETA" {
+                let mut jj = j;
+                if let Some(a) = parse_marker_attrs(body, &mut jj, "JMETA") {
+                    attrs.extend(a);
+                    j = jj;
+                    continue;
+                }
+            }
+            j += 1;
+        }
+
+        // advance i to comma/end
+        i = j;
+
+        out.push(EnumValueInfo { name, value_expr, attrs });
     }
 
     out
@@ -1443,6 +1459,39 @@ fn emit_generated_cpp_for_enum(header_path: &str, en: &EnumInfo) -> String {
             escape_cpp_string(&v.name),
             escape_cpp_string(v.value_expr.as_deref().unwrap_or(""))
         ));
+
+        // enum value meta from JMETA(...)
+        for a in &v.attrs {
+            if a.name != "JMETA" {
+                continue;
+            }
+            let items = split_meta_args(&a.args_raw);
+            for it in items {
+                let t = it.trim();
+                if t.is_empty() {
+                    continue;
+                }
+                if let Some(lp) = t.find('(') {
+                    let key = t[..lp].trim();
+                    let inside = t[lp + 1..].trim_end_matches(')').trim();
+                    let value = inside.trim().trim_matches('"');
+                    out.push_str(&format!(
+                        "            R.AddEnumValueMeta(\"{}\", \"{}\", \"{}\", \"{}\");\n",
+                        escape_cpp_string(&en.name),
+                        escape_cpp_string(&v.name),
+                        escape_cpp_string(key),
+                        escape_cpp_string(value)
+                    ));
+                } else {
+                    out.push_str(&format!(
+                        "            R.AddEnumValueMeta(\"{}\", \"{}\", \"{}\", \"\");\n",
+                        escape_cpp_string(&en.name),
+                        escape_cpp_string(&v.name),
+                        escape_cpp_string(t)
+                    ));
+                }
+            }
+        }
     }
 
     out.push_str("        }\n");

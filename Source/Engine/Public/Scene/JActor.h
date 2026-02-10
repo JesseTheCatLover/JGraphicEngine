@@ -35,7 +35,7 @@ class JActor : public JCoreObject
     friend class SceneManager;
 
 private:
-    JPROPERTY()
+    JPROPERTY(HiddenInInspector)
     size_t m_VectorIndex; ///< internal index for O(1) removal from scene
 
     JSceneComponent* m_RootComponent = nullptr; ///< Root of the scene component hierarchy
@@ -47,7 +47,7 @@ private:
     // Runtime-added components must be owned here.
     std::vector<TUniquePtr<JActorComponent>> m_RuntimeComponentsOwned;
 
-    JPROPERTY()
+    JPROPERTY(Display("Visibility"), EditAnywhere, Scriptable)
     bool m_bIsVisible = true;
 
     bool m_bPendingDestroy = false;
@@ -460,7 +460,6 @@ public:
 
         // Ensure base fields are correct even if fallback ctor was used
         ptr->SetOwnerActor(this);
-        ptr->SetName(name);
 
         // Ownership + view registration
         m_RuntimeComponentsOwned.emplace_back(std::move(owned));

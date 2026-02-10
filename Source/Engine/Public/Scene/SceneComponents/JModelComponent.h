@@ -32,7 +32,7 @@ public:
     void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const override;
 
 private:
-    JPROPERTY()
+    JPROPERTY(HiddenInInspector)
     std::string m_ModelKey;
     TSharedPtr<ModelResource> m_Model;
     RShaderHandle m_Shader{}; // shader used for all submeshes (for now)

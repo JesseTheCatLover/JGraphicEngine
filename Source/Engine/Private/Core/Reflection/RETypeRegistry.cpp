@@ -3,6 +3,7 @@
 #include "Core/Reflection/RETypeRegistry.h"
 
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 
 #include "Core/FObjectInitTLS.h"
@@ -90,6 +91,7 @@ void RETypeRegistry::AddPropertyMeta(const std::type_info& ownerType,
         if (it->name == propName)
         {
             REAddMeta(it->meta, key, value ? value : "");
+            it->InvalidateResolvedMetaCache();
             return;
         }
     }
@@ -189,8 +191,44 @@ void RETypeRegistry::AddEnumValue(const char* enumName,
     e.values.push_back(std::move(v));
 }
 
+void RETypeRegistry::AddEnumValueMeta(const char* enumName,
+                                      const char* valueName,
+                                      const char* key,
+                                      const char* value)
+{
+    const std::string en = enumName ? enumName : "";
+    if (en.empty() || !valueName || !*valueName || !key || !*key)
+        return;
+
+    auto it = m_Enums.find(en);
+    if (it == m_Enums.end())
+    {
+        // Ensure enum exists even if meta arrives before BeginEnum/AddEnumValue
+        REEnum& e = m_Enums[en];
+        e.name = en;
+        it = m_Enums.find(en);
+    }
+
+    REEnum& e = it->second;
+
+    // Attach to most recent matching value (supports duplicates / reorders)
+    for (auto vit = e.values.rbegin(); vit != e.values.rend(); ++vit)
+    {
+        if (vit->name == valueName)
+        {
+            REAddMeta(vit->meta, key, value ? value : "");
+            return;
+        }
+    }
+
+#ifndef NDEBUG
+    std::cerr << "[RETypeRegistry] AddEnumValueMeta: value not found: " << valueName
+              << " in enum: " << en << "\n";
+#endif
+}
+
 void RETypeRegistry::SetFactory(const std::type_info& ownerType,
-    std::function<JCoreObject*(const FObjectInitializer&)> factory)
+                                std::function<JCoreObject*(const FObjectInitializer&)> factory)
 {
     const auto ownerIdx = std::type_index(ownerType);
     REType& t = EnsureTypeEntry(ownerIdx);
@@ -234,6 +272,22 @@ bool RETypeRegistry::IsDerivedFrom(const REType* type, const REType* base) const
         if (t == base) return true;
     return false;
 }
+
+JCoreObject* RETypeRegistry::GetCDO(const REType* type)
+{
+    if (!type) return nullptr;
+    if (type->cdo) return type->cdo;
+    if (!type->factory) return nullptr;
+
+    // CDO initializer
+    FObjectInitializer init = FObjectInitializer::ForCDO();
+
+    // IMPORTANT: use factory through TLS path
+    JCoreObject* obj = CreateInstanceByTypeName(type->name, init);
+    type->cdo = obj;
+    return obj;
+}
+
 JCoreObject* RETypeRegistry::CreateInstanceByTypeName(const std::string& name,
                                                       const FObjectInitializer& Init) const
 {
@@ -391,6 +445,24 @@ void RETypeRegistry::Finalize()
     }
 }
 
+void RETypeRegistry::ForEachProperty_BaseToDerived(const REType *type,
+    const std::function<void(const REType &, const REProperty &)> &fn) const
+{
+    if (!type) return;
+
+    // Collect chain
+    std::vector<const REType*> chain;
+    for (auto t = type; t != nullptr; t = GetBaseType(t))
+        chain.push_back(t);
+
+    // Reverse: base -> derived
+    std::reverse(chain.begin(), chain.end());
+
+    for (const REType* t : chain)
+        for (const auto& p : t->properties)
+            fn(*t, p);
+}
+
 // ---------------- Debug ----------------
 
 void RETypeRegistry::DebugDumpAllTypes() const
@@ -471,7 +543,11 @@ void RETypeRegistry::DebugDumpAllTypes() const
                       << (e.underlyingType.empty() ? "" : (" : " + e.underlyingType))
                       << "\n";
             for (const auto& v : e.values)
+            {
                 std::cout << "    - " << v.name << (v.valueExpr.empty() ? "" : (" = " + v.valueExpr)) << "\n";
+                for (const auto& m : v.meta)
+                    std::cout << "        meta: " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
+            }
         }
 
         std::cout << "\n";
@@ -491,7 +567,11 @@ void RETypeRegistry::DebugDumpAllTypes() const
                 std::cout << "  meta: " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
 
             for (const auto& v : e.values)
+            {
                 std::cout << "  - " << v.name << (v.valueExpr.empty() ? "" : (" = " + v.valueExpr)) << "\n";
+                for (const auto& m : v.meta)
+                    std::cout << "      meta: " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
+            }
 
             std::cout << "\n";
         }

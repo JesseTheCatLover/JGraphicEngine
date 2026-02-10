@@ -14,7 +14,7 @@ class JRenderableComponent : public JSceneComponent
     GENERATED_BODY()
 
 private:
-    JPROPERTY()
+    JPROPERTY(Category("Rendering"))
     bool m_Visible{true};
     ERenderLayer m_RenderLayer{ERenderLayer::Opaque};
 

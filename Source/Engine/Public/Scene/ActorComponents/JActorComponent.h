@@ -24,8 +24,6 @@ class JActorComponent : public JCoreObject
     friend class JSceneComponent;
 
 private:
-    JPROPERTY()
-    std::string m_Name;
     JActor *m_OwnerActor = nullptr; ///< Actor this component is attached to
 
     bool m_bPendingDestroy = false;
@@ -72,12 +70,6 @@ public:
 
     /** @brief Get the owning actor. */
     [[nodiscard]] JActor *GetOwnerActor() const { return m_OwnerActor; }
-
-    /** @brief Get the name of the component */
-    [[nodiscard]] std::string GetName() const { return m_Name; }
-
-    /** @brief Set the name of the component */
-    void SetName(const std::string &inName) { m_Name = inName; }
 
 protected:
     /** @brief Set the owning actor for this component. */
