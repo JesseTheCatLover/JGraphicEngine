@@ -116,10 +116,10 @@ void EditorPanelTracker::ApplyLayout(EditorHost& host, EditorLayoutModel& layout
                     }
                     case EEditorPanelType::Inspector:
                     {
-                        // auto p = MakeUnique<InspectorPanel>();
-                        // p->OnCreate(host);
-                        // m_PanelsOwned.emplace_back(std::move(p));
-                        // break;
+                        auto p = MakeUnique<InspectorPanel>();
+                        p->OnCreate(host);
+                        m_PanelsOwned.emplace_back(std::move(p));
+                        break;
                     }
                     // case EEditorPanelType::AssetBrowser: { ... } break;
                     // case EEditorPanelType::Console: { ... } break;

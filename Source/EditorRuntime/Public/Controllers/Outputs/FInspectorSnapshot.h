@@ -9,11 +9,17 @@
 
 struct FInspectorRow
 {
+    std::string objectUUID;
+    std::string propName;   // (raw reflected property name)
+
     std::string displayName;
     std::string declaringTypeName;
     std::string typeName;
     std::string valueText;
-    //FPropertyMetadata metadata;
+    bool bReadOnly = false;
+
+    // Already-resolved meta for UI
+    REPropertyMetaResolved meta;
 };
 
 struct FInspectorCategorySnapshot

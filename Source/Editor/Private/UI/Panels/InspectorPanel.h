@@ -4,9 +4,14 @@
 
 #include <string>
 #include <unordered_set>
+#include <unordered_map>
 
 #include "UI/IEditorPanels.h"
 #include "Controllers/Inputs/FInspectorPanelInput.h"
+
+struct FInspectorRow;
+
+struct FStringEditState { std::string buf; };
 
 struct FInspectorCategorySnapshot;
 struct FInspectorOutput;
@@ -19,11 +24,13 @@ class InspectorPanel : public IEditorPanel
     // UI-only persistent state
     std::unordered_set<size_t> m_OpenCategories;
 
+    std::unordered_map<size_t, FStringEditState> m_StringEdits;
+    static size_t HashRowKey(const FInspectorRow& row);
     static size_t HashCategory(const std::string& s);
 
-    void DrawSnapshot(const FInspectorSnapshot& snap);
-    void DrawCategory(size_t objectIndex, const char* name, const FInspectorCategorySnapshot& cat);
-    void DrawRow(const struct FInspectorRow& row);
+    void DrawSnapshot(const FInspectorSnapshot& snap, FInspectorPanelInput& input);
+    void DrawCategory(size_t objectIndex, const char* name, const FInspectorCategorySnapshot& cat, FInspectorPanelInput& input);
+    void DrawRow(const FInspectorRow& row, FInspectorPanelInput& input);
 
 public:
     [[nodiscard]] const char* GetName() const override { return "Inspector###Inspector"; }
