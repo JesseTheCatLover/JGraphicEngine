@@ -116,18 +116,24 @@ bool SerializationSubsystem::SaveScene(const FSceneSaveInfo& info, const std::st
             if (const JActor* parent = actor->GetParentActor())
                 writer.Write("parent_actor", parent->GetUUID());
 
-            if (JSceneComponent* root = actor->GetRootComponent())
-                writer.Write("root_component", root->GetUUID());
+            // if (JSceneComponent* root = actor->GetRootComponent())
+            //     writer.Write("root_component", root->GetUUID());
         }
 
         // Scene component hierarchy
         if (auto* sceneComp = dynamic_cast<const JSceneComponent*>(obj))
         {
             if (JActor* owner = sceneComp->GetOwnerActor())
+            {
                 writer.Write("owner_actor", owner->GetUUID());
 
-            if (JSceneComponent* parentComp = sceneComp->GetParent())
-                writer.Write("parent_component", parentComp->GetUUID());
+                // If parent is the owner's root, we do NOT write parent_component
+                if (JSceneComponent* parentComp = sceneComp->GetParent())
+                {
+                    if (parentComp != owner->GetRootComponent())
+                        writer.Write("parent_component", parentComp->GetUUID());
+                }
+            }
         }
 
         // Logic components (non-scene actor components)
@@ -229,7 +235,7 @@ bool SerializationSubsystem::LoadScene(const std::string& filePath, FSceneLoadRe
             rel.parentActorUUID     = relReader.Read<std::string>("parent_actor", "");
             rel.ownerActorUUID      = relReader.Read<std::string>("owner_actor", "");
             rel.parentComponentUUID = relReader.Read<std::string>("parent_component", "");
-            rel.rootComponentUUID   = relReader.Read<std::string>("root_component", "");
+            // rel.rootComponentUUID   = relReader.Read<std::string>("root_component", "");
         }
 
         outResult.relations.push_back(std::move(rel));

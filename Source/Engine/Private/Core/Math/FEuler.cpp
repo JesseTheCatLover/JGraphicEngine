@@ -16,9 +16,9 @@ FRotator FEuler::ToRotator() const
 FEuler FEuler::MakeFromRotator(const FRotator& rotator)
 {
     return FEuler{
-        FMath::Radians(rotator.Pitch),
-        FMath::Radians(rotator.Yaw),
-        FMath::Radians(rotator.Roll)
+        FMath::Radians(rotator.pitch),
+        FMath::Radians(rotator.yaw),
+        FMath::Radians(rotator.roll)
     };
 }
 

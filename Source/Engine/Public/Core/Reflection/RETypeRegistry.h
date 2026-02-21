@@ -19,6 +19,7 @@
 #include "Core/Math/FVector3.h"
 #include "Core/Math/FVector4.h"
 
+struct REVariant;
 struct FObjectInitializer;
 class JCoreObject;
 
@@ -88,6 +89,10 @@ struct REProperty
     std::function<void*(void*)> getPtr;
     std::function<const void*(const void*)> getConstPtr;
 
+    using SetFromValueFn = bool(*)(void* basePtr, const REVariant& v);
+
+    SetFromValueFn setFromValue = nullptr;
+
     REMetaList meta;
 
     // Cached resolved view (editor/script/serialization). Computed on demand.
@@ -133,7 +138,7 @@ struct REVariant
 {
     REValueTag tag = REValueTag::Invalid;
 
-    int        i32 = 0;
+    int32_t    i32 = 0;
     int64_t    i64 = 0;
     float      f32 = 0.f;
     double     f64 = 0.0;

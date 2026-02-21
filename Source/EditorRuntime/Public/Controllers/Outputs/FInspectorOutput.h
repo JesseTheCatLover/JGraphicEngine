@@ -3,21 +3,15 @@
 #pragma once
 
 #include <cstdint>
-
-struct FInspectorSnapshot;
+#include "Controllers/InspectorProviders/FInspectorDocument.h"
 
 struct FInspectorOutput
 {
     bool bHasSelection = false;
-    bool bHasSnapshot = false;
-
-    // Keep it local to avoid include coupling.
     uint64_t selectedActor = 0;
 
-    // Snapshot is owned elsewhere
-    // Keep pointer stable for the frame.
-    const FInspectorSnapshot* snapshot = nullptr;
+    bool bHasDocument = false;
+    const FInspectorDocument* document = nullptr;
 
-    // Optional: status message to show in panel
     const char* statusText = nullptr;
 };

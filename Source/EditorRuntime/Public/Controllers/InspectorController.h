@@ -3,24 +3,25 @@
 #pragma once
 
 #include "PanelRegistry.h"
-#include "Controllers/Outputs/FInspectorSnapshot.h"
+#include "Core/Memory/SmartPointers.h"
+#include "InspectorProviders/FInspectorDocument.h"
 
+class ActorInspectorProvider;
 struct FInspectorPanelInput;
 struct FInspectorOutput;
 class EditorHost;
-
 
 class InspectorController
 {
     PanelID m_PanelID = 0;
     EditorHost& m_Host;
 
-
-    // Per-panel persistent snapshot storage
-    FInspectorSnapshot m_Snapshot;
+    TUniquePtr<ActorInspectorProvider> m_ActorProvider;
+    FInspectorDocument m_Doc;
 
 public:
     InspectorController(PanelID id, EditorHost& host);
+    ~InspectorController();
 
 
     void Update(float deltaTime, const FInspectorPanelInput& input, FInspectorOutput& out);

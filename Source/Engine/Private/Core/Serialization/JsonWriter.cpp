@@ -130,7 +130,7 @@ void JsonWriter::WriteMatrix4(const std::string &key, const FMatrix4 &matrix)
 
 void JsonWriter::WriteRotator(const std::string& key, const FRotator& rotator)
 {
-    (*m_Stack.top())[key] = { rotator.Pitch, rotator.Yaw, rotator.Roll };
+    (*m_Stack.top())[key] = { rotator.pitch, rotator.yaw, rotator.roll };
 }
 
 void JsonWriter::WriteQuat(const std::string& key, const FQuat& quat)

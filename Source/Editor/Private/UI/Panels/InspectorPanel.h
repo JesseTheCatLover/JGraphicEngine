@@ -2,42 +2,61 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include "UI/IEditorPanels.h"
 #include "Controllers/Inputs/FInspectorPanelInput.h"
+#include "Controllers/InspectorProviders/FInspectorDocument.h"
 
-struct FInspectorRow;
+class EditorHost;
 
-struct FStringEditState { std::string buf; };
-
-struct FInspectorCategorySnapshot;
-struct FInspectorOutput;
-struct FInspectorSnapshot;
-
-class InspectorPanel : public IEditorPanel
+class InspectorPanel final : public IEditorPanel
 {
-    std::string m_PanelKey = "Inspector";
-
-    // UI-only persistent state
-    std::unordered_set<size_t> m_OpenCategories;
-
-    std::unordered_map<size_t, FStringEditState> m_StringEdits;
-    static size_t HashRowKey(const FInspectorRow& row);
-    static size_t HashCategory(const std::string& s);
-
-    void DrawSnapshot(const FInspectorSnapshot& snap, FInspectorPanelInput& input);
-    void DrawCategory(size_t objectIndex, const char* name, const FInspectorCategorySnapshot& cat, FInspectorPanelInput& input);
-    void DrawRow(const FInspectorRow& row, FInspectorPanelInput& input);
-
 public:
     [[nodiscard]] const char* GetName() const override { return "Inspector###Inspector"; }
-    [[nodiscard]] const char* GetPanelKey() const override { return m_PanelKey.c_str(); }
-
+    [[nodiscard]] const char* GetPanelKey() const override { return "Inspector"; }
     [[nodiscard]] EPanelDockGroup GetDockGroup() const override { return EPanelDockGroup::Single; }
 
     void OnDestroy(EditorHost& host) override;
     void Draw(EditorHost& host) override;
+
+private:
+    // ---------------- UI persistent state ----------------
+    std::unordered_set<uint64_t> m_OpenCategoryKeys;          // expanded category headers
+    std::unordered_map<uint64_t, std::string> m_StringEdits;  // per-row string edit buffer
+    uint64_t m_SelectedTargetID = 0;
+    char     m_SearchBuf[128] = {};
+
+private:
+    // ---------------- helpers ----------------
+    static bool PassesSearch(const FInspectorRow& row, const char* search);
+
+    static const FInspectorTarget* FindTargetByID(const FInspectorDocument& doc, uint64_t targetID);
+    static const FInspectorTarget* FindActorTarget(const FInspectorDocument& doc);
+
+    // scene subtree traversal (only SceneComponent group)
+    static void BuildSceneChildrenMap(
+        const FInspectorDocument& doc,
+        std::unordered_map<uint64_t, std::vector<const FInspectorTarget*>>& outChildren);
+
+private:
+    // ---------------- drawing ----------------
+    void DrawComponentSection(const FInspectorDocument& doc);
+
+    // Properties UI: always draw ONLY categories+rows (no component headers / no per-component collapsibles)
+    void DrawPropertiesForSelection(const FInspectorDocument& doc, FInspectorPanelInput& input);
+
+    void DrawMergedCategories(
+        const std::vector<const FInspectorTarget*>& targetsInOrder,
+        FInspectorPanelInput& input);
+
+    void DrawCategoryMerged(uint64_t categoryID, const std::string& categoryName,
+                            const std::vector<const FInspectorRow*>& rows,
+                            FInspectorPanelInput& input);
+
+    void DrawRow(const FInspectorRow& row, FInspectorPanelInput& input);
 };

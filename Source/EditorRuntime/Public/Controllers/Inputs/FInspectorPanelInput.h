@@ -4,17 +4,25 @@
 
 #include "FPanelInputBase.h"
 #include "Core/Reflection/RETypeRegistry.h"
+#include <cstdint>
+
+enum class EInspectorTargetKind : uint8_t { ObjectUUID, AssetKey };
+
+struct FInspectorWriteHandle
+{
+    uint32_t providerID = 0;              // routes to correct provider
+    EInspectorTargetKind kind = EInspectorTargetKind::ObjectUUID;
+
+    uint64_t contextRuntimeID = 0;
+    std::string primaryID;                // uuid / asset key / entity id string
+    std::string declaringTypeName;
+    std::string propName;
+    // Later: uint32_t propId; (hashed, stable)
+};
 
 struct FInspectorEditCommand
 {
-    // Which object block (Actor / Component) to modify
-    std::string objectUUID;
-
-    // Which exact property
-    std::string declaringTypeName; // "JActor" / base class name etc
-    std::string propName;          // raw reflected name (not display)
-
-    // New value payload
+    FInspectorWriteHandle handle;
     REVariant value;
 };
 

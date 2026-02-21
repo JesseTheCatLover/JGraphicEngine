@@ -128,18 +128,18 @@ template <typename BasicJsonType>
 inline void to_json(BasicJsonType& j, const FRotator& r)
 {
     j = BasicJsonType{
-        {"pitch", r.Pitch},
-        {"yaw",   r.Yaw},
-        {"roll",  r.Roll}
+        {"pitch", r.pitch},
+        {"yaw",   r.yaw},
+        {"roll",  r.roll}
     };
 }
 
 template <typename BasicJsonType>
 inline void from_json(const BasicJsonType& j, FRotator& r)
 {
-    j.at("pitch").get_to(r.Pitch);
-    j.at("yaw").get_to(r.Yaw);
-    j.at("roll").get_to(r.Roll);
+    j.at("pitch").get_to(r.pitch);
+    j.at("yaw").get_to(r.yaw);
+    j.at("roll").get_to(r.roll);
 }
 
 // =========================================================

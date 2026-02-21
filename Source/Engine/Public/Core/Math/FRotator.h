@@ -20,23 +20,23 @@ struct FQuat;
  */
 struct FRotator
 {
-    float Pitch{0.0f};  ///< Rotation around Y-axis (degrees)
-    float Yaw{0.0f};    ///< Rotation around Z-axis (degrees)
-    float Roll{0.0f};   ///< Rotation around X-axis (degrees)
+    float pitch{0.0f};  ///< Rotation around Y-axis (degrees)
+    float yaw{0.0f};    ///< Rotation around Z-axis (degrees)
+    float roll{0.0f};   ///< Rotation around X-axis (degrees)
 
     /** Default constructor */
     FRotator() = default;
 
     /** Construct from components */
     constexpr FRotator(float pitch, float yaw, float roll)
-        : Pitch(pitch), Yaw(yaw), Roll(roll) {}
+        : pitch(pitch), yaw(yaw), roll(roll) {}
 
     /** Construct from FVector3 (interpreted as degrees) */
     explicit FRotator(const FVector3& vec)
-        : Pitch(vec.x), Yaw(vec.y), Roll(vec.z) {}
+        : pitch(vec.x), yaw(vec.y), roll(vec.z) {}
 
     /** Convert to FVector3 (degrees) */
-    [[nodiscard]] FVector3 ToVector3() const { return {Pitch, Yaw, Roll}; }
+    [[nodiscard]] FVector3 ToVector3() const { return {pitch, yaw, roll}; }
 
     /** Convert to FEuler (radians). */
     [[nodiscard]] FEuler ToEuler() const;
@@ -48,20 +48,20 @@ struct FRotator
     [[nodiscard]] std::string ToString() const
     {
         std::ostringstream ss;
-        ss << "FRotator(Pitch=" << Pitch << ", Yaw=" << Yaw << ", Roll=" << Roll << ")";
+        ss << "FRotator(Pitch=" << pitch << ", Yaw=" << yaw << ", Roll=" << roll << ")";
         return ss.str();
     }
 
     /** Equality operators */
     bool operator==(const FRotator& other) const
     {
-        return Pitch == other.Pitch && Yaw == other.Yaw && Roll == other.Roll;
+        return pitch == other.pitch && yaw == other.yaw && roll == other.roll;
     }
 
     bool operator!=(const FRotator& other) const { return !(*this == other); }
 
-    constexpr FRotator operator+(const FRotator& rot) const { return {Pitch + rot.Pitch, Yaw + rot.Yaw, Roll + rot.Roll}; }
-    constexpr FRotator operator-(const FRotator& rot) const { return {Pitch - rot.Pitch, Yaw - rot.Yaw, Roll - rot.Roll}; }
+    constexpr FRotator operator+(const FRotator& rot) const { return {pitch + rot.pitch, yaw + rot.yaw, roll + rot.roll}; }
+    constexpr FRotator operator-(const FRotator& rot) const { return {pitch - rot.pitch, yaw - rot.yaw, roll - rot.roll}; }
 
-    constexpr FRotator operator*(const float& scale) const { return {Pitch * scale, Yaw * scale, Roll * scale}; }
+    constexpr FRotator operator*(const float& scale) const { return {pitch * scale, yaw * scale, roll * scale}; }
 };

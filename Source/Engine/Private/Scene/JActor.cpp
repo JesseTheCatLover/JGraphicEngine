@@ -1,3 +1,4 @@
+
 // Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #include "Scene/JActor.h"
@@ -12,6 +13,18 @@ JActor::JActor() : m_VectorIndex(0)
 {
     // Ensure root component exists
     SetupRootComponent();
+
+    // Root is runtime-only; actor transform is serialized.
+    // Keep root in sync with the actor transform at construction.
+    ApplyActorTransformToRoot();
+}
+
+void JActor::ApplyActorTransformToRoot()
+{
+    if (!m_RootComponent) return;
+
+    // Root is the runtime representation of the actor's transform.
+    m_RootComponent->SetWorldTransform(m_ActorTransform);
 }
 
 void JActor::SetupRootComponent()
@@ -47,8 +60,7 @@ void JActor::RegisterComponent(JActorComponent* comp, JSceneComponent* attachPar
         if (sc == m_RootComponent)
         {
             sc->ClearPendingAttachParent();
-            if (!contains(sc, m_SceneComponents))
-                m_SceneComponents.push_back(sc);
+            // DO NOT push root into m_SceneComponents
             return; // root never attaches
         }
 
@@ -215,7 +227,18 @@ bool JActor::AttachToActor(JActor* newParent)
 
     // Transform parenting: attach this actor's root to parent's root
     if (m_RootComponent && m_ParentActor->m_RootComponent)
+    {
+        const FTransform worldBefore = m_RootComponent->GetWorldTransform();
+
         m_RootComponent->AttachToComponent(m_ParentActor->m_RootComponent);
+
+        // Restore the serialized world transform after re-parenting
+        m_RootComponent->SetWorldTransform(worldBefore);
+    }
+
+    // // Actor transform is serialized; keep it in sync.
+    // if (m_RootComponent)
+    //     m_ActorTransform = m_RootComponent->GetWorldTransform();
 
     return true;
 }
@@ -232,7 +255,17 @@ void JActor::DetachFromParentActor()
 
     // Detach root from the parent component; become world/root-space
     if (m_RootComponent)
+    {
+        const FTransform worldBefore = m_RootComponent->GetWorldTransform();
+
         m_RootComponent->AttachToComponent(nullptr);
+
+        m_RootComponent->SetWorldTransform(worldBefore);
+    }
+
+    // Actor transform is serialized; keep it in sync.
+    // if (m_RootComponent)
+    //     m_ActorTransform = m_RootComponent->GetWorldTransform();
 }
 
 void JActor::ExecuteDestroy()
@@ -325,6 +358,14 @@ void JActor::FlushDestroyedComponents()
 
         ++i;
     }
+}
+
+void JActor::PostLoad()
+{
+    JCoreObject::PostLoad();
+
+    if (m_RootComponent)
+        m_RootComponent->SetWorldTransform(m_ActorTransform);
 }
 
 void JActor::GatherRenderables(IRenderSubmission &submission, const FRenderContext &ctx) const

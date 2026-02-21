@@ -7,9 +7,9 @@
 FEuler FRotator::ToEuler() const
 {
     return {
-        FMath::Radians(Pitch),
-        FMath::Radians(Yaw),
-        FMath::Radians(Roll)
+        FMath::Radians(pitch),
+        FMath::Radians(yaw),
+        FMath::Radians(roll)
     };
 }
 
