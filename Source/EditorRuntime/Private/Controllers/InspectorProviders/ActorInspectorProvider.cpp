@@ -359,6 +359,9 @@ static JCoreObject* FindTargetObjectByUUID(JActor& actor, const std::string& uui
 {
     if (actor.GetUUID() == uuid) return &actor;
 
+    JSceneComponent* root = actor.GetRootComponent();
+    if (root && root->GetUUID() == uuid) return root;
+
     for (JSceneComponent* sc : actor.GetSceneComponents())
         if (sc && sc->GetUUID() == uuid)
             return sc;
@@ -369,6 +372,7 @@ static JCoreObject* FindTargetObjectByUUID(JActor& actor, const std::string& uui
 
     return nullptr;
 }
+
 static REProperty* FindPropertyMutable(RETypeRegistry& reg, JCoreObject& obj, const std::string& declaringTypeName, const std::string& propName)
 {
     const REType* most = obj.GetREType();
@@ -562,6 +566,99 @@ static void BuildTargetFromObject(
     });
 }
 
+static void BuildActorTransformHeaderRows(
+    uint32_t providerID,
+    uint64_t contextActorID,
+    JActor& actor,
+    FInspectorTarget& actorTarget)
+{
+    // Dedicated top "Essentials" rows for actor transform (not reflected category rows).
+    // These are injected into a synthetic category and marked as Header so the panel
+    // can draw them in a special block above normal categories.
+    FInspectorCategory essentials;
+    essentials.name = "__Essentials";
+    essentials.categoryID = HashString64(actor.GetUUID() + "::cat::__Essentials");
+
+    // Position
+    {
+        FInspectorRow row;
+        row.rowID = HashString64(actor.GetUUID() + "::manual::__ActorPosition");
+        row.label = "Position";
+        row.rawName = "__ActorPosition";
+        row.widget = EInspectorWidget::Vec3;
+        row.presentation = EInspectorRowPresentation::Header;
+        row.bReadOnly = false;
+        row.bMixed = false;
+
+        row.value = {};
+        row.value.tag = REValueTag::Vec3;
+        row.value.v3 = actor.GetActorLocation();
+
+        row.write.contextRuntimeID = contextActorID;
+        row.write.providerID = providerID;
+        row.write.kind = EInspectorTargetKind::ObjectUUID;
+        row.write.primaryID = actor.GetUUID();
+        row.write.declaringTypeName = "__ManualActor";
+        row.write.propName = "__ActorPosition";
+
+        essentials.rows.push_back(std::move(row));
+    }
+
+    // Rotation (shown as Euler/Rotator vec3)
+    {
+        FInspectorRow row;
+        row.rowID = HashString64(actor.GetUUID() + "::manual::__ActorRotation");
+        row.label = "Rotation";
+        row.rawName = "__ActorRotation";
+        row.widget = EInspectorWidget::Vec3;
+        row.presentation = EInspectorRowPresentation::Header;
+        row.bReadOnly = false;
+        row.bMixed = false;
+
+        const FRotator r = actor.GetActorRotation();
+
+        row.value = {};
+        row.value.tag = REValueTag::Vec3;
+        row.value.v3 = FVector3(r.pitch, r.yaw, r.roll);
+
+        row.write.contextRuntimeID = contextActorID;
+        row.write.providerID = providerID;
+        row.write.kind = EInspectorTargetKind::ObjectUUID;
+        row.write.primaryID = actor.GetUUID();
+        row.write.declaringTypeName = "__ManualActor";
+        row.write.propName = "__ActorRotation";
+
+        essentials.rows.push_back(std::move(row));
+    }
+
+    // Scale
+    {
+        FInspectorRow row;
+        row.rowID = HashString64(actor.GetUUID() + "::manual::__ActorScale");
+        row.label = "Scale";
+        row.rawName = "__ActorScale";
+        row.widget = EInspectorWidget::Vec3;
+        row.presentation = EInspectorRowPresentation::Header;
+        row.bReadOnly = false;
+        row.bMixed = false;
+
+        row.value = {};
+        row.value.tag = REValueTag::Vec3;
+        row.value.v3 = actor.GetActorScale();
+
+        row.write.contextRuntimeID = contextActorID;
+        row.write.providerID = providerID;
+        row.write.kind = EInspectorTargetKind::ObjectUUID;
+        row.write.primaryID = actor.GetUUID();
+        row.write.declaringTypeName = "__ManualActor";
+        row.write.propName = "__ActorScale";
+
+        essentials.rows.push_back(std::move(row));
+    }
+
+    actorTarget.categories.insert(actorTarget.categories.begin(), std::move(essentials));
+}
+
 static void BuildSceneTreeTargets(
     uint32_t providerID,
     uint64_t contextActorID,
@@ -720,6 +817,10 @@ void ActorInspectorProvider::BuildDocument(const FInspectorSelection& sel, FInsp
         t.title     = t.listLabel;
 
         BuildTargetFromObject(GetProviderID(), sel.runtimeID, *actor, t.title.c_str(), t);
+
+        // Inject manual actor transform rows as top header rows
+        BuildActorTransformHeaderRows(GetProviderID(), sel.runtimeID, *actor, t);
+
         outDoc.targets.push_back(std::move(t));
     }
 
@@ -741,6 +842,28 @@ void ActorInspectorProvider::ApplyEdit(const FInspectorEditCommand& cmd)
 
     JActor* actor = queries.TryGetActor(cmd.handle.contextRuntimeID);
     if (!actor) return;
+
+    // Manual actor transform routing (top Essentials block)
+    if (cmd.handle.primaryID == actor->GetUUID() && cmd.handle.declaringTypeName == "__ManualActor")
+    {
+        if (cmd.handle.propName == "__ActorPosition" && cmd.value.tag == REValueTag::Vec3)
+        {
+            actor->SetActorLocation(cmd.value.v3);
+            return;
+        }
+
+        if (cmd.handle.propName == "__ActorRotation" && cmd.value.tag == REValueTag::Vec3)
+        {
+            actor->SetActorRotation(FRotator(cmd.value.v3.x, cmd.value.v3.y, cmd.value.v3.z));
+            return;
+        }
+
+        if (cmd.handle.propName == "__ActorScale" && cmd.value.tag == REValueTag::Vec3)
+        {
+            actor->SetActorScale(cmd.value.v3);
+            return;
+        }
+    }
 
     std::vector<JCoreObject*> comps;
     queries.TryGetActorComponents(cmd.handle.contextRuntimeID, comps);

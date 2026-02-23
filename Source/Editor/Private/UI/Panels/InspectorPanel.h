@@ -47,8 +47,10 @@ private:
     // ---------------- drawing ----------------
     void DrawComponentSection(const FInspectorDocument& doc);
 
-    // Properties UI: always draw ONLY categories+rows (no component headers / no per-component collapsibles)
+    // Properties UI: draw top header rows (Essentials) + categories
     void DrawPropertiesForSelection(const FInspectorDocument& doc, FInspectorPanelInput& input);
+
+    void DrawHeaderRows(const std::vector<const FInspectorRow*>& rows, FInspectorPanelInput& input);
 
     void DrawMergedCategories(
         const std::vector<const FInspectorTarget*>& targetsInOrder,

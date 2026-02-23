@@ -19,10 +19,14 @@
 static bool BeginBox(const char* id, float height = 0.0f)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(6, 4));
     ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(70, 70, 70, 255));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(34, 34, 34, 140));
+    ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(72, 72, 72, 255));
     const bool ok = ImGui::BeginChild(id, ImVec2(0, height), ImGuiChildFlags_Border, ImGuiWindowFlags_None);
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar(3);
     return ok;
 }
 
@@ -223,7 +227,7 @@ void InspectorPanel::Draw(EditorHost& host)
     ImGui::InputTextWithHint("##InspectorSearch", "Search properties...", m_SearchBuf, IM_ARRAYSIZE(m_SearchBuf));
     ImGui::Spacing();
 
-    // Properties (ONLY categories + rows)
+    // Properties (header rows + categories)
     DrawPropertiesForSelection(doc, input);
 
     if (out->statusText && out->statusText[0] != '\0')
@@ -301,8 +305,6 @@ void InspectorPanel::DrawPropertiesForSelection(const FInspectorDocument& doc, F
     if (!selected)
         return;
 
-    ImGui::SeparatorText("Properties");
-
     if (!BeginBox("##InspectorPropsBox", 0.0f))
     {
         EndBox();
@@ -356,9 +358,57 @@ void InspectorPanel::DrawPropertiesForSelection(const FInspectorDocument& doc, F
         targetsInOrder.push_back(selected);
     }
 
+    // Draw top header rows first (e.g. Actor Transform essentials)
+    {
+        std::vector<const FInspectorRow*> headerRows;
+        headerRows.reserve(8);
+
+        for (const FInspectorTarget* t : targetsInOrder)
+        {
+            if (!t) continue;
+
+            for (const auto& cat : t->categories)
+            {
+                for (const auto& row : cat.rows)
+                {
+                    if (row.presentation != EInspectorRowPresentation::Header)
+                        continue;
+
+                    if (!PassesSearch(row, m_SearchBuf))
+                        continue;
+
+                    headerRows.push_back(&row);
+                }
+            }
+        }
+
+        DrawHeaderRows(headerRows, input);
+    }
+
+    // Then draw normal reflected categories
     DrawMergedCategories(targetsInOrder, input);
 
     EndBox();
+}
+
+void InspectorPanel::DrawHeaderRows(const std::vector<const FInspectorRow*>& rows, FInspectorPanelInput& input)
+{
+    if (rows.empty())
+        return;
+
+    // Dedicated "Essentials" strip
+    if (BeginPropsTable("##InspectorHeaderRowsTable"))
+    {
+        for (const FInspectorRow* pr : rows)
+        {
+            if (!pr) continue;
+            DrawRow(*pr, input);
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
 }
 
 void InspectorPanel::DrawMergedCategories(
@@ -409,7 +459,12 @@ void InspectorPanel::DrawMergedCategories(
             auto& dst = merged[idx].rows;
             dst.reserve(dst.size() + cat.rows.size());
             for (const auto& row : cat.rows)
+            {
+                if (row.presentation == EInspectorRowPresentation::Header)
+                    continue; // headers are drawn separately in top block
+
                 dst.push_back(&row);
+            }
         }
     }
 
@@ -422,6 +477,10 @@ void InspectorPanel::DrawCategoryMerged(uint64_t categoryID, const std::string& 
                                        const std::vector<const FInspectorRow*>& rows,
                                        FInspectorPanelInput& input)
 {
+    // Do not show the synthetic category used to transport header rows
+    if (categoryName == "__Essentials")
+        return;
+
     // open state by categoryID (since categories are merged globally on the page)
     const uint64_t key = categoryID;
     const bool wasOpen = (m_OpenCategoryKeys.find(key) != m_OpenCategoryKeys.end());
@@ -443,9 +502,6 @@ void InspectorPanel::DrawCategoryMerged(uint64_t categoryID, const std::string& 
         {
             if (!pr) continue;
             const FInspectorRow& row = *pr;
-
-            if (row.presentation == EInspectorRowPresentation::Header)
-                continue;
 
             if (!PassesSearch(row, m_SearchBuf))
                 continue;
