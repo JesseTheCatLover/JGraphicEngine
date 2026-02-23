@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <cfloat>
 #include <unordered_map>
 
 #include "imgui.h"
@@ -225,7 +226,12 @@ void InspectorPanel::Draw(EditorHost& host)
     // Components list (selection)
     DrawComponentSection(doc);
 
+    // Properties Search bar
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 1.0f)); // lower Y = shorter input height
+    ImGui::SetNextItemWidth(-FLT_MIN); // fill available panel width
     ImGui::InputTextWithHint("##InspectorSearch", "Search", m_SearchBuf, IM_ARRAYSIZE(m_SearchBuf));
+    ImGui::PopStyleVar();
+
     ImGui::Spacing();
 
     // Properties (header rows + categories)
@@ -246,7 +252,7 @@ void InspectorPanel::DrawComponentSection(const FInspectorDocument& doc)
 {
     ImGui::SeparatorText("Component Section");
 
-    if (!BeginBox("##InspectorComponentsBox", 150.0f))
+    if (!BeginBox("##InspectorComponentsBox", m_ComponentSectionHeight))
     {
         EndBox();
         return;
@@ -289,6 +295,42 @@ void InspectorPanel::DrawComponentSection(const FInspectorDocument& doc)
     }
 
     EndBox();
+    // Resize handle (bottom edge)
+    ImGui::PushID("InspectorComponentsResize");
+
+    const float handleH = 6.0f;
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImVec2 avail = ImGui::GetContentRegionAvail();
+
+    // full-width invisible handle
+    ImGui::InvisibleButton("##ResizeHandle", ImVec2(avail.x, handleH));
+
+    const bool hovered = ImGui::IsItemHovered();
+    const bool active  = ImGui::IsItemActive();
+
+    if (hovered || active)
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+
+    // Optional visual line/strip
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImU32 col = active ? IM_COL32(140, 140, 140, 255)
+                       : hovered ? IM_COL32(110, 110, 110, 255)
+                                 : IM_COL32(80, 80, 80, 180);
+
+    dl->AddRectFilled(p, ImVec2(p.x + avail.x, p.y + handleH), col);
+
+    // Drag logic
+    if (active)
+    {
+        m_ComponentSectionHeight += ImGui::GetIO().MouseDelta.y;
+
+        // clamp so it doesn't collapse or eat the whole panel
+        const float minH = 80.0f;
+        const float maxH = 500.0f; // or compute dynamically
+        m_ComponentSectionHeight = std::clamp(m_ComponentSectionHeight, minH, maxH);
+    }
+
+    ImGui::PopID();
 }
 
 void InspectorPanel::DrawPropertiesForSelection(const FInspectorDocument& doc, FInspectorPanelInput& input)
