@@ -21,6 +21,7 @@ class JTransformComponent : public JActorComponent
 
 private:
     /** Local transform storing position, rotation, and scale. */
+    JPROPERTY(HiddenToInspector)
     FTransform m_LocalTransform;
 
 public:

@@ -1,5 +1,4 @@
-
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "Scene/JActor.h"
 #include "Scene/SceneComponents/JSceneComponent.h"
@@ -13,18 +12,6 @@ JActor::JActor() : m_VectorIndex(0)
 {
     // Ensure root component exists
     SetupRootComponent();
-
-    // Root is runtime-only; actor transform is serialized.
-    // Keep root in sync with the actor transform at construction.
-    ApplyActorTransformToRoot();
-}
-
-void JActor::ApplyActorTransformToRoot()
-{
-    if (!m_RootComponent) return;
-
-    // Root is the runtime representation of the actor's transform.
-    m_RootComponent->SetWorldTransform(m_ActorTransform);
 }
 
 void JActor::SetupRootComponent()
@@ -60,8 +47,7 @@ void JActor::RegisterComponent(JActorComponent* comp, JSceneComponent* attachPar
         if (sc == m_RootComponent)
         {
             sc->ClearPendingAttachParent();
-            // DO NOT push root into m_SceneComponents
-            return; // root never attaches
+            return; // root never goes into m_SceneComponents and never attaches
         }
 
         // Resolve parent using: explicit > pending SetupAttachment > root fallback
@@ -196,11 +182,11 @@ void JActor::RemoveRuntimeOwnedComponent(JActorComponent *ptr)
         m_RuntimeComponentsOwned.erase(it); // deletes if runtime-owned
 }
 
-bool JActor::AttachToActor(JActor* newParent)
+bool JActor::AttachToActor(JActor* newParent, bool bKeepWorldTransform)
 {
     if (newParent == nullptr)
     {
-        DetachFromParentActor();
+        DetachFromParentActor(bKeepWorldTransform);
         return true;
     }
 
@@ -213,6 +199,11 @@ bool JActor::AttachToActor(JActor* newParent)
         if (p == this)
             return false; // would create a cycle
     }
+
+    // Cache current world transform only if caller wants preserve-world behavior
+    const FTransform worldBefore = (bKeepWorldTransform && m_RootComponent)
+        ? m_RootComponent->GetWorldTransform()
+        : FTransform();
 
     // Remove from old parent, if any
     if (m_ParentActor)
@@ -228,25 +219,24 @@ bool JActor::AttachToActor(JActor* newParent)
     // Transform parenting: attach this actor's root to parent's root
     if (m_RootComponent && m_ParentActor->m_RootComponent)
     {
-        const FTransform worldBefore = m_RootComponent->GetWorldTransform();
-
         m_RootComponent->AttachToComponent(m_ParentActor->m_RootComponent);
 
-        // Restore the serialized world transform after re-parenting
-        m_RootComponent->SetWorldTransform(worldBefore);
+        if (bKeepWorldTransform)
+            m_RootComponent->SetWorldTransform(worldBefore);
+        // else: keep serialized local transform as-is (load path)
     }
-
-    // // Actor transform is serialized; keep it in sync.
-    // if (m_RootComponent)
-    //     m_ActorTransform = m_RootComponent->GetWorldTransform();
 
     return true;
 }
 
-void JActor::DetachFromParentActor()
+void JActor::DetachFromParentActor(bool bKeepWorldTransform)
 {
     if (!m_ParentActor)
         return;
+
+    const FTransform worldBefore = (bKeepWorldTransform && m_RootComponent)
+        ? m_RootComponent->GetWorldTransform()
+        : FTransform();
 
     auto& siblings = m_ParentActor->m_ChildActors;
     siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
@@ -256,16 +246,12 @@ void JActor::DetachFromParentActor()
     // Detach root from the parent component; become world/root-space
     if (m_RootComponent)
     {
-        const FTransform worldBefore = m_RootComponent->GetWorldTransform();
-
         m_RootComponent->AttachToComponent(nullptr);
 
-        m_RootComponent->SetWorldTransform(worldBefore);
+        if (bKeepWorldTransform)
+            m_RootComponent->SetWorldTransform(worldBefore);
+        // else: keep local as-is (which is already world when detached load path is used intentionally)
     }
-
-    // Actor transform is serialized; keep it in sync.
-    // if (m_RootComponent)
-    //     m_ActorTransform = m_RootComponent->GetWorldTransform();
 }
 
 void JActor::ExecuteDestroy()
@@ -358,14 +344,6 @@ void JActor::FlushDestroyedComponents()
 
         ++i;
     }
-}
-
-void JActor::PostLoad()
-{
-    JCoreObject::PostLoad();
-
-    if (m_RootComponent)
-        m_RootComponent->SetWorldTransform(m_ActorTransform);
 }
 
 void JActor::GatherRenderables(IRenderSubmission &submission, const FRenderContext &ctx) const

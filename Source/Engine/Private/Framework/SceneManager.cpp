@@ -97,6 +97,10 @@ void SceneManager::BuildSaveInfoFromScene(const JScene* scene, FSceneSaveInfo& o
         // Add actor itself
         outInfo.objects.push_back(actor);
 
+        // Add root component explicitly (because root is not in m_SceneComponents)
+        if (JSceneComponent* root = actor->GetRootComponent())
+            outInfo.objects.push_back(root);
+
         // Actor components
         auto actorComps = actor->ListActorComponentsRaw();
         for (JActorComponent* comp : actorComps)
@@ -197,7 +201,7 @@ void SceneManager::ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, 
 
         if (rel.parentActorUUID.empty())
         {
-            actor->DetachFromParentActor();
+            actor->DetachFromParentActor(false);
             continue;
         }
 
@@ -207,7 +211,7 @@ void SceneManager::ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, 
         auto* parentActor = dynamic_cast<JActor*>(itParent->second);
         if (!parentActor) continue;
 
-        actor->AttachToActor(parentActor);
+        actor->AttachToActor(parentActor, false);
     }
 
     // 5) PostLoad last: graph is fully wired

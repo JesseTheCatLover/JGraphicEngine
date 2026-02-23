@@ -1,101 +1,63 @@
 {
-    "name": "ScannedScene",
-    "actor_count": 4,
+    "scene_name": "ScannedScene",
+    "actor_count": 6,
     "meta": {
         "thumbnail": "thumbnail.png",
-        "last_modified": "2025-12-12 01:56:11"
+        "last_modified": "2026-02-23 15:43:52"
     },
     "objects": [
         {
-            "uuid": "5ff88d7d-ed4b-4082-b101-e0d32c4ceaa4",
+            "uuid": "dfcde59a-55b0-406b-b588-05e056712c37",
             "type": "JActor",
-            "relation": {
-                "root_component": "c69eb109-a6b2-4c4f-8dd6-bf1652b02ffc"
+            "object_name": "TheArmoury",
+            "overrides": {
+                "m_VectorIndex": 0
             },
-            "data": {
-                "m_Name": "TheArmoury",
-                "m_VectorIndex": 0,
-                "m_bIsVisible": true
-            }
+            "relation": {
+                "root_component": "e7e53cb8-0122-4e56-8795-633b4694691e"
+            },
+            "custom": {}
         },
         {
-            "uuid": "c69eb109-a6b2-4c4f-8dd6-bf1652b02ffc",
+            "uuid": "e7e53cb8-0122-4e56-8795-633b4694691e",
             "type": "JSceneComponent",
+            "object_name": "RootComponent",
+            "overrides": {},
             "relation": {
-                "owner_actor": "5ff88d7d-ed4b-4082-b101-e0d32c4ceaa4"
+                "owner_actor": "dfcde59a-55b0-406b-b588-05e056712c37"
             },
-            "data": {
-                "m_LocalTransform": {
-                    "position": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0
-                    ],
-                    "scale": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ]
-                },
-                "m_Name": "RootComponent"
-            }
+            "custom": {}
         },
         {
-            "uuid": "d3a92168-fcef-4d61-870e-39f4b575fa68",
+            "uuid": "be9227f0-2e8a-4b78-b735-f38552f4b42b",
             "type": "JModelComponent",
-            "relation": {
-                "owner_actor": "5ff88d7d-ed4b-4082-b101-e0d32c4ceaa4",
-                "parent_component": "c69eb109-a6b2-4c4f-8dd6-bf1652b02ffc"
+            "object_name": "",
+            "overrides": {
+                "m_ModelKey": "TheArmoury/model.obj"
             },
-            "data": {
-                "m_ModelKey": "TheArmoury/model.obj",
-                "m_Visible": true,
-                "m_LocalTransform": {
-                    "position": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0
-                    ],
-                    "scale": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ]
-                },
-                "m_Name": ""
-            }
+            "relation": {
+                "owner_actor": "dfcde59a-55b0-406b-b588-05e056712c37",
+                "parent_component": "e7e53cb8-0122-4e56-8795-633b4694691e"
+            },
+            "custom": {}
         },
         {
-            "uuid": "b17db0d6-d006-433f-bec0-cb9831bf136f",
+            "uuid": "c8adc3bc-4e87-44af-9a32-0733c4d5b802",
             "type": "JActor",
-            "relation": {
-                "root_component": "3fa0e1c5-87c4-49ea-ae4b-cf30284dae3b"
+            "object_name": "Tape",
+            "overrides": {
+                "m_VectorIndex": 1
             },
-            "data": {
-                "m_Name": "Tape",
-                "m_VectorIndex": 1,
-                "m_bIsVisible": true
-            }
+            "relation": {
+                "root_component": "5f5a042e-1c7c-4e25-9e06-2f714fab5f92"
+            },
+            "custom": {}
         },
         {
-            "uuid": "3fa0e1c5-87c4-49ea-ae4b-cf30284dae3b",
+            "uuid": "5f5a042e-1c7c-4e25-9e06-2f714fab5f92",
             "type": "JSceneComponent",
-            "relation": {
-                "owner_actor": "b17db0d6-d006-433f-bec0-cb9831bf136f"
-            },
-            "data": {
+            "object_name": "RootComponent",
+            "overrides": {
                 "m_LocalTransform": {
                     "position": [
                         5.0,
@@ -109,70 +71,52 @@
                         1.0
                     ],
                     "scale": [
-                        0.8999999761581421,
-                        0.8999999761581421,
-                        0.8999999761581421
+                        0.5,
+                        0.5,
+                        0.5
                     ]
-                },
-                "m_Name": "RootComponent"
-            }
+                }
+            },
+            "relation": {
+                "owner_actor": "c8adc3bc-4e87-44af-9a32-0733c4d5b802"
+            },
+            "custom": {}
         },
         {
-            "uuid": "de2b0c9d-932d-42ed-a797-83b581d81cfc",
+            "uuid": "6123d0f2-dc85-4639-9fb8-da772ee69f15",
             "type": "JModelComponent",
-            "relation": {
-                "owner_actor": "b17db0d6-d006-433f-bec0-cb9831bf136f",
-                "parent_component": "3fa0e1c5-87c4-49ea-ae4b-cf30284dae3b"
+            "object_name": "",
+            "overrides": {
+                "m_ModelKey": "Tape/Tape.obj"
             },
-            "data": {
-                "m_ModelKey": "Tape/Tape.obj",
-                "m_Visible": true,
-                "m_LocalTransform": {
-                    "position": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0
-                    ],
-                    "scale": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ]
-                },
-                "m_Name": ""
-            }
+            "relation": {
+                "owner_actor": "c8adc3bc-4e87-44af-9a32-0733c4d5b802",
+                "parent_component": "5f5a042e-1c7c-4e25-9e06-2f714fab5f92"
+            },
+            "custom": {}
         },
         {
-            "uuid": "91ccb4de-60ac-4730-94f8-79be20e81e89",
+            "uuid": "e8c38ec0-4311-49f9-a212-2dbe4ed9b30d",
             "type": "JActor",
-            "relation": {
-                "parent_actor": "b17db0d6-d006-433f-bec0-cb9831bf136f",
-                "root_component": "f087859e-f852-4329-b9c1-adbb505075c3"
+            "object_name": "Tape",
+            "overrides": {
+                "m_VectorIndex": 2
             },
-            "data": {
-                "m_Name": "Tape",
-                "m_VectorIndex": 2,
-                "m_bIsVisible": true
-            }
+            "relation": {
+                "parent_actor": "c8adc3bc-4e87-44af-9a32-0733c4d5b802",
+                "root_component": "f85a9733-4209-47d7-ba04-f6466a212dbd"
+            },
+            "custom": {}
         },
         {
-            "uuid": "f087859e-f852-4329-b9c1-adbb505075c3",
+            "uuid": "f85a9733-4209-47d7-ba04-f6466a212dbd",
             "type": "JSceneComponent",
-            "relation": {
-                "owner_actor": "91ccb4de-60ac-4730-94f8-79be20e81e89",
-                "parent_component": "3fa0e1c5-87c4-49ea-ae4b-cf30284dae3b"
-            },
-            "data": {
+            "object_name": "RootComponent",
+            "overrides": {
                 "m_LocalTransform": {
                     "position": [
-                        0.0,
-                        2.222222328186035,
+                        4.0,
+                        6.0,
                         0.0
                     ],
                     "rotation": [
@@ -186,60 +130,100 @@
                         1.0,
                         1.0
                     ]
-                },
-                "m_Name": "RootComponent"
-            }
+                }
+            },
+            "relation": {
+                "owner_actor": "e8c38ec0-4311-49f9-a212-2dbe4ed9b30d",
+                "parent_component": "5f5a042e-1c7c-4e25-9e06-2f714fab5f92"
+            },
+            "custom": {}
         },
         {
-            "uuid": "0fca87bb-4b93-47dc-9d6f-2ab9f90a7b22",
+            "uuid": "7aba5804-377e-44f2-a072-7016e9cf59d3",
             "type": "JModelComponent",
-            "relation": {
-                "owner_actor": "91ccb4de-60ac-4730-94f8-79be20e81e89",
-                "parent_component": "f087859e-f852-4329-b9c1-adbb505075c3"
+            "object_name": "",
+            "overrides": {
+                "m_ModelKey": "Tape/Tape.obj"
             },
-            "data": {
-                "m_ModelKey": "Tape/Tape.obj",
-                "m_Visible": true,
+            "relation": {
+                "owner_actor": "e8c38ec0-4311-49f9-a212-2dbe4ed9b30d",
+                "parent_component": "f85a9733-4209-47d7-ba04-f6466a212dbd"
+            },
+            "custom": {}
+        },
+        {
+            "uuid": "0c293e4a-cec0-41ab-b4bd-1f8ec4404faf",
+            "type": "JActor",
+            "object_name": "Tape",
+            "overrides": {
+                "m_VectorIndex": 3
+            },
+            "relation": {
+                "parent_actor": "c8adc3bc-4e87-44af-9a32-0733c4d5b802",
+                "root_component": "af679d67-66d8-4a87-ae1f-66875e69892b"
+            },
+            "custom": {}
+        },
+        {
+            "uuid": "af679d67-66d8-4a87-ae1f-66875e69892b",
+            "type": "JSceneComponent",
+            "object_name": "RootComponent",
+            "overrides": {
                 "m_LocalTransform": {
                     "position": [
                         0.0,
-                        0.0,
+                        2.0,
                         0.0
                     ],
                     "rotation": [
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0
+                        0.1980985850095749,
+                        0.4271085858345032,
+                        -0.032667018473148346,
+                        0.8816280961036682
                     ],
                     "scale": [
                         1.0,
                         1.0,
                         1.0
                     ]
-                },
-                "m_Name": ""
-            }
+                }
+            },
+            "relation": {
+                "owner_actor": "0c293e4a-cec0-41ab-b4bd-1f8ec4404faf",
+                "parent_component": "5f5a042e-1c7c-4e25-9e06-2f714fab5f92"
+            },
+            "custom": {}
         },
         {
-            "uuid": "0395287d-d1bd-489c-b3f9-31f0dad0484d",
+            "uuid": "860f246e-f1a1-4f65-a200-18563cde293a",
+            "type": "JModelComponent",
+            "object_name": "",
+            "overrides": {
+                "m_ModelKey": "Tape/Tape.obj"
+            },
+            "relation": {
+                "owner_actor": "0c293e4a-cec0-41ab-b4bd-1f8ec4404faf",
+                "parent_component": "af679d67-66d8-4a87-ae1f-66875e69892b"
+            },
+            "custom": {}
+        },
+        {
+            "uuid": "3bfa1ce9-a274-47f3-a4d8-2c6887696a89",
             "type": "JActor",
-            "relation": {
-                "root_component": "c0fe4750-fe76-4df8-8206-76ece421f741"
+            "object_name": "CameraActor",
+            "overrides": {
+                "m_VectorIndex": 4
             },
-            "data": {
-                "m_Name": "CameraActor",
-                "m_VectorIndex": 3,
-                "m_bIsVisible": true
-            }
+            "relation": {
+                "root_component": "5c3b09ad-c046-4cfd-b381-4436c173d017"
+            },
+            "custom": {}
         },
         {
-            "uuid": "c0fe4750-fe76-4df8-8206-76ece421f741",
+            "uuid": "5c3b09ad-c046-4cfd-b381-4436c173d017",
             "type": "JSceneComponent",
-            "relation": {
-                "owner_actor": "0395287d-d1bd-489c-b3f9-31f0dad0484d"
-            },
-            "data": {
+            "object_name": "RootComponent",
+            "overrides": {
                 "m_LocalTransform": {
                     "position": [
                         -20.0,
@@ -257,42 +241,77 @@
                         1.0,
                         1.0
                     ]
-                },
-                "m_Name": "RootComponent"
-            }
+                }
+            },
+            "relation": {
+                "owner_actor": "3bfa1ce9-a274-47f3-a4d8-2c6887696a89"
+            },
+            "custom": {}
         },
         {
-            "uuid": "eff481d2-374e-46c4-ae0b-35289adc4f95",
+            "uuid": "f49a13fc-1901-42aa-9edf-e74b052aac18",
             "type": "JCameraComponent",
+            "object_name": "",
+            "overrides": {},
             "relation": {
-                "owner_actor": "0395287d-d1bd-489c-b3f9-31f0dad0484d",
-                "parent_component": "c0fe4750-fe76-4df8-8206-76ece421f741"
+                "owner_actor": "3bfa1ce9-a274-47f3-a4d8-2c6887696a89",
+                "parent_component": "5c3b09ad-c046-4cfd-b381-4436c173d017"
             },
-            "data": {
-                "m_FOV": 60.0,
-                "m_NearClip": 0.009999999776482582,
-                "m_FarClip": 1000.0,
-                "m_OrthoHalfHeight": 10.0,
+            "custom": {}
+        },
+        {
+            "uuid": "acf56f42-8b6b-4947-8e9a-7f26308a40bb",
+            "type": "JActor",
+            "object_name": "WoodenChair",
+            "overrides": {
+                "m_VectorIndex": 5
+            },
+            "relation": {
+                "root_component": "a6ba5e2a-2b76-403b-ba46-563ebc55e903"
+            },
+            "custom": {}
+        },
+        {
+            "uuid": "a6ba5e2a-2b76-403b-ba46-563ebc55e903",
+            "type": "JSceneComponent",
+            "object_name": "RootComponent",
+            "overrides": {
                 "m_LocalTransform": {
                     "position": [
                         0.0,
-                        0.0,
-                        0.0
+                        8.0,
+                        1.2000000476837158
                     ],
                     "rotation": [
                         0.0,
                         0.0,
-                        0.0,
-                        1.0
+                        0.7660444378852844,
+                        0.6427876353263855
                     ],
                     "scale": [
-                        1.0,
-                        1.0,
-                        1.0
+                        5.0,
+                        5.0,
+                        5.0
                     ]
-                },
-                "m_Name": ""
-            }
+                }
+            },
+            "relation": {
+                "owner_actor": "acf56f42-8b6b-4947-8e9a-7f26308a40bb"
+            },
+            "custom": {}
+        },
+        {
+            "uuid": "2503337f-9d06-499f-b991-0578ec10db43",
+            "type": "JModelComponent",
+            "object_name": "",
+            "overrides": {
+                "m_ModelKey": "DiningChair/DiningChair.obj"
+            },
+            "relation": {
+                "owner_actor": "acf56f42-8b6b-4947-8e9a-7f26308a40bb",
+                "parent_component": "a6ba5e2a-2b76-403b-ba46-563ebc55e903"
+            },
+            "custom": {}
         }
     ]
 }

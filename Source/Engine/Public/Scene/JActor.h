@@ -38,11 +38,6 @@ private:
     JPROPERTY(HiddenInInspector)
     size_t m_VectorIndex; ///< internal index for O(1) removal from scene
 
-    // Actor transform is the serialized authority.
-    // RootComponent is runtime-only and mirrors this transform.
-    JPROPERTY(Category("Transform"), EditAnywhere)
-    FTransform m_ActorTransform;
-
     JSceneComponent* m_RootComponent = nullptr; ///< Root of the scene component hierarchy
     std::vector<JSceneComponent*> m_SceneComponents; ///< Scene components attached to this actor
     std::vector<JActorComponent*> m_ActorComponents; ///< Actor components attached to this actor
@@ -52,7 +47,7 @@ private:
     // Runtime-added components must be owned here.
     std::vector<TUniquePtr<JActorComponent>> m_RuntimeComponentsOwned;
 
-    JPROPERTY(HiddenInInspector, EditAnywhere, Scriptable)
+    JPROPERTY(HiddenToInspector, EditAnywhere, Scriptable)
     bool m_bIsVisible = true;
 
     bool m_bPendingDestroy = false;
@@ -88,9 +83,6 @@ private:
      * @brief Only called internally from JScene, and completely destroys the actor and its components.
      */
     virtual void ExecuteDestroy();
-
-    // Keep runtime root in sync with serialized actor transform.
-    void ApplyActorTransformToRoot();
 
     [[nodiscard]] std::vector<JSceneComponent*> ListSceneComponentsRaw() const
     {
@@ -173,10 +165,10 @@ public:
     void SetRootComponent(JSceneComponent* root) { m_RootComponent = root; }
 
     /** Attach this actor under another actor (parental actor hierarchy). */
-    bool AttachToActor(JActor* newParent);
+    bool AttachToActor(JActor* newParent, bool bKeepWorldTransform = true);
 
     /** Detach from parent actor and become a root actor again. */
-    void DetachFromParentActor();
+    void DetachFromParentActor(bool bKeepWorldTransform = true);
 
     // -------------------- Transform API (world space) --------------------
 
@@ -191,9 +183,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetWorldPosition(worldLocation);
-
-        // Actor transform is serialized; keep it in sync.
-        m_ActorTransform.SetPosition(worldLocation);
     }
 
     /** Set world location of the actor. */
@@ -226,9 +215,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetWorldRotation(worldRot);
-
-        // Actor transform is serialized; keep it in sync.
-        m_ActorTransform.SetRotation(worldRot.ToQuat());
     }
 
     /** Set world rotation (FQuat) of the actor. */
@@ -236,9 +222,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetWorldRotation(worldRot);
-
-        // Actor transform is serialized; keep it in sync.
-        m_ActorTransform.SetRotation(worldRot);
     }
 
     /** Set world rotation from pitch/yaw/roll (degrees). */
@@ -258,9 +241,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetWorldRotation(worldQuat);
-
-        // Actor transform is serialized; keep it in sync.
-        m_ActorTransform.SetRotation(worldQuat);
     }
 
     /** Add a world‐space rotation (FRotator). */
@@ -287,9 +267,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetWorldScale(worldScale);
-
-        // Actor transform is serialized; keep it in sync.
-        m_ActorTransform.SetScale(worldScale);
     }
 
     /** Full world transform of the actor. */
@@ -304,9 +281,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetWorldTransform(worldTransform);
-
-        // Actor transform is serialized; keep it in sync.
-        m_ActorTransform = worldTransform;
     }
 
     // -------------------- Transform API (relative/local space) --------------------
@@ -322,10 +296,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetLocalPosition(relLocation);
-
-        // Actor transform is serialized; keep it in sync.
-        if (m_RootComponent)
-            m_ActorTransform = m_RootComponent->GetWorldTransform();
     }
 
     /** Set local (relative) location of the actor’s root component. */
@@ -365,10 +335,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetLocalRotation(relRot.ToQuat());
-
-        // Actor transform is serialized; keep it in sync.
-        if (m_RootComponent)
-            m_ActorTransform = m_RootComponent->GetWorldTransform();
     }
 
     /** Local rotation (as quaternion) of the actor. */
@@ -382,10 +348,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetLocalRotation(worldQuat);
-
-        // Actor transform is serialized; keep it in sync.
-        if (m_RootComponent)
-            m_ActorTransform = m_RootComponent->GetWorldTransform();
     }
 
     /** Add a local‐space rotation (FRotator). */
@@ -411,10 +373,6 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetLocalScale(relScale);
-
-        // Actor transform is serialized; keep it in sync.
-        if (m_RootComponent)
-            m_ActorTransform = m_RootComponent->GetWorldTransform();
     }
 
     /** Full local transform of the actor. */
@@ -429,16 +387,8 @@ public:
     {
         if (m_RootComponent)
             m_RootComponent->SetLocalTransform(relTransform);
-
-        // Actor transform is serialized; keep it in sync.
-        if (m_RootComponent)
-            m_ActorTransform = m_RootComponent->GetWorldTransform();
     }
 
-protected:
-    void PostLoad() override;
-
-public:
     // -------------------- Component API --------------------
 
     /**
