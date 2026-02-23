@@ -66,6 +66,7 @@ enum class EInspectorTargetGroup : uint8_t
 struct FInspectorTarget
 {
     FRowID targetID = 0;
+    std::string objectUUID;         // for command routing of target-level actions (rename, duplicate, etc.)
 
     // For component list rendering
     EInspectorTargetGroup group = EInspectorTargetGroup::Actor;

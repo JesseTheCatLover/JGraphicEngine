@@ -207,6 +207,118 @@ void InspectorPanel::BuildSceneComponentChildrenMap(
     }
 }
 
+void InspectorPanel::DrawActorHeader(const FInspectorDocument& doc, FInspectorPanelInput& input)
+{
+    const FInspectorTarget* actor = FindActorTarget(doc);
+    if (!actor)
+        return;
+
+    // Build a clean display name from listLabel (strip " (Instance)")
+    std::string sourceName = actor->listLabel;
+    const std::string suffix = " (Instance)";
+    if (sourceName.size() >= suffix.size())
+    {
+        const size_t pos = sourceName.rfind(suffix);
+        if (pos != std::string::npos && pos + suffix.size() == sourceName.size())
+            sourceName.erase(pos);
+    }
+
+    // Reset local cache when actor changes
+    if (m_ActorNameTargetID != actor->targetID)
+    {
+        m_ActorNameTargetID = actor->targetID;
+        m_ActorNameEdit = sourceName;
+    }
+
+    char buf[256];
+    std::snprintf(buf, sizeof(buf), "%s", m_ActorNameEdit.c_str());
+
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 4));
+
+    // Option A (current behavior): live change
+    bool changed = ImGui::InputTextWithHint("##ActorName", "Actor Name", buf, sizeof(buf));
+
+    // Option B (recommended): commit only after edit finished
+    // bool changed = ImGui::InputTextWithHint("##ActorName", "Actor Name", buf, sizeof(buf));
+    const bool commit = ImGui::IsItemDeactivatedAfterEdit();
+
+    ImGui::PopStyleVar();
+
+    if (changed)
+        m_ActorNameEdit = buf;
+
+    // Keep local cache synced if backend changed externally and we're not editing
+    if (!ImGui::IsItemActive() && !changed && !commit)
+    m_ActorNameEdit = sourceName;
+
+    // Commit only once after user finishes editing (better UX)
+    if (!commit)
+    {
+        ImGui::Spacing();
+        return;
+    }
+
+    // Trim
+    auto trim = [](std::string& s)
+    {
+        auto is_ws = [](unsigned char c) { return std::isspace(c) != 0; };
+
+        while (!s.empty() && is_ws((unsigned char)s.front()))
+            s.erase(s.begin());
+        while (!s.empty() && is_ws((unsigned char)s.back()))
+            s.pop_back();
+    };
+
+    std::string newName = m_ActorNameEdit;
+    trim(newName);
+
+    if (newName.empty())
+    {
+        ImGui::Spacing();
+        return;
+    }
+
+    // If unchanged, don't send command
+    if (newName == sourceName)
+    {
+        ImGui::Spacing();
+        return;
+    }
+
+    // Reuse any actor row's write handle to get providerID + contextRuntimeID.
+    const FInspectorWriteHandle* baseWrite = nullptr;
+    for (const auto& cat : actor->categories)
+    {
+        for (const auto& row : cat.rows)
+        {
+            baseWrite = &row.write;
+            break;
+        }
+        if (baseWrite) break;
+    }
+
+    if (baseWrite)
+    {
+        FInspectorEditCommand cmd;
+        cmd.handle = *baseWrite; // copy provider/context/kind defaults
+
+        // Override routing to our manual actor command
+        cmd.handle.kind              = EInspectorTargetKind::ObjectUUID;
+        cmd.handle.primaryID         = actor->objectUUID;
+        cmd.handle.declaringTypeName = "__ManualActor";
+        cmd.handle.propName          = "__ActorName";
+
+        cmd.value = {};
+        cmd.value.tag = REValueTag::String;
+        cmd.value.s   = newName;
+
+        input.edits.push_back(std::move(cmd));
+    }
+
+    ImGui::Spacing();
+}
+
 void InspectorPanel::Draw(EditorHost& host)
 {
     if (!ImGui::Begin(GetName()))
@@ -266,6 +378,9 @@ void InspectorPanel::Draw(EditorHost& host)
     }
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.f);
+
+    // Actor Header Strip
+    DrawActorHeader(doc, input);
 
     // Components list (selection)
     DrawComponentSection(doc);

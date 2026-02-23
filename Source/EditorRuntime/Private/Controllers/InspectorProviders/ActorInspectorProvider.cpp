@@ -20,6 +20,7 @@
 
 #include "Core/Reflection/REMeta.h"
 #include "Core/Reflection/RETypeRegistry.h"
+#include "Core/Services/HierarchyService.h"
 
 // ------------------------- helpers -------------------------
 
@@ -738,6 +739,7 @@ static void BuildSceneTreeTargets(
             FInspectorTarget t;
             t.group = EInspectorTargetGroup::SceneComponent;
             t.targetID = myID;
+            t.objectUUID = sc->GetUUID();
             t.parentTargetID = parentTargetID;
             t.depth = depth;
 
@@ -772,6 +774,7 @@ static void BuildActorComponentTargets(
         FInspectorTarget t;
         t.group = EInspectorTargetGroup::ActorComponent;
         t.targetID = HashString64(std::string("acomp:") + c->GetUUID());
+        t.objectUUID = c->GetUUID();
         t.parentTargetID = 0;
         t.depth = 0;
 
@@ -812,6 +815,7 @@ void ActorInspectorProvider::BuildDocument(const FInspectorSelection& sel, FInsp
         FInspectorTarget t;
         t.group = EInspectorTargetGroup::Actor;
         t.targetID = HashString64(std::string("actor:") + actor->GetUUID());
+        t.objectUUID = actor->GetUUID();
 
         t.listLabel = actor->GetActorName() + " (Instance)";
         t.title     = t.listLabel;
@@ -861,6 +865,24 @@ void ActorInspectorProvider::ApplyEdit(const FInspectorEditCommand& cmd)
         if (cmd.handle.propName == "__ActorScale" && cmd.value.tag == REValueTag::Vec3)
         {
             actor->SetActorScale(cmd.value.v3);
+            return;
+        }
+
+        if (cmd.handle.propName == "__ActorName" && cmd.value.tag == REValueTag::String)
+        {
+            std::string newName = cmd.value.s;
+
+            auto is_ws = [](unsigned char c) { return std::isspace(c) != 0; };
+            while (!newName.empty() && is_ws((unsigned char)newName.front()))
+                newName.erase(newName.begin());
+            while (!newName.empty() && is_ws((unsigned char)newName.back()))
+                newName.pop_back();
+
+            if (newName.empty())
+                return;
+
+            actor->SetActorName(newName);
+            m_Host.GetService<HierarchyService>().MarkDirty();
             return;
         }
     }

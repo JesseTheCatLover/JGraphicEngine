@@ -26,8 +26,11 @@ public:
 
 private:
     // ---------------- UI persistent state ----------------
+
     std::unordered_set<uint64_t> m_CollapsedCategoryKeys;     // collapsed category headers (default is open)
     std::unordered_map<uint64_t, std::string> m_StringEdits;  // per-row string edit buffer
+    std::string m_ActorNameEdit;
+    uint64_t    m_ActorNameTargetID = 0; // tracks which actor name is cached
     bool m_bComponentSectionOpen = true;
     float m_ComponentSectionHeight = 150.0f;
     uint64_t m_SelectedTargetID = 0;
@@ -47,6 +50,8 @@ private:
 
 private:
     // ---------------- drawing ----------------
+    void DrawActorHeader(const FInspectorDocument& doc, FInspectorPanelInput& input);
+
     void DrawComponentSection(const FInspectorDocument& doc);
 
     // Properties UI: draw top header rows (Essentials) + categories
