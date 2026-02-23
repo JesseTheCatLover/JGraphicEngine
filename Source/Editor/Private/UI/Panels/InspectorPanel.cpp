@@ -108,7 +108,7 @@ static void PushEdit(FInspectorPanelInput& input, const FInspectorRow& row, cons
 
 void InspectorPanel::OnDestroy(EditorHost& /*host*/)
 {
-    m_OpenCategoryKeys.clear();
+    m_CollapsedCategoryKeys.clear();
     m_StringEdits.clear();
     m_SelectedTargetID = 0;
     std::memset(m_SearchBuf, 0, sizeof(m_SearchBuf));
@@ -499,15 +499,19 @@ void InspectorPanel::DrawCategorySection(uint64_t categoryID, const std::string&
     if (categoryName == "__Essentials")
         return;
 
-    // open state by categoryID (since categories are merged globally on the page)
+    // collapse state by categoryID (since categories are merged globally on the page)
+    // Default behavior is OPEN unless explicitly collapsed by the user.
     const uint64_t key = categoryID;
-    const bool wasOpen = (m_OpenCategoryKeys.find(key) != m_OpenCategoryKeys.end());
-    ImGui::SetNextItemOpen(wasOpen, ImGuiCond_Once);
+    const bool isCollapsed = (m_CollapsedCategoryKeys.find(key) != m_CollapsedCategoryKeys.end());
+
+    // On first appearance, categories open by default.
+    // Afterwards, ImGui keeps state and we update our collapsed set below.
+    ImGui::SetNextItemOpen(!isCollapsed, ImGuiCond_Once);
 
     const bool open = BeginCategoryHeaderUnique(categoryName.c_str(), categoryID, /*defaultOpen*/true);
 
-    if (open) m_OpenCategoryKeys.insert(key);
-    else      m_OpenCategoryKeys.erase(key);
+    if (open) m_CollapsedCategoryKeys.erase(key);
+    else      m_CollapsedCategoryKeys.insert(key);
 
     if (!open)
         return;
