@@ -33,13 +33,13 @@ private:
 
 private:
     // ---------------- helpers ----------------
-    static bool PassesSearch(const FInspectorRow& row, const char* search);
+    static bool MatchesRowSearch(const FInspectorRow& row, const char* search);
 
     static const FInspectorTarget* FindTargetByID(const FInspectorDocument& doc, uint64_t targetID);
     static const FInspectorTarget* FindActorTarget(const FInspectorDocument& doc);
 
     // scene subtree traversal (only SceneComponent group)
-    static void BuildSceneChildrenMap(
+    static void BuildSceneComponentChildrenMap(
         const FInspectorDocument& doc,
         std::unordered_map<uint64_t, std::vector<const FInspectorTarget*>>& outChildren);
 
@@ -52,11 +52,11 @@ private:
 
     void DrawHeaderRows(const std::vector<const FInspectorRow*>& rows, FInspectorPanelInput& input);
 
-    void DrawMergedCategories(
+    void DrawFilteredMergedCategories(
         const std::vector<const FInspectorTarget*>& targetsInOrder,
         FInspectorPanelInput& input);
 
-    void DrawCategoryMerged(uint64_t categoryID, const std::string& categoryName,
+    void DrawCategorySection(uint64_t categoryID, const std::string& categoryName,
                             const std::vector<const FInspectorRow*>& rows,
                             FInspectorPanelInput& input);
 

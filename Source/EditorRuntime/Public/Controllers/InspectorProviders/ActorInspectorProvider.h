@@ -12,7 +12,7 @@ struct FComponentNode
 {
     JCoreObject* obj = nullptr;
     std::string uuid;
-    std::string parentUuid; // empty for root
+    std::string parentUUID; // empty for root
     bool bIsScene = false;
 };
 

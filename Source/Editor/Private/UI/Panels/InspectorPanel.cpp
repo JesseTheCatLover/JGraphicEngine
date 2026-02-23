@@ -114,7 +114,7 @@ void InspectorPanel::OnDestroy(EditorHost& /*host*/)
     std::memset(m_SearchBuf, 0, sizeof(m_SearchBuf));
 }
 
-bool InspectorPanel::PassesSearch(const FInspectorRow& row, const char* search)
+bool InspectorPanel::MatchesRowSearch(const FInspectorRow& row, const char* search)
 {
     if (!search || search[0] == 0) return true;
     return ContainsCaseInsensitive(row.label, search) || ContainsCaseInsensitive(row.rawName, search);
@@ -136,7 +136,7 @@ const FInspectorTarget* InspectorPanel::FindActorTarget(const FInspectorDocument
     return nullptr;
 }
 
-void InspectorPanel::BuildSceneChildrenMap(
+void InspectorPanel::BuildSceneComponentChildrenMap(
     const FInspectorDocument& doc,
     std::unordered_map<uint64_t, std::vector<const FInspectorTarget*>>& outChildren)
 {
@@ -220,11 +220,12 @@ void InspectorPanel::Draw(EditorHost& host)
             m_SelectedTargetID = doc.targets[0].targetID;
     }
 
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.f);
+
     // Components list (selection)
     DrawComponentSection(doc);
 
-    ImGui::Spacing();
-    ImGui::InputTextWithHint("##InspectorSearch", "Search properties...", m_SearchBuf, IM_ARRAYSIZE(m_SearchBuf));
+    ImGui::InputTextWithHint("##InspectorSearch", "Search", m_SearchBuf, IM_ARRAYSIZE(m_SearchBuf));
     ImGui::Spacing();
 
     // Properties (header rows + categories)
@@ -235,6 +236,7 @@ void InspectorPanel::Draw(EditorHost& host)
         ImGui::Spacing();
         ImGui::TextDisabled("%s", out->statusText);
     }
+    ImGui::PopStyleVar();
 
     ImGui::End();
     insp.SubmitInput(input);
@@ -242,7 +244,7 @@ void InspectorPanel::Draw(EditorHost& host)
 
 void InspectorPanel::DrawComponentSection(const FInspectorDocument& doc)
 {
-    ImGui::SeparatorText("Components");
+    ImGui::SeparatorText("Component Section");
 
     if (!BeginBox("##InspectorComponentsBox", 150.0f))
     {
@@ -335,7 +337,7 @@ void InspectorPanel::DrawPropertiesForSelection(const FInspectorDocument& doc, F
     {
         // SceneComponent selection: include selected + its subtree, but still draw ONLY categories (merged).
         std::unordered_map<uint64_t, std::vector<const FInspectorTarget*>> children;
-        BuildSceneChildrenMap(doc, children);
+        BuildSceneComponentChildrenMap(doc, children);
 
         // DFS preorder
         std::function<void(const FInspectorTarget*)> visit = [&](const FInspectorTarget* node)
@@ -374,7 +376,7 @@ void InspectorPanel::DrawPropertiesForSelection(const FInspectorDocument& doc, F
                     if (row.presentation != EInspectorRowPresentation::Header)
                         continue;
 
-                    if (!PassesSearch(row, m_SearchBuf))
+                    if (!MatchesRowSearch(row, m_SearchBuf))
                         continue;
 
                     headerRows.push_back(&row);
@@ -386,7 +388,7 @@ void InspectorPanel::DrawPropertiesForSelection(const FInspectorDocument& doc, F
     }
 
     // Then draw normal reflected categories
-    DrawMergedCategories(targetsInOrder, input);
+    DrawFilteredMergedCategories(targetsInOrder, input);
 
     EndBox();
 }
@@ -411,13 +413,14 @@ void InspectorPanel::DrawHeaderRows(const std::vector<const FInspectorRow*>& row
     ImGui::Spacing();
 }
 
-void InspectorPanel::DrawMergedCategories(
+void InspectorPanel::DrawFilteredMergedCategories(
     const std::vector<const FInspectorTarget*>& targetsInOrder,
     FInspectorPanelInput& input)
 {
     // Merge rule:
     // - categories with the same name become ONE category in UI
     // - rows keep their own stable IDs (row.rowID) so ImGui won’t conflict
+    // - search can match either row names OR category names
     struct FMergedCategory
     {
         std::string name;
@@ -437,6 +440,10 @@ void InspectorPanel::DrawMergedCategories(
 
         for (const auto& cat : t->categories)
         {
+            // Skip synthetic category entirely (headers are drawn separately)
+            if (cat.name == "__Essentials")
+                continue;
+
             size_t idx = (size_t)-1;
 
             auto it = idxOf.find(cat.name);
@@ -455,25 +462,36 @@ void InspectorPanel::DrawMergedCategories(
                 idx = it->second;
             }
 
-            // Append rows in the original order they appear in targets
+            // Category search behavior:
+            // - If category name matches search => include all normal rows
+            // - Else include only rows that match search
+            const bool categoryMatched = ContainsCaseInsensitive(cat.name, m_SearchBuf);
+
             auto& dst = merged[idx].rows;
-            dst.reserve(dst.size() + cat.rows.size());
             for (const auto& row : cat.rows)
             {
                 if (row.presentation == EInspectorRowPresentation::Header)
                     continue; // headers are drawn separately in top block
+
+                if (!categoryMatched && !MatchesRowSearch(row, m_SearchBuf))
+                    continue;
 
                 dst.push_back(&row);
             }
         }
     }
 
-    // Now draw: categories only
+    // Draw only categories that actually have visible rows after search
     for (const auto& mc : merged)
-        DrawCategoryMerged(mc.id, mc.name, mc.rows, input);
+    {
+        if (mc.rows.empty())
+            continue;
+
+        DrawCategorySection(mc.id, mc.name, mc.rows, input);
+    }
 }
 
-void InspectorPanel::DrawCategoryMerged(uint64_t categoryID, const std::string& categoryName,
+void InspectorPanel::DrawCategorySection(uint64_t categoryID, const std::string& categoryName,
                                        const std::vector<const FInspectorRow*>& rows,
                                        FInspectorPanelInput& input)
 {
@@ -501,12 +519,7 @@ void InspectorPanel::DrawCategoryMerged(uint64_t categoryID, const std::string& 
         for (const FInspectorRow* pr : rows)
         {
             if (!pr) continue;
-            const FInspectorRow& row = *pr;
-
-            if (!PassesSearch(row, m_SearchBuf))
-                continue;
-
-            DrawRow(row, input);
+            DrawRow(*pr, input);
         }
 
         ImGui::EndTable();
