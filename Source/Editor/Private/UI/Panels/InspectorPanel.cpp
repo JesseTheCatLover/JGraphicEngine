@@ -36,6 +36,50 @@ static void EndBox()
     ImGui::EndChild();
 }
 
+static bool DrawPlainSectionToggle(const char* id, const char* label, bool open, bool boldText = false)
+{
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (!window)
+        return open;
+
+    ImGui::PushID(id);
+
+    const ImVec2 start = ImGui::GetCursorScreenPos();
+    const float fullW  = ImGui::GetContentRegionAvail().x;
+    const float h      = ImGui::GetTextLineHeight();
+
+    // Clickable row (but visually plain)
+    ImGui::InvisibleButton("##SectionToggle", ImVec2(fullW, h));
+    const bool hovered = ImGui::IsItemHovered();
+    const bool clicked = ImGui::IsItemClicked();
+
+    if (clicked)
+        open = !open;
+
+    // Optional subtle hover feedback (very light)
+    if (hovered)
+    {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        dl->AddRectFilled(start, ImVec2(start.x + fullW, start.y + h), IM_COL32(255, 255, 255, 10));
+    }
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+
+    // Arrow
+    const float arrowSize = ImGui::GetFontSize() * 0.70f;
+    ImVec2 arrowPos(start.x, start.y + (h * 0.2f));
+    ImGui::RenderArrow(dl, arrowPos, ImGui::GetColorU32(ImGuiCol_Text), open ? ImGuiDir_Down : ImGuiDir_Right, 0.7f);
+
+    // Text (aligned next to arrow)
+    const float textX = start.x + arrowSize + 6.0f;
+    const float textY = start.y;
+    dl->AddText(ImVec2(textX, textY), ImGui::GetColorU32(ImGuiCol_Text), label);
+    if (boldText) dl->AddText(ImVec2(textX + 1.0f, textY),ImGui::GetColorU32(ImGuiCol_Text) , label);
+
+    ImGui::PopID();
+    return open;
+}
+
 static bool BeginCategoryHeaderUnique(const char* name, uint64_t stableID, bool defaultOpen)
 {
     // Important:
@@ -250,7 +294,14 @@ void InspectorPanel::Draw(EditorHost& host)
 
 void InspectorPanel::DrawComponentSection(const FInspectorDocument& doc)
 {
-    ImGui::SeparatorText("Component Section");
+    m_bComponentSectionOpen = DrawPlainSectionToggle("InspectorComponentSection", "Component Section", m_bComponentSectionOpen,
+        true);
+
+    ImGui::Spacing();
+
+    if (!m_bComponentSectionOpen)
+        return;
+
 
     if (!BeginBox("##InspectorComponentsBox", m_ComponentSectionHeight))
     {
@@ -295,15 +346,17 @@ void InspectorPanel::DrawComponentSection(const FInspectorDocument& doc)
     }
 
     EndBox();
+
     // Resize handle (bottom edge)
     ImGui::PushID("InspectorComponentsResize");
 
-    const float handleH = 6.0f;
+    const float handleHCollision = 6.0f;
+    const float handleHDraw = 6.0f;
     ImVec2 p = ImGui::GetCursorScreenPos();
     ImVec2 avail = ImGui::GetContentRegionAvail();
 
     // full-width invisible handle
-    ImGui::InvisibleButton("##ResizeHandle", ImVec2(avail.x, handleH));
+    ImGui::InvisibleButton("##ResizeHandle", ImVec2(avail.x, handleHCollision));
 
     const bool hovered = ImGui::IsItemHovered();
     const bool active  = ImGui::IsItemActive();
@@ -317,7 +370,7 @@ void InspectorPanel::DrawComponentSection(const FInspectorDocument& doc)
                        : hovered ? IM_COL32(110, 110, 110, 255)
                                  : IM_COL32(80, 80, 80, 180);
 
-    dl->AddRectFilled(p, ImVec2(p.x + avail.x, p.y + handleH), col);
+    dl->AddRectFilled(p, ImVec2(p.x + avail.x, p.y + handleHDraw), col);
 
     // Drag logic
     if (active)
