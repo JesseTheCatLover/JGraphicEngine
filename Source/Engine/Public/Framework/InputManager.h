@@ -9,6 +9,7 @@
 #include "InputSystem/InputCallbacks.h"
 #include "InputSystem/InputChannels.h"
 
+class IHotkeyBindingEditable;
 using InputCallbackHandle = ::InputCallbackHandle;
 using EInputEventPhase = ::EInputEventPhase;
 using FBoolActionCallback = ::FBoolActionCallback;
@@ -67,4 +68,7 @@ public:
 
     [[nodiscard]] float GetAxis1D (const std::string& name);
     [[nodiscard]] FVector2 GetAxis2D(const std::string& name);
+
+    [[nodiscard]] IHotkeyBindingEditable* GetHotkeyBindings();
+    [[nodiscard]] const IHotkeyBindingEditable* GetHotkeyBindings() const;
 };

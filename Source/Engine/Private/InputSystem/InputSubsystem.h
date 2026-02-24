@@ -31,6 +31,12 @@ public:
     InputSubsystem(InputSubsystem&&) = delete;
     InputSubsystem& operator=(InputSubsystem&&) = delete;
 
+    [[nodiscard]] const std::vector<FInputDeviceState>& GetCurrentDevicesState() const { return m_DevicesState; }
+    [[nodiscard]] const std::vector<FInputDeviceState>& GetPreviousDevicesState() const { return m_PrevDevicesState; }
+
+    [[nodiscard]] IInputMappingStyle* GetMappingStyleRaw() { return m_MappingStyle.get(); }
+    [[nodiscard]] const IInputMappingStyle* GetMappingStyleRaw() const { return m_MappingStyle.get(); }
+
 private:
     InputSubsystem();
 

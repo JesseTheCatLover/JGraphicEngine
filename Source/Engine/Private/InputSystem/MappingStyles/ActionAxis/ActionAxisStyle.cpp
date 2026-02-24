@@ -30,9 +30,16 @@ void ActionAxisStyle::BuildChannels(std::vector<FInputChannelDesc> &outChannels)
     m_Axis2DStates.resize(channelCount);
 }
 
-void ActionAxisStyle::UpdateChannels(float deltaTime, const std::vector<FInputDeviceState>& devices,
+void ActionAxisStyle::UpdateChannels(
+    float deltaTime,
+    const std::vector<FInputDeviceState>& devices,
+    const std::vector<FInputDeviceState>& prevDevices,
     std::vector<float>& channelData)
 {
+    (void)deltaTime;
+    (void)prevDevices;
+    (void)channelData;
+
     const size_t channelCount = m_ConfigMap.actions.size();
     for (size_t i = 0; i < channelCount; ++i)
     {

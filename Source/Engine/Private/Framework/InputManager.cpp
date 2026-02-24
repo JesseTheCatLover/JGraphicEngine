@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "InputSystem/InputSubsystem.h"
+#include "InputSystem/MappingStyles/HotkeyChord/IHotkeyBindingEditable.h"
 
 bool InputManager::Initialize(InputSubsystem *system)
 {
@@ -132,4 +133,28 @@ FVector2 InputManager::GetAxis2D(const std::string& name)
 
     FActionStateAxis2D st = m_InputSystem->GetAxis2DChannel(handle);
     return {st.x, st.y};
+}
+
+IHotkeyBindingEditable* InputManager::GetHotkeyBindings()
+{
+    if (!m_InputSystem)
+        return nullptr;
+
+    IInputMappingStyle* style = m_InputSystem->GetMappingStyleRaw();
+    if (!style)
+        return nullptr;
+
+    return dynamic_cast<IHotkeyBindingEditable*>(style);
+}
+
+const IHotkeyBindingEditable* InputManager::GetHotkeyBindings() const
+{
+    if (!m_InputSystem)
+        return nullptr;
+
+    const IInputMappingStyle* style = m_InputSystem->GetMappingStyleRaw();
+    if (!style)
+        return nullptr;
+
+    return dynamic_cast<const IHotkeyBindingEditable*>(style);
 }

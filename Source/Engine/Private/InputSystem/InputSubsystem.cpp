@@ -251,7 +251,7 @@ void InputSubsystem::Tick(float deltaTime)
 
     // 4) Let mapping style produce channel states
     if (m_MappingStyle)
-        m_MappingStyle->UpdateChannels(deltaTime, m_DevicesState, m_ChannelData);
+        m_MappingStyle->UpdateChannels(deltaTime, m_DevicesState, m_PrevDevicesState, m_ChannelData);
 
     // 5) Dispatch callbacks
     if (m_MappingStyle)

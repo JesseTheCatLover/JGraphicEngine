@@ -11,7 +11,11 @@ public:
     explicit ActionAxisStyle(const FActionAxisMap& configMap);
 
     void BuildChannels(std::vector<FInputChannelDesc>& outChannels) override;
-    void UpdateChannels(float deltaTime, const std::vector<FInputDeviceState>& devices, std::vector<float>& channelData) override;
+    void UpdateChannels(
+    float deltaTime,
+    const std::vector<FInputDeviceState>& devices,
+    const std::vector<FInputDeviceState>& prevDevices,
+    std::vector<float>& channelData) override;
 
     [[nodiscard]] FActionStateBool GetBoolState (InputChannelHandle handle) const override;
     [[nodiscard]] FActionStateAxis1D GetAxis1DState(InputChannelHandle handle) const override;
