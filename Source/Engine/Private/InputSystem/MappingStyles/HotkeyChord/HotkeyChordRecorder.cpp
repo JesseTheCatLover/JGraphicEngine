@@ -73,7 +73,7 @@ void HotkeyChordRecorder::Update(
     // If no keys are down and we had a chord in progress, finalize it
     if (m_HasSeenAnyPressed)
     {
-        NormalizeChord(m_WorkingChord);
+        NormalizeChord(m_WorkingChord, true);
 
         // Optionally reject empty/single key chords
         if (!m_WorkingChord.keys.empty())

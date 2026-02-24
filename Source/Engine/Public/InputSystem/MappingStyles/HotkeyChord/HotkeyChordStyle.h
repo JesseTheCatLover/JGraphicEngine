@@ -12,12 +12,6 @@
 #include "HotkeyPlatform.h"
 #include "IHotkeyBindingEditable.h"
 
-struct FHotkeyConflict
-{
-    std::string existingCommand;
-    FHotkeyChord chord;
-};
-
 class HotkeyChordStyle : public IInputMappingStyle, public IHotkeyBindingEditable
 {
 public:
@@ -67,7 +61,7 @@ private:
     std::unordered_map<std::string, InputChannelHandle> m_NameToHandle;
 
 private:
-    static void NormalizeChord(FHotkeyChord& chord, bool bCanonicalize);
+    static void NormalizeChord(FHotkeyChord& chord, bool bCanonicalize = true);
     static bool ChordsEqual(const FHotkeyChord& a, const FHotkeyChord& b);
 
     [[nodiscard]] bool ChordAppliesToCurrentPlatform(const FHotkeyChord& chord) const;

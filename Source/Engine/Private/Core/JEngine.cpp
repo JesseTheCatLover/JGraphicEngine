@@ -181,13 +181,13 @@ bool JEngine::InitializeSubsystems()
 
     SerializationSubsystem::Get().Initialize();
 
-    m_InputSystem = TUniquePtr<InputSubsystem>(new InputSubsystem());
-    if (!m_InputSystem)
+    m_InputSubSystem = TUniquePtr<InputSubsystem>(new InputSubsystem());
+    if (!m_InputSubSystem)
     {
         std::cerr << "[JEngine]: Failed to initialize input subsystem" << std::endl;
         return false;
     }
-    m_InputSystem->Initialize(m_InputBackend.get());
+    m_InputSubSystem->Initialize(m_InputBackend.get());
 
     // --------- Default action/axis mapping ---------
     FActionAxisMap map;
@@ -213,12 +213,9 @@ bool JEngine::InitializeSubsystems()
     // ESC -> Quit
     addButton("Quit", EPhysicalInput::Key_Escape);
 
-    // ----------------- Editor camera mappings (Temp) ----------------- TODO: we need a special mapping separation for the editor.
-
-    // 1) Editor_Look: mouse delta X/Y (separate from any gameplay look)
     {
         FActionAxisSlot look{};
-        look.name = "Editor_Look";
+        look.name = "Camera.Look";
         look.type = EInputChannelType::Axis2D;
 
         // X = mouse delta X
@@ -246,10 +243,9 @@ bool JEngine::InitializeSubsystems()
         map.actions.push_back(std::move(look));
     }
 
-    // 2) Editor_Move (XY plane): WASD
     {
         FActionAxisSlot move{};
-        move.name = "Editor_Move";
+        move.name = "Camera.Move";
         move.type = EInputChannelType::Axis2D;
 
         // X component = W / S
@@ -284,10 +280,9 @@ bool JEngine::InitializeSubsystems()
         map.actions.push_back(std::move(move));
     }
 
-    // 3) Editor_MoveUpDown: Space / Shift
     {
         FActionAxisSlot moveY{};
-        moveY.name = "Editor_MoveUpDown";
+        moveY.name = "Camera.Up";
         moveY.type = EInputChannelType::Axis1D;
 
         FInputBinding up{};
@@ -306,52 +301,8 @@ bool JEngine::InitializeSubsystems()
         map.actions.push_back(std::move(moveY));
     }
 
-    // 4) Gizmo mode changing
-    {
-        FActionAxisSlot gizmoTranslate{};
-        gizmoTranslate.name = "Editor_GizmoTranslate";
-        gizmoTranslate.type = EInputChannelType::Bool;
-
-        FInputBinding translate{};
-        translate.deviceType  = EInputDeviceType::Keyboard;
-        translate.deviceIndex = 0;
-        translate.input       = EPhysicalInput::Key_W;
-
-        gizmoTranslate.bindings.push_back(translate);
-
-        map.actions.push_back(std::move(gizmoTranslate));
-
-
-        FActionAxisSlot gizmoRotation{};
-        gizmoRotation.name = "Editor_GizmoRotation";
-        gizmoRotation.type = EInputChannelType::Bool;
-
-        FInputBinding rotation{};
-        rotation.deviceType  = EInputDeviceType::Keyboard;
-        rotation.deviceIndex = 0;
-        rotation.input       = EPhysicalInput::Key_R;
-
-        gizmoRotation.bindings.push_back(rotation);
-
-        map.actions.push_back(std::move(gizmoRotation));
-
-
-        FActionAxisSlot gizmoScale{};
-        gizmoScale.name = "Editor_GizmoScale";
-        gizmoScale.type = EInputChannelType::Bool;
-
-        FInputBinding scale{};
-        scale.deviceType  = EInputDeviceType::Keyboard;
-        scale.deviceIndex = 0;
-        scale.input       = EPhysicalInput::Key_E;
-
-        gizmoScale.bindings.push_back(scale);
-
-        map.actions.push_back(std::move(gizmoScale));
-    }
-
     // Install mapping style
-    m_InputSystem->SetMappingStyle(MakeUnique<ActionAxisStyle>(map));
+    m_InputSubSystem->SetMappingStyle(MakeUnique<ActionAxisStyle>(map));
     // ----------------------------------------------------
 
     return true;
@@ -359,7 +310,7 @@ bool JEngine::InitializeSubsystems()
 
 bool JEngine::InitializeManagers()
 {
-    if (!m_Services->GetService<InputManager>()->Initialize(m_InputSystem.get()))
+    if (!m_Services->GetService<InputManager>()->Initialize(m_InputSubSystem.get()))
     {
         std::cerr << "[JEngine]: Failed to initialize InputManager" << std::endl;
         return false;
@@ -421,7 +372,7 @@ void JEngine::Shutdown()
     GEngine = nullptr;
     m_Renderer->Shutdown();
     m_ResourceSubSystem->Shutdown();
-    m_InputSystem->Shutdown();
+    m_InputSubSystem->Shutdown();
     m_PlatformSurface->Shutdown();
 }
 
@@ -435,8 +386,8 @@ void JEngine::Tick()
     if (GetDebugDraw())
         GetDebugDraw()->Tick(deltaTime);
 
-    if (m_InputSystem)
-        m_InputSystem->Tick(deltaTime);
+    if (m_InputSubSystem)
+        m_InputSubSystem->Tick(deltaTime);
 
     if (m_EditorBridge)
         m_EditorBridge->OnTick(deltaTime);
@@ -502,7 +453,7 @@ void JEngine::TickGameFreeCamera(float deltaTime)
     if (!input) return;
 
     // --- Mouse look (same scale as editor camera tool) ---
-    FVector2 lookDelta = input->GetAxis2D("Editor_Look");
+    FVector2 lookDelta = input->GetAxis2D("Camera.Look");
     if (lookDelta.x != 0.f || lookDelta.y != 0.f)
     {
         static bool sLookInitialized = false;
@@ -531,8 +482,8 @@ void JEngine::TickGameFreeCamera(float deltaTime)
     }
 
     // --- WASD + Space/Shift movement (poll axes) ---
-    FVector2 moveInput = input->GetAxis2D("Editor_Move");      // X = W/S, Y = A/D
-    float moveZ = input->GetAxis1D("Editor_MoveUpDown");// Space / Shift
+    FVector2 moveInput = input->GetAxis2D("Camera.Move");      // X = W/S, Y = A/D
+    float moveZ = input->GetAxis1D("Camera.Up");// Space / Shift
 
     if (moveInput.x == 0.f && moveInput.y == 0.f && moveZ == 0.f)
         return;
@@ -561,12 +512,6 @@ void JEngine::TickGameFreeCamera(float deltaTime)
     camActor->SetActorLocation(pos + move);
 }
 
-// void JEngine::OnScroll(double xOffset, double yOffset)
-// {
-//     // m_State.GetCamera()->ProcessMouseScroll(static_cast<float>(yOffset),
-//         // m_State.GetCameraSettings()->GetMaxFOV());
-// }
-
 EngineContext& JEngine::GetEngineContext()
 {
     return *m_Context;
@@ -585,6 +530,11 @@ RendererSubsystem * JEngine::GetRenderer()
 ResourceSubsystem* JEngine::GetResourceSubsystem()
 {
     return m_ResourceSubSystem.get();
+}
+
+InputSubsystem * JEngine::GetInputSubsystem()
+{
+    return m_InputSubSystem.get();
 }
 
 SceneManager* JEngine::GetSceneManager()

@@ -42,7 +42,7 @@ void CameraEditorTool::Tick(float deltaTime, bool bActive, float viewportAspect)
     if (!input) return;
 
     // Mouse look:
-    FVector2 lookDelta = input->GetAxis2D("Editor_Look");
+    FVector2 lookDelta = input->GetAxis2D("EditorCamera.Look");
     if (lookDelta.x != 0.f || lookDelta.y != 0.f)
     {
         // Accumulate yaw/pitch in radians
@@ -71,14 +71,15 @@ void CameraEditorTool::Tick(float deltaTime, bool bActive, float viewportAspect)
     FVector3 move(0.f, 0.f, 0.f);
 
     // WASD movement
-    FVector2 moveInput = input->GetAxis2D("Editor_Move");   // X = W/S, Y = A/D
-    float moveZ = input->GetAxis1D("Editor_MoveUpDown"); // Space / Shift
+    float moveForwardInput = input->GetAxis1D("EditorCamera.MoveForward");   // X = W/S,
+    float moveRightInput = input->GetAxis1D("EditorCamera.MoveRight");       // Y = A/D
+    float moveZ = input->GetAxis1D("EditorCamera.MoveUp"); // Space / Shift
 
     if (m_ProjectionType == EProjectionType::Perspective)
     {
-        move += forward * moveInput.x;      // W/S -> forward/back
+        move += forward * moveForwardInput;      // W/S -> forward/back
     }
-    move += right   * moveInput.y;      // A/D -> strafe right/left
+    move += right   * moveRightInput;      // A/D -> strafe right/left
     move += up * moveZ;     // Space/Shift -> up/down
 
     if (move.Length() > 0.f)

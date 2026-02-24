@@ -31,6 +31,9 @@ public:
     InputSubsystem(InputSubsystem&&) = delete;
     InputSubsystem& operator=(InputSubsystem&&) = delete;
 
+    // Set the mapping style
+    void SetMappingStyle(TUniquePtr<IInputMappingStyle> style);
+
     [[nodiscard]] const std::vector<FInputDeviceState>& GetCurrentDevicesState() const { return m_DevicesState; }
     [[nodiscard]] const std::vector<FInputDeviceState>& GetPreviousDevicesState() const { return m_PrevDevicesState; }
 
@@ -42,9 +45,6 @@ private:
 
     bool Initialize(IInputBackend* backend);
     void Shutdown();
-
-    // Set the mapping style
-    void SetMappingStyle(TUniquePtr<IInputMappingStyle> style);
 
     // Called once per engine frame
     void Tick(float deltaTime);

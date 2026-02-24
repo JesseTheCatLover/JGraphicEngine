@@ -7,6 +7,14 @@
 #include "Core/JEngine.h"
 #include "Framework/PostProcessManager.h"
 #include "Framework/SceneManager.h"
+#include "Input/EditorInputDefaults.h"
+#include "InputSystem/InputSubsystem.h"
+#include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
+#include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
+#include "InputSystem/MappingStyles/Composite/CompositeInputMappingStyle.h"
+#include "InputSystem/MappingStyles/HotkeyChord/HotkeyChordStyle.h"
+#include "InputSystem/MappingStyles/HotkeyChord/HotkeyPlatformUtils.h"
+#include "InputSystem/MappingStyles/HotkeyChord/HotkeySerialization.h"
 #include "Rendering/FRenderView.h"
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/RendererSubsystem.h"
@@ -18,6 +26,7 @@ EditorRuntime::EditorRuntime()
     , m_Renderer(*JEngine::Get().GetRenderer())
     , m_PlatformSurface(*JEngine::Get().GetPlatformSurface())
     , m_Resource(*JEngine::Get().GetResourceSubsystem())
+    , m_Input(*JEngine::Get().GetInputSubsystem())
     , m_SceneAPI(m_Context, m_SceneManager, *JEngine::Get().GetDebugDraw())
     , m_ViewportAPI(m_Context, m_Renderer)
     , m_SurfaceAPI(m_Context, m_PlatformSurface, *JEngine::Get().GetInputManager())
@@ -25,6 +34,11 @@ EditorRuntime::EditorRuntime()
 {
     // Editor takes over rendering, so don't render directly to platform surface
     m_Context.SetShouldRenderToPlatformSurface(false);
+
+    if (!InstallEditorInputMappings())
+    {
+        std::cerr << "[EditorRuntime]: Failed to install editor input mappings.\n";
+    }
 
     auto& chain = GetPostProcessManager()->EditChain(kEditorPostProfile); // TODO: LEGACY
     chain.clear();
@@ -72,4 +86,51 @@ EditorRuntime::EditorRuntime()
 EditorRuntime::~EditorRuntime()
 {
 
+}
+
+bool EditorRuntime::InstallEditorInputMappings()
+{
+    FActionAxisMap axisMap = BuildEditorAxisMap();
+    FHotkeyMap hotkeyDefaults = BuildEditorDefaultHotkeys();
+
+    const char* kHotkeyDefaultsPath = "Saved/Settings/EditorHotkeys.Default.json";
+    const char* kHotkeyUserPath     = "Saved/Settings/EditorHotkeys.User.json";
+
+    // 1) Ensure default file exists (but never overwrite it every launch)
+    {
+        FHotkeyMap tmp;
+        if (!LoadHotkeyMapFromFile(kHotkeyDefaultsPath, tmp))
+        {
+            // File missing or invalid -> generate from hardcoded defaults
+            SaveHotkeyMapToFile(hotkeyDefaults, kHotkeyDefaultsPath);
+        }
+    }
+
+    const EInputPlatform platform = DetectInputPlatform();
+    auto hotkeyStyle = MakeUnique<HotkeyChordStyle>(hotkeyDefaults, platform);
+
+    // 2) Load user overrides if present; otherwise create a user file seeded from defaults
+    bool bUserFileExists = false;
+    {
+        FHotkeyOverrides overrides;
+        if (LoadHotkeyOverridesFromFile(kHotkeyUserPath, overrides))
+        {
+            hotkeyStyle->ApplyOverrides(overrides);
+            bUserFileExists = true;
+        }
+    }
+
+    if (!bUserFileExists)
+    {
+        // First run: seed user file with defaults so users can edit it
+        // (This writes a full map, not just overrides, which is friendlier.)
+        SaveHotkeyMapToFile(hotkeyDefaults, kHotkeyUserPath);
+    }
+
+    auto composite = MakeUnique<CompositeInputMappingStyle>();
+    composite->AddStyle(MakeUnique<ActionAxisStyle>(axisMap));
+    composite->AddStyle(std::move(hotkeyStyle));
+
+    m_Input.SetMappingStyle(std::move(composite));
+    return true;
 }

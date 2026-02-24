@@ -411,13 +411,13 @@ void ViewportController::UpdateSharedGizmoModePolicy(const FViewportPanelInput& 
 
     auto& inputManager = m_Runtime.GetSurface().GetInputManager();
 
-    if (inputManager.GetActionDown("Editor_GizmoTranslate"))
+    if (inputManager.GetActionDown("Editor.Tools.Translate"))
         m_ViewportSubsystem.SetGizmoMode(GizmoEditorTool::EMode::Translate);
 
-    if (inputManager.GetActionDown("Editor_GizmoRotation"))
+    if (inputManager.GetActionDown("Editor.Tools.Rotate"))
         m_ViewportSubsystem.SetGizmoMode(GizmoEditorTool::EMode::Rotate);
 
-    if (inputManager.GetActionDown("Editor_GizmoScale"))
+    if (inputManager.GetActionDown("Editor.Tools.Scale"))
         m_ViewportSubsystem.SetGizmoMode(GizmoEditorTool::EMode::Scale);
 }
 

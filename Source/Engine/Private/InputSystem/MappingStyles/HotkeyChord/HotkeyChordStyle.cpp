@@ -1,6 +1,7 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "InputSystem/MappingStyles/HotkeyChord/HotkeyChordStyle.h"
+#include "InputSystem/MappingStyles/HotkeyChord/FHotkeyConflict.h"
 
 #include <algorithm>
 #include <cmath>
