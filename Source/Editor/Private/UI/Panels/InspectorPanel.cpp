@@ -86,56 +86,67 @@ static void DrawVerticalColumnSplitter(float& inOutLabelWidth, float minW, float
     if (!window)
         return;
 
-    // This assumes we are INSIDE the properties child (BeginBox("##InspectorPropsBox"...))
-    const ImVec2 winPos  = ImGui::GetWindowPos();   // props child top-left (screen space)
-    const ImVec2 winSize = ImGui::GetWindowSize();  // props child size
-
-    // Clamp current width
     inOutLabelWidth = std::clamp(inOutLabelWidth, minW, maxW);
 
-    // Split line X in screen space (relative to child content left)
-    // Window->WorkRect.Min.x for a more precise content-left anchor.
+    // Better anchor than winPos.x because it matches content region (Doesn't introduce infinite scrolling)
     const float contentLeftX = window->WorkRect.Min.x;
     const float splitX       = contentLeftX + inOutLabelWidth;
 
-    // Full-height hit zone
-    const float y0 = winPos.y;
-    const float y1 = winPos.y + winSize.y;
+    const float y0 = window->InnerClipRect.Min.y;
+    const float y1 = window->InnerClipRect.Max.y;
 
-    // Wider invisible hit target, thin visible line
+    // Hit zone (wider than visible line)
     const float hitHalfW = 5.0f;
 
-    // Preserve cursor (so no layout is consumed)
-    const ImVec2 savedCursor = ImGui::GetCursorScreenPos();
+    ImGuiIO& io = ImGui::GetIO();
+    const ImVec2 mouse = io.MousePos;
 
-    ImGui::SetCursorScreenPos(ImVec2(splitX - hitHalfW, y0));
-    ImGui::InvisibleButton("##PropsColumnSplitterFull", ImVec2(hitHalfW * 2.0f, winSize.y));
+    const bool mouseInsideY = (mouse.y >= y0 && mouse.y <= y1);
+    const bool mouseInsideX = (mouse.x >= (splitX - hitHalfW) && mouse.x <= (splitX + hitHalfW));
+    const bool hovered = mouseInsideX && mouseInsideY;
 
-    const bool hovered = ImGui::IsItemHovered();
-    const bool active  = ImGui::IsItemActive();
+    // Persistent drag state for this splitter
+    static bool s_SplitterDragging = false;
 
-    if (hovered || active)
+    // Start drag only if hovered + left clicked, and window is hovered
+    if (!s_SplitterDragging && hovered && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+    {
+        s_SplitterDragging = true;
+    }
+
+    // Stop drag on mouse release
+    if (s_SplitterDragging && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    {
+        s_SplitterDragging = false;
+    }
+
+    if (hovered || s_SplitterDragging)
         ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
 
-    if (active)
+    if (s_SplitterDragging)
     {
-        inOutLabelWidth += ImGui::GetIO().MouseDelta.x;
+        inOutLabelWidth += io.MouseDelta.x;
         inOutLabelWidth = std::clamp(inOutLabelWidth, minW, maxW);
     }
 
-    // Only visible on drag
-    if (/*hover | */active)
+    // Draw only when dragging
+    if (/*hovered || */s_SplitterDragging)
     {
         ImDrawList* dl = ImGui::GetWindowDrawList();
-        const ImU32 col = active
-            ? IM_COL32(150, 150, 150, 255)
-            : IM_COL32(110, 110, 110, 220);
 
-        dl->AddLine(ImVec2(splitX, y0), ImVec2(splitX, y1), col, 1.0f);
+        // optional soft band
+        dl->AddRectFilled(
+            ImVec2(splitX - 1.0f, y0),
+            ImVec2(splitX + 1.0f, y1),
+            s_SplitterDragging ? IM_COL32(150,150,150,180) : IM_COL32(110,110,110,120));
+
+        // center line
+        dl->AddLine(
+            ImVec2(splitX, y0),
+            ImVec2(splitX, y1),
+            s_SplitterDragging ? IM_COL32(170,170,170,255) : IM_COL32(120,120,120,220),
+            1.0f);
     }
-
-    // Restore cursor => zero layout impact
-    ImGui::SetCursorScreenPos(savedCursor);
 }
 
 static bool BeginPropsTable(const char* id, float labelColumnWidth)
