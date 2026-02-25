@@ -33,7 +33,7 @@ private:
     uint64_t    m_ActorNameTargetID = 0; // tracks which actor name is cached
     bool m_bComponentSectionOpen = true;
     float m_ComponentSectionHeight = 150.0f;
-    float m_PropertyLabelColumnWidth = 130.0f;
+    float m_PropertyLabelColumnWidth = 90.0f;
     uint64_t m_SelectedTargetID = 0;
     char     m_SearchBuf[128] = {};
 

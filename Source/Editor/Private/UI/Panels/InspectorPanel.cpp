@@ -80,13 +80,70 @@ static bool DrawPlainSectionToggle(const char* id, const char* label, bool open,
     return open;
 }
 
+static void DrawVerticalColumnSplitter(float& inOutLabelWidth, float minW, float maxW)
+{
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (!window)
+        return;
+
+    // This assumes we are INSIDE the properties child (BeginBox("##InspectorPropsBox"...))
+    const ImVec2 winPos  = ImGui::GetWindowPos();   // props child top-left (screen space)
+    const ImVec2 winSize = ImGui::GetWindowSize();  // props child size
+
+    // Clamp current width
+    inOutLabelWidth = std::clamp(inOutLabelWidth, minW, maxW);
+
+    // Split line X in screen space (relative to child content left)
+    // Window->WorkRect.Min.x for a more precise content-left anchor.
+    const float contentLeftX = window->WorkRect.Min.x;
+    const float splitX       = contentLeftX + inOutLabelWidth;
+
+    // Full-height hit zone
+    const float y0 = winPos.y;
+    const float y1 = winPos.y + winSize.y;
+
+    // Wider invisible hit target, thin visible line
+    const float hitHalfW = 5.0f;
+
+    // Preserve cursor (so no layout is consumed)
+    const ImVec2 savedCursor = ImGui::GetCursorScreenPos();
+
+    ImGui::SetCursorScreenPos(ImVec2(splitX - hitHalfW, y0));
+    ImGui::InvisibleButton("##PropsColumnSplitterFull", ImVec2(hitHalfW * 2.0f, winSize.y));
+
+    const bool hovered = ImGui::IsItemHovered();
+    const bool active  = ImGui::IsItemActive();
+
+    if (hovered || active)
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+
+    if (active)
+    {
+        inOutLabelWidth += ImGui::GetIO().MouseDelta.x;
+        inOutLabelWidth = std::clamp(inOutLabelWidth, minW, maxW);
+    }
+
+    // Only visible on drag
+    if (/*hover | */active)
+    {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImU32 col = active
+            ? IM_COL32(150, 150, 150, 255)
+            : IM_COL32(110, 110, 110, 220);
+
+        dl->AddLine(ImVec2(splitX, y0), ImVec2(splitX, y1), col, 1.0f);
+    }
+
+    // Restore cursor => zero layout impact
+    ImGui::SetCursorScreenPos(savedCursor);
+}
+
 static bool BeginPropsTable(const char* id, float labelColumnWidth)
 {
     ImGuiTableFlags flags =
         ImGuiTableFlags_SizingStretchProp |
         ImGuiTableFlags_PadOuterX |
-        ImGuiTableFlags_NoSavedSettings |
-        ImGuiTableFlags_Resizable;
+        ImGuiTableFlags_NoSavedSettings;
 
     if (!ImGui::BeginTable(id, 2, flags))
         return false;
@@ -94,18 +151,6 @@ static bool BeginPropsTable(const char* id, float labelColumnWidth)
     ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, labelColumnWidth);
     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1.0f);
     return true;
-}
-
-static void CachePropsLabelColumnWidth(float& inOutLabelColumnWidth)
-{
-    // Now the table has rows/items, so width is valid/final
-    const float actual = ImGui::GetColumnWidth(0);
-
-    // Clamp so value column always has room
-    const float minW = 90.0f;
-    const float maxW = 260.0f;
-    if (actual > 0.0f)
-        inOutLabelColumnWidth = std::clamp(actual, minW, maxW);
 }
 
 static bool BeginCategoryHeaderUnique(const char* name, uint64_t stableID, bool defaultOpen)
@@ -572,6 +617,11 @@ void InspectorPanel::DrawPropertiesForSelection(const FInspectorDocument& doc, F
         return;
     }
 
+    const float kMinLabelW = 50.0f;
+    const float kMaxLabelW = 210.0f;
+
+    DrawVerticalColumnSplitter(m_PropertyLabelColumnWidth, kMinLabelW, kMaxLabelW);
+
     // Build list of targets we want to merge (in strict draw order)
     std::vector<const FInspectorTarget*> targetsInOrder;
     targetsInOrder.reserve(doc.targets.size());
@@ -666,7 +716,6 @@ void InspectorPanel::DrawHeaderRows(const std::vector<const FInspectorRow*>& row
             DrawRow(*pr, input);
         }
 
-        CachePropsLabelColumnWidth(m_PropertyLabelColumnWidth);
         ImGui::EndTable();
     }
 
@@ -786,7 +835,6 @@ void InspectorPanel::DrawCategorySection(uint64_t categoryID, const std::string&
             DrawRow(*pr, input);
         }
 
-        CachePropsLabelColumnWidth(m_PropertyLabelColumnWidth);
         ImGui::EndTable();
     }
 
