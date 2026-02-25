@@ -80,6 +80,34 @@ static bool DrawPlainSectionToggle(const char* id, const char* label, bool open,
     return open;
 }
 
+static bool BeginPropsTable(const char* id, float labelColumnWidth)
+{
+    ImGuiTableFlags flags =
+        ImGuiTableFlags_SizingStretchProp |
+        ImGuiTableFlags_PadOuterX |
+        ImGuiTableFlags_NoSavedSettings |
+        ImGuiTableFlags_Resizable;
+
+    if (!ImGui::BeginTable(id, 2, flags))
+        return false;
+
+    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, labelColumnWidth);
+    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+    return true;
+}
+
+static void CachePropsLabelColumnWidth(float& inOutLabelColumnWidth)
+{
+    // Now the table has rows/items, so width is valid/final
+    const float actual = ImGui::GetColumnWidth(0);
+
+    // Clamp so value column always has room
+    const float minW = 90.0f;
+    const float maxW = 260.0f;
+    if (actual > 0.0f)
+        inOutLabelColumnWidth = std::clamp(actual, minW, maxW);
+}
+
 static bool BeginCategoryHeaderUnique(const char* name, uint64_t stableID, bool defaultOpen)
 {
     // Important:
@@ -102,28 +130,49 @@ static bool BeginCategoryHeaderUnique(const char* name, uint64_t stableID, bool 
     return open;
 }
 
-static bool BeginPropsTable(const char* id)
-{
-    ImGuiTableFlags flags =
-        ImGuiTableFlags_SizingFixedFit |
-        ImGuiTableFlags_PadOuterX |
-        ImGuiTableFlags_NoSavedSettings;
-
-    if (!ImGui::BeginTable(id, 2, flags))
-        return false;
-
-    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 110.0f);
-    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-    return true;
-}
-
 static void PropLabel(const char* label)
 {
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(label);
+
+    // Cell bounds (screen space)
+    const ImVec2 cellMin = ImGui::GetCursorScreenPos();
+    const float  cellW   = ImGui::GetContentRegionAvail().x;
+    const float  textH   = ImGui::GetTextLineHeight();
+
+    // Render clipped text inside the label cell
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImU32 col = ImGui::GetColorU32(ImGuiCol_Text);
+
+    const ImVec2 textMin = cellMin;
+    const ImVec2 textMax = ImVec2(cellMin.x + cellW, cellMin.y + textH);
+
+    dl->PushClipRect(textMin, textMax, true);
+    dl->AddText(textMin, col, label ? label : "");
+    dl->PopClipRect();
+
+    // Invisible item for hover/tooltip on truncated labels
+    ImGui::InvisibleButton("##PropLabelHit", ImVec2(cellW, textH));
+
+    if (ImGui::IsItemHovered())
+    {
+        const ImVec2 fullText = ImGui::CalcTextSize(label ? label : "");
+        if (fullText.x > cellW)
+            ImGui::SetTooltip("%s", label ? label : "");
+    }
+
     ImGui::TableSetColumnIndex(1);
+}
+
+static float CalcComponentWidth(int componentCount)
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float avail = ImGui::GetContentRegionAvail().x;
+    const float spacing = style.ItemSpacing.x;
+    const float totalSpacing = spacing * (componentCount - 1);
+    const float w = (avail - totalSpacing) / (float)componentCount;
+    return (w > 1.0f) ? w : 1.0f;
 }
 
 static bool ContainsCaseInsensitive(const std::string& hay, const char* needle)
@@ -609,7 +658,7 @@ void InspectorPanel::DrawHeaderRows(const std::vector<const FInspectorRow*>& row
         return;
 
     // Dedicated "Essentials" strip
-    if (BeginPropsTable("##InspectorHeaderRowsTable"))
+    if (BeginPropsTable("##InspectorHeaderRowsTable", m_PropertyLabelColumnWidth))
     {
         for (const FInspectorRow* pr : rows)
         {
@@ -617,6 +666,7 @@ void InspectorPanel::DrawHeaderRows(const std::vector<const FInspectorRow*>& row
             DrawRow(*pr, input);
         }
 
+        CachePropsLabelColumnWidth(m_PropertyLabelColumnWidth);
         ImGui::EndTable();
     }
 
@@ -728,7 +778,7 @@ void InspectorPanel::DrawCategorySection(uint64_t categoryID, const std::string&
 
     ImGui::PushID((int)categoryID);
 
-    if (BeginPropsTable("##PropsTable"))
+    if (BeginPropsTable("##PropsTable", m_PropertyLabelColumnWidth))
     {
         for (const FInspectorRow* pr : rows)
         {
@@ -736,6 +786,7 @@ void InspectorPanel::DrawCategorySection(uint64_t categoryID, const std::string&
             DrawRow(*pr, input);
         }
 
+        CachePropsLabelColumnWidth(m_PropertyLabelColumnWidth);
         ImGui::EndTable();
     }
 
@@ -744,11 +795,9 @@ void InspectorPanel::DrawCategorySection(uint64_t categoryID, const std::string&
 
 void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& input)
 {
-    PropLabel(row.label.c_str());
-
-    // Critical:
-    // row.rowID must be unique across ALL merged targets, which your provider guarantees.
     ImGui::PushID((int)row.rowID);
+
+    PropLabel(row.label.c_str());
 
     if (row.bReadOnly)
         ImGui::BeginDisabled(true);
@@ -773,7 +822,7 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             if (row.value.tag == REValueTag::Int)   v = row.value.i32;
             if (row.value.tag == REValueTag::Int64) v = (int)row.value.i64;
 
-            ImGui::SetNextItemWidth(180.0f);
+            ImGui::SetNextItemWidth(-FLT_MIN);
             if (ImGui::DragInt("##v", &v, 1.0f))
             {
                 REVariant nv{};
@@ -795,7 +844,7 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
         {
             float v = (row.value.tag == REValueTag::Float) ? row.value.f32 : 0.0f;
 
-            ImGui::SetNextItemWidth(180.0f);
+            ImGui::SetNextItemWidth(-FLT_MIN);
             bool changed = false;
 
             if (row.meta.bHasClamp)
@@ -816,7 +865,7 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
         {
             double v = (row.value.tag == REValueTag::Double) ? row.value.f64 : 0.0;
 
-            ImGui::SetNextItemWidth(180.0f);
+            ImGui::SetNextItemWidth(-FLT_MIN);
             if (ImGui::DragScalar("##v", ImGuiDataType_Double, &v, 0.05))
             {
                 REVariant nv{};
@@ -835,7 +884,7 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             char buf[512];
             std::snprintf(buf, sizeof(buf), "%s", st.c_str());
 
-            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::SetNextItemWidth(-FLT_MIN);
             if (ImGui::InputText("##v", buf, sizeof(buf)))
             {
                 st = buf;
@@ -851,10 +900,12 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             FVector2 v = (row.value.tag == REValueTag::Vec2) ? row.value.v2 : FVector2{};
             float x = v.x, y = v.y;
 
-            ImGui::SetNextItemWidth(90.0f);
+            const float w = CalcComponentWidth(2);
+
+            ImGui::SetNextItemWidth(w);
             bool cx = ImGui::DragFloat("##x", &x, 0.05f, 0, 0, "%.2f");
             ImGui::SameLine();
-            ImGui::SetNextItemWidth(90.0f);
+            ImGui::SetNextItemWidth(w);
             bool cy = ImGui::DragFloat("##y", &y, 0.05f, 0, 0, "%.2f");
 
             if (cx || cy)
@@ -871,13 +922,15 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             FVector3 v = (row.value.tag == REValueTag::Vec3) ? row.value.v3 : FVector3{};
             float x = v.x, y = v.y, z = v.z;
 
-            ImGui::SetNextItemWidth(80.0f);
+            const float w = CalcComponentWidth(3);
+
+            ImGui::SetNextItemWidth(w);
             bool cx = ImGui::DragFloat("##x", &x, 0.05f, 0, 0, "%.2f");
             ImGui::SameLine();
-            ImGui::SetNextItemWidth(80.0f);
+            ImGui::SetNextItemWidth(w);
             bool cy = ImGui::DragFloat("##y", &y, 0.05f, 0, 0, "%.2f");
             ImGui::SameLine();
-            ImGui::SetNextItemWidth(80.0f);
+            ImGui::SetNextItemWidth(w);
             bool cz = ImGui::DragFloat("##z", &z, 0.05f, 0, 0, "%.2f");
 
             if (cx || cy || cz)
@@ -894,16 +947,19 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             FVector4 v = (row.value.tag == REValueTag::Vec4) ? row.value.v4 : FVector4{};
             float x = v.x, y = v.y, z = v.z, w = v.w;
 
-            ImGui::SetNextItemWidth(60.0f);
+            const float wItem = CalcComponentWidth(4);
+
+
+            ImGui::SetNextItemWidth(wItem);
             bool cx = ImGui::DragFloat("##x", &x, 0.05f, 0, 0, "%.2f");
             ImGui::SameLine();
-            ImGui::SetNextItemWidth(60.0f);
+            ImGui::SetNextItemWidth(wItem);
             bool cy = ImGui::DragFloat("##y", &y, 0.05f, 0, 0, "%.2f");
             ImGui::SameLine();
-            ImGui::SetNextItemWidth(60.0f);
+            ImGui::SetNextItemWidth(wItem);
             bool cz = ImGui::DragFloat("##z", &z, 0.05f, 0, 0, "%.2f");
             ImGui::SameLine();
-            ImGui::SetNextItemWidth(60.0f);
+            ImGui::SetNextItemWidth(wItem);
             bool cw = ImGui::DragFloat("##w", &w, 0.05f, 0, 0, "%.2f");
 
             if (cx || cy || cz || cw)
@@ -979,7 +1035,7 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             int64_t raw = (row.value.tag == REValueTag::EnumInt64) ? row.value.i64 : 0;
             int v = (int)raw;
 
-            ImGui::SetNextItemWidth(180.0f);
+            ImGui::SetNextItemWidth(-FLT_MIN);
             if (ImGui::DragInt("##v", &v, 1.0f))
             {
                 REVariant nv{};
