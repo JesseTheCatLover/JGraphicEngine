@@ -277,7 +277,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         "View",
         "Toggle Scene Hierarchy panel",
         {
-            MakeChord({ EPhysicalInput::Key_X }, ANY)
+            MakeChord({ EPhysicalInput::Key_Z }, ANY)
         }));
 
     map.commands.push_back(MakeCommand(
@@ -301,7 +301,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         "View",
         "Toggle Console panel",
         {
-            MakeChord({ EPhysicalInput::Key_Z }, ANY)
+            MakeChord({ EPhysicalInput::Key_X }, ANY)
         }));
 
     // ---------------- Viewport ----------------
