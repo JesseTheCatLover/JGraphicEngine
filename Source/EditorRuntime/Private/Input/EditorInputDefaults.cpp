@@ -321,7 +321,6 @@ FHotkeyMap BuildEditorDefaultHotkeys()
             MakeChord({ EPhysicalInput::Key_G }, ANY)
         }));
 
-    // Matches your menu hint: "Ctrl+M+V"
     map.commands.push_back(MakeCommand(
         "Editor.Viewport.MultiViewModeMenu",
         "Viewport",

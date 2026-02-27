@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Core/Memory/SmartPointers.h"
+
 namespace
 {
     static bool IsModifierKey(EPhysicalInput k)
@@ -31,16 +33,32 @@ namespace
         // Modifiers first in a stable readable order
         switch (k)
         {
-        case EPhysicalInput::Key_LeftControl:
-        case EPhysicalInput::Key_RightControl: return 0;
-        case EPhysicalInput::Key_LeftShift:
-        case EPhysicalInput::Key_RightShift:   return 1;
-        case EPhysicalInput::Key_LeftAlt:
-        case EPhysicalInput::Key_RightAlt:     return 2;
-        case EPhysicalInput::Key_LeftSuper:
-        case EPhysicalInput::Key_RightSuper:   return 3;
-        default:                               return 10;
+            case EPhysicalInput::Key_LeftControl:
+            case EPhysicalInput::Key_RightControl: return 0;
+
+            case EPhysicalInput::Key_LeftShift:
+            case EPhysicalInput::Key_RightShift:   return 1;
+
+            case EPhysicalInput::Key_LeftAlt:
+            case EPhysicalInput::Key_RightAlt:     return 2;
+
+            case EPhysicalInput::Key_LeftSuper:
+            case EPhysicalInput::Key_RightSuper:   return 3;
+
+            default:
+                break;
         }
+
+        // Letters first among non-modifiers
+        if (k >= EPhysicalInput::Key_A && k <= EPhysicalInput::Key_Z)
+            return 10;
+
+        // Number row gets lower priority than letters
+        if (k >= EPhysicalInput::Key_0 && k <= EPhysicalInput::Key_9)
+            return 30;
+
+        // Everything else in the middle
+        return 20;
     }
 
     static bool ContainsKey(const std::vector<EPhysicalInput>& keys, EPhysicalInput k)
@@ -108,6 +126,9 @@ void HotkeyChordStyle::UpdateChannels(
     (void)dt;
     (void)channelData;
 
+    // Rebuild triggered command list
+    m_TriggeredCommands.clear();
+
     for (size_t i = 0; i < m_Map.commands.size(); ++i)
     {
         const FHotkeyCommand& cmd = m_Map.commands[i];
@@ -132,13 +153,19 @@ void HotkeyChordStyle::UpdateChannels(
             if (HasNewPressInChord(chord, devices, prevDevices))
             {
                 pressedNow = true;
-                // no break: held already true; pressed true is enough
+                break; // one valid trigger is enough for this command this frame
             }
         }
 
         st.held = heldNow;
         st.pressed = pressedNow;
         st.released = (!heldNow && wasHeld);
+
+        // Runtime trigger bridge for HotkeyService
+        if (st.pressed)
+        {
+            m_TriggeredCommands.push_back(cmd.name);
+        }
     }
 }
 
@@ -291,6 +318,13 @@ std::string HotkeyChordStyle::GetCommandDisplayString(const std::string& command
         return {};
 
     return HotkeyTextFormatter::CommandToString(*cmd, m_Platform);
+}
+
+std::vector<std::string> HotkeyChordStyle::ConsumeTriggeredCommands()
+{
+    std::vector<std::string> out = std::move(m_TriggeredCommands);
+    m_TriggeredCommands.clear();
+    return out;
 }
 
 // ---------------- Conflicts ----------------

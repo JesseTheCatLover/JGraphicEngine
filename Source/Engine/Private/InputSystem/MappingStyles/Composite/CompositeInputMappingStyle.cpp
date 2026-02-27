@@ -131,6 +131,12 @@ FActionStateAxis2D CompositeInputMappingStyle::GetAxis2DState(InputChannelHandle
     return child.style->GetAxis2DState(route.childHandle);
 }
 
+std::vector<std::string> CompositeInputMappingStyle::ConsumeTriggeredCommands()
+{
+    return m_HotkeyEditable ? m_HotkeyEditable->ConsumeTriggeredCommands()
+                            : std::vector<std::string>{};
+}
+
 // ---------------- IHotkeyBindingEditable forwarding ----------------
 
 bool CompositeInputMappingStyle::RebindCommand(const std::string& commandName, const FHotkeyChord& newChord, int slotIndex)

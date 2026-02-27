@@ -25,7 +25,7 @@ private:
     RendererSubsystem& m_Renderer;
     IPlatformSurface& m_PlatformSurface;
     ResourceSubsystem& m_Resource;
-    InputSubsystem& m_Input;
+    InputSubsystem& m_InputSubsystem;
 
     EditorSceneAPI m_SceneAPI;
     EditorViewportAPI m_ViewportAPI;

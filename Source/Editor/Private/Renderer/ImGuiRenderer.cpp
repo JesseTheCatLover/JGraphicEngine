@@ -9,6 +9,8 @@
 #include "EditorRuntime.h"
 #include "Layout/EditorLayoutModel.h"
 #include "../Core/EditorAssetCache.h"
+#include "Core/Services/HotkeyService.h"
+#include "Core/Services/ShellCommandService.h"
 #include "UI/IEditorPanels.h"
 
 static bool IsViewportKey(const char* key)
@@ -67,8 +69,11 @@ void ImGuiRenderer::RenderPanels(std::span<IEditorPanel * const> panels)
 
 void ImGuiRenderer::DrawMainMenuBar()
 {
-    if (!ImGui::BeginMainMenuBar())
+    if (!ImGui::BeginMainMenuBar() || !m_Host)
         return;
+
+    auto& shell = m_Host->GetService<ShellCommandService>();
+    auto& hotkeys = m_Host->GetService<HotkeyService>();
 
     if (ImGui::BeginMenu("File"))
     {
@@ -96,22 +101,25 @@ void ImGuiRenderer::DrawMainMenuBar()
 
     if (ImGui::BeginMenu("View"))
     {
-        // Uses LayoutModel (single panels)
-        bool hier = m_Layout->IsPanelVisible(EEditorPanelType::SceneHierarchy);
-        if (ImGui::MenuItem("Scene Hierarchy", "X", hier))
-            m_Layout->TogglePanelVisibility(EEditorPanelType::SceneHierarchy);
+        bool bHierarchy = m_Layout->IsPanelVisible(EEditorPanelType::SceneHierarchy);
+        if (ImGui::MenuItem("Scene Hierarchy",
+            hotkeys.GetShortcutText("Editor.View.ToggleSceneHierarchy").c_str(), bHierarchy))
+            shell.Execute("Editor.View.ToggleSceneHierarchy");
 
-        bool insp = m_Layout->IsPanelVisible(EEditorPanelType::Inspector);
-        if (ImGui::MenuItem("Inspector", "V", insp))
-            m_Layout->TogglePanelVisibility(EEditorPanelType::Inspector);
+        bool bConsole = m_Layout->IsPanelVisible(EEditorPanelType::Console);
+        if (ImGui::MenuItem("Console",
+            hotkeys.GetShortcutText("Editor.View.ToggleConsole").c_str(), bConsole))
+            shell.Execute("Editor.View.ToggleConsole");
 
-        bool ab = m_Layout->IsPanelVisible(EEditorPanelType::AssetBrowser);
-        if (ImGui::MenuItem("Asset Browser", "C", ab))
-            m_Layout->TogglePanelVisibility(EEditorPanelType::AssetBrowser);
+        bool bAssetBrowser = m_Layout->IsPanelVisible(EEditorPanelType::AssetBrowser);
+        if (ImGui::MenuItem("Asset Browser",
+            hotkeys.GetShortcutText("Editor.View.ToggleAssetBrowser").c_str(), bAssetBrowser))
+            shell.Execute("Editor.View.ToggleAssetBrowser");
 
-        bool con = m_Layout->IsPanelVisible(EEditorPanelType::Console);
-        if (ImGui::MenuItem("Console", "Z", con))
-            m_Layout->TogglePanelVisibility(EEditorPanelType::Console);
+        bool bInspector = m_Layout->IsPanelVisible(EEditorPanelType::Inspector);
+        if (ImGui::MenuItem("Inspector",
+            hotkeys.GetShortcutText("Editor.View.ToggleInspector").c_str(), bInspector))
+            shell.Execute("Editor.View.ToggleInspector");
 
         ImGui::EndMenu();
     }
@@ -120,16 +128,27 @@ void ImGuiRenderer::DrawMainMenuBar()
     {
         if (ImGui::BeginMenu("Multi-View Modes", "Ctrl+M+V"))
         {
-            if (ImGui::MenuItem("Single View", "Ctrl+V+1")) m_Layout->SetViewportCount(1);
-            if (ImGui::MenuItem("Double View", "Ctrl+V+2")) m_Layout->SetViewportCount(2);
-            if (ImGui::MenuItem("Triple View", "Ctrl+V+3")) m_Layout->SetViewportCount(3);
-            if (ImGui::MenuItem("Quad View",   "Ctrl+V+4")) m_Layout->SetViewportCount(4);
+            if (ImGui::MenuItem("Single View",
+                hotkeys.GetShortcutText("Editor.Viewport.SetSingleView").c_str()))
+                shell.Execute("Editor.Viewport.SetSingleView");
+
+            if (ImGui::MenuItem("Double View",
+                hotkeys.GetShortcutText("Editor.Viewport.SetDoubleView").c_str()))
+                shell.Execute("Editor.Viewport.SetDoubleView");
+
+            if (ImGui::MenuItem("Triple View",
+                hotkeys.GetShortcutText("Editor.Viewport.SetTripleView").c_str()))
+                shell.Execute("Editor.Viewport.SetTripleView");
+
+            if (ImGui::MenuItem("Quad View",
+                hotkeys.GetShortcutText("Editor.Viewport.SetQuadView").c_str()))
+                shell.Execute("Editor.Viewport.SetQuadView");
 
             ImGui::EndMenu();
         }
 
         if (ImGui::MenuItem("Toggle Tab Visibility", "Ctrl+V+H"))
-            m_ShowViewportDockTabs = !m_ShowViewportDockTabs;
+            m_ShowViewportDockTabs = !m_ShowViewportDockTabs; // TODO: move out of renderer
 
         ImGui::EndMenu();
     }

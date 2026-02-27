@@ -32,6 +32,8 @@ public:
     [[nodiscard]] FActionStateAxis1D GetAxis1DState(InputChannelHandle handle) const override;
     [[nodiscard]] FActionStateAxis2D GetAxis2DState(InputChannelHandle handle) const override;
 
+    [[nodiscard]] std::vector<std::string> ConsumeTriggeredCommands() override;
+
     // IHotkeyBindingEditable (forward to child that supports hotkeys, if any)
     bool RebindCommand(const std::string& commandName, const FHotkeyChord& newChord, int slotIndex = 0) override;
     bool AddAlternateChord(const std::string& commandName, const FHotkeyChord& chord) override;

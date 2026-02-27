@@ -8,6 +8,7 @@
 #include "Core/Memory/SmartPointers.h"
 #include "Subsystems/ViewportSubsystem.h"
 
+class EditorLayoutModel;
 class ToolService;
 
 class EditorHost

@@ -4,10 +4,14 @@
 
 #include "TPanelContainer.h"
 #include "ToolService.h"
+#include "Layout/EditorLayoutModel.h"
+#include "Services/EditTimelineService.h"
 #include "Services/HierarchyService.h"
+#include "Services/HotkeyService.h"
 #include "Services/PickingService.h"
 #include "Services/SceneQueryService.h"
 #include "Services/SelectionService.h"
+#include "Services/ShellCommandService.h"
 #include "Subsystems/InspectorSubsystem.h"
 #include "Subsystems/SceneHierarchySubsystem.h"
 #include "Subsystems/ViewportSubsystem.h"
@@ -33,10 +37,13 @@ void EditorHost::RegisterCoreSubsystems()
 
 void EditorHost::RegisterCoreServices()
 {
-     m_Services->Register<SceneQueryService>(m_EditorRuntime);
-     m_Services->Register<SelectionService>(m_EditorRuntime);
-     m_Services->Register<HierarchyService>(*this);
-     m_Services->Register<PickingService>(*this);
+    m_Services->Register<SceneQueryService>(m_EditorRuntime);
+    m_Services->Register<SelectionService>(m_EditorRuntime);
+    m_Services->Register<HierarchyService>(*this);
+    m_Services->Register<PickingService>(*this);
+    m_Services->Register<EditTimelineService>(*this);
+    m_Services->Register<ShellCommandService>(*this);
+    m_Services->Register<HotkeyService>(*this, m_EditorRuntime);
 }
 
 void EditorHost::Tick(float deltaTime)

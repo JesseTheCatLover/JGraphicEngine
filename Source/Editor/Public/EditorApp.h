@@ -19,6 +19,21 @@ struct GLFWwindow;
 
 class EditorApp : public IEditorBridge
 {
+private:
+    GLFWwindow* m_Window;
+
+    // Core components
+    TUniquePtr<EditorRuntime> m_EditorRuntime;
+    TUniquePtr<EditorHost> m_EditorHost;
+
+    // Backend
+    TUniquePtr<IEditorUIBackend> m_EditorUIBackend;
+
+    TUniquePtr<IEditorRenderer> m_Renderer;
+    TUniquePtr<EditorPanelTracker> m_PanelTracker;
+    TUniquePtr<EditorLayoutModel> m_LayoutModel;
+    TUniquePtr<EditorAssetCache> m_EditorCache;
+
 public:
     EditorApp();
     ~EditorApp();
@@ -34,18 +49,6 @@ public:
     void OnRenderOverlay(float deltaTime) override;
     void OnTick(float deltaTime) override;
 
-private:
-    GLFWwindow* m_Window;
-
-    // Core components
-    TUniquePtr<EditorRuntime> m_EditorRuntime;
-    TUniquePtr<EditorHost> m_EditorHost;
-
-    // Backend
-    TUniquePtr<IEditorUIBackend> m_EditorUIBackend;
-
-    TUniquePtr<IEditorRenderer> m_Renderer;
-    TUniquePtr<EditorPanelTracker> m_PanelTracker;
-    TUniquePtr<EditorLayoutModel> m_LayoutModel;
-    TUniquePtr<EditorAssetCache> m_EditorCache;
+    private:
+    void RegisterDefaultShellCommands();
 };

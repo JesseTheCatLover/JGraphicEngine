@@ -29,6 +29,8 @@ public:
         const FHotkeyChord& chord,
         const std::string& ignoreCommand = "") const = 0;
 
+    [[nodiscard]] virtual std::vector<std::string> ConsumeTriggeredCommands() = 0;
+
     [[nodiscard]] virtual const FHotkeyMap& GetHotkeyMap() const = 0;
     [[nodiscard]] virtual const FHotkeyCommand* FindCommandInfo(const std::string& commandName) const = 0;
 };

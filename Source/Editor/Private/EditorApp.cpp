@@ -11,6 +11,7 @@
 #include "Core/EditorAssetCache.h"
 #include "Core/EditorHost.h"
 #include "Core/EditorPanelTracker.h"
+#include "Core/Services/ShellCommandService.h"
 #include "Renderer/ImGuiRenderer.h"
 #include "Layout/EditorLayoutModel.h"
 
@@ -91,6 +92,8 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     m_EditorCache = MakeUnique<EditorAssetCache>();
     m_EditorCache->PreloadAll(*m_EditorRuntime);
 
+    RegisterDefaultShellCommands();
+
     m_Renderer = MakeUnique<ImGuiRenderer>();
     m_Renderer->Initialize(*m_EditorHost, *m_EditorRuntime, *m_LayoutModel, *m_EditorCache);
 }
@@ -112,4 +115,49 @@ void EditorApp::OnTick(float deltaTime)
 {
     if (m_EditorHost)
         m_EditorHost->Tick(deltaTime);
+}
+
+void EditorApp::RegisterDefaultShellCommands() // TODO: Search and check if we should centralize the registration of shell command or each field should register itself
+{
+    auto& shell = m_EditorHost->GetService<ShellCommandService>();
+
+    shell.Register("Editor.View.ToggleSceneHierarchy", [this]()
+    {
+        m_LayoutModel->TogglePanelVisibility(EEditorPanelType::SceneHierarchy);
+    });
+
+    shell.Register("Editor.View.ToggleConsole", [this]()
+    {
+        m_LayoutModel->TogglePanelVisibility(EEditorPanelType::Console);
+    });
+
+    shell.Register("Editor.View.ToggleAssetBrowser", [this]()
+    {
+        m_LayoutModel->TogglePanelVisibility(EEditorPanelType::AssetBrowser);
+    });
+
+    shell.Register("Editor.View.ToggleInspector", [this]()
+    {
+        m_LayoutModel->TogglePanelVisibility(EEditorPanelType::Inspector);
+    });
+
+    shell.Register("Editor.Viewport.SetSingleView", [this]()
+    {
+        m_LayoutModel->SetViewportCount(1);
+    });
+
+    shell.Register("Editor.Viewport.SetDoubleView", [this]()
+    {
+        m_LayoutModel->SetViewportCount(2);
+    });
+
+    shell.Register("Editor.Viewport.SetTripleView", [this]()
+    {
+        m_LayoutModel->SetViewportCount(3);
+    });
+
+    shell.Register("Editor.Viewport.SetQuadView", [this]()
+    {
+        m_LayoutModel->SetViewportCount(4);
+    });
 }

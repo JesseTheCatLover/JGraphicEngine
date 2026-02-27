@@ -26,7 +26,7 @@ EditorRuntime::EditorRuntime()
     , m_Renderer(*JEngine::Get().GetRenderer())
     , m_PlatformSurface(*JEngine::Get().GetPlatformSurface())
     , m_Resource(*JEngine::Get().GetResourceSubsystem())
-    , m_Input(*JEngine::Get().GetInputSubsystem())
+    , m_InputSubsystem(*JEngine::Get().GetInputSubsystem())
     , m_SceneAPI(m_Context, m_SceneManager, *JEngine::Get().GetDebugDraw())
     , m_ViewportAPI(m_Context, m_Renderer)
     , m_SurfaceAPI(m_Context, m_PlatformSurface, *JEngine::Get().GetInputManager())
@@ -131,6 +131,6 @@ bool EditorRuntime::InstallEditorInputMappings()
     composite->AddStyle(MakeUnique<ActionAxisStyle>(axisMap));
     composite->AddStyle(std::move(hotkeyStyle));
 
-    m_Input.SetMappingStyle(std::move(composite));
+    m_InputSubsystem.SetMappingStyle(std::move(composite));
     return true;
 }

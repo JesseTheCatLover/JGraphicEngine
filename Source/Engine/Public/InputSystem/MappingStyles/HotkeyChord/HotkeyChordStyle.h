@@ -14,6 +14,14 @@
 
 class HotkeyChordStyle : public IInputMappingStyle, public IHotkeyBindingEditable
 {
+private:
+    FHotkeyMap m_Map;
+    EInputPlatform m_Platform;
+
+    std::vector<FActionStateBool> m_BoolStates;
+    std::unordered_map<std::string, InputChannelHandle> m_NameToHandle;
+    std::vector<std::string> m_TriggeredCommands;
+
 public:
     HotkeyChordStyle(FHotkeyMap map, EInputPlatform platform);
 
@@ -45,6 +53,8 @@ public:
     [[nodiscard]] std::string GetCommandDisplayString(const std::string& commandName) const override;
     [[nodiscard]] const FHotkeyMap& GetMap() const { return m_Map; }
 
+    std::vector<std::string> ConsumeTriggeredCommands();
+
     // ---------- Conflict detection ----------
     [[nodiscard]] std::vector<FHotkeyConflict> FindConflicts(
         const FHotkeyChord& chord,
@@ -52,13 +62,6 @@ public:
 
     [[nodiscard]] const FHotkeyMap& GetHotkeyMap() const override { return m_Map; }
     [[nodiscard]] const FHotkeyCommand* FindCommandInfo(const std::string& commandName) const;
-
-private:
-    FHotkeyMap m_Map;
-    EInputPlatform m_Platform;
-
-    std::vector<FActionStateBool> m_BoolStates;
-    std::unordered_map<std::string, InputChannelHandle> m_NameToHandle;
 
 private:
     static void NormalizeChord(FHotkeyChord& chord, bool bCanonicalize = true);
