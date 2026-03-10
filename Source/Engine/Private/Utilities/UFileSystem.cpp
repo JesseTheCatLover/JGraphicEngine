@@ -2,9 +2,11 @@
 
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
+#include <mach-o/dyld.h>
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -106,6 +108,45 @@ bool UFileSystem::DeleteDirectory(const std::string& path, bool bRecursive)
         return fs::remove_all(fullPath, ec) > 0 && !ec;
     else
         return fs::remove(fullPath, ec);
+}
+
+std::filesystem::path UFileSystem::GetExecutablePath()
+{
+#ifdef JENGINE_PLATFORM_WINDOWS
+    char buffer[MAX_PATH];
+    DWORD length = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
+    if (length > 0 && length < MAX_PATH)
+        return std::filesystem::path(buffer).parent_path();
+    else
+        std::cerr << "Failed to get executable path (Windows)\n";
+    return {};
+
+#elif defined(JENGINE_PLATFORM_MACOS)
+    char buffer[1024];
+    uint32_t size = sizeof(buffer);
+    if (_NSGetExecutablePath(buffer, &size) == 0)
+        return std::filesystem::canonical(std::filesystem::path(buffer)).parent_path();
+    else {
+        std::cerr << "Buffer too small, required size: " << size << '\n';
+        return {};
+    }
+
+#elif defined(JENGINE_PLATFORM_LINUX)
+    char buffer[1024];
+    ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (len != -1) {
+        buffer[len] = '\0';
+        return std::filesystem::canonical(std::filesystem::path(buffer)).parent_path();
+    } else {
+        std::cerr << "Failed to read /proc/self/exe\n";
+        return {};
+    }
+
+#else
+    std::cerr << "Unsupported platform.\n";
+    return {};
+
+#endif
 }
 
 bool UFileSystem::FileExists(const std::string &path)

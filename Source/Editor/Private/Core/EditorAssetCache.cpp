@@ -32,7 +32,7 @@ void EditorAssetCache::ScanAndLoadTextures(EditorRuntime& runtime, const std::st
         return;
     }
 
-    // UPath returns ABSOLUTE paths (per your docs)
+    // UPath returns ABSOLUTE paths
     const std::vector<std::string> filesAbs = UPath::ListFiles(
         rootDirRel,
         /*extension*/ "",

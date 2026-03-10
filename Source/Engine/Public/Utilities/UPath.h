@@ -21,7 +21,7 @@ private:
     inline static const std::string DefaultMarkerFolder = "Assets";
 
     /** Default marker file for automatic project root detection */
-    inline static const std::string DefaultMarkerFile = "JProject.config";
+    inline static const std::string DefaultMarkerFile = ".JProject";
 
     inline static std::string GProjectRootFileCached{};
     inline static std::string GProjectRootFolderCached{};
@@ -39,7 +39,7 @@ public:
 
     /**
      * @brief Automatically get the project root by searching for a marker file from the current path.
-     * Default marker file is "JProject.config".
+     * Default marker file is ".JProject".
      *
      * @return Absolute path to the project root.
      */

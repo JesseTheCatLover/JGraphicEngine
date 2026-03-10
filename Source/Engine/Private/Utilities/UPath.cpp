@@ -2,6 +2,9 @@
 
 #include "Utilities/UPath.h"
 #include <algorithm>
+#include <iostream>
+
+#include "Utilities/UFileSystem.h"
 
 // ----------------- Automatic Getter -----------------
 std::string UPath::GetProjectRootByFolder()
@@ -10,7 +13,7 @@ std::string UPath::GetProjectRootByFolder()
         return GProjectRootFolderCached;
 
     GProjectRootFolderCached = FindProjectRootByFolder(
-        std::filesystem::current_path().string(), DefaultMarkerFolder);
+        UFileSystem::GetExecutablePath().string(), DefaultMarkerFolder);
     return GProjectRootFolderCached;
 }
 
@@ -20,7 +23,7 @@ std::string UPath::GetProjectRootByFile()
         return GProjectRootFileCached;
 
     GProjectRootFileCached = FindProjectRootByFile(
-        std::filesystem::current_path().string(), DefaultMarkerFile);
+        UFileSystem::GetExecutablePath().string(), DefaultMarkerFile);
     return GProjectRootFileCached;
 }
 
@@ -29,14 +32,21 @@ std::string UPath::FindProjectRootByFolder(const std::string& startPath, const s
 {
     std::filesystem::path path = startPath;
 
+    constexpr int maxDepth = 5;
+    int recursionDepth = 1;
+
     while (!path.empty())
     {
+        if (recursionDepth == maxDepth)
+            break;
+
         if (std::filesystem::exists(path / markerFolder) &&
             std::filesystem::is_directory(path / markerFolder))
         {
             return path.string();
         }
         path = path.parent_path();
+        recursionDepth++;
     }
 
     return startPath;
@@ -46,14 +56,21 @@ std::string UPath::FindProjectRootByFile(const std::string& startPath, const std
 {
     std::filesystem::path path = startPath;
 
+    constexpr int maxDepth = 5;
+    int recursionDepth = 1;
+
     while (!path.empty())
     {
+        if (recursionDepth == maxDepth)
+            break;
+
         if (std::filesystem::exists(path / markerFile) &&
             std::filesystem::is_regular_file(path / markerFile))
         {
             return path.string();
         }
         path = path.parent_path();
+        recursionDepth++;
     }
 
     return startPath;

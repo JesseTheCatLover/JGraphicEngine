@@ -5,6 +5,7 @@
 #include <vector>
 #include <optional>
 #include <cstdint>
+#include <filesystem>
 
 /**
  * @class UFileSystem
@@ -104,6 +105,8 @@ public:
      * @return True if successful, false otherwise.
      */
     static bool DeleteDirectory(const std::string& path, bool bRecursive = false);
+
+    static std::filesystem::path GetExecutablePath();
 
     // ----------------- Info & Listing -----------------
 

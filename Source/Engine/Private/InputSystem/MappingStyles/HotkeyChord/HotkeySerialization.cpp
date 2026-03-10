@@ -2,6 +2,8 @@
 
 #include "InputSystem/MappingStyles/HotkeyChord/HotkeySerialization.h"
 
+#include "Utilities/UPath.h"
+
 namespace
 {
     constexpr int kHotkeyJsonVersion = 1;
@@ -280,13 +282,13 @@ bool SaveHotkeyMapToFile(const FHotkeyMap& map, const std::string& filePath)
 {
     JsonWriter w;
     w.WriteObject("Hotkeys", ToJson(map));
-    return w.SaveToFile(filePath);
+    return w.SaveToFile(UPath::ResolvePath(filePath));
 }
 
 bool LoadHotkeyMapFromFile(const std::string& filePath, FHotkeyMap& outMap)
 {
     JsonReader r;
-    if (!r.LoadFromFile(filePath))
+    if (!r.LoadFromFile(UPath::ResolvePath(filePath)))
         return false;
 
     // Supports either wrapped { "Hotkeys": ... } or raw root object
@@ -300,13 +302,13 @@ bool SaveHotkeyOverridesToFile(const FHotkeyOverrides& overrides, const std::str
 {
     JsonWriter w;
     w.WriteObject("HotkeyOverrides", ToJson(overrides));
-    return w.SaveToFile(filePath);
+    return w.SaveToFile(UPath::ResolvePath(filePath));
 }
 
 bool LoadHotkeyOverridesFromFile(const std::string& filePath, FHotkeyOverrides& outOverrides)
 {
     JsonReader r;
-    if (!r.LoadFromFile(filePath))
+    if (!r.LoadFromFile(UPath::ResolvePath(filePath)))
         return false;
 
     if (r.IsObject("HotkeyOverrides"))
