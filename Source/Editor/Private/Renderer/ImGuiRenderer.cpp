@@ -147,8 +147,11 @@ void ImGuiRenderer::DrawMainMenuBar()
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem("Toggle Tab Visibility", "Ctrl+V+H"))
-            m_ShowViewportDockTabs = !m_ShowViewportDockTabs; // TODO: move out of renderer
+        if (ImGui::MenuItem("Toggle Tab Visibility",
+                hotkeys.GetShortcutText("Editor.Viewport.ToggleTabVisibility").c_str()))
+        {
+            shell.Execute("Editor.Viewport.ToggleTabVisibility");
+        }
 
         ImGui::EndMenu();
     }
@@ -316,7 +319,7 @@ void ImGuiRenderer::DrawDockspaceAndPanels(float /*deltaTime*/)
     if (ImGui::Begin("ViewportDockHost", nullptr, vpHostFlags))
     {
         ImGuiDockNodeFlags vpDockFlags = ImGuiDockNodeFlags_None;
-        if (!m_ShowViewportDockTabs)
+        if (!m_Layout->GetShowViewportDocktabs())
             vpDockFlags |= ImGuiDockNodeFlags_NoTabBar;
 
 

@@ -160,4 +160,9 @@ void EditorApp::RegisterDefaultShellCommands() // TODO: Search and check if we s
     {
         m_LayoutModel->SetViewportCount(4);
     });
+
+    shell.Register("Editor.Viewport.ToggleTabVisibility", [this]()
+    {
+        m_LayoutModel->ToggleShowViewportDocktabs();
+    });
 }

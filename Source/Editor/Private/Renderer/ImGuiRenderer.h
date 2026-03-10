@@ -25,8 +25,6 @@ private:
     EditorLayoutModel* m_Layout = nullptr;
     EditorAssetCache* m_Cache = nullptr;
 
-    bool m_ShowViewportDockTabs = true;
-
     ImGuiWindowClass m_ToolsDockClass{};
     ImGuiWindowClass m_ViewportDockClass{};
     ImGuiWindowClass m_ViewportHostDockClass{};

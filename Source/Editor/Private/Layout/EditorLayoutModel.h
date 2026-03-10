@@ -31,6 +31,7 @@ class EditorLayoutModel
 {
 private:
     int m_ViewportCount = 1;
+    bool m_bShowViewportDockTabs = true;
 
     std::array<bool, (size_t)EEditorPanelType::Count> m_ToolVisible{};
     bool m_ViewportCountDirty = true;
@@ -52,6 +53,16 @@ public:
     [[nodiscard]] bool IsPanelVisible(EEditorPanelType id) const;
     void SetPanelVisible(EEditorPanelType id, bool bVisible);
     void TogglePanelVisibility(EEditorPanelType id);
+
+    [[nodiscard]] bool GetShowViewportDocktabs() const { return m_bShowViewportDockTabs; }
+    void SetShowViewportDocktabs(bool bShould)
+    {
+        m_bShowViewportDockTabs = bShould;
+    }
+    void ToggleShowViewportDocktabs()
+    {
+        m_bShowViewportDockTabs = !m_bShowViewportDockTabs;
+    }
 
     // Change tracking
     bool ConsumeViewportCountChanged();

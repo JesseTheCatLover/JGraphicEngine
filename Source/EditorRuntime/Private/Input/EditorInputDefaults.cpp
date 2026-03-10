@@ -322,15 +322,6 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Viewport.MultiViewModeMenu",
-        "Viewport",
-        "Open or trigger multi-view mode controls",
-        {
-            MakeChord({ EPhysicalInput::Key_LeftControl, EPhysicalInput::Key_M, EPhysicalInput::Key_V }, WL),
-            MakeChord({ EPhysicalInput::Key_LeftSuper,   EPhysicalInput::Key_M, EPhysicalInput::Key_V }, MAC)
-        }));
-
-    map.commands.push_back(MakeCommand(
         "Editor.Viewport.SetSingleView",
         "Viewport",
         "Set viewport layout to single view",
@@ -367,13 +358,13 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Viewport.ToggleTabVisibility",
-        "Viewport",
-        "Toggle viewport dock tab visibility",
-        {
-            MakeChord({ EPhysicalInput::Key_LeftControl, EPhysicalInput::Key_V, EPhysicalInput::Key_H }, WL),
-            MakeChord({ EPhysicalInput::Key_LeftSuper,   EPhysicalInput::Key_V, EPhysicalInput::Key_H }, MAC)
-        }));
+    "Editor.Viewport.ToggleTabVisibility",
+    "Viewport",
+    "Toggle viewport dock tab visibility",
+    {
+        MakeChord({ EPhysicalInput::Key_LeftControl, EPhysicalInput::Key_V, EPhysicalInput::Key_H }, WL),
+        MakeChord({ EPhysicalInput::Key_LeftAlt,   EPhysicalInput::Key_V, EPhysicalInput::Key_H }, MAC)
+    }));
 
     // ---------------- Tools ----------------
     map.commands.push_back(MakeCommand(
