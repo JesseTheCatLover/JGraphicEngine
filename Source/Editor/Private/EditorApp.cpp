@@ -92,7 +92,8 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
     m_EditorCache = MakeUnique<EditorAssetCache>();
     m_EditorCache->PreloadAll(*m_EditorRuntime);
 
-    RegisterDefaultShellCommands();
+    RegisterEditorShellCommands(*m_EditorHost, *m_LayoutModel);
+    RegisterServicesShellCommands(*m_EditorHost);
 
     m_Renderer = MakeUnique<ImGuiRenderer>();
     m_Renderer->Initialize(*m_EditorHost, *m_EditorRuntime, *m_LayoutModel, *m_EditorCache);
@@ -139,4 +140,9 @@ void EditorApp::RegisterViewportCommands(ShellCommandService &shell, EditorLayou
     shell.Register("Editor.Viewport.SetTripleView", [&layout]() { layout.SetViewportCount(3); });
     shell.Register("Editor.Viewport.SetQuadView",   [&layout]() { layout.SetViewportCount(4); });
     shell.Register("Editor.Viewport.ToggleTabVisibility", [&layout]() { layout.ToggleShowViewportDocktabs(); });
+}
+
+void EditorApp::RegisterServicesShellCommands(EditorHost &host)
+{
+    host.RegisterShellCommandsForServices();
 }

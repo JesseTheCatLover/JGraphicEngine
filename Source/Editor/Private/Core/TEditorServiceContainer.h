@@ -31,6 +31,12 @@ public:
             svc->Tick(dt);
     }
 
+    void RegisterShellCommand(ShellCommandService& shell)
+    {
+        for (auto& [_, svc] : m_Map)
+            svc->RegisterShellCommands(shell);
+    }
+
 private:
     std::unordered_map<std::type_index, std::unique_ptr<IEditorService>> m_Map;
 };

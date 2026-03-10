@@ -29,6 +29,8 @@ public:
     // Called every frame from EditorApp::OnTick
     void Tick(float deltaTime);
 
+    void RegisterShellCommandsForServices();
+
     // Getters
     [[nodiscard]] TPanelContainer* GetPanelContainer() const { return m_PanelContainer.get(); }
     [[nodiscard]] ToolService* GetToolService() const { return m_ToolService.get(); }

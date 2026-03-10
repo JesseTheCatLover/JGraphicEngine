@@ -54,4 +54,5 @@ public:
     void RegisterEditorShellCommands(EditorHost& host, EditorLayoutModel& layout);
     static void RegisterViewCommands(ShellCommandService& shell, EditorLayoutModel& layout);
     static void RegisterViewportCommands(ShellCommandService& shell, EditorLayoutModel& layout);
+    void RegisterServicesShellCommands(EditorHost& host);
 };

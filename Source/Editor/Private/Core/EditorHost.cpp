@@ -51,3 +51,8 @@ void EditorHost::Tick(float deltaTime)
     m_Services->Tick(deltaTime);
     m_PanelContainer->Tick(deltaTime);
 }
+
+void EditorHost::RegisterShellCommandsForServices()
+{
+    m_Services->RegisterShellCommand(GetService<ShellCommandService>());
+}
