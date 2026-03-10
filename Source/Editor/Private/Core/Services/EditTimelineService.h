@@ -3,9 +3,9 @@
 #pragma once
 #include <vector>
 
-#include "Core/Memory/SmartPointers.h"
-#include "IUndoableAction.h"
 #include "Core/IEditorService.h"
+#include "Core/Memory/SmartPointers.h"
+#include "UndoableActions/IUndoableAction.h"
 
 class EditorHost;
 
@@ -21,11 +21,14 @@ public:
     explicit EditTimelineService(EditorHost& host);
 
     void Execute(TUniquePtr<IUndoableAction> action);
-    bool CanUndo() const;
-    bool CanRedo() const;
+
+    [[nodiscard]] bool CanUndo() const { return !m_UndoStack.empty(); }
+    [[nodiscard]] bool CanRedo() const { return !m_RedoStack.empty(); }
 
     void Undo();
     void Redo();
 
     void Clear();
+
+    void RegisterShellCommands(ShellCommandService& shell) override;
 };

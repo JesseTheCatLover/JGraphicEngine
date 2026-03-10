@@ -254,7 +254,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Edit.Undo",
+        "Editor.History.Undo",
         "Edit",
         "Undo last action",
         {
@@ -263,11 +263,11 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Edit.Redo",
+        "Editor.History.Redo",
         "Edit",
         "Redo last action",
         {
-            MakeChord({ EPhysicalInput::Key_LeftControl, EPhysicalInput::Key_Y }, WL),
+            MakeChord({ EPhysicalInput::Key_LeftControl, EPhysicalInput::Key_LeftShift, EPhysicalInput::Key_Z }, WL),
             MakeChord({ EPhysicalInput::Key_LeftSuper,   EPhysicalInput::Key_LeftShift, EPhysicalInput::Key_Z }, MAC)
         }));
 

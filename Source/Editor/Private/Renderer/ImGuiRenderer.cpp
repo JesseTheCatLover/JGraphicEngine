@@ -9,6 +9,7 @@
 #include "EditorRuntime.h"
 #include "Layout/EditorLayoutModel.h"
 #include "../Core/EditorAssetCache.h"
+#include "Core/Services/EditTimelineService.h"
 #include "Core/Services/HotkeyService.h"
 #include "Core/Services/ShellCommandService.h"
 #include "UI/IEditorPanels.h"
@@ -91,11 +92,16 @@ void ImGuiRenderer::DrawMainMenuBar()
 
     if (ImGui::BeginMenu("Edit"))
     {
-        if (m_Host)
-        {
-            ImGui::MenuItem("Undo", "Ctrl+Z", false, true);
-            ImGui::MenuItem("Redo", "Ctrl+Y", false, true);
-        }
+        const bool canUndo = m_Host->GetService<EditTimelineService>().CanUndo();
+        const bool canRedo = m_Host->GetService<EditTimelineService>().CanRedo();
+
+        const std::string hkUndo = hotkeys.GetShortcutText("Editor.History.Undo");
+        if (ImGui::MenuItem("Undo", hkUndo.empty() ? nullptr : hkUndo.c_str(), false, canUndo))
+            shell.Execute("Editor.History.Undo");
+
+        const std::string hkRedo = hotkeys.GetShortcutText("Editor.History.Redo");
+        if (ImGui::MenuItem("Redo", hkRedo.empty() ? nullptr : hkRedo.c_str(), false, canRedo))
+            shell.Execute("Editor.History.Redo");
         ImGui::EndMenu();
     }
 
