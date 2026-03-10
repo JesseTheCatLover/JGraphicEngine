@@ -2,6 +2,7 @@
 
 #pragma once
 #include <GLFW/glfw3.h>
+#include <string>
 
 #include "IEditorUIBackend.h"
 
@@ -17,7 +18,12 @@ public:
 
 private:
     GLFWwindow* m_Window;
+    std::string m_IniPath;
+    bool m_HasLoadedSettings = false;
+    bool m_DefaultLayoutBuilt = false;
 
     void SetupFonts();
     void SetupStyle();
+    void SaveSettings();
+    bool LoadSettings();
 };

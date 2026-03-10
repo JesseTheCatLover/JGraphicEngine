@@ -93,8 +93,8 @@ bool EditorRuntime::InstallEditorInputMappings()
     FActionAxisMap axisMap = BuildEditorAxisMap();
     FHotkeyMap hotkeyDefaults = BuildEditorDefaultHotkeys();
 
-    const char* kHotkeyDefaultsPath = "Saved/Settings/EditorHotkeys.Default.json";
-    const char* kHotkeyUserPath     = "Saved/Settings/EditorHotkeys.User.json";
+    const char* kHotkeyDefaultsPath = "Config/Saved/Settings/EditorHotkeys.Default.json";
+    const char* kHotkeyUserPath     = "Config/Saved/Settings/EditorHotkeys.User.json";
 
     // 1) Ensure default file exists (but never overwrite it every launch)
     {
