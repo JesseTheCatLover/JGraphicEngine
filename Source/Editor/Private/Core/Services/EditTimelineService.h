@@ -31,4 +31,7 @@ public:
     void Clear();
 
     void RegisterShellCommands(ShellCommandService& shell) override;
+
+private:
+    void ApplyEffects(const IUndoableAction& action);
 };

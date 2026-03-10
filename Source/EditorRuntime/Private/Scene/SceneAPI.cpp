@@ -107,6 +107,20 @@ bool EditorSceneAPI::TryGetActorComponents(ActorID id, std::vector<JCoreObject*>
     return true;
 }
 
+std::string EditorSceneAPI::GetActorName(ActorID id) const
+{
+    if (auto actor = TryGetActor(id))
+        return actor->GetActorName();
+
+    return "No actor found.";
+}
+
+void EditorSceneAPI::SetActorName(ActorID id, const std::string &newName)
+{
+    if (auto actor = TryGetActor(id))
+        actor->SetActorName(newName);
+}
+
 std::vector<FHierarchySnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
 {
     std::vector<FHierarchySnapshot> result;

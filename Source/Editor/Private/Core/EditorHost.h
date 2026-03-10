@@ -44,4 +44,6 @@ public:
     template<typename T>
     T& GetService() { return m_Services->Get<T>(); }
 
+    EditorRuntime& GetRuntime() { return m_EditorRuntime; }
+
 };

@@ -4,6 +4,7 @@
 
 #include <iostream>
 
+#include "HierarchyService.h"
 #include "ShellCommandService.h"
 #include "Core/EditorHost.h"
 
@@ -19,6 +20,7 @@ void EditTimelineService::Execute(TUniquePtr<IUndoableAction> action)
 
     // Run forward
     action->Do();
+    ApplyEffects(*action);
 
     // Record in undo stack
     m_UndoStack.push_back(std::move(action));
@@ -39,6 +41,7 @@ void EditTimelineService::Undo()
     if (action)
     {
         action->Undo();
+        ApplyEffects(*action);
         m_RedoStack.push_back(std::move(action));
     }
 }
@@ -54,6 +57,7 @@ void EditTimelineService::Redo()
     if (action)
     {
         action->Do();
+        ApplyEffects(*action);
         m_UndoStack.push_back(std::move(action));
     }
 }
@@ -69,4 +73,18 @@ void EditTimelineService::RegisterShellCommands(ShellCommandService &shell)
     shell.Register("Editor.History.Undo", [this](){ Undo(); });
     shell.Register("Editor.History.Redo", [this](){ Redo(); });
     shell.Register("Editor.History.Clear", [this](){ Clear(); });
+}
+
+void EditTimelineService::ApplyEffects(const IUndoableAction &action)
+{
+    const EEditEffect fx = action.GetEffects();
+
+    if (HasEffect(fx, EEditEffect::Hierarchy))
+        m_Host.GetService<HierarchyService>().MarkDirty();
+    //
+    // if (HasEffect(fx, EEditEffect::Inspector))
+    //     m_Host.GetService<InspectorService>().MarkDirty();
+    //
+    // if (HasEffect(fx, EEditEffect::Selection))
+    //     m_Host.GetService<SelectionService>().PushToRuntime();
 }

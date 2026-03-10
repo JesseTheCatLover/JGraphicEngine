@@ -3,6 +3,7 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include <string>
 
 #include "FHierarchySnapshot.h"
 #include "FRaycast.h"
@@ -40,6 +41,9 @@ public:
     bool TrySetActorWorldRotation(ActorID id, const FQuat& q);
     bool TrySetActorWorldScale(ActorID id, const FVector3& s);
     bool TryGetActorComponents(ActorID id, std::vector<JCoreObject*>& outObjects) const;
+
+    [[nodiscard]] std::string GetActorName(ActorID id) const;
+    void SetActorName(ActorID id, const std::string& newName);
 
     [[nodiscard]] std::vector<FHierarchySnapshot>
         BuildHierarchySnapshot() const;

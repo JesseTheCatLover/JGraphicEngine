@@ -20,7 +20,9 @@
 
 #include "Core/Reflection/REMeta.h"
 #include "Core/Reflection/RETypeRegistry.h"
+#include "Core/Services/EditTimelineService.h"
 #include "Core/Services/HierarchyService.h"
+#include "UndoableActions/RenameActorAction.h"
 
 // ------------------------- helpers -------------------------
 
@@ -881,8 +883,15 @@ void ActorInspectorProvider::ApplyEdit(const FInspectorEditCommand& cmd)
             if (newName.empty())
                 return;
 
-            actor->SetActorName(newName);
-            m_Host.GetService<HierarchyService>().MarkDirty();
+            auto& timeline = m_Host.GetService<EditTimelineService>();
+
+            const uint64_t actorID = cmd.handle.contextRuntimeID;
+            const std::string oldName = m_Host.GetRuntime().GetScene().GetActorName(actorID);
+
+            if (oldName == newName)
+                return;
+
+            timeline.Execute(MakeUnique<RenameActorAction>(m_Host.GetRuntime(), actorID, oldName, newName));
             return;
         }
     }
