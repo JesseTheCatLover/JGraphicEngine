@@ -8,6 +8,7 @@
 #include "Core/IEditorBridge.h"
 #include "Core/Memory/SmartPointers.h"
 
+class ShellCommandService;
 class IEditorRenderer;
 class IEditorUIBackend;
 class EditorPanelTracker;
@@ -50,5 +51,7 @@ public:
     void OnTick(float deltaTime) override;
 
     private:
-    void RegisterDefaultShellCommands();
+    void RegisterEditorShellCommands(EditorHost& host, EditorLayoutModel& layout);
+    static void RegisterViewCommands(ShellCommandService& shell, EditorLayoutModel& layout);
+    static void RegisterViewportCommands(ShellCommandService& shell, EditorLayoutModel& layout);
 };

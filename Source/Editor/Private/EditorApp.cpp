@@ -117,52 +117,26 @@ void EditorApp::OnTick(float deltaTime)
         m_EditorHost->Tick(deltaTime);
 }
 
-void EditorApp::RegisterDefaultShellCommands() // TODO: Search and check if we should centralize the registration of shell command or each field should register itself
+void EditorApp::RegisterEditorShellCommands(EditorHost& host, EditorLayoutModel& layout)
 {
-    auto& shell = m_EditorHost->GetService<ShellCommandService>();
+    auto& shell = host.GetService<ShellCommandService>();
+    RegisterViewCommands(shell, layout);
+    RegisterViewportCommands(shell, layout);
+}
 
-    shell.Register("Editor.View.ToggleSceneHierarchy", [this]()
-    {
-        m_LayoutModel->TogglePanelVisibility(EEditorPanelType::SceneHierarchy);
-    });
+void EditorApp::RegisterViewCommands(ShellCommandService &shell, EditorLayoutModel &layout)
+{
+    shell.Register("Editor.View.ToggleSceneHierarchy", [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::SceneHierarchy); });
+    shell.Register("Editor.View.ToggleConsole",        [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::Console); });
+    shell.Register("Editor.View.ToggleAssetBrowser",   [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::AssetBrowser); });
+    shell.Register("Editor.View.ToggleInspector",      [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::Inspector); });
+}
 
-    shell.Register("Editor.View.ToggleConsole", [this]()
-    {
-        m_LayoutModel->TogglePanelVisibility(EEditorPanelType::Console);
-    });
-
-    shell.Register("Editor.View.ToggleAssetBrowser", [this]()
-    {
-        m_LayoutModel->TogglePanelVisibility(EEditorPanelType::AssetBrowser);
-    });
-
-    shell.Register("Editor.View.ToggleInspector", [this]()
-    {
-        m_LayoutModel->TogglePanelVisibility(EEditorPanelType::Inspector);
-    });
-
-    shell.Register("Editor.Viewport.SetSingleView", [this]()
-    {
-        m_LayoutModel->SetViewportCount(1);
-    });
-
-    shell.Register("Editor.Viewport.SetDoubleView", [this]()
-    {
-        m_LayoutModel->SetViewportCount(2);
-    });
-
-    shell.Register("Editor.Viewport.SetTripleView", [this]()
-    {
-        m_LayoutModel->SetViewportCount(3);
-    });
-
-    shell.Register("Editor.Viewport.SetQuadView", [this]()
-    {
-        m_LayoutModel->SetViewportCount(4);
-    });
-
-    shell.Register("Editor.Viewport.ToggleTabVisibility", [this]()
-    {
-        m_LayoutModel->ToggleShowViewportDocktabs();
-    });
+void EditorApp::RegisterViewportCommands(ShellCommandService &shell, EditorLayoutModel &layout)
+{
+    shell.Register("Editor.Viewport.SetSingleView", [&layout]() { layout.SetViewportCount(1); });
+    shell.Register("Editor.Viewport.SetDoubleView", [&layout]() { layout.SetViewportCount(2); });
+    shell.Register("Editor.Viewport.SetTripleView", [&layout]() { layout.SetViewportCount(3); });
+    shell.Register("Editor.Viewport.SetQuadView",   [&layout]() { layout.SetViewportCount(4); });
+    shell.Register("Editor.Viewport.ToggleTabVisibility", [&layout]() { layout.ToggleShowViewportDocktabs(); });
 }
