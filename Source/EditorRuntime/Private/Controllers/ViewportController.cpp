@@ -12,6 +12,7 @@
 #include "Controllers/Outputs/FViewportOutput.h"
 #include "Tools/CameraEditorTool.h"
 #include "ToolService.h"
+#include "Core/Services/EditTimelineService.h"
 #include "Core/Services/HierarchyService.h"
 #include "Core/Services/PickingService.h"
 #include "Core/Services/SceneQueryService.h"
@@ -20,6 +21,7 @@
 #include "Rendering/EViewType.h"
 #include "Rendering/FRenderView.h"
 #include "Scene/FSelectionModifiers.h"
+#include "UndoableActions/SetActorsTransformAction.h"
 
 ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools)
     : m_PanelID(id)
@@ -206,19 +208,55 @@ void ViewportController::EndGizmoEditSession(bool bCommit)
         // revert preview
         for (size_t i = 0; i < m_GizmoSession.actors.size(); ++i)
             queries.TrySetActorWorldTransform(m_GizmoSession.actors[i], m_GizmoSession.startXfs[i]);
+
+        m_GizmoSession.Reset();
+        return;
     }
-    else
+
+    // 1) Capture AFTER transforms at commit time
+    std::vector<FTransform> endXfs;
+    endXfs.reserve(m_GizmoSession.actors.size());
+
+    for (ActorID id : m_GizmoSession.actors)
     {
-        // Commit point:
-        // Here is where we'd build an undoable command:
-        // - capture end transforms
-        // - push command to EditorHost command stack
-        //
-        // For now: do nothing because preview already applied.
-        //
-        // TODO:
-        // std::vector<FTransform> endXfs = ...
-        // m_Host.ExecuteCommand(MakeUnique<FTransformActorsCommand>(actors, startXfs, endXfs));
+        FTransform xf{};
+        if (!queries.TryGetActorWorldTransform(id, xf))
+            xf = FTransform{}; // fallback
+        endXfs.push_back(xf);
+    }
+
+    // 2) If nothing actually changed, don't push history
+    bool anyChanged = false;
+    const size_t n = std::min(endXfs.size(), m_GizmoSession.startXfs.size());
+    for (size_t i = 0; i < n; ++i)
+    {
+        if (!(endXfs[i] == m_GizmoSession.startXfs[i]))
+        {
+            anyChanged = true;
+            break;
+        }
+    }
+
+    if (anyChanged)
+    {
+        auto& timeline = m_Host.GetService<EditTimelineService>();
+
+        // Optional nicer title
+        std::string title = "Transform Actors";
+        switch (m_GizmoSession.mode)
+        {
+            case GizmoEditorTool::EMode::Translate: title = "Move Actors"; break;
+            case GizmoEditorTool::EMode::Rotate:    title = "Rotate Actors"; break;
+            case GizmoEditorTool::EMode::Scale:     title = "Scale Actors"; break;
+            default: break;
+        }
+
+        timeline.Execute(MakeUnique<SetActorsTransformAction>(
+            m_Runtime,
+            m_GizmoSession.actors,
+            m_GizmoSession.startXfs,
+            endXfs,
+            title));
     }
 
     m_GizmoSession.Reset();
