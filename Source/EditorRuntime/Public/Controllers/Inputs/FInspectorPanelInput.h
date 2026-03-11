@@ -20,10 +20,18 @@ struct FInspectorWriteHandle
     // Later: uint32_t propId; (hashed, stable)
 };
 
+enum class EInspectorEditPhase : uint8_t
+{
+    Begin,   // user started dragging/editing
+    Update,  // intermediate values while dragging
+    End      // user released / committed
+};
+
 struct FInspectorEditCommand
 {
     FInspectorWriteHandle handle;
     REVariant value;
+    EInspectorEditPhase phase = EInspectorEditPhase::Update;
 };
 
 struct FInspectorPanelInput : public FPanelInputBase

@@ -37,6 +37,8 @@ private:
     uint64_t m_SelectedTargetID = 0;
     char     m_SearchBuf[128] = {};
 
+    std::unordered_map<uint64_t, bool> m_RowWasActive;
+
 private:
     // ---------------- helpers ----------------
     static bool MatchesRowSearch(const FInspectorRow& row, const char* search);

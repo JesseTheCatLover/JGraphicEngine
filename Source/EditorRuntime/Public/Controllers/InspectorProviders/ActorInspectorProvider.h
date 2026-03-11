@@ -3,8 +3,10 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 #include "IInspectProvider.h"
+#include "Core/Math/FTransform.h"
 
 class JCoreObject;
 
@@ -20,6 +22,11 @@ class EditorHost;
 
 class ActorInspectorProvider : public IInspectorProvider
 {
+private:
+    EditorHost& m_Host;
+
+    std::unordered_map<uint64_t, FTransform> m_TransformEditBegin;
+
 public:
     explicit ActorInspectorProvider(EditorHost& host);
     ~ActorInspectorProvider();
@@ -28,7 +35,4 @@ public:
     [[nodiscard]] bool CanHandle(const FInspectorSelection& sel) const override;
     void BuildDocument(const FInspectorSelection& sel, FInspectorDocument& outDoc) override;
     void ApplyEdit(const FInspectorEditCommand& cmd) override;
-
-private:
-    EditorHost& m_Host;
 };

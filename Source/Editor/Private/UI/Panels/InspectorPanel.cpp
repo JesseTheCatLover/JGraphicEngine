@@ -17,241 +17,279 @@
 
 // ------------------------------- small UI helpers -------------------------------
 
-static bool BeginBox(const char* id, float height = 0.0f)
+namespace
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
-    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(6, 4));
-    ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(70, 70, 70, 255));
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(34, 34, 34, 140));
-    ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(72, 72, 72, 255));
-    const bool ok = ImGui::BeginChild(id, ImVec2(0, height), ImGuiChildFlags_Border, ImGuiWindowFlags_None);
-    ImGui::PopStyleColor(3);
-    ImGui::PopStyleVar(3);
-    return ok;
-}
+    static bool BeginBox(const char* id, float height = 0.0f)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(6, 4));
+        ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(70, 70, 70, 255));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(34, 34, 34, 140));
+        ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(72, 72, 72, 255));
+        const bool ok = ImGui::BeginChild(id, ImVec2(0, height), ImGuiChildFlags_Border, ImGuiWindowFlags_None);
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(3);
+        return ok;
+    }
 
-static void EndBox()
-{
-    ImGui::EndChild();
-}
+    static void EndBox()
+    {
+        ImGui::EndChild();
+    }
 
-static bool DrawPlainSectionToggle(const char* id, const char* label, bool open, bool boldText = false)
-{
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (!window)
+    static bool DrawPlainSectionToggle(const char* id, const char* label, bool open, bool boldText = false)
+    {
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (!window)
+            return open;
+
+        ImGui::PushID(id);
+
+        const ImVec2 start = ImGui::GetCursorScreenPos();
+        const float fullW  = ImGui::GetContentRegionAvail().x;
+        const float h      = ImGui::GetTextLineHeight();
+
+        // Clickable row (but visually plain)
+        ImGui::InvisibleButton("##SectionToggle", ImVec2(fullW, h));
+        const bool hovered = ImGui::IsItemHovered();
+        const bool clicked = ImGui::IsItemClicked();
+
+        if (clicked)
+            open = !open;
+
+        // Optional subtle hover feedback (very light)
+        if (hovered)
+        {
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            dl->AddRectFilled(start, ImVec2(start.x + fullW, start.y + h), IM_COL32(255, 255, 255, 10));
+        }
+
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+
+        // Arrow
+        const float arrowSize = ImGui::GetFontSize() * 0.70f;
+        ImVec2 arrowPos(start.x, start.y + (h * 0.2f));
+        ImGui::RenderArrow(dl, arrowPos, ImGui::GetColorU32(ImGuiCol_Text), open ? ImGuiDir_Down : ImGuiDir_Right, 0.7f);
+
+        // Text (aligned next to arrow)
+        const float textX = start.x + arrowSize + 6.0f;
+        const float textY = start.y;
+        dl->AddText(ImVec2(textX, textY), ImGui::GetColorU32(ImGuiCol_Text), label);
+        if (boldText) dl->AddText(ImVec2(textX + 1.0f, textY),ImGui::GetColorU32(ImGuiCol_Text) , label);
+
+        ImGui::PopID();
         return open;
-
-    ImGui::PushID(id);
-
-    const ImVec2 start = ImGui::GetCursorScreenPos();
-    const float fullW  = ImGui::GetContentRegionAvail().x;
-    const float h      = ImGui::GetTextLineHeight();
-
-    // Clickable row (but visually plain)
-    ImGui::InvisibleButton("##SectionToggle", ImVec2(fullW, h));
-    const bool hovered = ImGui::IsItemHovered();
-    const bool clicked = ImGui::IsItemClicked();
-
-    if (clicked)
-        open = !open;
-
-    // Optional subtle hover feedback (very light)
-    if (hovered)
-    {
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        dl->AddRectFilled(start, ImVec2(start.x + fullW, start.y + h), IM_COL32(255, 255, 255, 10));
     }
 
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-
-    // Arrow
-    const float arrowSize = ImGui::GetFontSize() * 0.70f;
-    ImVec2 arrowPos(start.x, start.y + (h * 0.2f));
-    ImGui::RenderArrow(dl, arrowPos, ImGui::GetColorU32(ImGuiCol_Text), open ? ImGuiDir_Down : ImGuiDir_Right, 0.7f);
-
-    // Text (aligned next to arrow)
-    const float textX = start.x + arrowSize + 6.0f;
-    const float textY = start.y;
-    dl->AddText(ImVec2(textX, textY), ImGui::GetColorU32(ImGuiCol_Text), label);
-    if (boldText) dl->AddText(ImVec2(textX + 1.0f, textY),ImGui::GetColorU32(ImGuiCol_Text) , label);
-
-    ImGui::PopID();
-    return open;
-}
-
-static void DrawVerticalColumnSplitter(float& inOutLabelWidth, float minW, float maxW)
-{
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (!window)
-        return;
-
-    inOutLabelWidth = std::clamp(inOutLabelWidth, minW, maxW);
-
-    // Better anchor than winPos.x because it matches content region (Doesn't introduce infinite scrolling)
-    const float contentLeftX = window->WorkRect.Min.x;
-    const float splitX       = contentLeftX + inOutLabelWidth;
-
-    const float y0 = window->InnerClipRect.Min.y;
-    const float y1 = window->InnerClipRect.Max.y;
-
-    // Hit zone (wider than visible line)
-    const float hitHalfW = 5.0f;
-
-    ImGuiIO& io = ImGui::GetIO();
-    const ImVec2 mouse = io.MousePos;
-
-    const bool mouseInsideY = (mouse.y >= y0 && mouse.y <= y1);
-    const bool mouseInsideX = (mouse.x >= (splitX - hitHalfW) && mouse.x <= (splitX + hitHalfW));
-    const bool hovered = mouseInsideX && mouseInsideY;
-
-    // Persistent drag state for this splitter
-    static bool s_SplitterDragging = false;
-
-    // Start drag only if hovered + left clicked, and window is hovered
-    if (!s_SplitterDragging && hovered && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+    static void DrawVerticalColumnSplitter(float& inOutLabelWidth, float minW, float maxW)
     {
-        s_SplitterDragging = true;
-    }
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (!window)
+            return;
 
-    // Stop drag on mouse release
-    if (s_SplitterDragging && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
-    {
-        s_SplitterDragging = false;
-    }
-
-    if (hovered || s_SplitterDragging)
-        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-
-    if (s_SplitterDragging)
-    {
-        inOutLabelWidth += io.MouseDelta.x;
         inOutLabelWidth = std::clamp(inOutLabelWidth, minW, maxW);
+
+        // Better anchor than winPos.x because it matches content region (Doesn't introduce infinite scrolling)
+        const float contentLeftX = window->WorkRect.Min.x;
+        const float splitX       = contentLeftX + inOutLabelWidth;
+
+        const float y0 = window->InnerClipRect.Min.y;
+        const float y1 = window->InnerClipRect.Max.y;
+
+        // Hit zone (wider than visible line)
+        const float hitHalfW = 5.0f;
+
+        ImGuiIO& io = ImGui::GetIO();
+        const ImVec2 mouse = io.MousePos;
+
+        const bool mouseInsideY = (mouse.y >= y0 && mouse.y <= y1);
+        const bool mouseInsideX = (mouse.x >= (splitX - hitHalfW) && mouse.x <= (splitX + hitHalfW));
+        const bool hovered = mouseInsideX && mouseInsideY;
+
+        // Persistent drag state for this splitter
+        static bool s_SplitterDragging = false;
+
+        // Start drag only if hovered + left clicked, and window is hovered
+        if (!s_SplitterDragging && hovered && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            s_SplitterDragging = true;
+        }
+
+        // Stop drag on mouse release
+        if (s_SplitterDragging && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            s_SplitterDragging = false;
+        }
+
+        if (hovered || s_SplitterDragging)
+            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+
+        if (s_SplitterDragging)
+        {
+            inOutLabelWidth += io.MouseDelta.x;
+            inOutLabelWidth = std::clamp(inOutLabelWidth, minW, maxW);
+        }
+
+        // Draw only when dragging
+        if (/*hovered || */s_SplitterDragging)
+        {
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+
+            // optional soft band
+            dl->AddRectFilled(
+                ImVec2(splitX - 1.0f, y0),
+                ImVec2(splitX + 1.0f, y1),
+                s_SplitterDragging ? IM_COL32(150,150,150,180) : IM_COL32(110,110,110,120));
+
+            // center line
+            dl->AddLine(
+                ImVec2(splitX, y0),
+                ImVec2(splitX, y1),
+                s_SplitterDragging ? IM_COL32(170,170,170,255) : IM_COL32(120,120,120,220),
+                1.0f);
+        }
     }
 
-    // Draw only when dragging
-    if (/*hovered || */s_SplitterDragging)
+    static bool BeginPropsTable(const char* id, float labelColumnWidth)
     {
+        ImGuiTableFlags flags =
+            ImGuiTableFlags_SizingStretchProp |
+            ImGuiTableFlags_PadOuterX |
+            ImGuiTableFlags_NoSavedSettings;
+
+        if (!ImGui::BeginTable(id, 2, flags))
+            return false;
+
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, labelColumnWidth);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+        return true;
+    }
+
+    static bool BeginCategoryHeaderUnique(const char* name, uint64_t stableID, bool defaultOpen)
+    {
+        // Important:
+        // - category names can repeat across different objects
+        // - we still need unique ImGui IDs
+        // We give the header a stable PushID scope.
+        ImGui::PushID((int)stableID);
+
+        ImGuiTreeNodeFlags flags =
+            ImGuiTreeNodeFlags_Framed |
+            ImGuiTreeNodeFlags_SpanAvailWidth |
+            ImGuiTreeNodeFlags_AllowOverlap |
+            ImGuiTreeNodeFlags_FramePadding;
+
+        if (defaultOpen)
+            flags |= ImGuiTreeNodeFlags_DefaultOpen;
+
+        const bool open = ImGui::CollapsingHeader(name, flags);
+        ImGui::PopID();
+        return open;
+    }
+
+    static void PropLabel(const char* label)
+    {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::AlignTextToFramePadding();
+
+        // Cell bounds (screen space)
+        const ImVec2 cellMin = ImGui::GetCursorScreenPos();
+        const float  cellW   = ImGui::GetContentRegionAvail().x;
+        const float  textH   = ImGui::GetTextLineHeight();
+
+        // Render clipped text inside the label cell
         ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImU32 col = ImGui::GetColorU32(ImGuiCol_Text);
 
-        // optional soft band
-        dl->AddRectFilled(
-            ImVec2(splitX - 1.0f, y0),
-            ImVec2(splitX + 1.0f, y1),
-            s_SplitterDragging ? IM_COL32(150,150,150,180) : IM_COL32(110,110,110,120));
+        const ImVec2 textMin = cellMin;
+        const ImVec2 textMax = ImVec2(cellMin.x + cellW, cellMin.y + textH);
 
-        // center line
-        dl->AddLine(
-            ImVec2(splitX, y0),
-            ImVec2(splitX, y1),
-            s_SplitterDragging ? IM_COL32(170,170,170,255) : IM_COL32(120,120,120,220),
-            1.0f);
+        dl->PushClipRect(textMin, textMax, true);
+        dl->AddText(textMin, col, label ? label : "");
+        dl->PopClipRect();
+
+        // Invisible item for hover/tooltip on truncated labels
+        ImGui::InvisibleButton("##PropLabelHit", ImVec2(cellW, textH));
+
+        if (ImGui::IsItemHovered())
+        {
+            const ImVec2 fullText = ImGui::CalcTextSize(label ? label : "");
+            if (fullText.x > cellW)
+                ImGui::SetTooltip("%s", label ? label : "");
+        }
+
+        ImGui::TableSetColumnIndex(1);
     }
-}
 
-static bool BeginPropsTable(const char* id, float labelColumnWidth)
-{
-    ImGuiTableFlags flags =
-        ImGuiTableFlags_SizingStretchProp |
-        ImGuiTableFlags_PadOuterX |
-        ImGuiTableFlags_NoSavedSettings;
-
-    if (!ImGui::BeginTable(id, 2, flags))
-        return false;
-
-    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, labelColumnWidth);
-    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1.0f);
-    return true;
-}
-
-static bool BeginCategoryHeaderUnique(const char* name, uint64_t stableID, bool defaultOpen)
-{
-    // Important:
-    // - category names can repeat across different objects
-    // - we still need unique ImGui IDs
-    // We give the header a stable PushID scope.
-    ImGui::PushID((int)stableID);
-
-    ImGuiTreeNodeFlags flags =
-        ImGuiTreeNodeFlags_Framed |
-        ImGuiTreeNodeFlags_SpanAvailWidth |
-        ImGuiTreeNodeFlags_AllowOverlap |
-        ImGuiTreeNodeFlags_FramePadding;
-
-    if (defaultOpen)
-        flags |= ImGuiTreeNodeFlags_DefaultOpen;
-
-    const bool open = ImGui::CollapsingHeader(name, flags);
-    ImGui::PopID();
-    return open;
-}
-
-static void PropLabel(const char* label)
-{
-    ImGui::TableNextRow();
-    ImGui::TableSetColumnIndex(0);
-    ImGui::AlignTextToFramePadding();
-
-    // Cell bounds (screen space)
-    const ImVec2 cellMin = ImGui::GetCursorScreenPos();
-    const float  cellW   = ImGui::GetContentRegionAvail().x;
-    const float  textH   = ImGui::GetTextLineHeight();
-
-    // Render clipped text inside the label cell
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-    const ImU32 col = ImGui::GetColorU32(ImGuiCol_Text);
-
-    const ImVec2 textMin = cellMin;
-    const ImVec2 textMax = ImVec2(cellMin.x + cellW, cellMin.y + textH);
-
-    dl->PushClipRect(textMin, textMax, true);
-    dl->AddText(textMin, col, label ? label : "");
-    dl->PopClipRect();
-
-    // Invisible item for hover/tooltip on truncated labels
-    ImGui::InvisibleButton("##PropLabelHit", ImVec2(cellW, textH));
-
-    if (ImGui::IsItemHovered())
+    static float CalcComponentWidth(int componentCount)
     {
-        const ImVec2 fullText = ImGui::CalcTextSize(label ? label : "");
-        if (fullText.x > cellW)
-            ImGui::SetTooltip("%s", label ? label : "");
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float avail = ImGui::GetContentRegionAvail().x;
+        const float spacing = style.ItemSpacing.x;
+        const float totalSpacing = spacing * (componentCount - 1);
+        const float w = (avail - totalSpacing) / (float)componentCount;
+        return (w > 1.0f) ? w : 1.0f;
     }
 
-    ImGui::TableSetColumnIndex(1);
-}
+    static bool ContainsCaseInsensitive(const std::string& hay, const char* needle)
+    {
+        if (!needle || needle[0] == 0) return true;
 
-static float CalcComponentWidth(int componentCount)
-{
-    const ImGuiStyle& style = ImGui::GetStyle();
-    const float avail = ImGui::GetContentRegionAvail().x;
-    const float spacing = style.ItemSpacing.x;
-    const float totalSpacing = spacing * (componentCount - 1);
-    const float w = (avail - totalSpacing) / (float)componentCount;
-    return (w > 1.0f) ? w : 1.0f;
-}
+        auto lower = [](unsigned char c) { return (char)std::tolower(c); };
 
-static bool ContainsCaseInsensitive(const std::string& hay, const char* needle)
-{
-    if (!needle || needle[0] == 0) return true;
+        std::string h = hay;
+        std::string n = needle;
 
-    auto lower = [](unsigned char c) { return (char)std::tolower(c); };
+        for (char& c : h) c = lower((unsigned char)c);
+        for (char& c : n) c = lower((unsigned char)c);
 
-    std::string h = hay;
-    std::string n = needle;
+        return h.find(n) != std::string::npos;
+    }
 
-    for (char& c : h) c = lower((unsigned char)c);
-    for (char& c : n) c = lower((unsigned char)c);
+    static void PushEdit(FInspectorPanelInput& input, const FInspectorRow& row, const REVariant& v, EInspectorEditPhase phase)
+    {
+        FInspectorEditCommand cmd;
+        cmd.handle = row.write;
+        cmd.value  = v;
+        cmd.phase  = phase;
+        input.edits.push_back(std::move(cmd));
+    }
 
-    return h.find(n) != std::string::npos;
-}
+    static void PushEditForLastItem(
+    FInspectorPanelInput& input,
+    const FInspectorRow& row,
+    const REVariant& nv,
+    bool changed)
+    {
+        const bool begin = ImGui::IsItemActivated();
+        const bool end   = ImGui::IsItemDeactivatedAfterEdit();
 
-static void PushEdit(FInspectorPanelInput& input, const FInspectorRow& row, const REVariant& v)
-{
-    FInspectorEditCommand cmd;
-    cmd.handle = row.write;
-    cmd.value  = v;
-    input.edits.push_back(std::move(cmd));
+        if (!(changed || begin || end))
+            return;
+
+        EInspectorEditPhase phase = EInspectorEditPhase::Update;
+        if (begin) phase = EInspectorEditPhase::Begin;
+        else if (end) phase = EInspectorEditPhase::End;
+
+        // Always push Begin/End; push Update only when changed
+        if (changed || phase != EInspectorEditPhase::Update)
+            PushEdit(input, row, nv, phase);
+    }
+
+    static EInspectorEditPhase GetEditPhaseForLastItem(bool changed)
+    {
+        // Begin and End can happen in the same frame for click-typed edits,
+        // but for drags it will be Begin -> Update... -> End.
+        if (ImGui::IsItemActivated())
+            return EInspectorEditPhase::Begin;
+
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            return EInspectorEditPhase::End;
+
+        return changed ? EInspectorEditPhase::Update : EInspectorEditPhase::Update;
+    }
 }
 
 // ------------------------------- InspectorPanel -------------------------------
@@ -413,6 +451,7 @@ void InspectorPanel::DrawActorHeader(const FInspectorDocument& doc, FInspectorPa
         cmd.handle.primaryID         = actor->objectUUID;
         cmd.handle.declaringTypeName = "__ManualActor";
         cmd.handle.propName          = "__ActorName";
+        cmd.phase                    = EInspectorEditPhase::End;
 
         cmd.value = {};
         cmd.value.tag = REValueTag::String;
@@ -871,7 +910,8 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
                 REVariant nv{};
                 nv.tag = REValueTag::Bool;
                 nv.b = v;
-                PushEdit(input, row, nv);
+
+                PushEdit(input, row, nv, EInspectorEditPhase::End);
             }
         } break;
 
@@ -882,21 +922,21 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             if (row.value.tag == REValueTag::Int64) v = (int)row.value.i64;
 
             ImGui::SetNextItemWidth(-FLT_MIN);
-            if (ImGui::DragInt("##v", &v, 1.0f))
+            const bool changed = ImGui::DragInt("##v", &v, 1.0f);
+
+            REVariant nv{};
+            if (row.value.tag == REValueTag::Int64)
             {
-                REVariant nv{};
-                if (row.value.tag == REValueTag::Int64)
-                {
-                    nv.tag = REValueTag::Int64;
-                    nv.i64 = (int64_t)v;
-                }
-                else
-                {
-                    nv.tag = REValueTag::Int;
-                    nv.i32 = v;
-                }
-                PushEdit(input, row, nv);
+                nv.tag = REValueTag::Int64;
+                nv.i64 = (int64_t)v;
             }
+            else
+            {
+                nv.tag = REValueTag::Int;
+                nv.i32 = v;
+            }
+
+            PushEditForLastItem(input, row, nv, changed);
         } break;
 
         case EInspectorWidget::Float:
@@ -911,13 +951,11 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             else
                 changed = ImGui::DragFloat("##v", &v, 0.05f, 0.0f, 0.0f, "%.3f");
 
-            if (changed)
-            {
-                REVariant nv{};
-                nv.tag = REValueTag::Float;
-                nv.f32 = v;
-                PushEdit(input, row, nv);
-            }
+            REVariant nv{};
+            nv.tag = REValueTag::Float;
+            nv.f32 = v;
+
+            PushEditForLastItem(input, row, nv, changed);
         } break;
 
         case EInspectorWidget::Double:
@@ -925,13 +963,13 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             double v = (row.value.tag == REValueTag::Double) ? row.value.f64 : 0.0;
 
             ImGui::SetNextItemWidth(-FLT_MIN);
-            if (ImGui::DragScalar("##v", ImGuiDataType_Double, &v, 0.05))
-            {
-                REVariant nv{};
-                nv.tag = REValueTag::Double;
-                nv.f64 = v;
-                PushEdit(input, row, nv);
-            }
+            const bool changed = ImGui::DragScalar("##v", ImGuiDataType_Double, &v, 0.05);
+
+            REVariant nv{};
+            nv.tag = REValueTag::Double;
+            nv.f64 = v;
+
+            PushEditForLastItem(input, row, nv, changed);
         } break;
 
         case EInspectorWidget::String:
@@ -944,13 +982,18 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             std::snprintf(buf, sizeof(buf), "%s", st.c_str());
 
             ImGui::SetNextItemWidth(-FLT_MIN);
-            if (ImGui::InputText("##v", buf, sizeof(buf)))
-            {
+            const bool changed = ImGui::InputText("##v", buf, sizeof(buf));
+            const bool commit  = ImGui::IsItemDeactivatedAfterEdit();
+
+            if (changed)
                 st = buf;
+
+            if (commit)
+            {
                 REVariant nv{};
                 nv.tag = REValueTag::String;
                 nv.s = st;
-                PushEdit(input, row, nv);
+                PushEdit(input, row, nv, EInspectorEditPhase::End);
             }
         } break;
 
@@ -963,16 +1006,36 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
 
             ImGui::SetNextItemWidth(w);
             bool cx = ImGui::DragFloat("##x", &x, 0.05f, 0, 0, "%.2f");
+            bool ax = ImGui::IsItemActive();
+            bool bx = ImGui::IsItemActivated();
+            bool ex = ImGui::IsItemDeactivatedAfterEdit();
+
             ImGui::SameLine();
             ImGui::SetNextItemWidth(w);
             bool cy = ImGui::DragFloat("##y", &y, 0.05f, 0, 0, "%.2f");
+            bool ay = ImGui::IsItemActive();
+            bool by = ImGui::IsItemActivated();
+            bool ey = ImGui::IsItemDeactivatedAfterEdit();
 
-            if (cx || cy)
+            const bool anyChanged   = cx || cy;
+            const bool anyActive    = ax || ay;
+            const bool anyActivated = bx || by;
+            const bool anyEnded     = ex || ey;
+
+            const bool wasActive = m_RowWasActive[row.rowID];
+            m_RowWasActive[row.rowID] = anyActive;
+
+            EInspectorEditPhase phase;
+            if (anyActivated && !wasActive) phase = EInspectorEditPhase::Begin;
+            else if (!anyActive && wasActive && anyEnded) phase = EInspectorEditPhase::End;
+            else phase = EInspectorEditPhase::Update;
+
+            if (anyChanged || phase == EInspectorEditPhase::Begin || phase == EInspectorEditPhase::End)
             {
                 REVariant nv{};
                 nv.tag = REValueTag::Vec2;
                 nv.v2 = FVector2{ x, y };
-                PushEdit(input, row, nv);
+                PushEdit(input, row, nv, phase);
             }
         } break;
 
@@ -985,50 +1048,108 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
 
             ImGui::SetNextItemWidth(w);
             bool cx = ImGui::DragFloat("##x", &x, 0.05f, 0, 0, "%.2f");
+            bool ax = ImGui::IsItemActive();
+            bool bx = ImGui::IsItemActivated();
+            bool ex = ImGui::IsItemDeactivatedAfterEdit();
+
             ImGui::SameLine();
             ImGui::SetNextItemWidth(w);
             bool cy = ImGui::DragFloat("##y", &y, 0.05f, 0, 0, "%.2f");
+            bool ay = ImGui::IsItemActive();
+            bool by = ImGui::IsItemActivated();
+            bool ey = ImGui::IsItemDeactivatedAfterEdit();
+
             ImGui::SameLine();
             ImGui::SetNextItemWidth(w);
             bool cz = ImGui::DragFloat("##z", &z, 0.05f, 0, 0, "%.2f");
+            bool az = ImGui::IsItemActive();
+            bool bz = ImGui::IsItemActivated();
+            bool ez = ImGui::IsItemDeactivatedAfterEdit();
 
-            if (cx || cy || cz)
+            // Aggregate gesture state across components
+            const bool anyChanged   = cx || cy || cz;
+            const bool anyActive    = ax || ay || az;
+            const bool anyActivated = bx || by || bz;
+            const bool anyEnded     = ex || ey || ez;
+
+            const bool wasActive = m_RowWasActive[row.rowID];
+            m_RowWasActive[row.rowID] = anyActive;
+
+            // Decide phase
+            EInspectorEditPhase phase;
+            if (anyActivated && !wasActive) phase = EInspectorEditPhase::Begin;
+            else if (!anyActive && wasActive && anyEnded) phase = EInspectorEditPhase::End;
+            else phase = EInspectorEditPhase::Update;
+
+            // Only send:
+            if (anyChanged || phase == EInspectorEditPhase::Begin || phase == EInspectorEditPhase::End)
             {
                 REVariant nv{};
                 nv.tag = REValueTag::Vec3;
-                nv.v3 = FVector3{ x, y, z };
-                PushEdit(input, row, nv);
+                nv.v3 = FVector3{x, y, z};
+                PushEdit(input, row, nv, phase);
             }
-        } break;
+        }
+        break;
 
         case EInspectorWidget::Vec4:
         {
             FVector4 v = (row.value.tag == REValueTag::Vec4) ? row.value.v4 : FVector4{};
-            float x = v.x, y = v.y, z = v.z, w = v.w;
+            float x = v.x, y = v.y, z = v.z, wv = v.w;
 
             const float wItem = CalcComponentWidth(4);
 
-
             ImGui::SetNextItemWidth(wItem);
             bool cx = ImGui::DragFloat("##x", &x, 0.05f, 0, 0, "%.2f");
+            bool ax = ImGui::IsItemActive();
+            bool bx = ImGui::IsItemActivated();
+            bool ex = ImGui::IsItemDeactivatedAfterEdit();
+
             ImGui::SameLine();
             ImGui::SetNextItemWidth(wItem);
             bool cy = ImGui::DragFloat("##y", &y, 0.05f, 0, 0, "%.2f");
+            bool ay = ImGui::IsItemActive();
+            bool by = ImGui::IsItemActivated();
+            bool ey = ImGui::IsItemDeactivatedAfterEdit();
+
             ImGui::SameLine();
             ImGui::SetNextItemWidth(wItem);
             bool cz = ImGui::DragFloat("##z", &z, 0.05f, 0, 0, "%.2f");
+            bool az = ImGui::IsItemActive();
+            bool bz = ImGui::IsItemActivated();
+            bool ez = ImGui::IsItemDeactivatedAfterEdit();
+
             ImGui::SameLine();
             ImGui::SetNextItemWidth(wItem);
-            bool cw = ImGui::DragFloat("##w", &w, 0.05f, 0, 0, "%.2f");
+            bool cw = ImGui::DragFloat("##w", &wv, 0.05f, 0, 0, "%.2f");
+            bool aw = ImGui::IsItemActive();
+            bool bw = ImGui::IsItemActivated();
+            bool ew = ImGui::IsItemDeactivatedAfterEdit();
 
-            if (cx || cy || cz || cw)
+            // Aggregate gesture state across components
+            const bool anyChanged = cx || cy || cz || cw;
+            const bool anyActive = ax || ay || az || aw;
+            const bool anyActivated = bx || by || bz || bw;
+            const bool anyEnded = ex || ey || ez || ew;
+
+            const bool wasActive = m_RowWasActive[row.rowID];
+            m_RowWasActive[row.rowID] = anyActive;
+
+            // Decide phase
+            EInspectorEditPhase phase;
+            if (anyActivated && !wasActive) phase = EInspectorEditPhase::Begin;
+            else if (!anyActive && wasActive && anyEnded) phase = EInspectorEditPhase::End;
+            else phase = EInspectorEditPhase::Update;
+
+            if (anyChanged || phase == EInspectorEditPhase::Begin || phase == EInspectorEditPhase::End)
             {
                 REVariant nv{};
                 nv.tag = REValueTag::Vec4;
-                nv.v4 = FVector4{ x, y, z, w };
-                PushEdit(input, row, nv);
+                nv.v4 = FVector4{x, y, z, wv};
+                PushEdit(input, row, nv, phase);
             }
-        } break;
+        }
+        break;
 
         case EInspectorWidget::Transform:
         {
@@ -1038,45 +1159,63 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             FRotator rot = xf.GetRotationAsRotator();
             FVector3 scl = xf.GetScale();
 
-            bool changed = false;
+            bool changedAny = false;
+            bool activeAny = false;
+            bool activatedAny = false;
+            bool endedAny = false;
+
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6, 6));
 
+            // Location
             ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted("Location");
             ImGui::SameLine(0.0f, 10.0f);
-            float l[3] = { loc.x, loc.y, loc.z };
+            float l[3] = {loc.x, loc.y, loc.z};
             ImGui::SetNextItemWidth(-1.0f);
-            if (ImGui::DragFloat3("##loc", l, 0.05f, 0.0f, 0.0f, "%.2f"))
-            {
-                loc = FVector3(l[0], l[1], l[2]);
-                changed = true;
-            }
+            bool cLoc = ImGui::DragFloat3("##loc", l, 0.05f, 0.0f, 0.0f, "%.2f");
+            changedAny |= cLoc;
+            activeAny |= ImGui::IsItemActive();
+            activatedAny |= ImGui::IsItemActivated();
+            endedAny |= ImGui::IsItemDeactivatedAfterEdit();
+            if (cLoc) loc = FVector3(l[0], l[1], l[2]);
 
+            // Rotation
             ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted("Rotation");
             ImGui::SameLine(0.0f, 10.0f);
-            float r[3] = { rot.pitch, rot.yaw, rot.roll };
+            float r[3] = {rot.pitch, rot.yaw, rot.roll};
             ImGui::SetNextItemWidth(-1.0f);
-            if (ImGui::DragFloat3("##rot", r, 0.25f, 0.0f, 0.0f, "%.2f"))
-            {
-                rot = FRotator(r[0], r[1], r[2]);
-                changed = true;
-            }
+            bool cRot = ImGui::DragFloat3("##rot", r, 0.25f, 0.0f, 0.0f, "%.2f");
+            changedAny |= cRot;
+            activeAny |= ImGui::IsItemActive();
+            activatedAny |= ImGui::IsItemActivated();
+            endedAny |= ImGui::IsItemDeactivatedAfterEdit();
+            if (cRot) rot = FRotator(r[0], r[1], r[2]);
 
+            // Scale
             ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted("Scale");
             ImGui::SameLine(0.0f, 10.0f);
-            float s[3] = { scl.x, scl.y, scl.z };
+            float s[3] = {scl.x, scl.y, scl.z};
             ImGui::SetNextItemWidth(-1.0f);
-            if (ImGui::DragFloat3("##scl", s, 0.01f, 0.0f, 0.0f, "%.3f"))
-            {
-                scl = FVector3(s[0], s[1], s[2]);
-                changed = true;
-            }
+            bool cScl = ImGui::DragFloat3("##scl", s, 0.01f, 0.0f, 0.0f, "%.3f");
+            changedAny |= cScl;
+            activeAny |= ImGui::IsItemActive();
+            activatedAny |= ImGui::IsItemActivated();
+            endedAny |= ImGui::IsItemDeactivatedAfterEdit();
+            if (cScl) scl = FVector3(s[0], s[1], s[2]);
 
             ImGui::PopStyleVar();
 
-            if (changed)
+            const bool wasActive = m_RowWasActive[row.rowID];
+            m_RowWasActive[row.rowID] = activeAny;
+
+            EInspectorEditPhase phase;
+            if (activatedAny && !wasActive) phase = EInspectorEditPhase::Begin;
+            else if (!activeAny && wasActive && endedAny) phase = EInspectorEditPhase::End;
+            else phase = EInspectorEditPhase::Update;
+
+            if (changedAny || phase == EInspectorEditPhase::Begin || phase == EInspectorEditPhase::End)
             {
                 xf.SetPosition(loc);
                 xf.SetRotation(rot.ToQuat());
@@ -1085,9 +1224,11 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
                 REVariant nv{};
                 nv.tag = REValueTag::Transform;
                 nv.t = xf;
-                PushEdit(input, row, nv);
+
+                PushEdit(input, row, nv, phase);
             }
-        } break;
+        }
+        break;
 
         case EInspectorWidget::Enum:
         {
@@ -1095,13 +1236,13 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
             int v = (int)raw;
 
             ImGui::SetNextItemWidth(-FLT_MIN);
-            if (ImGui::DragInt("##v", &v, 1.0f))
-            {
-                REVariant nv{};
-                nv.tag = REValueTag::EnumInt64;
-                nv.i64 = (int64_t)v;
-                PushEdit(input, row, nv);
-            }
+            const bool changed = ImGui::DragInt("##v", &v, 1.0f);
+
+            REVariant nv{};
+            nv.tag = REValueTag::EnumInt64;
+            nv.i64 = (int64_t)v;
+
+            PushEditForLastItem(input, row, nv, changed);
         } break;
 
         case EInspectorWidget::ObjectRef:
