@@ -7,6 +7,7 @@
 #include <vector>
 #include "IInspectProvider.h"
 #include "Core/Math/FTransform.h"
+#include "Core/Reflection/RETypeRegistry.h"
 
 class JCoreObject;
 
@@ -26,6 +27,7 @@ private:
     EditorHost& m_Host;
 
     std::unordered_map<uint64_t, FTransform> m_TransformEditBegin;
+    std::unordered_map<uint64_t, REVariant> m_PropEditBegin;
 
 public:
     explicit ActorInspectorProvider(EditorHost& host);

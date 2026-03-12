@@ -22,8 +22,9 @@
 #include "Core/Reflection/RETypeRegistry.h"
 #include "Core/Services/EditTimelineService.h"
 #include "Core/Services/HierarchyService.h"
-#include "UndoableActions/RenameActorAction.h"
-#include "UndoableActions/SetActorTransformAction.h"
+#include "Edits/UndoableActions/RenameActorAction.h"
+#include "Edits/UndoableActions/SetActorTransformAction.h"
+#include "Edits/UndoableActions/SetReflectedPropertyAction.h"
 
 // ------------------------- helpers -------------------------
 
@@ -369,14 +370,106 @@ namespace
         return h;
     }
 
-    static JCoreObject* FindTargetObjectByUUID(JActor& actor, const std::string& uuid)
+    static bool VariantsEqual(const REVariant& a, const REVariant& b)
+{
+    if (a.tag != b.tag) return false;
+
+    switch (a.tag)
+    {
+        case REValueTag::Bool:      return a.b == b.b;
+        case REValueTag::Int:       return a.i32 == b.i32;
+        case REValueTag::Int64:     return a.i64 == b.i64;
+        case REValueTag::Float:     return a.f32 == b.f32;   // exact is fine for undo (records real values)
+        case REValueTag::Double:    return a.f64 == b.f64;
+        case REValueTag::String:    return a.s == b.s;
+
+        case REValueTag::Vec2:      return a.v2 == b.v2;
+        case REValueTag::Vec3:      return a.v3 == b.v3;
+        case REValueTag::Vec4:      return a.v4 == b.v4;
+
+        case REValueTag::Quat:      return a.q == b.q;
+        case REValueTag::Transform: return a.t == b.t;
+
+        case REValueTag::EnumInt64: return a.i64 == b.i64;
+        case REValueTag::ObjectUUID: return a.s == b.s;
+
+        default: return true;
+    }
+}
+
+    // Finds the REType that matches declaringTypeName in the inheritance chain,
+    // returns:
+    //  - outDeclaringType: the REType* that owns the property
+    //  - outDeclaringBasePtr: pointer to the correct base subobject for that declaring type
+    //  - outProp: the REProperty* inside that declaring type
+    static bool FindDeclaringTypeAndProperty(
+        RETypeRegistry &reg,
+        JCoreObject &obj,
+        const std::string &declaringTypeName,
+        const std::string &propName,
+        const REType *&outDeclaringType,
+        const void *&outDeclaringBasePtrConst,
+        void *&outDeclaringBasePtr,
+        REProperty *&outProp)
+    {
+        outDeclaringType = nullptr;
+        outDeclaringBasePtrConst = nullptr;
+        outDeclaringBasePtr = nullptr;
+        outProp = nullptr;
+
+        const REType *most = obj.GetREType();
+        if (!most) return false;
+
+        for (const REType *t = most; t != nullptr; t = reg.GetBaseType(t))
+        {
+            if (t->name != declaringTypeName)
+                continue;
+
+            // Compute base subobject pointer for this declaring type
+            const void *baseConst = &obj;
+            void *base = &obj;
+
+            if (t != most && t->upcastFromMostDerived)
+            {
+                baseConst = t->upcastFromMostDerived(&obj);
+                base = const_cast<void *>(baseConst);
+            }
+
+            // Find property on this declaring type
+            auto *tm = const_cast<REType *>(t);
+            for (auto &p: tm->properties)
+            {
+                if (p.name == propName)
+                {
+                    outDeclaringType = t;
+                    outDeclaringBasePtrConst = baseConst;
+                    outDeclaringBasePtr = base;
+                    outProp = &p;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+
+    static uint64_t MakePropEditKey(const std::string &objectUUID,
+                                    const std::string &declaringTypeName,
+                                    const std::string &propName)
+    {
+        return HashString64(objectUUID + "::" + declaringTypeName + "::" + propName);
+    }
+
+    static JCoreObject *FindTargetObjectByUUID(JActor &actor, const std::string &uuid)
     {
         if (actor.GetUUID() == uuid) return &actor;
 
-        JSceneComponent* root = actor.GetRootComponent();
+        JSceneComponent *root = actor.GetRootComponent();
         if (root && root->GetUUID() == uuid) return root;
 
-        for (JSceneComponent* sc : actor.GetSceneComponents())
+        for (JSceneComponent *sc: actor.GetSceneComponents())
             if (sc && sc->GetUUID() == uuid)
                 return sc;
 
@@ -995,21 +1088,91 @@ void ActorInspectorProvider::ApplyEdit(const FInspectorEditCommand& cmd)
     }
 
     // ------------------------------------------------------------
-    // 2) Reflected property routing (THIS MUST BE OUTSIDE)
-    // ------------------------------------------------------------
-    JCoreObject* target = FindTargetObjectByUUID(*actor, cmd.handle.primaryID);
-    if (!target)
+// 2) Reflected property routing (undo via Begin/End snapshots)
+// ------------------------------------------------------------
+auto& scene = m_Host.GetRuntime().GetScene();
+
+const uint64_t key = MakePropEditKey(
+    cmd.handle.primaryID,
+    cmd.handle.declaringTypeName,
+    cmd.handle.propName
+);
+
+// BEGIN snapshot (normal drag workflow)
+if (cmd.phase == EInspectorEditPhase::Begin)
+{
+    REVariant before{};
+    if (scene.TryReadReflectedProperty(actorID, cmd.handle.primaryID,
+                                       cmd.handle.declaringTypeName, cmd.handle.propName,
+                                       before))
+    {
+        m_PropEditBegin[key] = before;
+    }
+
+    // Live apply on Begin too
+    scene.TryWriteReflectedProperty(actorID, cmd.handle.primaryID,
+                                    cmd.handle.declaringTypeName, cmd.handle.propName,
+                                    cmd.value);
+    return;
+}
+
+// UPDATE: just apply
+if (cmd.phase == EInspectorEditPhase::Update)
+{
+    scene.TryWriteReflectedProperty(actorID, cmd.handle.primaryID,
+                                    cmd.handle.declaringTypeName, cmd.handle.propName,
+                                    cmd.value);
+    return;
+}
+
+// END: create undo (supports both drag and end-only edits)
+if (cmd.phase == EInspectorEditPhase::End)
+{
+    REVariant before{};
+    bool haveBefore = false;
+
+    // If drag workflow, use stored Begin snapshot
+    auto it = m_PropEditBegin.find(key);
+    if (it != m_PropEditBegin.end())
+    {
+        before = it->second;
+        haveBefore = true;
+        m_PropEditBegin.erase(it);
+    }
+    else
+    {
+        // End-only workflow (checkbox, string commit): read before right now
+        haveBefore = scene.TryReadReflectedProperty(actorID, cmd.handle.primaryID,
+                                                    cmd.handle.declaringTypeName, cmd.handle.propName,
+                                                    before);
+    }
+
+    // Apply final value
+    scene.TryWriteReflectedProperty(actorID, cmd.handle.primaryID,
+                                    cmd.handle.declaringTypeName, cmd.handle.propName,
+                                    cmd.value);
+
+    if (!haveBefore)
         return;
 
-    auto& reg = RETypeRegistry::Get();
-    REProperty* prop = FindPropertyMutable(reg, *target, cmd.handle.declaringTypeName, cmd.handle.propName);
-    if (!prop)
+    REVariant after{};
+    if (!scene.TryReadReflectedProperty(actorID, cmd.handle.primaryID,
+                                        cmd.handle.declaringTypeName, cmd.handle.propName,
+                                        after))
         return;
 
-    const auto& rm = prop->GetResolvedMeta();
-    if (rm.bHiddenInInspector) return;
-    if (rm.editorVis == REEditorVis::Visible) return;
+    if (VariantsEqual(before, after))
+        return;
 
-    // Live apply for Begin/Update/End (undo later on End)
-    ApplyVariantToProperty(*target, *prop, cmd.value);
+    timeline.Execute(MakeUnique<SetReflectedPropertyAction>(
+        m_Host.GetRuntime(),
+        actorID,
+        cmd.handle.primaryID,
+        cmd.handle.declaringTypeName,
+        cmd.handle.propName,
+        before,
+        after
+    ));
+    return;
+}
 }

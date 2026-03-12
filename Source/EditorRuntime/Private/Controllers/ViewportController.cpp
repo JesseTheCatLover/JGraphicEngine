@@ -21,7 +21,7 @@
 #include "Rendering/EViewType.h"
 #include "Rendering/FRenderView.h"
 #include "Scene/FSelectionModifiers.h"
-#include "UndoableActions/SetActorsTransformAction.h"
+#include "Edits/UndoableActions/SetActorsTransformAction.h"
 
 ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools)
     : m_PanelID(id)

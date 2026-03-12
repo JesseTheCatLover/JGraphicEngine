@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Edits/IEditActionSink.h"
 #include "File/FileAPI.h"
 #include "Scene/SceneAPI.h"
 #include "Surface/SurfaceAPI.h"
@@ -32,6 +33,8 @@ private:
     EditorSurfaceAPI m_SurfaceAPI;
     EditorFileAPI m_FileAPI;
 
+    IEditActionSink* m_EditSink = nullptr;
+
 public:
     ~EditorRuntime();
 
@@ -40,6 +43,9 @@ public:
     [[nodiscard]] EditorViewportAPI& GetViewport() { return m_ViewportAPI; }
     [[nodiscard]] EditorSurfaceAPI& GetSurface() { return m_SurfaceAPI; }
     [[nodiscard]] EditorFileAPI& GetFile() { return m_FileAPI; }
+
+    void SetEditSink(IEditActionSink* sink) { m_EditSink = sink; }
+    [[nodiscard]] IEditActionSink* GetEditSink() const { return m_EditSink; }
 
     static constexpr uint32_t kEditorPostProfile = 1; // TODO: Legacy: should be moved
 private:

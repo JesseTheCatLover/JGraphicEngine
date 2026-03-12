@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-#include "UndoableActions/IUndoableAction.h"
+#include "Edits/UndoableActions/IUndoableAction.h"
 #include "Core/Math/FMath.h"
 
 class EditorRuntime;

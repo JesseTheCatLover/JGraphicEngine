@@ -8,6 +8,7 @@
 #include "FHierarchySnapshot.h"
 #include "FRaycast.h"
 
+struct REVariant;
 class JCoreObject;
 class JActor;
 struct FQuat;
@@ -52,4 +53,19 @@ public:
     void DuplicateActors(const std::vector<ActorID>& ids);
 
     bool RaycastIntoTheScene(const FRay& ray, FRaycastHit& outHit);
+
+    // --- Reflection mutation helpers (runtime-safe) ---
+    JCoreObject* TryResolveObjectByUUID(ActorID contextActorID, const std::string& objectUUID) const;
+
+    bool TryReadReflectedProperty(ActorID contextActorID,
+                                  const std::string& objectUUID,
+                                  const std::string& declaringTypeName,
+                                  const std::string& propName,
+                                  REVariant& outValue) const;
+
+    bool TryWriteReflectedProperty(ActorID contextActorID,
+                                   const std::string& objectUUID,
+                                   const std::string& declaringTypeName,
+                                   const std::string& propName,
+                                   const REVariant& value);
 };

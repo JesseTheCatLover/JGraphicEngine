@@ -42,6 +42,7 @@ void EditorHost::RegisterCoreServices()
     m_Services->Register<HierarchyService>(*this);
     m_Services->Register<PickingService>(*this);
     m_Services->Register<EditTimelineService>(*this);
+    m_EditorRuntime.SetEditSink(&GetService<EditTimelineService>());
     m_Services->Register<ShellCommandService>(*this);
     m_Services->Register<HotkeyService>(*this, m_EditorRuntime);
 }
