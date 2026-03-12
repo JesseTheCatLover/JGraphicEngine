@@ -68,6 +68,12 @@ void EditTimelineService::Clear()
     m_RedoStack.clear();
 }
 
+void EditTimelineService::Shutdown()
+{
+    m_UndoStack.clear();
+    m_RedoStack.clear();
+}
+
 void EditTimelineService::RegisterShellCommands(ShellCommandService &shell)
 {
     shell.Register("Editor.History.Undo", [this](){ Undo(); });

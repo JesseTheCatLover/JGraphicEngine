@@ -35,6 +35,7 @@ void EditorApp::EndFrame()
 void EditorApp::Shutdown()
 {
     // Destroy core/context
+    m_EditorHost->Shutdown();
     m_EditorHost.reset();
 
     if (m_EditorUIBackend)

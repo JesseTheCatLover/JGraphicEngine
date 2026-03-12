@@ -8,5 +8,6 @@ class IEditorService
 public:
     virtual ~IEditorService() = default;
     virtual void Tick(float deltaTime) {}
+    virtual void Shutdown() {}
     virtual void RegisterShellCommands(ShellCommandService& shell){}
 };

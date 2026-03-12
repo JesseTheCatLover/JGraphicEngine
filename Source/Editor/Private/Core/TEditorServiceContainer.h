@@ -31,6 +31,14 @@ public:
             svc->Tick(dt);
     }
 
+    void Shutdown()
+    {
+        for (auto& [_, svc] : m_Map)
+            svc->Shutdown();
+
+        m_Map.clear();
+    }
+
     void RegisterShellCommand(ShellCommandService& shell)
     {
         for (auto& [_, svc] : m_Map)

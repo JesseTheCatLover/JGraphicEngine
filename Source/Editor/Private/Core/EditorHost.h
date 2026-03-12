@@ -29,6 +29,8 @@ public:
     // Called every frame from EditorApp::OnTick
     void Tick(float deltaTime);
 
+    void Shutdown();
+
     void RegisterShellCommandsForServices();
 
     // Getters
