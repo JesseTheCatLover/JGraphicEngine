@@ -18,14 +18,14 @@ public:
     ~JApplication() = delete;
 
     /** Launches in editor mode (e.g. from the Editor executable). */
-    static bool RunEditor();
+    static bool RunEditor(int argc = 0, char** argv = nullptr);
 
     /** Launches in standalone game mode (no editor bridge). */
-    static bool RunGame();
+    static bool RunGame(int argc = 0, char** argv = nullptr);
 
     /** Launches based on a command-line flag (e.g., --editor or --game). */
     static bool RunFromArgs(int argc, char** argv);
 
 private:
-    static bool LaunchEngine(IEditorBridge* editor);
+    static bool LaunchEngine(IEditorBridge* editor, int argc, char** argv);
 };

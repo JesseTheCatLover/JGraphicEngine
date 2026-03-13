@@ -19,6 +19,7 @@
 #include "Rendering/RendererSubsystem.h"
 #include "Resources/ResourceSubsystem.h"
 #include "Core/Math/FMath.h"
+#include "Core/Project/ProjectContext.h"
 #include "Core/Serialization/SerializationSubsystem.h"
 #include "Framework/DebugDrawFramework.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
@@ -37,8 +38,19 @@ JEngine::~JEngine()
 {
 }
 
+bool JEngine::OpenProject(const FProjectOpenRequest& request)
+{
+    return m_ProjectContext->OpenProject(request);
+}
+
 bool JEngine::Run()
 {
+    if (!m_ProjectContext->IsOpen())
+    {
+        std::cerr << "[JEngine]: Cannot run without an open project.\n";
+        return false;
+    }
+
     if (!Initialize())
     {
         std::cerr << "[JEngine]: Initialization of the engine has failed" << std::endl;

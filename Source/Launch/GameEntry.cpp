@@ -2,7 +2,7 @@
 
 #include "JApplication.h"
 
-int main()
+int main(int argc, char** argv)
 {
-    return JApplication::RunGame() ? 0 : 1;
+    return JApplication::RunGame(argc, argv) ? 0 : 1;
 }

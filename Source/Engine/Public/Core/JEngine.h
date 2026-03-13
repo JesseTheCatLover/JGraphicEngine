@@ -7,6 +7,8 @@
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+struct FProjectOpenRequest;
+class ProjectContext;
 class TServiceContainer;
 class DebugDraw;
 struct FRenderView;
@@ -59,12 +61,16 @@ private:
     JEngine();
     ~JEngine();
 
+    bool OpenProject(const FProjectOpenRequest& request);
+
     bool Run();
 
     void SetEditorBridge(IEditorBridge* bridge) { m_EditorBridge = bridge; }
+    [[nodiscard]] const ProjectContext* GetProjectContext() const { return m_ProjectContext.get(); }
 
     TUniquePtr<EngineContext> m_Context;
     IEditorBridge* m_EditorBridge = nullptr;
+    TUniquePtr<ProjectContext> m_ProjectContext;
 
     TUniquePtr<IPlatformSurface> m_PlatformSurface;
     TUniquePtr<IRenderBackend> m_RenderBackend;

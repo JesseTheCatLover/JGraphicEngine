@@ -2,7 +2,7 @@
 
 #include "JApplication.h"
 
-int main()
+int main(int argc, char** argv)
 {
-    return JApplication::RunEditor() ? 0 : 1;
+    return JApplication::RunEditor(argc, argv) ? 0 : 1;
 }
