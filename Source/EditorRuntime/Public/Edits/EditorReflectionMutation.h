@@ -72,7 +72,6 @@ private:
                                          const std::string& declaringTypeName);
 
     static bool ReadVariantFromProperty(const REProperty& prop, const void* basePtr, REVariant& out);
-    static bool ApplyVariantToProperty(const REProperty& prop, void* basePtr, const REVariant& v);
 
     static bool VariantsEqual(const REVariant& a, const REVariant& b);
 };

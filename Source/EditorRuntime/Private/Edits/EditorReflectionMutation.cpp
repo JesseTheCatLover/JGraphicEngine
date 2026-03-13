@@ -52,7 +52,7 @@ bool EditorReflectionMutation::ApplyReflectedEdit(const FInspectorEditCommand& c
     }
 
     // live apply for Begin/Update/End
-    ApplyVariantToProperty(*prop, basePtr, cmd.value);
+    RETypeRegistry::ApplyVariantToProperty(*prop, basePtr, cmd.value);
 
     if (cmd.phase == EInspectorEditPhase::End)
     {

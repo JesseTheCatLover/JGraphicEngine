@@ -45,6 +45,12 @@ struct FInspectorRow
     bool bReadOnly = false;
     bool bMixed = false;              // future multi-edit
 
+    const REEnum* enumInfo = nullptr; // for enum types
+
+    // enum storage details (only meaningful when enumInfo != nullptr)
+    uint8_t enumSize = 0;             // underlying byte-size (1/2/4/8)
+    bool    bEnumSigned = true;        // signedness of underlying type
+
     REPropertyMetaResolved meta;      // resolved meta snapshot for UI rules
     FInspectorWriteHandle write;      // where edits go
 };

@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <type_traits>
 
 #include "REMeta.h"
 #include "Core/Math/FQuat.h"
@@ -53,7 +54,8 @@ using REUpcastFn = const void*(*)(const void* mostDerived);
 struct REEnumValue
 {
     std::string name;
-    std::string valueExpr;
+    std::string valueExpr;   // generator raw
+    int64_t valueI64 = 0; // resolved during Finalize()
     REMetaList meta;
 };
 
@@ -94,6 +96,9 @@ struct REProperty
     SetFromValueFn setFromValue = nullptr;
 
     REMetaList meta;
+
+    uint8_t valueSize = 0;   // bytes of the stored field (or underlying enum)
+    bool bSigned = true; // optional, nice for correct sign-extension
 
     // Cached resolved view (editor/script/serialization). Computed on demand.
     mutable bool bResolvedMetaCached = false;
@@ -151,6 +156,13 @@ struct REVariant
     FVector4   v4{};
     FQuat      q{};
     FTransform t{};
+
+    struct
+    {
+        uint8_t size = 0;
+        bool signedness = true;
+        uint8_t bytes[8]{};
+    } enumRaw;
 };
 
 struct REFunction
@@ -244,6 +256,15 @@ public:
         REProperty P;
         P.name = propName;
         P.typeName = propTypeName;
+        P.valueSize = (uint8_t)sizeof(TMember);
+        P.bSigned = std::is_signed_v<TMember>;
+
+        if constexpr (std::is_enum_v<TMember>)
+        {
+            using U = std::underlying_type_t<TMember>;
+            P.valueSize = (uint8_t)sizeof(U);
+            P.bSigned   = std::is_signed_v<U>;
+        }
 
         // Capture member pointer safely; works for private/protected when called in friend context
         P.getPtr = [memberPtr](void* obj) -> void* {
@@ -331,6 +352,15 @@ public:
     // Debug
     void DebugDumpAllTypes() const;
 
+    // Static helpers
+
+    static void EnumRaw_FromI64(REVariant& v, int64_t value, uint8_t size, bool bSignedness);
+
+    static int64_t EnumRaw_ToI64(const REVariant& v);
+
+    static bool ReadVariantFromProperty(const REProperty& prop, const void* basePtr, REVariant& out);
+    static bool ApplyVariantToProperty(const REProperty& prop, void* basePtr, const REVariant& v);
+
 private:
     RETypeRegistry() = default;
 
@@ -338,6 +368,7 @@ private:
     REType& EnsureTypeEntry(const std::type_index& idx);
     REType* FindTypeMutable(const std::type_index& idx);
     void ResolvePropertyKinds(REType& owner);
+    void ResolveEnumNumericValues();
 
     // We store REType in unique_ptr to make returned const REType* stable forever.
     std::unordered_map<std::type_index, std::unique_ptr<REType>> m_Types;

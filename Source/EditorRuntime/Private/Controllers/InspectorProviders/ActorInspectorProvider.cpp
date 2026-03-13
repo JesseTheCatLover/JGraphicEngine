@@ -209,120 +209,6 @@ namespace
         return EInspectorWidget::Label;
     }
 
-    static bool ReadVariantFromProperty(const REProperty& prop, const void* basePtr, REVariant& out)
-    {
-        out = {};
-
-        const void* fieldPtr = prop.getConstPtr ? prop.getConstPtr(basePtr) : nullptr;
-        if (!fieldPtr)
-            return false;
-
-        // kind-first
-        if (prop.kind == REPropKind::ObjectPtr)
-        {
-            out.tag = REValueTag::ObjectUUID;
-            auto* obj = *reinterpret_cast<JCoreObject* const*>(fieldPtr);
-            out.s = obj ? obj->GetUUID() : "";
-            return true;
-        }
-
-        if (prop.kind == REPropKind::Enum)
-        {
-            out.tag = REValueTag::EnumInt64;
-            out.i64 = *reinterpret_cast<const int64_t*>(fieldPtr);
-            return true;
-        }
-
-        // value by typeName
-        const std::string& tn = prop.typeName;
-
-        if (tn == "bool")
-        {
-            out.tag = REValueTag::Bool;
-            out.b = *reinterpret_cast<const bool*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "int" || tn == "int32")
-        {
-            out.tag = REValueTag::Int;
-            out.i32 = *reinterpret_cast<const int32_t*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "int64")
-        {
-            out.tag = REValueTag::Int64;
-            out.i64 = *reinterpret_cast<const int64_t*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "size_t")
-        {
-            out.tag = REValueTag::Int64;
-            out.i64 = static_cast<int64_t>(*reinterpret_cast<const size_t*>(fieldPtr));
-            return true;
-        }
-
-        if (tn == "float")
-        {
-            out.tag = REValueTag::Float;
-            out.f32 = *reinterpret_cast<const float*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "double")
-        {
-            out.tag = REValueTag::Double;
-            out.f64 = *reinterpret_cast<const double*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "std::string")
-        {
-            out.tag = REValueTag::String;
-            out.s = *reinterpret_cast<const std::string*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "FVector2")
-        {
-            out.tag = REValueTag::Vec2;
-            out.v2 = *reinterpret_cast<const FVector2*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "FVector3")
-        {
-            out.tag = REValueTag::Vec3;
-            out.v3 = *reinterpret_cast<const FVector3*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "FVector4")
-        {
-            out.tag = REValueTag::Vec4;
-            out.v4 = *reinterpret_cast<const FVector4*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "FQuat")
-        {
-            out.tag = REValueTag::Quat;
-            out.q = *reinterpret_cast<const FQuat*>(fieldPtr);
-            return true;
-        }
-
-        if (tn == "FTransform")
-        {
-            out.tag = REValueTag::Transform;
-            out.t = *reinterpret_cast<const FTransform*>(fieldPtr);
-            return true;
-        }
-
-        return false;
-    }
-
     static std::string VariantToText(const REVariant& v)
     {
         switch (v.tag)
@@ -497,107 +383,6 @@ namespace
         return nullptr;
     }
 
-    static bool ApplyVariantToProperty(JCoreObject& obj, REProperty& prop, const REVariant& v)
-    {
-        // Prefer setFromValue hook if present (perfect for centralizing conversions)
-        if (prop.setFromValue)
-            return prop.setFromValue(&obj, v);
-
-        void* fieldPtr = prop.getPtr ? prop.getPtr(&obj) : nullptr;
-        if (!fieldPtr) return false;
-
-        const std::string& tn = prop.typeName;
-
-        if (tn == "bool" && v.tag == REValueTag::Bool)
-        {
-            *reinterpret_cast<bool*>(fieldPtr) = v.b;
-            return true;
-        }
-
-        if ((tn == "int" || tn == "int32") && v.tag == REValueTag::Int)
-        {
-            *reinterpret_cast<int32_t*>(fieldPtr) = v.i32;
-            return true;
-        }
-
-        if (tn == "int64" && v.tag == REValueTag::Int64)
-        {
-            *reinterpret_cast<int64_t*>(fieldPtr) = v.i64;
-            return true;
-        }
-
-        if (tn == "size_t" && v.tag == REValueTag::Int64)
-        {
-            *reinterpret_cast<size_t*>(fieldPtr) = static_cast<size_t>(v.i64);
-            return true;
-        }
-
-        if (tn == "float" && v.tag == REValueTag::Float)
-        {
-            float x = v.f32;
-
-            const auto& rm = prop.GetResolvedMeta();
-            if (rm.bHasClamp)
-            {
-                x = std::max(x, rm.clampMin);
-                x = std::min(x, rm.clampMax);
-            }
-
-            *reinterpret_cast<float*>(fieldPtr) = x;
-            return true;
-        }
-
-        if (tn == "double" && v.tag == REValueTag::Double)
-        {
-            *reinterpret_cast<double*>(fieldPtr) = v.f64;
-            return true;
-        }
-
-        if (tn == "std::string" && v.tag == REValueTag::String)
-        {
-            *reinterpret_cast<std::string*>(fieldPtr) = v.s;
-            return true;
-        }
-
-        if (tn == "FVector2" && v.tag == REValueTag::Vec2)
-        {
-            *reinterpret_cast<FVector2*>(fieldPtr) = v.v2;
-            return true;
-        }
-
-        if (tn == "FVector3" && v.tag == REValueTag::Vec3)
-        {
-            *reinterpret_cast<FVector3*>(fieldPtr) = v.v3;
-            return true;
-        }
-
-        if (tn == "FVector4" && v.tag == REValueTag::Vec4)
-        {
-            *reinterpret_cast<FVector4*>(fieldPtr) = v.v4;
-            return true;
-        }
-
-        if (tn == "FQuat" && v.tag == REValueTag::Quat)
-        {
-            *reinterpret_cast<FQuat*>(fieldPtr) = v.q;
-            return true;
-        }
-
-        if (tn == "FTransform" && v.tag == REValueTag::Transform)
-        {
-            *reinterpret_cast<FTransform*>(fieldPtr) = v.t;
-            return true;
-        }
-
-        if (prop.kind == REPropKind::Enum && v.tag == REValueTag::EnumInt64)
-        {
-            *reinterpret_cast<int64_t*>(fieldPtr) = v.i64;
-            return true;
-        }
-
-        return false;
-    }
-
     static void BuildTargetFromObject(
         uint32_t providerID,
         uint64_t contextActorID,
@@ -656,7 +441,15 @@ namespace
             row.bMixed = false;
             row.meta = prop.GetResolvedMeta();
 
-            ReadVariantFromProperty(prop, instBase, row.value);
+            row.enumInfo = (prop.kind == REPropKind::Enum) ? prop.enumType : nullptr;
+
+            if (prop.kind == REPropKind::Enum)
+            {
+                row.enumSize   = prop.valueSize;  // we already set this in AddProperty()
+                row.bEnumSigned = prop.bSigned;
+            }
+
+            RETypeRegistry::ReadVariantFromProperty(prop, instBase, row.value);
 
             // stable row id for UI state caching
             row.rowID = MakerowID(obj.GetUUID(), declaring.name, prop.name);

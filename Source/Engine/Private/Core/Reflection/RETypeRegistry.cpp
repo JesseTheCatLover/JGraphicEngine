@@ -5,8 +5,11 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <cstring>
+#include <cstdlib>
 
 #include "Core/FObjectInitTLS.h"
+#include "Core/JCoreObject.h"
 
 static const std::type_index kVoidType = std::type_index(typeid(void));
 
@@ -15,6 +18,158 @@ RETypeRegistry& RETypeRegistry::Get()
     static RETypeRegistry g;
     return g;
 }
+
+void RETypeRegistry::EnumRaw_FromI64(REVariant &v, int64_t value, uint8_t size, bool bSignedness)
+{
+    v.tag = REValueTag::EnumInt64; // keep tag for transport, but ALSO fill enumRaw
+    v.i64 = value;
+
+    v.enumRaw.size = size;
+    v.enumRaw.signedness = bSignedness;
+
+    auto tmp = (uint64_t)value;
+    const size_t n = (size == 0) ? 8 : std::min<size_t>(size, 8);
+    std::memset(v.enumRaw.bytes, 0, sizeof(v.enumRaw.bytes));
+    std::memcpy(v.enumRaw.bytes, &tmp, n);
+}
+
+int64_t RETypeRegistry::EnumRaw_ToI64(const REVariant &v)
+{
+    // Prefer enumRaw if present, fallback to i64.
+    if (v.enumRaw.size == 0)
+        return v.i64;
+
+    uint64_t tmp = 0;
+    const size_t n = std::min<size_t>(v.enumRaw.size, 8);
+    std::memcpy(&tmp, v.enumRaw.bytes, n);
+
+    // sign extend if signed and smaller than 64
+    if (v.enumRaw.signedness && n < 8)
+    {
+        const uint64_t signBit = 1ull << (n * 8 - 1);
+        if (tmp & signBit)
+            tmp |= ~((1ull << (n * 8)) - 1ull);
+    }
+
+    return (int64_t)tmp;
+}
+
+bool RETypeRegistry::ReadVariantFromProperty(const REProperty &prop, const void *basePtr, REVariant &out)
+{
+    out = {};
+
+        const void* fieldPtr = prop.getConstPtr ? prop.getConstPtr(basePtr) : nullptr;
+        if (!fieldPtr)
+            return false;
+
+        if (prop.kind == REPropKind::ObjectPtr)
+        {
+            out.tag = REValueTag::ObjectUUID;
+            auto* obj = *reinterpret_cast<JCoreObject* const*>(fieldPtr);
+            out.s = obj ? obj->GetUUID() : "";
+            return true;
+        }
+
+        if (prop.kind == REPropKind::Enum)
+        {
+            // read EXACT underlying bytes
+            const uint8_t size = prop.valueSize ? prop.valueSize : 8;
+            const size_t n = std::min<size_t>(size, 8);
+
+            out = {};
+            out.tag = REValueTag::EnumInt64;
+            out.enumRaw.size = size;
+            out.enumRaw.signedness = prop.bSigned;
+
+            std::memset(out.enumRaw.bytes, 0, sizeof(out.enumRaw.bytes));
+            std::memcpy(out.enumRaw.bytes, fieldPtr, n);
+
+            // compute i64 for UI lookup (sign-extend if needed)
+            out.i64 = EnumRaw_ToI64(out);
+            return true;
+        }
+
+        const std::string& tn = prop.typeName;
+
+        if (tn == "bool")        { out.tag = REValueTag::Bool;   out.b = *reinterpret_cast<const bool*>(fieldPtr); return true; }
+        if (tn == "int" || tn == "int32") { out.tag = REValueTag::Int; out.i32 = *reinterpret_cast<const int32_t*>(fieldPtr); return true; }
+        if (tn == "int64")       { out.tag = REValueTag::Int64;  out.i64 = *reinterpret_cast<const int64_t*>(fieldPtr); return true; }
+        if (tn == "size_t")      { out.tag = REValueTag::Int64;  out.i64 = (int64_t)*reinterpret_cast<const size_t*>(fieldPtr); return true; }
+        if (tn == "float")       { out.tag = REValueTag::Float;  out.f32 = *reinterpret_cast<const float*>(fieldPtr); return true; }
+        if (tn == "double")      { out.tag = REValueTag::Double; out.f64 = *reinterpret_cast<const double*>(fieldPtr); return true; }
+        if (tn == "std::string") { out.tag = REValueTag::String; out.s   = *reinterpret_cast<const std::string*>(fieldPtr); return true; }
+
+        if (tn == "FVector2")    { out.tag = REValueTag::Vec2; out.v2 = *reinterpret_cast<const FVector2*>(fieldPtr); return true; }
+        if (tn == "FVector3")    { out.tag = REValueTag::Vec3; out.v3 = *reinterpret_cast<const FVector3*>(fieldPtr); return true; }
+        if (tn == "FVector4")    { out.tag = REValueTag::Vec4; out.v4 = *reinterpret_cast<const FVector4*>(fieldPtr); return true; }
+        if (tn == "FQuat")       { out.tag = REValueTag::Quat; out.q  = *reinterpret_cast<const FQuat*>(fieldPtr); return true; }
+        if (tn == "FTransform")  { out.tag = REValueTag::Transform; out.t = *reinterpret_cast<const FTransform*>(fieldPtr); return true; }
+
+        return false;
+}
+
+bool RETypeRegistry::ApplyVariantToProperty(const REProperty &prop, void *basePtr, const REVariant &v)
+{
+        if (prop.setFromValue)
+            return prop.setFromValue(basePtr, v);
+
+        void* fieldPtr = prop.getPtr ? prop.getPtr(basePtr) : nullptr;
+        if (!fieldPtr) return false;
+
+        const std::string& tn = prop.typeName;
+
+        if (tn == "bool" && v.tag == REValueTag::Bool) { *reinterpret_cast<bool*>(fieldPtr) = v.b; return true; }
+
+        if ((tn == "int" || tn == "int32") && v.tag == REValueTag::Int) { *reinterpret_cast<int32_t*>(fieldPtr) = v.i32; return true; }
+        if (tn == "int64" && v.tag == REValueTag::Int64) { *reinterpret_cast<int64_t*>(fieldPtr) = v.i64; return true; }
+        if (tn == "size_t" && v.tag == REValueTag::Int64) { *reinterpret_cast<size_t*>(fieldPtr) = (size_t)v.i64; return true; }
+
+        if (tn == "float" && v.tag == REValueTag::Float)
+        {
+            float x = v.f32;
+            const auto& rm = prop.GetResolvedMeta();
+            if (rm.bHasClamp)
+            {
+                x = std::max(x, rm.clampMin);
+                x = std::min(x, rm.clampMax);
+            }
+            *reinterpret_cast<float*>(fieldPtr) = x;
+            return true;
+        }
+
+        if (tn == "double" && v.tag == REValueTag::Double) { *reinterpret_cast<double*>(fieldPtr) = v.f64; return true; }
+        if (tn == "std::string" && v.tag == REValueTag::String) { *reinterpret_cast<std::string*>(fieldPtr) = v.s; return true; }
+
+        if (tn == "FVector2" && v.tag == REValueTag::Vec2) { *reinterpret_cast<FVector2*>(fieldPtr) = v.v2; return true; }
+        if (tn == "FVector3" && v.tag == REValueTag::Vec3) { *reinterpret_cast<FVector3*>(fieldPtr) = v.v3; return true; }
+        if (tn == "FVector4" && v.tag == REValueTag::Vec4) { *reinterpret_cast<FVector4*>(fieldPtr) = v.v4; return true; }
+        if (tn == "FQuat" && v.tag == REValueTag::Quat) { *reinterpret_cast<FQuat*>(fieldPtr) = v.q; return true; }
+        if (tn == "FTransform" && v.tag == REValueTag::Transform) { *reinterpret_cast<FTransform*>(fieldPtr) = v.t; return true; }
+
+        if (prop.kind == REPropKind::Enum && v.tag == REValueTag::EnumInt64)
+        {
+            const uint8_t size = prop.valueSize ? prop.valueSize : 8;
+            const size_t  n    = std::min<size_t>(size, 8);
+
+            // Prefer enumRaw (best), fallback to packing from i64
+            uint8_t bytes[8]{};
+
+            if (v.enumRaw.size != 0)
+            {
+                std::memcpy(bytes, v.enumRaw.bytes, n);
+            }
+            else
+            {
+                uint64_t tmp = (uint64_t)v.i64;
+                std::memcpy(bytes, &tmp, n);
+            }
+
+            std::memcpy(fieldPtr, bytes, n);
+            return true;
+        }
+
+        return false;
+    }
 
 REType& RETypeRegistry::EnsureTypeEntry(const std::type_index& idx)
 {
@@ -367,6 +522,86 @@ static std::string NormalizeTypeName(std::string s)
     s = Trim(s);
     return s;
 }
+
+static bool TryParseInt64Literal(const std::string& s, int64_t& out)
+{
+    std::string t = Trim(s);
+    if (t.empty())
+        return false;
+
+    // strip optional surrounding parentheses (common in macros)
+    if (t.size() >= 2 && t.front() == '(' && t.back() == ')')
+        t = Trim(t.substr(1, t.size() - 2));
+
+    char* end = nullptr;
+    long long v = std::strtoll(t.c_str(), &end, 0); // base=0 supports 0x..
+    if (end == t.c_str())
+        return false;
+
+    // allow trailing u/U/l/L combos (very common)
+    while (*end == 'u' || *end == 'U' || *end == 'l' || *end == 'L')
+        ++end;
+
+    while (*end && std::isspace((unsigned char)*end))
+        ++end;
+
+    if (*end != '\0')
+        return false;
+
+    out = (int64_t)v;
+    return true;
+}
+
+static bool TryResolveEnumValueExpr_Simple(
+    const std::string& expr,
+    const std::unordered_map<std::string, int64_t>& resolved,
+    int64_t& out)
+{
+    // MVP: either:
+    //  1) integer literal (dec/hex)
+    //  2) identifier referencing a previously resolved enumerator
+    if (TryParseInt64Literal(expr, out))
+        return true;
+
+    const std::string id = Trim(expr);
+    if (id.empty())
+        return false;
+
+    auto it = resolved.find(id);
+    if (it == resolved.end())
+        return false;
+
+    out = it->second;
+    return true;
+}
+
+void RETypeRegistry::ResolveEnumNumericValues()
+{
+    for (auto& [enumName, e] : m_Enums)
+    {
+        std::unordered_map<std::string, int64_t> resolved;
+        resolved.reserve(e.values.size());
+
+        int64_t nextImplicit = 0;
+
+        for (auto& v : e.values)
+        {
+            int64_t value = nextImplicit;
+
+            if (!v.valueExpr.empty())
+            {
+                int64_t tmp = 0;
+                if (TryResolveEnumValueExpr_Simple(v.valueExpr, resolved, tmp))
+                    value = tmp;
+            }
+
+            v.valueI64 = value;
+            resolved[v.name] = value;
+            nextImplicit = value + 1;
+        }
+    }
+}
+
 void RETypeRegistry::ResolvePropertyKinds(REType& owner)
 {
     for (auto& p : owner.properties)
@@ -431,6 +666,9 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
 
 void RETypeRegistry::Finalize()
 {
+    // 0) Resolve enum numeric values FIRST (so UI can map int->name)
+    ResolveEnumNumericValues();
+
     // Resolve property kinds for all types
     for (auto& [idx, uptr] : m_Types)
     {
@@ -547,6 +785,8 @@ void RETypeRegistry::DebugDumpAllTypes() const
                 std::cout << "    - " << v.name << (v.valueExpr.empty() ? "" : (" = " + v.valueExpr)) << "\n";
                 for (const auto& m : v.meta)
                     std::cout << "        meta: " << m.key << (m.value.empty() ? "" : ("=" + m.value)) << "\n";
+                std::cout << "    - " << v.name << " = " << v.valueI64 << (v.valueExpr.empty() ? "" :
+                    ("  [expr: " + v.valueExpr + "]")) << "\n";
             }
         }
 

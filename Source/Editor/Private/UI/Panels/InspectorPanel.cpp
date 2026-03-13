@@ -1232,17 +1232,50 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
 
         case EInspectorWidget::Enum:
         {
-            int64_t raw = (row.value.tag == REValueTag::EnumInt64) ? row.value.i64 : 0;
-            int v = (int)raw;
+            const int64_t raw = (row.value.tag == REValueTag::EnumInt64) ? row.value.i64 : 0;
+
+            auto GetCurrentName = [&]() -> const char*
+            {
+                if (!row.enumInfo) return "<enum>";
+                for (const auto& ev : row.enumInfo->values)
+                    if (ev.valueI64 == raw)
+                        return ev.name.c_str();
+                return "<unknown>";
+            };
+
+            const char* currentName = GetCurrentName();
 
             ImGui::SetNextItemWidth(-FLT_MIN);
-            const bool changed = ImGui::DragInt("##v", &v, 1.0f);
 
-            REVariant nv{};
-            nv.tag = REValueTag::EnumInt64;
-            nv.i64 = (int64_t)v;
+            // full-width combo-like button
+            if (ImGui::Button(currentName, ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+                ImGui::OpenPopup("##EnumPopup");
 
-            PushEditForLastItem(input, row, nv, changed);
+            if (ImGui::BeginPopup("##EnumPopup"))
+            {
+                if (!row.enumInfo || row.enumInfo->values.empty())
+                {
+                    ImGui::TextDisabled("No enum values.");
+                }
+                else
+                {
+                    for (const auto& ev : row.enumInfo->values)
+                    {
+                        const bool selected = (ev.valueI64 == raw);
+
+                        if (ImGui::Selectable(ev.name.c_str(), selected, ImGuiSelectableFlags_SpanAvailWidth))
+                        {
+                            REVariant nv{};
+                            RETypeRegistry::EnumRaw_FromI64(nv, ev.valueI64, row.enumSize, row.bEnumSigned);
+                            PushEdit(input, row, nv, EInspectorEditPhase::End);
+
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                }
+
+                ImGui::EndPopup();
+            }
         } break;
 
         case EInspectorWidget::ObjectRef:
