@@ -7,6 +7,7 @@
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+class VirtualPathMounter;
 struct FProjectOpenRequest;
 class ProjectContext;
 class TServiceContainer;
@@ -67,10 +68,12 @@ private:
 
     void SetEditorBridge(IEditorBridge* bridge) { m_EditorBridge = bridge; }
     [[nodiscard]] const ProjectContext* GetProjectContext() const { return m_ProjectContext.get(); }
+    [[nodiscard]] const VirtualPathMounter& GetVirtualPathMounter() const { return *m_VirtualPathMounter.get(); }
 
     TUniquePtr<EngineContext> m_Context;
     IEditorBridge* m_EditorBridge = nullptr;
     TUniquePtr<ProjectContext> m_ProjectContext;
+    TUniquePtr<VirtualPathMounter> m_VirtualPathMounter;
 
     TUniquePtr<IPlatformSurface> m_PlatformSurface;
     TUniquePtr<IRenderBackend> m_RenderBackend;

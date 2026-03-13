@@ -27,6 +27,7 @@
 
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
+#include "Project/VirtualPathMounter.h"
 #include "Rendering/FRenderView.h"
 
 JEngine::JEngine()
@@ -40,7 +41,38 @@ JEngine::~JEngine()
 
 bool JEngine::OpenProject(const FProjectOpenRequest& request)
 {
-    return m_ProjectContext->OpenProject(request);
+    // Reset mount state first so we never keep stale mappings.
+    m_ProjectContext->Reset();
+    m_VirtualPathMounter->Clear();
+
+    if (!m_ProjectContext->OpenProject(request))
+    {
+        std::cerr << "[JEngine]: Failed to open project context.\n";
+        return false;
+    }
+
+    // Mount only the asset/content roots into the virtual namespace.
+    if (!m_VirtualPathMounter->Mount("/Engine", m_ProjectContext->GetEngineAssetsRoot()))
+    {
+        std::cerr << "[JEngine]: Failed to mount /Engine to engine assets root: "
+                  << m_ProjectContext->GetEngineAssetsRoot() << "\n";
+
+        m_ProjectContext->Reset();
+        m_VirtualPathMounter->Clear();
+        return false;
+    }
+
+    if (!m_VirtualPathMounter->Mount("/Project", m_ProjectContext->GetProjectAssetsRoot()))
+    {
+        std::cerr << "[JEngine]: Failed to mount /Project to project assets root: "
+                  << m_ProjectContext->GetProjectAssetsRoot() << "\n";
+
+        m_ProjectContext->Reset();
+        m_VirtualPathMounter->Clear();
+        return false;
+    }
+
+    return true;
 }
 
 bool JEngine::Run()
