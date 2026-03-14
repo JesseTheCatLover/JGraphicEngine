@@ -81,7 +81,6 @@ void AssetFile::WriteHeaderObject(JsonWriter& writer, const FAssetHeader& header
 
     writer.Write("assetID", header.assetID);
     writer.Write("assetName", header.assetName);
-    writer.Write("virtualPath", header.virtualPath);
 
     writer.Write("sourcePath", header.sourcePath);
     writer.Write("importerName", header.importerName);
@@ -110,9 +109,6 @@ bool AssetFile::ReadHeaderObject(const JsonReader& reader, FAssetHeader& outHead
     outHeader.assetName =
         reader.Read<std::string>("assetName", "");
 
-    outHeader.virtualPath =
-        reader.Read<std::string>("virtualPath", "");
-
     outHeader.sourcePath =
         reader.Read<std::string>("sourcePath", "");
 
@@ -138,12 +134,6 @@ bool AssetFile::ReadHeaderObject(const JsonReader& reader, FAssetHeader& outHead
     if (outHeader.assetID.empty())
     {
         std::cerr << "[JAssetFile]: assetID is empty in .jasset header\n";
-        return false;
-    }
-
-    if (outHeader.virtualPath.empty())
-    {
-        std::cerr << "[JAssetFile]: virtualPath is empty in .jasset header\n";
         return false;
     }
 
