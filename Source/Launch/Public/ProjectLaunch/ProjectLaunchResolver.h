@@ -4,10 +4,10 @@
 #include <string>
 
 #include "EngineInstallResolver.h"
+#include "IProjectLaunchUI.h"
 #include "Core/Project/FProjectDescriptor.h"
 #include "Core/Project/FProjectOpenRequest.h"
 
-class IProjectLaunchUI;
 class ProjectLaunchUI;
 class EngineInstallResolver;
 
