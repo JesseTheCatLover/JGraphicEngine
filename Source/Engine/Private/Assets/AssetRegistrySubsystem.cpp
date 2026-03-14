@@ -1,0 +1,150 @@
+// Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
+
+#include "Assets/AssetRegistrySubsystem.h"
+
+#include <iostream>
+
+#include "Assets/AssetFile.h"
+#include "Core/Project/VirtualPathMounter.h"
+#include "Utilities/UFileSystem.h"
+#include "Utilities/UPath.h"
+
+void AssetRegistrySubsystem::Clear()
+{
+    m_Assets.clear();
+    m_ByAssetID.clear();
+    m_ByVirtualPath.clear();
+    m_ByPhysicalPath.clear();
+}
+
+bool AssetRegistrySubsystem::Rebuild(const VirtualPathMounter& mounter)
+{
+    Clear();
+
+    bool bOk = true;
+    if (mounter.IsMounted("/Engine"))
+        bOk &= ScanMount(mounter, "/Engine");
+
+    if (mounter.IsMounted("/Project"))
+        bOk &= ScanMount(mounter, "/Project");
+
+    return bOk;
+}
+
+bool AssetRegistrySubsystem::ScanMount(const VirtualPathMounter& mounter, const std::string& virtualRoot)
+{
+    const FVirtualMountPoint* mount = mounter.FindMount(virtualRoot);
+    if (!mount)
+        return false;
+
+    const std::string& physicalRoot = mount->physicalRoot;
+    if (!UFileSystem::DirectoryExists(physicalRoot))
+    {
+        std::cerr << "[AssetRegistry]: Mounted root does not exist: " << physicalRoot << "\n";
+        return false;
+    }
+
+    const std::vector<std::string> files = UFileSystem::ListFiles(physicalRoot, "jasset", true, true);
+
+    bool bAllGood = true;
+
+    for (const std::string& physicalPath : files)
+    {
+        FAssetHeader header;
+        if (!AssetFile::ReadHeader(physicalPath, header))
+        {
+            std::cerr << "[AssetRegistry]: Failed to read asset header: " << physicalPath << "\n";
+            bAllGood = false;
+            continue;
+        }
+
+        std::string virtualPath;
+        if (!mounter.ResolvePhysicalToVirtual(physicalPath, virtualPath))
+        {
+            std::cerr << "[AssetRegistry]: Failed to convert physical path to virtual path: "
+                      << physicalPath << "\n";
+            bAllGood = false;
+            continue;
+        }
+
+        FAssetRecord record;
+        record.assetID = header.assetID;
+        record.assetName = header.assetName;
+        record.assetType = header.assetType;
+        record.encoding = header.encoding;
+        record.containerVersion = header.containerVersion;
+        record.payloadVersion = header.payloadVersion;
+        record.virtualPath = virtualPath;
+        record.physicalPath = UPath::Normalize(physicalPath);
+        record.sourcePath = header.sourcePath;
+        record.importerName = header.importerName;
+        record.dependencyAssetIDs = header.dependencyAssetIDs;
+
+        if (!RegisterAsset(std::move(record)))
+        {
+            std::cerr << "[AssetRegistry]: Duplicate or invalid asset registration for: "
+                      << physicalPath << "\n";
+            bAllGood = false;
+            continue;
+        }
+    }
+
+    return bAllGood;
+}
+
+const FAssetRecord* AssetRegistrySubsystem::FindByAssetID(const std::string& assetID) const
+{
+    auto it = m_ByAssetID.find(assetID);
+    if (it == m_ByAssetID.end())
+        return nullptr;
+
+    return &m_Assets[it->second];
+}
+
+const FAssetRecord* AssetRegistrySubsystem::FindByVirtualPath(const std::string& virtualPath) const
+{
+    auto it = m_ByVirtualPath.find(virtualPath);
+    if (it == m_ByVirtualPath.end())
+        return nullptr;
+
+    return &m_Assets[it->second];
+}
+
+const FAssetRecord* AssetRegistrySubsystem::FindByPhysicalPath(const std::string& physicalPath) const
+{
+    auto it = m_ByPhysicalPath.find(UPath::Normalize(physicalPath));
+    if (it == m_ByPhysicalPath.end())
+        return nullptr;
+
+    return &m_Assets[it->second];
+}
+
+bool AssetRegistrySubsystem::RegisterAsset(FAssetRecord record)
+{
+    if (record.assetID.empty())
+        return false;
+
+    if (record.virtualPath.empty())
+        return false;
+
+    if (record.physicalPath.empty())
+        return false;
+
+    if (m_ByAssetID.contains(record.assetID))
+        return false;
+
+    if (m_ByVirtualPath.contains(record.virtualPath))
+        return false;
+
+    if (m_ByPhysicalPath.contains(record.physicalPath))
+        return false;
+
+    const size_t index = m_Assets.size();
+    m_Assets.push_back(std::move(record));
+
+    m_ByAssetID.emplace(m_Assets[index].assetID, index);
+    m_ByVirtualPath.emplace(m_Assets[index].virtualPath, index);
+    m_ByPhysicalPath.emplace(m_Assets[index].physicalPath, index);
+
+    return true;
+}

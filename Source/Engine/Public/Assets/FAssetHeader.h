@@ -19,7 +19,6 @@ struct FAssetHeader
 
     std::string assetID;
     std::string assetName;
-    std::string virtualPath;
 
     std::string sourcePath;     // optional
     std::string importerName;   // optional

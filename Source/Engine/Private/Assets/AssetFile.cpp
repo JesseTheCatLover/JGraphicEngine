@@ -1,10 +1,10 @@
 // Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "AssetFile.h"
+#include "../../Public/Assets/AssetFile.h"
 
 #include <iostream>
 
-bool JAssetFile::WriteJsonAsset(const std::string& filePath,
+bool AssetFile::WriteJsonAsset(const std::string& filePath,
                                 const FAssetHeader& header,
                                 const JJson& payload)
 {
@@ -25,7 +25,7 @@ bool JAssetFile::WriteJsonAsset(const std::string& filePath,
     return true;
 }
 
-bool JAssetFile::ReadHeader(const std::string& filePath,
+bool AssetFile::ReadHeader(const std::string& filePath,
                             FAssetHeader& outHeader)
 {
     JsonReader reader;
@@ -44,7 +44,7 @@ bool JAssetFile::ReadHeader(const std::string& filePath,
     return ReadHeaderObject(reader.GetObject("header"), outHeader);
 }
 
-bool JAssetFile::ReadJsonAsset(const std::string& filePath,
+bool AssetFile::ReadJsonAsset(const std::string& filePath,
                                FAssetHeader& outHeader,
                                JJson& outPayload)
 {
@@ -72,7 +72,7 @@ bool JAssetFile::ReadJsonAsset(const std::string& filePath,
     return true;
 }
 
-void JAssetFile::WriteHeaderObject(JsonWriter& writer, const FAssetHeader& header)
+void AssetFile::WriteHeaderObject(JsonWriter& writer, const FAssetHeader& header)
 {
     writer.Write("containerVersion", header.containerVersion);
     writer.Write("payloadVersion", header.payloadVersion);
@@ -88,7 +88,7 @@ void JAssetFile::WriteHeaderObject(JsonWriter& writer, const FAssetHeader& heade
     writer.Write("dependencyAssetIDs", header.dependencyAssetIDs);
 }
 
-bool JAssetFile::ReadHeaderObject(const JsonReader& reader, FAssetHeader& outHeader)
+bool AssetFile::ReadHeaderObject(const JsonReader& reader, FAssetHeader& outHeader)
 {
     outHeader = {};
 

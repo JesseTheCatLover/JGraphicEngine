@@ -7,7 +7,7 @@
 #include "Core/Serialization/JsonReader.h"
 #include "Core/Serialization/JsonWriter.h"
 
-class JAssetFile
+class AssetFile
 {
 public:
     /**

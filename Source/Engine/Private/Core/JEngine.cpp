@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "EngineContext.h"
+#include "Assets/AssetRegistrySubsystem.h"
 #include "Core/TServiceContainer.h"
 #include "Framework/InputManager.h"
 #include "Framework/PostProcessManager.h"
@@ -70,6 +71,11 @@ bool JEngine::OpenProject(const FProjectOpenRequest& request)
         m_ProjectContext->Reset();
         m_VirtualPathMounter->Clear();
         return false;
+    }
+
+    if (!m_AssetSubsystem->Rebuild(*m_VirtualPathMounter))
+    {
+        std::cerr << "[JEngine]: Asset registry rebuild completed with errors.\n";
     }
 
     return true;
@@ -224,6 +230,13 @@ bool JEngine::InitializeSubsystems()
     m_ResourceSubSystem->SetRenderDevice(m_Renderer.get());
 
     SerializationSubsystem::Get().Initialize();
+
+    m_AssetSubsystem = TUniquePtr<AssetRegistrySubsystem>(new AssetRegistrySubsystem());
+    if (!m_AssetSubsystem)
+    {
+        std::cerr << "[JEngine]: Failed to initialize asset registry subsystem" << std::endl;
+        return false;
+    }
 
     m_InputSubSystem = TUniquePtr<InputSubsystem>(new InputSubsystem());
     if (!m_InputSubSystem)
@@ -574,6 +587,11 @@ RendererSubsystem * JEngine::GetRenderer()
 ResourceSubsystem* JEngine::GetResourceSubsystem()
 {
     return m_ResourceSubSystem.get();
+}
+
+AssetRegistrySubsystem * JEngine::GetAssetRegistrySubsystem()
+{
+    return m_AssetSubsystem.get();
 }
 
 InputSubsystem * JEngine::GetInputSubsystem()

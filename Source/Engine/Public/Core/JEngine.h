@@ -7,6 +7,7 @@
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+class AssetRegistrySubsystem;
 class VirtualPathMounter;
 struct FProjectOpenRequest;
 class ProjectContext;
@@ -50,6 +51,7 @@ public:
     IPlatformSurface* GetPlatformSurface();
     RendererSubsystem* GetRenderer();
     ResourceSubsystem* GetResourceSubsystem();
+    AssetRegistrySubsystem* GetAssetRegistrySubsystem();
     InputSubsystem* GetInputSubsystem();
 
     SceneManager* GetSceneManager();
@@ -79,6 +81,7 @@ private:
     TUniquePtr<IRenderBackend> m_RenderBackend;
     TUniquePtr<RendererSubsystem> m_Renderer;
     TUniquePtr<ResourceSubsystem> m_ResourceSubSystem;
+    TUniquePtr<AssetRegistrySubsystem> m_AssetSubsystem;
     TUniquePtr<IInputBackend> m_InputBackend;
     TUniquePtr<InputSubsystem> m_InputSubSystem;
 
