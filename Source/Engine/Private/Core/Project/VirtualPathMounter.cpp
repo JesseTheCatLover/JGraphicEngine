@@ -1,6 +1,6 @@
 // Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "VirtualPathMounter.h"
+#include "Core/Project/VirtualPathMounter.h"
 
 #include <algorithm>
 
