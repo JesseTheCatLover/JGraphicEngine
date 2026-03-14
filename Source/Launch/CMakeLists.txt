@@ -1,10 +1,17 @@
 # Launch/CMakeLists.txt
 
-# JApplication static library
-add_library(JApplication STATIC
-        Private/JApplication.cpp
-        Public/JApplication.h # for IDE visibility
+# Collect launch source files
+file(GLOB_RECURSE LAUNCH_SRC CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Private/**/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Private/**/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Public/**/*.h"
 )
+
+# JApplication static library
+add_library(JApplication STATIC ${LAUNCH_SRC})
 
 # Include directories
 target_include_directories(JApplication
