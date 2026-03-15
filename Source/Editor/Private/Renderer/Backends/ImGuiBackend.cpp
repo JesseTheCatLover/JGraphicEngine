@@ -9,6 +9,9 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "Core/EngineGlobals.h"
+#include "Core/Project/ProjectContext.h"
+#include "Core/Project/VirtualPathMounter.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
@@ -16,9 +19,12 @@ namespace
 {
     std::filesystem::path GetCurrentLayoutPath()
     {
-        return UPath::ResolvePath(UPath::Join("Config", "Layout", "current_layout.ini"));
-    }
+        if (!GEngine)
+            return {};
 
+        const std::string savedRoot = GEngine->GetProjectContext()->GetProjectSavedRoot();
+        return UPath::Join(savedRoot, "Editor", "Layout", "ImGui", "CurrentLayout.ini");
+    }
     bool ReadTextFile(const std::filesystem::path& path, std::string& outText)
     {
         std::ifstream file(path, std::ios::in | std::ios::binary);
@@ -102,10 +108,12 @@ void ImGuiBackend::SetupFonts()
     ImGuiIO& io = ImGui::GetIO(); (void)io;
 
     std::string defaultFontName = "FunnelSans";
-    io.FontDefault = io.Fonts->AddFontFromFileTTF(
-        UPath::ResolvePath(UPath::Join("Assets/Editor", "Fonts", defaultFontName + ".ttf")).string().c_str(),
-        16.0f
-    );
+    std::string fontPath;
+    if (GEngine && GEngine->GetVirtualPathMounter().ResolveVirtualToPhysical(
+            UPath::Join("/Engine/Editor/Fonts", defaultFontName + ".ttf"), fontPath))
+    {
+        io.FontDefault = io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 16.0f);
+    }
 }
 
 void ImGuiBackend::SetupStyle()

@@ -198,75 +198,90 @@ public:
     // -------------------- File API --------------------
 
     /**
-     * @brief Creates a new scene file on disk.
+     * @brief Creates a new scene file on disk at a project virtual path.
      *
-     * Initializes an empty scene with the given name and writes it to the
-     * specified file path. If a file already exists at the location,
-     * this function will only overwrite it if @p bOverwrite is true.
+     * Initializes an empty scene with the given scene name and writes it to the
+     * specified virtual path under /Project. The user is free to organize scenes
+     * anywhere inside the project's Assets tree, so this function does not assume
+     * a fixed folder such as /Project/Scenes.
      *
-     * @param name       Name of the scene (used for the internal JScene object).
-     * @param filename   Scene file name (without extension, relative to scene directory).
-     * @param bOverwrite Whether to overwrite an existing file (default: false).
-     * @return true if the scene file was successfully created and saved, false otherwise.
+     * Example:
+     * - "/Project/Scenes/MainMenu.jscene"
+     * - "/Project/Levels/Chapter1/Intro.jscene"
+     *
+     * @param Scenename              Name of the scene object created in memory.
+     * @param sceneVirtualPath  Virtual path to the scene file under /Project, including extension.
+     * @param bOverwrite        Whether to overwrite an existing file.
+     * @return true if the scene file was created successfully, false otherwise.
      */
-    bool CreateSceneFile(const std::string &name, const std::string &filename, bool bOverwrite = false) const;
+    bool CreateSceneFile(const std::string &Scenename,
+                         const std::string &sceneVirtualPath,
+                         bool bOverwrite = false) const;
 
     /**
-    * @brief Loads a scene from disk and makes it the active scene.
-    *
-    * The function deserializes the scene data from JSON format, restores
-    * all actors and properties, and sets the loaded scene as the active scene.
-    *
-    * @param filename Scene file name (without extension, relative to scene directory).
-    * @return Pointer to the loaded scene, or nullptr if loading failed.
-    */
-    JScene *LoadSceneFile(const std::string &filename);
-
-    /**
-     * @brief Saves a scene to disk in JSON format.
+     * @brief Loads a scene from disk and makes it the active scene.
      *
-     * Serializes and writes MetaData on the provided scene object and writes it to the specified file.
+     * The function resolves the given project virtual path, deserializes the scene,
+     * restores all actors/components/properties, and assigns the loaded scene as
+     * the active scene.
      *
-     * @param scene     Pointer to the scene to save.
-     * @param filename  Scene file name (without extension, relative to scene directory).
-     * @return true if the scene was successfully saved, false otherwise.
+     * The path is expected to be a scene file path under /Project, including extension.
+     *
+     * Example:
+     * - "/Project/Scenes/MainMenu.jscene"
+     * - "/Project/Levels/TestArena.jscene"
+     *
+     * @param sceneVirtualPath Virtual path to the scene file under /Project.
+     * @return Pointer to the loaded active scene, or nullptr if loading failed.
      */
-    bool SaveSceneFile(const JScene *scene, const std::string &filename) const;
+    JScene *LoadSceneFile(const std::string &sceneVirtualPath);
+
+    /**
+     * @brief Saves a scene to disk at a project virtual path.
+     *
+     * Serializes the provided scene and writes it to the specified virtual path
+     * under /Project. This function does not assume scenes live in a fixed folder;
+     * the destination is determined entirely by the provided project virtual path.
+     *
+     * @param scene             Pointer to the scene to save.
+     * @param sceneVirtualPath  Virtual path to the target scene file under /Project.
+     * @return true if the scene was saved successfully, false otherwise.
+     */
+    bool SaveSceneFile(const JScene *scene, const std::string &sceneVirtualPath) const;
 
 
     /**
-     * @brief Reads metadata from a scene file without fully loading the scene.
+     * @brief Reads lightweight metadata from a scene file without fully loading the scene.
      *
      * Extracts information such as scene name, actor count, thumbnail path,
-     * and last modified timestamp from the file’s MetaData.
+     * and last modified timestamp from the specified scene file.
      *
-     * @param filename Full path to the scene file (.jscene).
-     * @return SceneMeta struct containing metadata. Fields may be empty if file could not be opened.
+     * @param sceneFilePath Physical path to a .jscene file.
+     * @return FSceneMeta containing extracted metadata. Fields may be empty if reading failed.
      */
-    static FSceneMeta ReadSceneMeta(const std::string &filename);
+    static FSceneMeta ReadSceneMeta(const std::string &sceneFilePath);
 
     /**
-     * @brief Lists metadata for all scenes in a directory.
+     * @brief Lists metadata for all scene files in a directory.
      *
-     * Iterates over all `.jscene` files in the given directory and extracts
+     * Iterates over all .jscene files in the specified directory and extracts
      * their metadata using ReadSceneMeta().
      *
-     * @param directory Path to the directory containing scene files.
-     * @return Vector of SceneMeta structures for each valid scene file.
+     * @param directoryPath Physical path to the directory to scan.
+     * @return Vector of FSceneMeta entries for each valid scene file found.
      */
-    static std::vector<FSceneMeta> ListScenesMeta(const std::string &directory);
-
+    static std::vector<FSceneMeta> ListScenesMeta(const std::string &directoryPath);
 
     /**
      * @brief Lists all available scene files in a directory.
      *
-     * Finds all files with the `.jscene` extension in the specified directory
-     * and returns their filenames (without path).
+     * Finds all files with the .jscene extension in the specified directory
+     * and returns their file names with extension.
      *
-     * @param directory Path to the directory containing scene files.
-     * @return Vector of scene file names (e.g. "Lake.jscene, MainMenu.jscene, ...").
+     * @param directoryPath Physical path to the directory to scan.
+     * @return Vector of scene file names (for example "MainMenu.jscene").
      */
-    static std::vector<std::string> ListAvailableSceneFiles(const std::string &directory);
+    static std::vector<std::string> ListAvailableSceneFiles(const std::string &directoryPath);
 
     // -------------------- Callbacks --------------------
     /** Callback invoked whenever a scene is loaded. */

@@ -2,12 +2,30 @@
 
 #include <fstream>
 
+#include "Core/EngineGlobals.h"
 #include "Core/FObjectInitializer.h"
+#include "Core/Project/VirtualPathMounter.h"
 #include "Core/Serialization/SerializationSubsystem.h"
 #include "Scene/JActor.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 #include "Core/Serialization/SerializeUtilities.h"
+
+namespace
+{
+    static bool ResolveProjectScenePath(const std::string& sceneVirtualPath, std::string& outPhysicalPath)
+    {
+        outPhysicalPath.clear();
+
+        if (!GEngine)
+            return false;
+
+        if (sceneVirtualPath.empty())
+            return false;
+
+        return GEngine->GetVirtualPathMounter().ResolveVirtualToPhysical(sceneVirtualPath, outPhysicalPath);
+    }
+}
 
 JActor* SceneManager::FindActorByID(uint64_t id) const
 {
@@ -219,16 +237,20 @@ void SceneManager::ApplyLoadedResultToScene(const FSceneLoadResult& loadResult, 
         if (obj) obj->PostLoad();
 }
 
-bool SceneManager::CreateSceneFile(const std::string& name,
-                                  const std::string& filename,
-                                  bool bOverwrite) const
+bool SceneManager::CreateSceneFile(const std::string& sceneName,
+                                   const std::string& sceneVirtualPath,
+                                   bool bOverwrite) const
 {
-    std::string scenePath = UPath::ResolvePath(UPath::Join("Assets", "Scenes", filename + ".jscene")).string();
+    std::string scenePath;
+    if (!ResolveProjectScenePath(sceneVirtualPath, scenePath))
+        return false;
+
+    UFileSystem::CreateDirectory(UPath::GetParent(scenePath));
 
     if (UFileSystem::FileExists(scenePath) && !bOverwrite)
         return false;
 
-    const FObjectInitializer init = FObjectInitializer::ForSceneRoot(name);
+    const FObjectInitializer init = FObjectInitializer::ForSceneRoot(sceneName);
 
     TUniquePtr<JScene> scene;
     {
@@ -236,12 +258,14 @@ bool SceneManager::CreateSceneFile(const std::string& name,
         scene = MakeUnique<JScene>(); // ctor consumes TLS
     }
 
-    return SaveSceneFile(scene.get(), filename);
-    }
+    return SaveSceneFile(scene.get(), sceneVirtualPath);
+}
 
-JScene* SceneManager::LoadSceneFile(const std::string& filename)
+JScene* SceneManager::LoadSceneFile(const std::string& sceneVirtualPath)
 {
-    std::string scenePath = UPath::ResolvePath(UPath::Join("Assets", "Scenes", filename + ".jscene")).string();
+    std::string scenePath;
+    if (!ResolveProjectScenePath(sceneVirtualPath, scenePath))
+        return nullptr;
 
     if (!UFileSystem::FileExists(scenePath))
         return nullptr;
@@ -250,18 +274,18 @@ JScene* SceneManager::LoadSceneFile(const std::string& filename)
     if (!SerializationSubsystem::Get().LoadScene(scenePath, loadResult))
         return nullptr;
 
-    std::string sceneName = loadResult.sceneName.empty() ? "UnnamedScene" : loadResult.sceneName;
+    const std::string sceneName = loadResult.sceneName.empty() ? "UnnamedScene" : loadResult.sceneName;
 
     FObjectInitializer init{};
     init.Name   = sceneName;
-    init.Scene  = nullptr; // the scene itself
+    init.Scene  = nullptr;
     init.Owner  = nullptr;
     init.bIsCDO = false;
 
     TUniquePtr<JScene> newScene;
     {
         FObjectInitTLS::FScope scope(init);
-        newScene = MakeUnique<JScene>(); // default ctor
+        newScene = MakeUnique<JScene>();
     }
 
     ApplyLoadedResultToScene(loadResult, *newScene);
@@ -273,7 +297,7 @@ JScene* SceneManager::LoadSceneFile(const std::string& filename)
     return m_ActiveScene.get();
 }
 
-bool SceneManager::SaveSceneFile(const JScene *scene, const std::string &filename) const
+bool SceneManager::SaveSceneFile(const JScene* scene, const std::string& sceneVirtualPath) const
 {
     if (!scene)
         return false;
@@ -281,7 +305,11 @@ bool SceneManager::SaveSceneFile(const JScene *scene, const std::string &filenam
     if (!scene->m_bIsDirty)
         return true; // nothing to save
 
-    std::string scenePath = UPath::ResolvePath(UPath::Join("Assets", "Scenes", filename + ".jscene")).string();
+    std::string scenePath;
+    if (!ResolveProjectScenePath(sceneVirtualPath, scenePath))
+        return false;
+
+    UFileSystem::CreateDirectory(UPath::GetParent(scenePath));
 
     FSceneSaveInfo info;
     BuildSaveInfoFromScene(scene, info);

@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iostream>
 #include <algorithm>
+#include <filesystem>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -14,9 +15,62 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
+#include "Core/EngineGlobals.h"
+#include "Core/Project/ProjectContext.h"
+#include "Core/Project/VirtualPathMounter.h"
 #include "Utilities/UPath.h"
 #include "Rendering/IRenderDevice.h"
 #include "Rendering/FSurfaceDesc.h"
+
+namespace
+{
+    static std::string NormalizeSlashes(std::string s)
+    {
+        for (char& c : s)
+            if (c == '\\')
+                c = '/';
+        return s;
+    }
+
+    static bool StartsWithVirtualRoot(const std::string& path)
+    {
+        return path.rfind("/Engine", 0) == 0 || path.rfind("/Project", 0) == 0;
+    }
+
+    static std::string ResolveToAbsolutePath(const std::string& inPath)
+    {
+        namespace fs = std::filesystem;
+
+        std::string p = NormalizeSlashes(inPath);
+        fs::path fp(p);
+
+        // 1) Absolute filesystem path
+        if (fp.is_absolute() && !StartsWithVirtualRoot(p))
+            return UPath::Normalize(p);
+
+        // 2) Virtual asset path
+        if (StartsWithVirtualRoot(p))
+        {
+            if (GEngine)
+            {
+                std::string resolved;
+                if (GEngine->GetVirtualPathMounter().ResolveVirtualToPhysical(p, resolved))
+                    return resolved;
+            }
+            return {};
+        }
+
+        // 3) Legacy fallback: treat as project-assets-relative
+        if (GEngine)
+        {
+            return UPath::Normalize(
+                UPath::Join(GEngine->GetProjectContext()->GetProjectAssetsRoot(), p)
+            );
+        }
+
+        return {};
+    }
+}
 
 // ====== construction ======
 
@@ -63,8 +117,13 @@ void ModelResource::LoadCPU()
     m_MaterialsCPU.clear();
     m_TexIndexByPath.clear();
 
-    std::string meshesDirectory = UPath::Join(UPath::ResolvePath(""), "Assets", "Meshes");
-    const std::string absPath = UPath::Join(meshesDirectory, m_Source);
+    const std::string absPath = ResolveToAbsolutePath(m_Source);
+    if (absPath.empty())
+    {
+        std::cerr << "[ModelResource]: Failed to resolve model path: " << m_Source << "\n";
+        return;
+    }
+
     const std::string modelDir = UPath::GetParent(absPath);
 
     Assimp::Importer importer;

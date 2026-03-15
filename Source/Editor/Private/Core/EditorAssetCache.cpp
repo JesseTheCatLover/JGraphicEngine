@@ -6,7 +6,10 @@
 #include <filesystem>
 
 #include "EditorRuntime.h"
+#include "Core/EngineGlobals.h"
+#include "Core/Project/VirtualPathMounter.h"
 #include "File/FileAPI.h"
+#include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
 namespace fs = std::filesystem;
@@ -21,62 +24,73 @@ void EditorAssetCache::PreloadAll(EditorRuntime& runtime)
     m_TextureMap.clear();
     m_Textures.clear();
 
-    ScanAndLoadTextures(runtime, "Assets/Editor/Textures");
-}
-
-void EditorAssetCache::ScanAndLoadTextures(EditorRuntime& runtime, const std::string& rootDirRel)
-{
-    if (!UPath::DirectoryExists(rootDirRel))
+    if (!GEngine)
     {
-        std::cerr << "[EditorAssetCache]: Texture dir missing: " << rootDirRel << "\n";
+        std::cerr << "[EditorAssetCache]: GEngine is null.\n";
         return;
     }
 
-    // UPath returns ABSOLUTE paths
-    const std::vector<std::string> filesAbs = UPath::ListFiles(
-        rootDirRel,
-        /*extension*/ "",
-        /*recursive*/ true,
-        /*case-insensitive*/ true
+    ScanAndLoadTextures(runtime, "/Engine/Editor/Textures");
+}
+
+void EditorAssetCache::ScanAndLoadTextures(EditorRuntime& runtime, const std::string& rootVirtualDir)
+{
+    std::string rootAbs;
+    if (!GEngine->GetVirtualPathMounter().ResolveVirtualToPhysical(rootVirtualDir, rootAbs))
+    {
+        std::cerr << "[EditorAssetCache]: Failed to resolve texture root: " << rootVirtualDir << "\n";
+        return;
+    }
+
+    if (!UFileSystem::DirectoryExists(rootAbs))
+    {
+        std::cerr << "[EditorAssetCache]: Texture dir missing: " << rootAbs << "\n";
+        return;
+    }
+
+    const std::vector<std::string> filesAbs = UFileSystem::ListFiles(
+        rootAbs,
+        "",
+        true,
+        true
     );
 
-    const fs::path rootAbs = UPath::ResolvePath(rootDirRel);
+    const fs::path rootAbsPath(rootAbs);
 
     size_t loaded = 0;
 
     for (const std::string& absStr : filesAbs)
     {
-        const std::string ext = UPath::GetExtension(absStr); // no dot
+        const std::string ext = UPath::GetExtension(absStr);
         std::string extLower = ext;
-        for (char& c : extLower) c = (char)std::tolower((unsigned char)c);
+        for (char& c : extLower)
+            c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
         if (!IsTextureExt(extLower))
             continue;
 
         const fs::path absPath(absStr);
 
-        // rel file path WITH extension relative to root (Toolbar/Save.png)
-        fs::path relFile = fs::relative(absPath, rootAbs);
+        fs::path relFile = fs::relative(absPath, rootAbsPath);
 
-        // Key WITHOUT extension (Toolbar/Save)
         fs::path relNoExt = relFile;
         relNoExt.replace_extension();
 
         std::string keyNorm = relNoExt.generic_string();
-        for (char& c : keyNorm) if (c == '\\') c = '/'; // stable key: Toolbar/Run
+        for (char& c : keyNorm)
+            if (c == '\\') c = '/';
 
-        // Project-relative source path (Assets/Editor/Textures/Toolbar/Save.png)
-        const std::string srcRel = UPath::Join(rootDirRel, relFile.generic_string());
+        const std::string srcVirtual = UPath::Join(rootVirtualDir, relFile.generic_string());
 
-        RTextureHandle handle = runtime.GetFile().LoadEditorTextureFromFile(srcRel.c_str(), true);
+        RTextureHandle handle = runtime.GetFile().LoadEditorTextureFromFile(srcVirtual.c_str(), true);
         if (!handle.IsValid())
         {
-            std::cerr << "[EditorAssetCache]: Failed to load: " << srcRel << "\n";
+            std::cerr << "[EditorAssetCache]: Failed to load: " << srcVirtual << "\n";
             continue;
         }
 
         m_TextureMap[keyNorm] = handle;
-        m_Textures.push_back(FEditorTextureAsset{ keyNorm, srcRel, handle });
+        m_Textures.push_back(FEditorTextureAsset{ keyNorm, srcVirtual, handle });
         ++loaded;
     }
 }

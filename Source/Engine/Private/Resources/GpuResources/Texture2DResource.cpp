@@ -5,6 +5,9 @@
 #include <iostream>
 #include <filesystem>
 
+#include "Core/EngineGlobals.h"
+#include "Core/Project/ProjectContext.h"
+#include "Core/Project/VirtualPathMounter.h"
 #include "Rendering/IRenderDevice.h"
 #include "stb/stb_image.h"
 #include "Utilities/UPath.h"
@@ -14,13 +17,20 @@ namespace
     static std::string NormalizeSlashes(std::string s)
     {
         for (char& c : s)
-            if (c == '\\') c = '/';
+            if (c == '\\')
+                c = '/';
         return s;
+    }
+
+    static bool StartsWithVirtualRoot(const std::string& path)
+    {
+        return path.rfind("/Engine", 0) == 0 || path.rfind("/Project", 0) == 0;
     }
 
     // Accept:
     //  - absolute filesystem path
-    //  - project-relative path (e.g. "Assets/Editor/Icons/Move.png")
+    //  - virtual asset path (/Engine/... or /Project/...)
+    //  - legacy relative path (temporary fallback)
     static std::string ResolveToAbsolutePath(const std::string& inPath)
     {
         namespace fs = std::filesystem;
@@ -28,12 +38,32 @@ namespace
         std::string p = NormalizeSlashes(inPath);
         fs::path fp(p);
 
-        if (fp.is_absolute())
+        // 1) Absolute filesystem path
+        if (fp.is_absolute() && !StartsWithVirtualRoot(p))
             return UPath::Normalize(p);
 
-        // Treat as project-relative
-        const std::string projectRoot = UPath::ResolvePath("").string();
-        return UPath::Normalize(UPath::Join(projectRoot, p));
+        // 2) Virtual asset path
+        if (StartsWithVirtualRoot(p))
+        {
+            if (GEngine)
+            {
+                std::string resolved;
+                if (GEngine->GetVirtualPathMounter().ResolveVirtualToPhysical(p, resolved))
+                    return resolved;
+            }
+
+            return {};
+        }
+
+        // 3) Legacy fallback: treat as project-assets-relative or project-root-relative
+        // This is only to keep old code working during transition.
+        if (GEngine)
+        {
+            const std::string projectRoot = GEngine->GetProjectContext()->GetProjectRoot();
+            return UPath::Normalize(UPath::Join(projectRoot, p));
+        }
+
+        return {};
     }
 }
 
@@ -74,6 +104,12 @@ void Texture2DResource::LoadCPU()
     m_H = 0;
 
     const std::string absPath = ResolveToAbsolutePath(m_Desc.path);
+    if (absPath.empty())
+    {
+        std::cerr << "[Texture2DResource]: Failed to resolve path: " << m_Desc.path << "\n";
+        m_CpuReady = false;
+        return;
+    }
 
     int comp = 0;
     unsigned char* data = stbi_load(absPath.c_str(), &m_W, &m_H, &comp, 4);

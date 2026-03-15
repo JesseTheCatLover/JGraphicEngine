@@ -58,6 +58,9 @@ public:
     PostProcessManager* GetPostProcessManager();
     InputManager* GetInputManager();
 
+    [[nodiscard]] const ProjectContext* GetProjectContext() const { return m_ProjectContext.get(); }
+    [[nodiscard]] const VirtualPathMounter& GetVirtualPathMounter() const { return *m_VirtualPathMounter.get(); }
+
     DebugDraw* GetDebugDraw();
 
 private:
@@ -69,8 +72,6 @@ private:
     bool Run();
 
     void SetEditorBridge(IEditorBridge* bridge) { m_EditorBridge = bridge; }
-    [[nodiscard]] const ProjectContext* GetProjectContext() const { return m_ProjectContext.get(); }
-    [[nodiscard]] const VirtualPathMounter& GetVirtualPathMounter() const { return *m_VirtualPathMounter.get(); }
 
     TUniquePtr<EngineContext> m_Context;
     IEditorBridge* m_EditorBridge = nullptr;

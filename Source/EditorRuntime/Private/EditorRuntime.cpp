@@ -5,6 +5,7 @@
 #include "Core/EngineContext.h"
 #include "Core/EngineGlobals.h"
 #include "Core/JEngine.h"
+#include "Core/Project/ProjectContext.h"
 #include "Framework/PostProcessManager.h"
 #include "Framework/SceneManager.h"
 #include "Input/EditorInputDefaults.h"
@@ -19,6 +20,7 @@
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/RendererSubsystem.h"
 #include "Resources/ResourceSubsystem.h"
+#include "Utilities/UPath.h"
 
 EditorRuntime::EditorRuntime()
     : m_Context(JEngine::Get().GetEngineContext())
@@ -93,16 +95,19 @@ bool EditorRuntime::InstallEditorInputMappings()
     FActionAxisMap axisMap = BuildEditorAxisMap();
     FHotkeyMap hotkeyDefaults = BuildEditorDefaultHotkeys();
 
-    const char* kHotkeyDefaultsPath = "Config/Saved/Settings/EditorHotkeys.Default.json";
-    const char* kHotkeyUserPath     = "Config/Saved/Settings/EditorHotkeys.User.json";
+    const std::string hotkeyDefaultsPath = UPath::Join(
+     GEngine->GetProjectContext()->GetEngineRoot(), "Configs", "Editor", "Settings", "EditorHotkeys.Default.json");
+
+    const std::string hotkeyUserPath = UPath::Join(
+     GEngine->GetProjectContext()->GetEngineRoot(), "Configs", "Editor", "Settings", "EditorHotkeys.User.json");
 
     // 1) Ensure default file exists (but never overwrite it every launch)
     {
         FHotkeyMap tmp;
-        if (!LoadHotkeyMapFromFile(kHotkeyDefaultsPath, tmp))
+        if (!LoadHotkeyMapFromFile(hotkeyDefaultsPath, tmp))
         {
             // File missing or invalid -> generate from hardcoded defaults
-            SaveHotkeyMapToFile(hotkeyDefaults, kHotkeyDefaultsPath);
+            SaveHotkeyMapToFile(hotkeyDefaults, hotkeyDefaultsPath);
         }
     }
 
@@ -113,7 +118,7 @@ bool EditorRuntime::InstallEditorInputMappings()
     bool bUserFileExists = false;
     {
         FHotkeyOverrides overrides;
-        if (LoadHotkeyOverridesFromFile(kHotkeyUserPath, overrides))
+        if (LoadHotkeyOverridesFromFile(hotkeyUserPath, overrides))
         {
             hotkeyStyle->ApplyOverrides(overrides);
             bUserFileExists = true;
@@ -124,7 +129,7 @@ bool EditorRuntime::InstallEditorInputMappings()
     {
         // First run: seed user file with defaults so users can edit it
         // (This writes a full map, not just overrides, which is friendlier.)
-        SaveHotkeyMapToFile(hotkeyDefaults, kHotkeyUserPath);
+        SaveHotkeyMapToFile(hotkeyDefaults, hotkeyDefaultsPath);
     }
 
     auto composite = MakeUnique<CompositeInputMappingStyle>();

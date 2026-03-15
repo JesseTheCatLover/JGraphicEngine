@@ -652,7 +652,9 @@ void JEngine::RegisterServices()
 
 bool JEngine::BootstrapScene()
 {
-    auto* startupScene = GetSceneManager()->LoadSceneFile("ScannedScene");
+    constexpr const char* kSceneVirtualPath = "/Project/Scenes/ScannedScene.jscene";
+
+    auto* startupScene = GetSceneManager()->LoadSceneFile(kSceneVirtualPath);
     if (!startupScene)
     {
         CreateDefaultScene();
@@ -660,9 +662,9 @@ bool JEngine::BootstrapScene()
     return true;
 }
 
-void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by proper scene loading
+void JEngine::CreateDefaultScene()
 {
-    constexpr const char* kSceneKey  = "ScannedScene";
+    constexpr const char* kSceneVirtualPath = "/Project/Scenes/ScannedScene.jscene";
     constexpr const char* kSceneName = "ScannedScene";
 
     if (!GetSceneManager())
@@ -671,33 +673,32 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
         return;
     }
 
-    // ---------------------------------------------------------------------
-    // 1) (Optional) Preload a few heavy assets to smooth first-frame stutter
-    //    Keys should be the same strings you’ll use from components.
-    // ---------------------------------------------------------------------
-    // ---------------------------------------------------------------------
-    // 2) Load or create the startup scene asset
-    // ---------------------------------------------------------------------
-    auto* scene = GetSceneManager()->LoadSceneFile(kSceneKey);
+    bool bCreatedNewScene = false;
+
+    auto* scene = GetSceneManager()->LoadSceneFile(kSceneVirtualPath);
     if (!scene)
     {
-        const bool created = GetSceneManager()->CreateSceneFile(kSceneKey, kSceneName, /*setActive*/true);
+        const bool created = GetSceneManager()->CreateSceneFile(kSceneName, kSceneVirtualPath, true);
         if (!created)
         {
             std::cerr << "[JEngine] CreateStartupScene: failed to create scene file.\n";
             return;
         }
-        scene = GetSceneManager()->LoadSceneFile(kSceneKey);
+
+        scene = GetSceneManager()->LoadSceneFile(kSceneVirtualPath);
         if (!scene)
         {
             std::cerr << "[JEngine] CreateStartupScene: failed to load freshly created scene.\n";
             return;
         }
+
+        bCreatedNewScene = true;
     }
 
-    // ---------------------------------------------------------------------
-    // 3) Utility: spawn a simple “Model Actor” with one JModelComponent
-    // ---------------------------------------------------------------------
+    // Only populate defaults the first time
+    if (!bCreatedNewScene)
+        return;
+
     auto spawnModelActor = [&](const char* actorName, const char* modelKey) -> JActor*
     {
         JActor* actor = GetSceneManager()->SpawnActor<JActor>();
@@ -705,21 +706,15 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
 
         actor->SetActorName(actorName ? actorName : "ModelActor");
 
-        // Attach a model component at runtime to the actor’s root (uses route rendering)
         auto* modelComp = actor->AddRuntimeComponent<JModelComponent>("ModelComponent");
         modelComp->SetModel(modelKey);
 
         return actor;
     };
 
-    // ---------------------------------------------------------------------
-    // 4) Populate scene (temporary, hardcoded)
-    // ---------------------------------------------------------------------
     JActor* actor1 = GetSceneManager()->SpawnActor<JActor>();
-
     actor1->SetActorName("TheArmoury");
 
-    // Attach a model component at runtime to the actor’s root (uses route rendering)
     auto* modelArmoury = actor1->AddRuntimeComponent<JModelComponent>("ModelArmouryComponent");
     modelArmoury->SetModel("TheArmoury/model.obj");
 
@@ -732,6 +727,7 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
     actor3dup->SetActorLocation(7.f, 3.f, 5.f);
     actor3dup->SetActorRotation(70.f, 0.f, 20.f);
     actor3dup->SetActorScale(FVector3(0.5f));
+
     auto actor4dup = spawnModelActor("Tape", "Tape/Tape.obj");
     actor4dup->AttachToActor(actor2);
     actor4dup->SetActorLocation(5.f, 1.f, 5.f);
@@ -748,11 +744,7 @@ void JEngine::CreateDefaultScene() // TODO: TEMP bootstrap; will be replaced by 
     chair->SetActorScale(FVector3(5.f));
     chair->SetActorRotation(0.f, 100.f, 0.f);
 
-
-    // ---------------------------------------------------------------------
-    // 5) Save the scene so next launch restores this layout
-    // ---------------------------------------------------------------------
-    GetSceneManager()->SaveSceneFile(scene, kSceneKey);
+    GetSceneManager()->SaveSceneFile(scene, kSceneVirtualPath);
 }
 
 void JEngine::CalculateDeltaTime()
