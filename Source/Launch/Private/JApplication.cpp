@@ -11,6 +11,7 @@
 #include "Core/Project/FProjectOpenRequest.h"
 #include "ProjectLaunch/ProjectLaunchResolver.h"
 #include "ProjectLaunch/ConsoleProjectLaunchUI.h"
+#include "ProjectLaunch/LaunchSettings.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
@@ -127,6 +128,16 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
     {
         std::cerr << "[JApplication]: Failed to open project.\n";
         return false;
+    }
+
+    // Remember the project we successfully opened
+    {
+        LaunchSettings settings;
+        settings.SetLastOpenedProjectFilePath(openRequest.projectFilePath);
+        if (!settings.Save(currentEngineRoot))
+        {
+            std::cerr << "[JApplication]: Failed to save launch settings.\n";
+        }
     }
 
     const bool success = engine.Run();

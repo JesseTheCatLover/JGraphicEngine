@@ -5,6 +5,7 @@
 #include "Core/Project/ProjectContext.h"
 #include "Core/Serialization/JsonReader.h"
 #include "Core/Serialization/JsonWriter.h"
+#include "ProjectLaunch/LaunchSettings.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
@@ -20,6 +21,7 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
 {
     outRequest = {};
 
+    // 1) Explicit --project path always wins
     if (!preferredProjectFilePath.empty())
     {
         if (!UFileSystem::FileExists(preferredProjectFilePath))
@@ -34,6 +36,23 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
         return true;
     }
 
+    // 2) Try last opened project from launch settings
+    {
+        LaunchSettings settings;
+        if (settings.Load(currentEngineRoot))
+        {
+            const std::string& lastProject = settings.GetLastOpenedProjectFilePath();
+            if (!lastProject.empty() && UFileSystem::FileExists(lastProject))
+            {
+                outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
+                outRequest.projectFilePath = UPath::Normalize(lastProject);
+                outRequest.engineRootPath  = UPath::Normalize(currentEngineRoot);
+                return true;
+            }
+        }
+    }
+
+    // 3) Fall back to prompt
     const EProjectLaunchAction action = m_UI.PromptForLaunchAction();
     if (action == EProjectLaunchAction::Cancel)
         return false;
