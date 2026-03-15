@@ -32,7 +32,9 @@
 #include "Rendering/FRenderView.h"
 
 JEngine::JEngine()
-    : m_Services(MakeUnique<TServiceContainer>())
+    : m_Services(MakeUnique<TServiceContainer>()),
+    m_ProjectContext(MakeUnique<ProjectContext>()),
+    m_VirtualPathMounter(MakeUnique<VirtualPathMounter>())
 {
 }
 
@@ -71,11 +73,6 @@ bool JEngine::OpenProject(const FProjectOpenRequest& request)
         m_ProjectContext->Reset();
         m_VirtualPathMounter->Clear();
         return false;
-    }
-
-    if (!m_AssetSubsystem->Rebuild(*m_VirtualPathMounter))
-    {
-        std::cerr << "[JEngine]: Asset registry rebuild completed with errors.\n";
     }
 
     return true;
@@ -129,6 +126,14 @@ bool JEngine::Initialize()
     {
         std::cerr << "[JEngine]: Failed to initialize subsystems" << std::endl;
         return false;
+    }
+
+    if (m_ProjectContext->IsOpen() && m_AssetRegistrySubsystem)
+    {
+        if (!m_AssetRegistrySubsystem->Rebuild(*m_VirtualPathMounter))
+        {
+            std::cerr << "[JEngine]: Asset registry rebuild completed with errors.\n";
+        }
     }
 
     if (!InitializeManagers())
@@ -231,8 +236,8 @@ bool JEngine::InitializeSubsystems()
 
     SerializationSubsystem::Get().Initialize();
 
-    m_AssetSubsystem = TUniquePtr<AssetRegistrySubsystem>(new AssetRegistrySubsystem());
-    if (!m_AssetSubsystem)
+    m_AssetRegistrySubsystem = TUniquePtr<AssetRegistrySubsystem>(new AssetRegistrySubsystem());
+    if (!m_AssetRegistrySubsystem)
     {
         std::cerr << "[JEngine]: Failed to initialize asset registry subsystem" << std::endl;
         return false;
@@ -591,7 +596,7 @@ ResourceSubsystem* JEngine::GetResourceSubsystem()
 
 AssetRegistrySubsystem * JEngine::GetAssetRegistrySubsystem()
 {
-    return m_AssetSubsystem.get();
+    return m_AssetRegistrySubsystem.get();
 }
 
 InputSubsystem * JEngine::GetInputSubsystem()

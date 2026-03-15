@@ -2,9 +2,9 @@
 
 #include "ProjectLaunch/ProjectLaunchResolver.h"
 
+#include "Core/Project/ProjectContext.h"
 #include "Core/Serialization/JsonReader.h"
 #include "Core/Serialization/JsonWriter.h"
-#include "ProjectLaunch/EngineInstallResolver.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
@@ -20,23 +20,68 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
 {
     outRequest = {};
 
-    std::string projectFilePath = preferredProjectFilePath;
-    if (projectFilePath.empty())
+    if (!preferredProjectFilePath.empty())
     {
+        if (!UFileSystem::FileExists(preferredProjectFilePath))
+        {
+            m_UI.ShowError("Launch", "Provided .jproject file does not exist.");
+            return false;
+        }
+
+        outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
+        outRequest.projectFilePath = UPath::Normalize(preferredProjectFilePath);
+        outRequest.engineRootPath  = UPath::Normalize(currentEngineRoot);
+        return true;
+    }
+
+    const EProjectLaunchAction action = m_UI.PromptForLaunchAction();
+    if (action == EProjectLaunchAction::Cancel)
+        return false;
+
+    if (action == EProjectLaunchAction::OpenExisting)
+    {
+        std::string projectFilePath;
         if (!m_UI.PromptForProjectFile(projectFilePath))
             return false;
+
+        if (!UFileSystem::FileExists(projectFilePath))
+        {
+            m_UI.ShowError("Launch", "Selected .jproject file does not exist.");
+            return false;
+        }
+
+        outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
+        outRequest.projectFilePath = UPath::Normalize(projectFilePath);
+        outRequest.engineRootPath  = UPath::Normalize(currentEngineRoot);
+        return true;
     }
 
-    if (!UFileSystem::FileExists(projectFilePath))
+    if (action == EProjectLaunchAction::CreateNew)
     {
-        m_UI.ShowError("Launch", "Selected .jproject file does not exist.");
-        return false;
+        FProjectCreateRequest createRequest;
+        if (!m_UI.PromptForNewProject(createRequest))
+            return false;
+
+        createRequest.engineRootPath = currentEngineRoot;
+
+        FProjectCreateResult createResult;
+        if (!ProjectContext::CreateProject(createRequest, createResult))
+        {
+            std::string error = "Failed to create project.";
+            if (!createResult.errors.empty())
+                error += " " + createResult.errors.front();
+
+            m_UI.ShowError("Launch", error);
+            return false;
+        }
+
+        outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
+        outRequest.projectFilePath = UPath::Normalize(createResult.projectFilePath);
+        outRequest.engineRootPath  = UPath::Normalize(currentEngineRoot);
+        return true;
     }
 
-    outRequest.launchSource   = EProjectLaunchSource::DirectEngineExecutable;
-    outRequest.projectFilePath= UPath::Normalize(projectFilePath);
-    outRequest.engineRootPath = UPath::Normalize(currentEngineRoot);
-    return true;
+    return false;
 }
 
 bool ProjectLaunchResolver::ResolveProjectFileLaunch(const std::string& projectFilePath,

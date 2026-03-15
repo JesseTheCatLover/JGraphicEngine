@@ -3,11 +3,15 @@
 #pragma once
 #include <string>
 
+#include "FProjectCreateRequest.h"
+#include "FProjectCreateResult.h"
 #include "FProjectDescriptor.h"
 #include "FProjectOpenRequest.h"
 
 class ProjectContext
 {
+    friend class JEngine;
+    friend class ProjectLaunchResolver;
 public:
     ProjectContext() = default;
     ~ProjectContext() = default;
@@ -17,10 +21,24 @@ public:
     ProjectContext(ProjectContext&&) = delete;
     ProjectContext& operator=(ProjectContext&&) = delete;
 
-public:
-    bool OpenProject(const FProjectOpenRequest& request);
-    void Reset();
+private:
+    bool m_bIsOpen = false;
 
+    FProjectDescriptor m_Descriptor;
+    FProjectOpenRequest m_OpenRequest;
+
+    std::string m_ProjectFilePath;
+    std::string m_ProjectRoot;
+
+    std::string m_ProjectAssetsRoot;
+    std::string m_ProjectSavedRoot;
+    std::string m_ProjectIntermediateRoot;
+    std::string m_ProjectConfigRoot;
+
+    std::string m_EngineRoot;
+    std::string m_EngineAssetsRoot;
+
+public:
     [[nodiscard]] bool IsOpen() const { return m_bIsOpen; }
 
     [[nodiscard]] const FProjectDescriptor& GetDescriptor() const { return m_Descriptor; }
@@ -40,24 +58,13 @@ public:
     [[nodiscard]] const std::string& GetEngineAssetsRoot() const { return m_EngineAssetsRoot; }
 
 private:
+    bool OpenProject(const FProjectOpenRequest& request);
+    static bool CreateProject(const FProjectCreateRequest& request, FProjectCreateResult& outResult);
+    void Reset();
+
+    static bool IsValidProjectName(const std::string& name);
     bool LoadDescriptorFile(const std::string& projectFilePath, FProjectDescriptor& outDescriptor) const;
     bool ValidateDescriptor(const FProjectDescriptor& descriptor) const;
     void BuildResolvedPaths();
 
-private:
-    bool m_bIsOpen = false;
-
-    FProjectDescriptor m_Descriptor;
-    FProjectOpenRequest m_OpenRequest;
-
-    std::string m_ProjectFilePath;
-    std::string m_ProjectRoot;
-
-    std::string m_ProjectAssetsRoot;
-    std::string m_ProjectSavedRoot;
-    std::string m_ProjectIntermediateRoot;
-    std::string m_ProjectConfigRoot;
-
-    std::string m_EngineRoot;
-    std::string m_EngineAssetsRoot;
 };

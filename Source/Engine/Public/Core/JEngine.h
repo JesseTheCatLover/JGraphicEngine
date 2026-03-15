@@ -81,7 +81,7 @@ private:
     TUniquePtr<IRenderBackend> m_RenderBackend;
     TUniquePtr<RendererSubsystem> m_Renderer;
     TUniquePtr<ResourceSubsystem> m_ResourceSubSystem;
-    TUniquePtr<AssetRegistrySubsystem> m_AssetSubsystem;
+    TUniquePtr<AssetRegistrySubsystem> m_AssetRegistrySubsystem;
     TUniquePtr<IInputBackend> m_InputBackend;
     TUniquePtr<InputSubsystem> m_InputSubSystem;
 

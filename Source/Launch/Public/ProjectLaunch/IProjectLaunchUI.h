@@ -3,10 +3,15 @@
 #pragma once
 #include <string>
 
+#include "EProjectLaunchAction.h"
+#include "Core/Project/FProjectCreateRequest.h"
+
 class IProjectLaunchUI
 {
 public:
     virtual ~IProjectLaunchUI() = default;
+    
+    virtual EProjectLaunchAction PromptForLaunchAction() = 0;
 
     /**
      * @brief Ask the user to select a project file.
@@ -22,6 +27,8 @@ public:
      * @return True if the user selected one.
      */
     virtual bool PromptForEnginePath(const std::string& projectFilePath, std::string& outEnginePath) = 0;
+
+    virtual bool PromptForNewProject(FProjectCreateRequest& outRequest) = 0;
 
     /**
      * @brief Show an error message.

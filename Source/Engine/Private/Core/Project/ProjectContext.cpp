@@ -5,8 +5,10 @@
 #include <iostream>
 
 #include "Core/Serialization/JsonReader.h"
+#include "Core/Serialization/JsonWriter.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
+#include "Utilities/UUUID.h"
 
 bool ProjectContext::OpenProject(const FProjectOpenRequest& request)
 {
@@ -46,6 +48,102 @@ bool ProjectContext::OpenProject(const FProjectOpenRequest& request)
     return true;
 }
 
+bool ProjectContext::CreateProject(const FProjectCreateRequest &request, FProjectCreateResult &outResult)
+{
+    outResult = {};
+
+    if (!IsValidProjectName(request.projectName))
+    {
+        outResult.errors.emplace_back("Project name is invalid. Use letters, digits, '_' or '-'.");
+        return false;
+    }
+
+    if (request.parentDirectory.empty())
+    {
+        outResult.errors.emplace_back("Parent directory is empty.");
+        return false;
+    }
+
+    if (request.engineRootPath.empty())
+    {
+        outResult.errors.emplace_back("Engine root path is empty.");
+        return false;
+    }
+
+    const std::string normalizedParentDir  = UPath::Normalize(request.parentDirectory);
+    const std::string normalizedEngineRoot = UPath::Normalize(request.engineRootPath);
+
+    if (!UFileSystem::DirectoryExists(normalizedParentDir))
+    {
+        if (!UFileSystem::CreateDirectory(normalizedParentDir))
+        {
+            outResult.errors.emplace_back("Failed to create parent directory.");
+            return false;
+        }
+    }
+
+    if (!UFileSystem::DirectoryExists(normalizedEngineRoot))
+    {
+        outResult.errors.emplace_back("Engine root directory does not exist.");
+        return false;
+    }
+
+    const std::string projectRootPath   = UPath::Normalize(UPath::Join(normalizedParentDir, request.projectName));
+    const std::string assetsDir         = UPath::Normalize(UPath::Join(projectRootPath, "Assets"));
+    const std::string savedDir          = UPath::Normalize(UPath::Join(projectRootPath, "Saved"));
+    const std::string intermediateDir   = UPath::Normalize(UPath::Join(projectRootPath, "Intermediate"));
+    const std::string configDir         = UPath::Normalize(UPath::Join(projectRootPath, "Configs"));
+    const std::string projectFilePath   = UPath::Normalize(UPath::Join(projectRootPath, request.projectName + ".jproject"));
+
+    if (UFileSystem::DirectoryExists(projectRootPath) || UFileSystem::FileExists(projectFilePath))
+    {
+        outResult.errors.emplace_back("Project directory already exists.");
+        return false;
+    }
+
+    if (!UFileSystem::CreateDirectory(projectRootPath))
+    {
+        outResult.errors.emplace_back("Failed to create project root directory.");
+        return false;
+    }
+
+    if (!UFileSystem::CreateDirectory(assetsDir) ||
+        !UFileSystem::CreateDirectory(savedDir) ||
+        !UFileSystem::CreateDirectory(intermediateDir) ||
+        !UFileSystem::CreateDirectory(configDir))
+    {
+        outResult.errors.emplace_back("Failed to create project directory structure.");
+        return false;
+    }
+
+    JsonWriter writer;
+    writer.Write("projectVersion", FProjectDescriptor::CurrentVersion);
+    writer.Write("projectName", request.projectName);
+    writer.Write("projectID", UUUID::GenerateUUID());
+
+    writer.BeginObject("engineAssociation");
+    writer.Write("lastKnownEnginePath", normalizedEngineRoot);
+    writer.EndObject();
+
+    writer.BeginObject("folders");
+    writer.Write("assets", "Assets");
+    writer.Write("saved", "Saved");
+    writer.Write("intermediate", "Intermediate");
+    writer.Write("config", "Config");
+    writer.EndObject();
+
+    if (!writer.SaveToFile(projectFilePath))
+    {
+        outResult.errors.emplace_back("Failed to write .jproject file.");
+        return false;
+    }
+
+    outResult.bSuccess = true;
+    outResult.projectRootPath = projectRootPath;
+    outResult.projectFilePath = projectFilePath;
+    return true;
+}
+
 void ProjectContext::Reset()
 {
     m_bIsOpen = false;
@@ -63,6 +161,26 @@ void ProjectContext::Reset()
 
     m_EngineRoot.clear();
     m_EngineAssetsRoot.clear();
+}
+
+bool ProjectContext::IsValidProjectName(const std::string& name)
+{
+    if (name.empty())
+        return false;
+
+    for (char c : name)
+    {
+        const bool bValid =
+            (c >= 'a' && c <= 'z') ||
+            (c >= 'A' && c <= 'Z') ||
+            (c >= '0' && c <= '9') ||
+            c == '_' || c == '-';
+
+        if (!bValid)
+            return false;
+    }
+
+    return true;
 }
 
 bool ProjectContext::LoadDescriptorFile(const std::string& projectFilePath, FProjectDescriptor& outDescriptor) const
