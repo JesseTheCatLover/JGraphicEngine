@@ -1,21 +1,43 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "Utilities/UFileSystem.h"
+
 #include "Utilities/UPath.h"
-#include <mach-o/dyld.h>
-#include <fstream>
-#include <filesystem>
+
 #include <algorithm>
+#include <cctype>
+#include <fstream>
 #include <iostream>
 
+#include <mach-o/dyld.h>
+
 namespace fs = std::filesystem;
+
+namespace
+{
+    static std::string NormalizePhysicalPath(const std::string& path)
+    {
+        return UPath::Normalize(path);
+    }
+
+    static std::string ToLowerCopy(std::string s)
+    {
+        std::transform(s.begin(), s.end(), s.begin(),
+            [](unsigned char c)
+            {
+                return static_cast<char>(std::tolower(c));
+            });
+        return s;
+    }
+}
 
 // ----------------- Read -----------------
 
 std::optional<std::string> UFileSystem::ReadTextFile(const std::string& path)
 {
-    std::string fullPath = UPath::Normalize(path);
-    std::ifstream file(fullPath, std::ios::in);
+    const std::string fullPath = NormalizePhysicalPath(path);
+
+    std::ifstream file(fullPath, std::ios::in | std::ios::binary);
     if (!file.is_open())
         return std::nullopt;
 
@@ -26,16 +48,20 @@ std::optional<std::string> UFileSystem::ReadTextFile(const std::string& path)
 
 std::optional<std::vector<uint8_t>> UFileSystem::ReadBinaryFile(const std::string& path)
 {
-    std::string fullPath = UPath::Normalize(path);
+    const std::string fullPath = NormalizePhysicalPath(path);
+
     std::ifstream file(fullPath, std::ios::binary);
     if (!file.is_open())
         return std::nullopt;
 
     file.seekg(0, std::ios::end);
-    std::streamsize size = file.tellg();
+    const std::streamsize size = file.tellg();
     file.seekg(0, std::ios::beg);
 
-    std::vector<uint8_t> buffer(size);
+    if (size < 0)
+        return std::nullopt;
+
+    std::vector<uint8_t> buffer(static_cast<size_t>(size));
     if (size > 0 && !file.read(reinterpret_cast<char*>(buffer.data()), size))
         return std::nullopt;
 
@@ -46,39 +72,56 @@ std::optional<std::vector<uint8_t>> UFileSystem::ReadBinaryFile(const std::strin
 
 bool UFileSystem::WriteTextFile(const std::string& path, const std::string& data, bool bAppend)
 {
-    std::string fullPath = UPath::Normalize(path);
-    std::ofstream file(fullPath, bAppend ? std::ios::app : std::ios::trunc);
+    const std::string fullPath = NormalizePhysicalPath(path);
+
+    const std::string parent = UPath::GetParent(fullPath);
+    if (!parent.empty() && !CreateDirectory(parent))
+        return false;
+
+    std::ofstream file(fullPath, std::ios::out | std::ios::binary | (bAppend ? std::ios::app : std::ios::trunc));
     if (!file.is_open())
         return false;
 
-    file << data;
-    return true;
+    file.write(data.data(), static_cast<std::streamsize>(data.size()));
+    return file.good();
 }
 
 bool UFileSystem::WriteBinaryFile(const std::string& path, const std::vector<uint8_t>& data, bool bAppend)
 {
-    std::string fullPath = UPath::Normalize(path);
-    std::ofstream file(fullPath, std::ios::binary | (bAppend ? std::ios::app : std::ios::trunc));
+    const std::string fullPath = NormalizePhysicalPath(path);
+
+    const std::string parent = UPath::GetParent(fullPath);
+    if (!parent.empty() && !CreateDirectory(parent))
+        return false;
+
+    std::ofstream file(fullPath, std::ios::out | std::ios::binary | (bAppend ? std::ios::app : std::ios::trunc));
     if (!file.is_open())
         return false;
 
-    file.write(reinterpret_cast<const char*>(data.data()), data.size());
-    return true;
+    if (!data.empty())
+        file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+
+    return file.good();
 }
 
 // ----------------- File Ops -----------------
 
 bool UFileSystem::DeleteFile(const std::string& path)
 {
-    std::string fullPath = UPath::Normalize(path);
+    const std::string fullPath = NormalizePhysicalPath(path);
+
     std::error_code ec;
     return fs::remove(fullPath, ec);
 }
 
 bool UFileSystem::MoveFile(const std::string& source, const std::string& destination)
 {
-    std::string fullSrc = UPath::Normalize(source);
-    std::string fullDst = UPath::Normalize(destination);
+    const std::string fullSrc = NormalizePhysicalPath(source);
+    const std::string fullDst = NormalizePhysicalPath(destination);
+
+    const std::string parent = UPath::GetParent(fullDst);
+    if (!parent.empty() && !CreateDirectory(parent))
+        return false;
 
     std::error_code ec;
     fs::rename(fullSrc, fullDst, ec);
@@ -94,20 +137,32 @@ bool UFileSystem::RenameFile(const std::string& source, const std::string& newNa
 
 bool UFileSystem::CreateDirectory(const std::string& path)
 {
-    std::string fullPath = UPath::Normalize(path);
-    std::error_code ec;
-    return fs::create_directories(fullPath, ec);
+    const std::string fullPath = NormalizePhysicalPath(path);
+
+    try
+    {
+        if (fs::exists(fullPath))
+            return fs::is_directory(fullPath);
+
+        std::error_code ec;
+        return fs::create_directories(fullPath, ec) && !ec;
+    }
+    catch (...)
+    {
+        return false;
+    }
 }
 
 bool UFileSystem::DeleteDirectory(const std::string& path, bool bRecursive)
 {
-    std::string fullPath = UPath::Normalize(path);
+    const std::string fullPath = NormalizePhysicalPath(path);
+
     std::error_code ec;
 
     if (bRecursive)
         return fs::remove_all(fullPath, ec) > 0 && !ec;
-    else
-        return fs::remove(fullPath, ec);
+
+    return fs::remove(fullPath, ec);
 }
 
 std::filesystem::path UFileSystem::GetExecutablePath()
@@ -116,44 +171,47 @@ std::filesystem::path UFileSystem::GetExecutablePath()
     char buffer[MAX_PATH];
     DWORD length = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
     if (length > 0 && length < MAX_PATH)
-        return std::filesystem::path(buffer).parent_path();
-    else
-        std::cerr << "Failed to get executable path (Windows)\n";
+        return fs::path(buffer).parent_path();
+
+    std::cerr << "Failed to get executable path (Windows)\n";
     return {};
 
 #elif defined(JENGINE_PLATFORM_MACOS)
     char buffer[1024];
     uint32_t size = sizeof(buffer);
     if (_NSGetExecutablePath(buffer, &size) == 0)
-        return std::filesystem::canonical(std::filesystem::path(buffer)).parent_path();
-    else {
-        std::cerr << "Buffer too small, required size: " << size << '\n';
-        return {};
-    }
+        return fs::canonical(fs::path(buffer)).parent_path();
+
+    std::cerr << "Buffer too small, required size: " << size << '\n';
+    return {};
 
 #elif defined(JENGINE_PLATFORM_LINUX)
     char buffer[1024];
-    ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
-    if (len != -1) {
+    const ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (len != -1)
+    {
         buffer[len] = '\0';
-        return std::filesystem::canonical(std::filesystem::path(buffer)).parent_path();
-    } else {
-        std::cerr << "Failed to read /proc/self/exe\n";
-        return {};
+        return fs::canonical(fs::path(buffer)).parent_path();
     }
+
+    std::cerr << "Failed to read /proc/self/exe\n";
+    return {};
 
 #else
     std::cerr << "Unsupported platform.\n";
     return {};
-
 #endif
 }
 
-bool UFileSystem::FileExists(const std::string &path)
+// ----------------- Info & Listing -----------------
+
+bool UFileSystem::FileExists(const std::string& path)
 {
+    const std::string fullPath = NormalizePhysicalPath(path);
+
     try
     {
-        return std::filesystem::exists(path) && std::filesystem::is_regular_file(path);
+        return fs::exists(fullPath) && fs::is_regular_file(fullPath);
     }
     catch (...)
     {
@@ -161,11 +219,13 @@ bool UFileSystem::FileExists(const std::string &path)
     }
 }
 
-bool UFileSystem::DirectoryExists(const std::string &path)
+bool UFileSystem::DirectoryExists(const std::string& path)
 {
+    const std::string fullPath = NormalizePhysicalPath(path);
+
     try
     {
-        return std::filesystem::exists(path) && std::filesystem::is_directory(path);
+        return fs::exists(fullPath) && fs::is_directory(fullPath);
     }
     catch (...)
     {
@@ -181,77 +241,62 @@ std::vector<std::string> UFileSystem::ListFiles(
 {
     std::vector<std::string> files;
 
+    const std::string fullDirectory = NormalizePhysicalPath(directory);
+
     try
     {
-        if (!std::filesystem::exists(directory))
+        if (!fs::exists(fullDirectory) || !fs::is_directory(fullDirectory))
             return files;
-
-        auto toLower = [](std::string s)
-        {
-            std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-            return s;
-        };
 
         std::string extFilter = extension;
         if (bCaseInsensitive)
-            extFilter = toLower(extFilter);
+            extFilter = ToLowerCopy(extFilter);
 
-        // ---- Non-recursive ----
-        if (!bRecursive)
+        const auto matchesExtension = [&](const fs::path& p) -> bool
         {
-            for (const auto& entry : std::filesystem::directory_iterator(directory))
+            if (extension.empty())
+                return true;
+
+            std::string fileExt = p.extension().string();
+            if (!fileExt.empty() && fileExt.front() == '.')
+                fileExt.erase(fileExt.begin());
+
+            if (bCaseInsensitive)
+                fileExt = ToLowerCopy(fileExt);
+
+            return fileExt == extFilter;
+        };
+
+        if (bRecursive)
+        {
+            for (const auto& entry : fs::recursive_directory_iterator(fullDirectory))
             {
                 if (!entry.is_regular_file())
                     continue;
 
-                std::string filePath = entry.path().string();
+                if (!matchesExtension(entry.path()))
+                    continue;
 
-                if (!extension.empty())
-                {
-                    std::string fileExt = entry.path().extension().string();
-                    if (!fileExt.empty() && fileExt.front() == '.')
-                        fileExt.erase(fileExt.begin()); // remove leading '.'
-
-                    if (bCaseInsensitive)
-                        fileExt = toLower(fileExt);
-
-                    if (fileExt != extFilter)
-                        continue;
-                }
-
-                files.push_back(filePath);
+                files.push_back(NormalizePhysicalPath(entry.path().string()));
             }
         }
-        // ---- Recursive ----
         else
         {
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
+            for (const auto& entry : fs::directory_iterator(fullDirectory))
             {
                 if (!entry.is_regular_file())
                     continue;
 
-                std::string filePath = entry.path().string();
+                if (!matchesExtension(entry.path()))
+                    continue;
 
-                if (!extension.empty())
-                {
-                    std::string fileExt = entry.path().extension().string();
-                    if (!fileExt.empty() && fileExt.front() == '.')
-                        fileExt.erase(fileExt.begin());
-
-                    if (bCaseInsensitive)
-                        fileExt = toLower(fileExt);
-
-                    if (fileExt != extFilter)
-                        continue;
-                }
-
-                files.push_back(filePath);
+                files.push_back(NormalizePhysicalPath(entry.path().string()));
             }
         }
     }
     catch (...)
     {
-        // Ignore exceptions; return whatever was collected
+        // Ignore filesystem exceptions and return what was collected so far.
     }
 
     return files;
@@ -261,31 +306,33 @@ std::vector<std::string> UFileSystem::ListDirectories(const std::string& directo
 {
     std::vector<std::string> dirs;
 
+    const std::string fullDirectory = NormalizePhysicalPath(directory);
+
     try
     {
-        if (!std::filesystem::exists(directory))
+        if (!fs::exists(fullDirectory) || !fs::is_directory(fullDirectory))
             return dirs;
 
         if (bRecursive)
         {
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
+            for (const auto& entry : fs::recursive_directory_iterator(fullDirectory))
             {
                 if (entry.is_directory())
-                    dirs.push_back(entry.path().string());
+                    dirs.push_back(NormalizePhysicalPath(entry.path().string()));
             }
         }
         else
         {
-            for (const auto& entry : std::filesystem::directory_iterator(directory))
+            for (const auto& entry : fs::directory_iterator(fullDirectory))
             {
                 if (entry.is_directory())
-                    dirs.push_back(entry.path().string());
+                    dirs.push_back(NormalizePhysicalPath(entry.path().string()));
             }
         }
     }
     catch (...)
     {
-        // Fail silently
+        // Ignore filesystem exceptions and return what was collected so far.
     }
 
     return dirs;

@@ -1,4 +1,4 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
 #include <string>
@@ -7,122 +7,35 @@
 
 /**
  * @class UPath
- * @brief Utility for handling file paths and directories in the engine.
+ * @brief Utility for path manipulation in the engine.
  *
- * Provides cross-platform helpers for:
- * - Resolving paths relative to the project root
- * - Listing files and directories (recursive and filtered)
- * - Path manipulations
+ * UPath is intended to provide lightweight, cross-platform helpers for:
+ * - Joining path segments
+ * - Lexically normalizing paths
+ * - Querying parent/name/extension information
+ *
+ * Important:
+ * - UPath should be treated primarily as a path utility, not as a source of truth
+ *   for project or engine roots.
+ * - ProjectContext and VirtualPathMounter are now the authoritative owners of
+ *   engine/project layout and virtual asset path resolution.
  */
 class UPath
 {
-private:
-    /** Default marker folder for automatic project root detection */
-    inline static const std::string DefaultMarkerFolder = "Assets";
-
-    /** Default marker file for automatic project root detection */
-    inline static const std::string DefaultMarkerFile = ".JProject";
-
-    inline static std::string GProjectRootFileCached{};
-    inline static std::string GProjectRootFolderCached{};
-
 public:
-    // ----------------- Root Handling -----------------
-
-    /**
-     * @brief Automatically get the project root by searching for a marker folder from the current path.
-     * Default marker folder is "Assets".
-     *
-     * @return Absolute path to the project root.
-     */
-    static std::string GetProjectRootByFolder();
-
-    /**
-     * @brief Automatically get the project root by searching for a marker file from the current path.
-     * Default marker file is ".JProject".
-     *
-     * @return Absolute path to the project root.
-     */
-    static std::string GetProjectRootByFile();
-
-    /**
-     * @brief Find the project root by scanning upward from a custom start path using a folder marker.
-     *
-     * @param startPath Directory to start scanning from.
-     * @param markerFolder Folder that indicates the project root.
-     * @return Absolute path to the project root; fallback to startPath if not found.
-     */
-    static std::string FindProjectRootByFolder(const std::string& startPath, const std::string& markerFolder);
-
-    /**
-     * @brief Find the project root by scanning upward from a custom start path using a file marker.
-     *
-     * @param startPath Directory to start scanning from.
-     * @param markerFile File that indicates the project root.
-     * @return Absolute path to the project root; fallback to startPath if not found.
-     */
-    static std::string FindProjectRootByFile(const std::string& startPath, const std::string& markerFile);
-
-    // ----------------- Path Queries -----------------
-
-    /**
-     * @brief Check if a file exists (relative to project root).
-     *
-     * @param path Relative or absolute path to the file.
-     * @return true if the file exists, false otherwise.
-     */
-    static bool FileExists(const std::string& path);
-
-    /**
-     * @brief Check if a directory exists (relative to project root).
-     *
-     * @param path Relative or absolute path to the directory.
-     * @return true if the directory exists, false otherwise.
-     */
-    static bool DirectoryExists(const std::string& path);
-
-    /**
-     * @brief Get all files in a directory, optionally filtered by extension.
-     *
-     * @param directory Relative or absolute path to directory.
-     * @param extension Optional extension filter (without dot, e.g., "png"). Empty means all files.
-     * @param bRecursive If true, search subdirectories recursively.
-     * @param bCaseInsensitive If true, match extensions case-insensitively.
-     * @return Vector of file paths (absolute) matching the criteria.
-     */
-    static std::vector<std::string> ListFiles(
-        const std::string& directory,
-        const std::string& extension = "",
-        bool bRecursive = false,
-        bool bCaseInsensitive = false
-    );
-
-    /**
-     * @brief Get all directories inside a directory.
-     *
-     * @param directory Relative or absolute path to directory.
-     * @param bRecursive If true, list directories recursively.
-     * @return Vector of directory paths (absolute).
-     */
-    static std::vector<std::string> ListDirectories(
-        const std::string& directory,
-        bool bRecursive = false
-    );
-
     // ----------------- Path Manipulation -----------------
 
     /**
-    * @brief Joins multiple path segments into a single normalized relative path.
-    *
-    * Concatenates all provided path segments using the native directory separator,
-    * producing a clean, platform-consistent path string (e.g., "Test1/Test2/Test3").
-    * This function does not resolve paths relative to any root — it only performs
-    * safe concatenation and normalization.
-    *
-    * @tparam Args Variadic list of path segment types convertible to std::filesystem::path.
-    * @param args Path segments to join (e.g., folder names, filenames).
-    * @return Normalized relative path as a string.
-    */
+     * @brief Joins multiple path segments into a single lexically normalized path.
+     *
+     * Concatenates all provided path segments using std::filesystem::path semantics,
+     * then performs lexical normalization. This function does not resolve relative paths
+     * against any project or engine root.
+     *
+     * @tparam Args Variadic list of path segment types convertible to std::filesystem::path.
+     * @param args Path segments to join (e.g. folder names, filenames).
+     * @return Joined and lexically normalized path as a string using forward slashes.
+     */
     template<typename... Args>
     static std::string Join(const Args&... args)
     {
@@ -132,23 +45,30 @@ public:
     }
 
     /**
-     * @brief Normalize slashes, resolve "." and "..", and convert to absolute path.
+     * @brief Lexically normalize a path.
+     *
+     * Normalizes slashes and resolves "." and ".." lexically without consulting
+     * project-root state or requiring the path to exist on disk.
      *
      * @param path Relative or absolute path.
-     * @return Normalized absolute path.
+     * @return Lexically normalized path string using forward slashes.
      */
     static std::string Normalize(const std::string& path);
 
     /**
      * @brief Get the parent directory of a path.
      *
+     * This is a pure path operation and does not resolve the path relative to any root.
+     *
      * @param path Relative or absolute path.
-     * @return Absolute path to the parent directory.
+     * @return Parent path as a lexically normalized string using forward slashes.
      */
     static std::string GetParent(const std::string& path);
 
     /**
      * @brief Get the filename from a path (optionally including the extension).
+     *
+     * This is a pure path operation and does not resolve the path relative to any root.
      *
      * @param path Relative or absolute path.
      * @param bIncludeExtension If true, include extension in the result.
@@ -159,14 +79,18 @@ public:
     /**
      * @brief Get the file extension (without the dot) from a path.
      *
+     * This is a pure path operation and does not resolve the path relative to any root.
+     *
      * @param path Relative or absolute path.
      * @return File extension string.
      */
     static std::string GetExtension(const std::string& path);
 
-    /** Resolve a path relative to the project root (if not absolute). */
-    static std::filesystem::path ResolvePath(const std::string& path);
-
-    /** Find project root by scanning upward for a marker folder (like "Assets"). */
-    static std::string FindProjectRoot(const std::string& startPath, const std::string& markerFolder);
+    /**
+     * @brief Check whether a path is absolute.
+     *
+     * @param path Relative or absolute path.
+     * @return true if the path is absolute, false otherwise.
+     */
+    static bool IsAbsolute(const std::string& path);
 };
