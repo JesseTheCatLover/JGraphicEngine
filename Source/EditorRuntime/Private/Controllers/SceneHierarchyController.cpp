@@ -18,9 +18,6 @@ void SceneHierarchyController::Update(float deltaTime, const FHierarchyPanelInpu
     auto& hierarchy = m_Host.GetService<HierarchyService>();
     auto& selection = m_Host.GetService<SelectionService>();
 
-    // TODO: Should optimize later to avoid refresh each frame
-    //hierarchy.Refresh();
-
     const auto& snap = hierarchy.GetSnapshot();
     out.snapshot = &snap;
     out.bHasSnapshot = !snap.empty();
