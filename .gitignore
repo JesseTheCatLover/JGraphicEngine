@@ -7,3 +7,4 @@ cmake-build-release/
 /cmake-build-release-mingw
 /Tools/JReflectGen/target/
 Cargo.lock
+/Binaries/
