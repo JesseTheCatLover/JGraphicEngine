@@ -7,7 +7,9 @@
 #include <iostream>
 
 #include "EngineContext.h"
+#include "Assets/AssetImportSubsystem.h"
 #include "Assets/AssetRegistrySubsystem.h"
+#include "Assets/Importers/TextureImporter.h"
 #include "Core/TServiceContainer.h"
 #include "Framework/InputManager.h"
 #include "Framework/PostProcessManager.h"
@@ -29,6 +31,7 @@
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
 #include "Core/Project/VirtualPathMounter.h"
+#include "Framework/AssetManager.h"
 #include "Rendering/FRenderView.h"
 
 JEngine::JEngine()
@@ -226,6 +229,21 @@ bool JEngine::InitializeSubsystems()
     }
     m_Renderer->SetPostProcessManager(GetPostProcessManager());
 
+    m_AssetRegistrySubsystem = MakeUnique<AssetRegistrySubsystem>();
+    if (!m_AssetRegistrySubsystem)
+    {
+        std::cerr << "[JEngine]: Failed to initialize asset registry subsystem" << std::endl;
+        return false;
+    }
+
+    m_AssetImportSubsystem = MakeUnique<AssetImportSubsystem>();
+    if (!m_AssetImportSubsystem)
+    {
+        std::cerr << "[JEngine]: Failed to initialize asset import subsystem" << std::endl;
+        return false;
+    }
+    m_AssetImportSubsystem->RegisterImporter(MakeUnique<TextureImporter>());
+
     m_ResourceSubSystem = TUniquePtr<ResourceSubsystem>(new ResourceSubsystem());
     if (!m_ResourceSubSystem)
     {
@@ -235,13 +253,6 @@ bool JEngine::InitializeSubsystems()
     m_ResourceSubSystem->SetRenderDevice(m_Renderer.get());
 
     SerializationSubsystem::Get().Initialize();
-
-    m_AssetRegistrySubsystem = TUniquePtr<AssetRegistrySubsystem>(new AssetRegistrySubsystem());
-    if (!m_AssetRegistrySubsystem)
-    {
-        std::cerr << "[JEngine]: Failed to initialize asset registry subsystem" << std::endl;
-        return false;
-    }
 
     m_InputSubSystem = TUniquePtr<InputSubsystem>(new InputSubsystem());
     if (!m_InputSubSystem)
@@ -372,6 +383,13 @@ bool JEngine::InitializeSubsystems()
 
 bool JEngine::InitializeManagers()
 {
+    if (!m_Services->GetService<AssetManager>()->Initialize(GetAssetRegistrySubsystem(),
+      GetAssetImportSubsystem(), m_VirtualPathMounter.get()))
+    {
+        std::cerr << "[JEngine]: Failed to initialize AssetManager" << std::endl;
+        return false;
+    }
+
     if (!m_Services->GetService<InputManager>()->Initialize(m_InputSubSystem.get()))
     {
         std::cerr << "[JEngine]: Failed to initialize InputManager" << std::endl;
@@ -594,6 +612,11 @@ ResourceSubsystem* JEngine::GetResourceSubsystem()
     return m_ResourceSubSystem.get();
 }
 
+AssetImportSubsystem * JEngine::GetAssetImportSubsystem()
+{
+    return m_AssetImportSubsystem.get();
+}
+
 AssetRegistrySubsystem * JEngine::GetAssetRegistrySubsystem()
 {
     return m_AssetRegistrySubsystem.get();
@@ -602,6 +625,11 @@ AssetRegistrySubsystem * JEngine::GetAssetRegistrySubsystem()
 InputSubsystem * JEngine::GetInputSubsystem()
 {
     return m_InputSubSystem.get();
+}
+
+AssetManager * JEngine::GetAssetManager()
+{
+    return m_Services->GetService<AssetManager>().get();
 }
 
 SceneManager* JEngine::GetSceneManager()
@@ -626,19 +654,25 @@ DebugDraw* JEngine::GetDebugDraw()
 
 void JEngine::RegisterServices()
 {
+    m_Services->RegisterFactory<AssetManager>([]() -> TSharedPtr<AssetManager>
+    {
+        return TSharedPtr<AssetManager>(new AssetManager());
+    });
+    m_Services->GetService<AssetManager>();
+
     m_Services->RegisterFactory<SceneManager>([]() -> TSharedPtr<SceneManager>
     {
         return TSharedPtr<SceneManager>(new SceneManager());
     });
     m_Services->GetService<SceneManager>();
 
-    m_Services->RegisterFactory<PostProcessManager>([this]() -> TSharedPtr<PostProcessManager>
+    m_Services->RegisterFactory<PostProcessManager>([]() -> TSharedPtr<PostProcessManager>
     {
         return TSharedPtr<PostProcessManager>(new PostProcessManager());
     });
     m_Services->GetService<PostProcessManager>();
 
-    m_Services->RegisterFactory<InputManager>([this]() -> TSharedPtr<InputManager>
+    m_Services->RegisterFactory<InputManager>([]() -> TSharedPtr<InputManager>
     {
         return TSharedPtr<InputManager>(new InputManager());
     });

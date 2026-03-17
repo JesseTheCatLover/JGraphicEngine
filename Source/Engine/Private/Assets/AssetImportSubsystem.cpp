@@ -1,12 +1,13 @@
 // Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "Assets/Import/AssetImportSubsystem.h"
+#include "Assets/AssetImportSubsystem.h"
 
 #include <algorithm>
 #include <cctype>
 
-#include "Assets/Import/IAssetImporter.h"
+#include "Assets/Importers/IAssetImporter.h"
 #include "Core/Project/VirtualPathMounter.h"
+#include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
 namespace
@@ -41,19 +42,32 @@ bool AssetImportSubsystem::Import(const FAssetImportRequest& request,
 {
     outResult = {};
 
+    if (!UFileSystem::FileExists(request.sourceFilePath))
+    {
+        outResult.errors.push_back("Source file does not exist: " + request.sourceFilePath);
+        return false;
+    }
+
     if (request.sourceFilePath.empty())
     {
-        outResult.errors.push_back("Source file path is empty.");
+        outResult.errors.emplace_back("Source file path is empty.");
         return false;
     }
 
     if (request.destinationVirtualFolder.empty())
     {
-        outResult.errors.push_back("Destination virtual folder is empty.");
+        outResult.errors.emplace_back("Destination virtual folder is empty.");
         return false;
     }
 
     std::string extension = UPath::GetExtension(request.sourceFilePath);
+
+    if (extension.empty())
+    {
+        outResult.errors.emplace_back("Source file has no extension.");
+        return false;
+    }
+
     extension = ToLowerCopy(extension);
 
     const IAssetImporter* importer = FindImporterForExtension(extension);
@@ -81,8 +95,12 @@ const IAssetImporter* AssetImportSubsystem::FindImporterForExtension(const std::
         if (!importer)
             continue;
 
-        if (importer->CanImportExtension(normalizedExtension))
-            return importer.get();
+        const std::vector<std::string> supported = importer->GetSupportedSourceExtensions();
+        for (const std::string& ext : supported)
+        {
+            if (ToLowerCopy(ext) == normalizedExtension)
+                return importer.get();
+        }
     }
 
     return nullptr;

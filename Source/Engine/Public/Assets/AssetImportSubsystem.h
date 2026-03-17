@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-#include "FAssetImportRequest.h"
+#include "Assets/FAssetImportRequest.h"
 #include "FAssetImportResult.h"
 #include "Core/Memory/SmartPointers.h"
 

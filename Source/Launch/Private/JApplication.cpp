@@ -74,7 +74,6 @@ namespace
         const std::string binariesDir = UPath::Normalize(exePath.string());
         const std::string engineRoot  = UPath::GetParent(binariesDir);
 
-        std::cout << engineRoot << std::endl;
         return UPath::Normalize(engineRoot);
     }
 }

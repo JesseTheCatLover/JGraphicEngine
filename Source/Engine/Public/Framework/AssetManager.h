@@ -4,9 +4,12 @@
 #include <string>
 #include <vector>
 
+struct FAssetImportResult;
+struct FAssetImportRequest;
+struct FAssetRecord;
 class VirtualPathMounter;
 class AssetRegistrySubsystem;
-struct FAssetRecord;
+class AssetImportSubsystem;
 
 class AssetManager
 {
@@ -21,13 +24,18 @@ public:
 
 private:
     AssetRegistrySubsystem* m_Registry = nullptr;
+    AssetImportSubsystem* m_Importer = nullptr;
     VirtualPathMounter* m_PathMounter = nullptr;
 
 public:
-    bool Initialize(AssetRegistrySubsystem* registry, VirtualPathMounter* pathMounter);
+    bool Initialize(AssetRegistrySubsystem* registry,
+                    AssetImportSubsystem* importer,
+                    VirtualPathMounter* pathMounter);
     void Shutdown();
 
     bool RebuildRegistry();
+
+    bool ImportAsset(const FAssetImportRequest& request, FAssetImportResult& outResult);
 
     [[nodiscard]] const FAssetRecord* FindByAssetID(const std::string& assetID) const;
     [[nodiscard]] const FAssetRecord* FindByVirtualPath(const std::string& virtualPath) const;
