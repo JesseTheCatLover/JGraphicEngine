@@ -9,6 +9,9 @@
 #include "EngineContext.h"
 #include "Assets/AssetImportSubsystem.h"
 #include "Assets/AssetRegistrySubsystem.h"
+#if JENGINE_WITH_SOURCE_ASSETS
+#include "Assets/EngineSourceAssetBootstrapper.h"
+#endif
 #include "Assets/Importers/TextureImporter.h"
 #include "Core/TServiceContainer.h"
 #include "Framework/InputManager.h"
@@ -131,17 +134,15 @@ bool JEngine::Initialize()
         return false;
     }
 
-    if (m_ProjectContext->IsOpen() && m_AssetRegistrySubsystem)
-    {
-        if (!m_AssetRegistrySubsystem->Rebuild(*m_VirtualPathMounter))
-        {
-            std::cerr << "[JEngine]: Asset registry rebuild completed with errors.\n";
-        }
-    }
-
     if (!InitializeManagers())
     {
         std::cerr << "[JEngine]: Failed to initialize managers" << std::endl;
+        return false;
+    }
+
+    if (!InitialBuildAssetPipeline())
+    {
+        std::cerr << "[JEngine]: Failed to initial build pipeline" << std::endl;
         return false;
     }
 
@@ -244,7 +245,7 @@ bool JEngine::InitializeSubsystems()
     }
     m_AssetImportSubsystem->RegisterImporter(MakeUnique<TextureImporter>());
 
-    m_ResourceSubSystem = TUniquePtr<ResourceSubsystem>(new ResourceSubsystem());
+    m_ResourceSubSystem = TUniquePtr<ResourceSubsystem>(new ResourceSubsystem(m_AssetRegistrySubsystem.get()));
     if (!m_ResourceSubSystem)
     {
         std::cerr << "[JEngine]: Failed to initialize resource subsystem" << std::endl;
@@ -409,6 +410,30 @@ bool JEngine::InitializeManagers()
             m_Context->SetRunning(false);
         });
 
+    return true;
+}
+
+bool JEngine::InitialBuildAssetPipeline()
+{
+#if JENGINE_WITH_SOURCE_ASSETS
+    { // Bootstrap and compile source assets if engine is being built from source
+        if (!EngineSourceAssetBootstrapper::Bootstrap(
+            *GetAssetManager(), *m_ProjectContext.get()))
+        {
+            std::cerr << "[JEngine]: Failed to boot source assets\n";
+            return false;
+        }
+    }
+#endif
+
+    if (m_ProjectContext->IsOpen() && m_AssetRegistrySubsystem)
+    {
+        if (!m_AssetRegistrySubsystem->Rebuild(*m_VirtualPathMounter))
+        {
+            std::cerr << "[JEngine]: Asset registry rebuild completed with errors\n";
+            return false;
+        }
+    }
     return true;
 }
 

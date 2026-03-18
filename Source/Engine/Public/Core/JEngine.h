@@ -15,7 +15,6 @@ struct FProjectOpenRequest;
 class ProjectContext;
 class TServiceContainer;
 class DebugDraw;
-struct FRenderView;
 class EngineContext;
 class IInputBackend;
 class InputManager;
@@ -63,7 +62,7 @@ public:
     InputManager* GetInputManager();
 
     [[nodiscard]] const ProjectContext* GetProjectContext() const { return m_ProjectContext.get(); }
-    [[nodiscard]] const VirtualPathMounter& GetVirtualPathMounter() const { return *m_VirtualPathMounter.get(); }
+    [[nodiscard]] VirtualPathMounter& GetVirtualPathMounter() const { return *m_VirtualPathMounter.get(); }
 
     DebugDraw* GetDebugDraw();
 
@@ -98,6 +97,7 @@ private:
     bool InitializeBackends();
     bool InitializeSubsystems();
     bool InitializeManagers();
+    bool InitialBuildAssetPipeline();
     void RunMainLoop();
     void Shutdown();
 

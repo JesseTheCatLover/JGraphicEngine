@@ -233,6 +233,31 @@ bool UFileSystem::DirectoryExists(const std::string& path)
     }
 }
 
+std::optional<uint64_t> UFileSystem::GetLastWriteTime(const std::string& path)
+{
+    try
+    {
+        if (!std::filesystem::exists(path))
+            return std::nullopt;
+
+        auto time = std::filesystem::last_write_time(path);
+
+        auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+            time - std::filesystem::file_time_type::clock::now()
+            + std::chrono::system_clock::now());
+
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            sctp.time_since_epoch()).count();
+
+        return static_cast<uint64_t>(ms);
+    }
+    catch (...)
+    {
+        return std::nullopt;
+    }
+}
+
+
 std::vector<std::string> UFileSystem::ListFiles(
     const std::string& directory,
     const std::string& extension,

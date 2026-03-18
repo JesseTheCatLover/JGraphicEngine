@@ -87,6 +87,25 @@ public:
     static std::string GetExtension(const std::string& path);
 
     /**
+     * @brief Remove the file extension from a path.
+     *
+     * Returns the input path with its final file extension removed. The directory
+     * portion of the path is preserved and only the filename extension (the portion
+     * after the last '.') is stripped.
+     *
+     * This is a pure path operation and does not resolve the path relative to any
+     * project or engine root.
+     *
+     * Examples:
+     * - "/Project/Textures/icon.png" → "/Project/Textures/icon"
+     * - "file.txt" → "file"
+     *
+     * @param path Relative or absolute path.
+     * @return Path string with the file extension removed.
+     */
+    static std::string RemoveExtension(const std::string &path);
+
+    /**
      * @brief Check whether a path is absolute.
      *
      * @param path Relative or absolute path.

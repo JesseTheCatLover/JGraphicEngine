@@ -16,6 +16,9 @@ elseif(UNIX)
     add_compile_definitions(JENGINE_PLATFORM_LINUX=1)
 endif()
 
+# Engine development features
+option(JENGINE_WITH_SOURCE_ASSETS "Enable source asset pipeline" ON)
+
 # Fetch Dependencies
 FetchContent_Declare(
         glfw
@@ -55,6 +58,11 @@ add_subdirectory(Tools/JReflectGen) # (must come BEFORE Engine so JREFLECTGEN_EX
 
 # --- Engine modules ---
 add_subdirectory(Source/Engine)
+
+if(JENGINE_WITH_SOURCE_ASSETS) # Engine configuration options
+    target_compile_definitions(Engine PUBLIC JENGINE_WITH_SOURCE_ASSETS=1)
+endif()
+
 add_subdirectory(Source/EditorRuntime)
 add_subdirectory(Source/Editor)
 add_subdirectory(Source/Launch) # Executable is defined here

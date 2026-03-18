@@ -145,6 +145,14 @@ public:
     static bool DirectoryExists(const std::string& path);
 
     /**
+     * @brief Get the last modification time of a file.
+     *
+     * @param path Physical filesystem path to the file.
+     * @return Timestamp in milliseconds since epoch, or std::nullopt if unavailable.
+     */
+    static std::optional<uint64_t> GetLastWriteTime(const std::string& path);
+
+    /**
      * @brief List all files in a directory, optionally filtered by extension.
      *
      * @param directory Physical filesystem path to the directory to search in.
