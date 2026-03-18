@@ -5,8 +5,11 @@
 #include <iostream>
 #include <fstream>
 
+#include "Assets/AssetFile.h"
 #include "Assets/AssetRegistrySubsystem.h"
+#include "Assets/Payloads/FTexturePayloadHeader.h"
 #include "Rendering/IRenderDevice.h"
+#include "Utilities/UFileSystem.h"
 
 Texture2DResource::Texture2DResource(FDesc desc, AssetRegistrySubsystem* assetRegistry)
     : m_Desc(std::move(desc)),
@@ -40,66 +43,81 @@ void Texture2DResource::OnDestroyGpuResources()
 
 void Texture2DResource::LoadCPU()
 {
+    m_CpuReady = false;
     m_Pixels.clear();
-    m_W = 0;
-    m_H = 0;
 
+    // ------------------------------------------------------------
+    // Resolve asset record from registry
+    // ------------------------------------------------------------
     if (!m_AssetRegistry)
     {
-        std::cerr << "[Texture2DResource]: AssetRegistrySubsystem null\n";
+        std::cerr << "[Texture2DResource]: Asset registry is null" << std::endl;
         return;
     }
 
-    const FAssetRecord* record =
-        m_AssetRegistry->FindByAssetID(m_Desc.assetId);
-
+    const FAssetRecord* record = m_AssetRegistry->FindByAssetID(m_Desc.assetId);
     if (!record)
     {
-        std::cerr << "[Texture2DResource]: Asset not found: "
-                  << m_Desc.assetId << "\n";
+        std::cerr << "[Texture2DResource]: Asset not found in registry. ID: " << m_Desc.assetId << std::endl;
         return;
     }
 
-    const std::string& path = record->physicalPath;
-    std::ifstream file(path, std::ios::binary);
-    if (!file)
+    const std::string& assetPath = record->physicalPath;
+    if (assetPath.empty())
     {
-        std::cerr << "[Texture2DResource]: Failed to open .jasset file: " << path << "\n";
+        std::cerr << "[Texture2DResource]: Asset record has empty physical path. ID: "
+                  << m_Desc.assetId << std::endl;
         return;
     }
 
-    struct FTexHeader
+    if (!UFileSystem::FileExists(assetPath))
     {
-        uint32_t magic;
-        uint32_t width;
-        uint32_t height;
-        uint32_t format; // RGBA8, etc.
-    } header{};
-
-    file.read(reinterpret_cast<char*>(&header), sizeof(header));
-
-    constexpr uint32_t Magic = 0x4A415354; // 'JAST'
-
-    if (header.magic != Magic)
-    {
-        std::cerr << "[Texture2DResource]: Invalid .jasset magic header in " << path << "\n";
+        std::cerr << "[Texture2DResource]: Asset file does not exist: "
+                  << assetPath << std::endl;
         return;
     }
 
-    m_W = static_cast<int>(header.width);
-    m_H = static_cast<int>(header.height);
+    // ------------------------------------------------------------
+    // Read asset container
+    // ------------------------------------------------------------
+    FAssetHeader header{};
+    std::vector<uint8_t> payload;
 
-    const size_t dataSize = static_cast<size_t>(m_W) * static_cast<size_t>(m_H) * 4;
-    m_Pixels.resize(dataSize);
-
-    file.read(reinterpret_cast<char*>(m_Pixels.data()), dataSize);
-    if (!file)
+    if (!AssetFile::ReadBinaryAsset(assetPath, header, payload))
     {
-        std::cerr << "[Texture2DResource]: Failed reading pixel payload\n";
-        m_Pixels.clear();
+        std::cerr << "[Texture2DResource]: Failed to read binary asset: " << assetPath << std::endl;
         return;
     }
 
+    if (payload.size() < sizeof(FTexturePayloadHeader))
+    {
+        std::cerr << "[Texture2DResource]: Texture payload too small: " << assetPath << std::endl;
+        return;
+    }
+
+    // ------------------------------------------------------------
+    // Parse texture payload
+    // ------------------------------------------------------------
+    const FTexturePayloadHeader* texHeader =
+        reinterpret_cast<const FTexturePayloadHeader*>(payload.data());
+
+    const size_t expectedSize =
+        sizeof(FTexturePayloadHeader) +
+        static_cast<size_t>(texHeader->pixelDataSize);
+
+    if (payload.size() < expectedSize)
+    {
+        std::cerr << "[Texture2DResource]: Texture payload truncated: " << assetPath << std::endl;
+        return;
+    }
+
+    m_W = static_cast<int>(texHeader->width);
+    m_H = static_cast<int>(texHeader->height);
+
+    const unsigned char* pixelData =
+        payload.data() + sizeof(FTexturePayloadHeader);
+
+    m_Pixels.assign(pixelData, pixelData + texHeader->pixelDataSize);
     m_CpuReady = true;
 }
 

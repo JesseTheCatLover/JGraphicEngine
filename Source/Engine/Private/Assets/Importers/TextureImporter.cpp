@@ -4,14 +4,13 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cstdint>
 #include <cstring>
 #include <vector>
-
 #include <stb/stb_image.h>
 
 #include "Assets/AssetFile.h"
 #include "Assets/FAssetHeader.h"
+#include "Assets/Payloads/FTexturePayloadHeader.h"
 #include "Core/Project/VirtualPathMounter.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
@@ -49,18 +48,8 @@ namespace
                                                          const unsigned char* pixelData,
                                                          size_t pixelByteCount)
     {
-        struct FTexturePayloadHeader
-        {
-            uint32_t version = 1;
-            uint32_t width = 0;
-            uint32_t height = 0;
-            uint32_t channels = 0;
-            uint8_t  bSRGB = 0;
-            uint8_t  reserved[3] = { 0, 0, 0 };
-            uint64_t pixelDataSize = 0;
-        };
-
         FTexturePayloadHeader header{};
+        header.version = 1;
         header.width = static_cast<uint32_t>(width);
         header.height = static_cast<uint32_t>(height);
         header.channels = static_cast<uint32_t>(channels);
@@ -95,7 +84,7 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
     // ------------------------------------------------------------
     if (request.sourceFilePath.empty())
     {
-        outResult.errors.push_back("Source file path is empty.");
+        outResult.errors.emplace_back("Source file path is empty.");
         return false;
     }
 
@@ -110,13 +99,13 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
     // ------------------------------------------------------------
     if (request.destinationVirtualFolder.empty())
     {
-        outResult.errors.push_back("Destination virtual folder is empty.");
+        outResult.errors.emplace_back("Destination virtual folder is empty.");
         return false;
     }
 
     if (!IsSupportedImportRoot(request.destinationVirtualFolder))
     {
-        outResult.errors.push_back(
+        outResult.errors.emplace_back(
             "Destination virtual folder must be under a supported mounted root such as /Project or /Engine."
         );
         return false;
@@ -137,7 +126,7 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
 
     if (!bSupported)
     {
-        outResult.errors.push_back("Unsupported source texture extension: " + sourceExt);
+        outResult.errors.emplace_back("Unsupported source texture extension: " + sourceExt);
         return false;
     }
 
@@ -150,7 +139,7 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
     std::string destinationPhysicalPath;
     if (!pathMounter.ResolveVirtualToPhysical(destinationVirtualPath, destinationPhysicalPath))
     {
-        outResult.errors.push_back(
+        outResult.errors.emplace_back(
             "Failed to resolve destination virtual path to a physical path: " + destinationVirtualPath
         );
         return false;
@@ -158,7 +147,7 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
 
     if (UFileSystem::FileExists(destinationPhysicalPath) && !request.bOverwrite)
     {
-        outResult.errors.push_back(
+        outResult.errors.emplace_back(
             "Destination asset already exists and overwrite is disabled: " + destinationVirtualPath
         );
         return false;
@@ -166,7 +155,7 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
 
     if (!UFileSystem::CreateDirectory(UPath::GetParent(destinationPhysicalPath)))
     {
-        outResult.errors.push_back("Failed to create destination folder: " + UPath::GetParent(destinationPhysicalPath));
+        outResult.errors.emplace_back("Failed to create destination folder: " + UPath::GetParent(destinationPhysicalPath));
         return false;
     }
 
@@ -189,14 +178,14 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
 
     if (!pixels)
     {
-        outResult.errors.push_back("Failed to decode source texture image: " + request.sourceFilePath);
+        outResult.errors.emplace_back("Failed to decode source texture image: " + request.sourceFilePath);
         return false;
     }
 
     if (width <= 0 || height <= 0)
     {
         stbi_image_free(pixels);
-        outResult.errors.push_back("Decoded texture has invalid dimensions.");
+        outResult.errors.emplace_back("Decoded texture has invalid dimensions.");
         return false;
     }
 
@@ -204,7 +193,17 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
         static_cast<size_t>(width) *
         static_cast<size_t>(height) * 4u;
 
-    const bool bSRGB = true; // good default for imported color textures in v1
+    if (pixelByteCount == 0)
+    {
+        stbi_image_free(pixels);
+        outResult.errors.emplace_back("Texture produced empty pixel buffer.");
+        return false;
+    }
+
+    // ------------------------------------------------------------
+    // Build binary payload
+    // ------------------------------------------------------------
+    const bool bSRGB = true; // default for imported color textures in v1
 
     std::vector<uint8_t> payloadBytes =
         BuildTexturePayloadRGBA8(width, height, 4, bSRGB, pixels, pixelByteCount);
@@ -222,16 +221,16 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
     header.encoding = EAssetEncoding::Binary;
     header.containerVersion = FAssetHeader::CurrentContainerVersion;
     header.payloadVersion = 1;
-    header.sourcePath = UPath::Normalize(request.sourceFilePath); // optional metadata only
+    header.sourcePath = UPath::Normalize(request.sourceFilePath);
     header.importerName = GetImporterName();
     header.dependencyAssetIDs.clear();
 
     // ------------------------------------------------------------
-    // Write .jasset
+    // Write asset container (.jasset)
     // ------------------------------------------------------------
     if (!AssetFile::WriteBinaryAsset(destinationPhysicalPath, header, payloadBytes))
     {
-        outResult.errors.push_back("Failed to write imported texture asset file: " + destinationPhysicalPath);
+        outResult.errors.emplace_back("Failed to write imported texture asset file: " + destinationPhysicalPath);
         return false;
     }
 

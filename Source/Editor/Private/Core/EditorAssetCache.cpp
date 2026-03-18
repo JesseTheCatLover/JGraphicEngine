@@ -30,7 +30,7 @@ void EditorAssetCache::ScanAndLoadTextures(EditorRuntime& runtime)
             continue;
 
         std::string rel = asset->virtualPath.substr(kTexturePathInEngine.length());
-        std::string key = UPath::GetFileName(rel, false);
+        std::string key = UPath::RemoveExtension(rel);
 
         m_TextureMap[key] = handle;
         m_Textures.push_back({ key, asset->virtualPath, handle });

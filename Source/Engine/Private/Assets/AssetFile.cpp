@@ -5,30 +5,8 @@
 #include <cstring>
 #include <iostream>
 
+#include "Assets/FAssetFileHeader.h"
 #include "Utilities/UFileSystem.h"
-
-namespace
-{
-    struct FAssetBinaryPrefix
-    {
-        char magic[4] = { 'J', 'A', 'S', 'T' };
-        uint32_t containerVersion = static_cast<uint32_t>(FAssetHeader::CurrentContainerVersion);
-        uint64_t headerByteSize = 0;
-        uint64_t payloadByteSize = 0;
-    };
-
-    static bool IsBinaryAssetBuffer(const std::vector<uint8_t>& bytes)
-    {
-        if (bytes.size() < sizeof(FAssetBinaryPrefix))
-            return false;
-
-        const auto* prefix = reinterpret_cast<const FAssetBinaryPrefix*>(bytes.data());
-        return prefix->magic[0] == 'J'
-            && prefix->magic[1] == 'A'
-            && prefix->magic[2] == 'S'
-            && prefix->magic[3] == 'T';
-    }
-}
 
 bool AssetFile::WriteJsonAsset(const std::string& filePath,
                                const FAssetHeader& header,
@@ -51,6 +29,7 @@ bool AssetFile::WriteJsonAsset(const std::string& filePath,
     return true;
 }
 
+
 bool AssetFile::WriteBinaryAsset(const std::string& filePath,
                                  const FAssetHeader& header,
                                  const std::vector<uint8_t>& payload)
@@ -59,18 +38,17 @@ bool AssetFile::WriteBinaryAsset(const std::string& filePath,
     if (!BuildHeaderJson(header, headerJson))
         return false;
 
-    FAssetBinaryPrefix prefix{};
-    prefix.containerVersion = static_cast<uint32_t>(header.containerVersion);
-    prefix.headerByteSize = static_cast<uint64_t>(headerJson.size());
-    prefix.payloadByteSize = static_cast<uint64_t>(payload.size());
+    FAssetFileHeader fileHeader{};
+    fileHeader.containerVersion = static_cast<uint32_t>(header.containerVersion);
+    fileHeader.headerByteSize  = static_cast<uint64_t>(headerJson.size());
+    fileHeader.payloadByteSize = static_cast<uint64_t>(payload.size());
 
     std::vector<uint8_t> bytes;
-    bytes.resize(sizeof(FAssetBinaryPrefix) + headerJson.size() + payload.size());
+    bytes.resize(sizeof(FAssetFileHeader) + headerJson.size() + payload.size());
 
     size_t offset = 0;
-
-    std::memcpy(bytes.data() + offset, &prefix, sizeof(FAssetBinaryPrefix));
-    offset += sizeof(FAssetBinaryPrefix);
+    std::memcpy(bytes.data() + offset, &fileHeader, sizeof(FAssetFileHeader));
+    offset += sizeof(FAssetFileHeader);
 
     if (!headerJson.empty())
     {
@@ -79,9 +57,7 @@ bool AssetFile::WriteBinaryAsset(const std::string& filePath,
     }
 
     if (!payload.empty())
-    {
         std::memcpy(bytes.data() + offset, payload.data(), payload.size());
-    }
 
     if (!UFileSystem::WriteBinaryFile(filePath, bytes, false))
     {
@@ -92,9 +68,10 @@ bool AssetFile::WriteBinaryAsset(const std::string& filePath,
     return true;
 }
 
-bool AssetFile::ReadHeader(const std::string& filePath,
-                           FAssetHeader& outHeader)
+bool AssetFile::ReadHeader(const std::string& filePath, FAssetHeader& outHeader)
 {
+    outHeader = {};
+
     const auto bytesOpt = UFileSystem::ReadBinaryFile(filePath);
     if (!bytesOpt.has_value())
     {
@@ -104,50 +81,62 @@ bool AssetFile::ReadHeader(const std::string& filePath,
 
     const std::vector<uint8_t>& bytes = *bytesOpt;
 
-    // Binary container path
-    if (IsBinaryAssetBuffer(bytes))
+    // ---------------------------------------------------------------------
+    // Binary container format
+    // ---------------------------------------------------------------------
+    if (bytes.size() >= sizeof(FAssetFileHeader))
     {
-        if (bytes.size() < sizeof(FAssetBinaryPrefix))
+        FAssetFileHeader container;
+        std::memcpy(&container, bytes.data(), sizeof(FAssetFileHeader));
+
+        if (std::memcmp(container.magic, "JAST", 4) == 0)
         {
-            std::cerr << "[JAssetFile]: Binary .jasset prefix is truncated: " << filePath << "\n";
-            return false;
+            const size_t headerOffset = sizeof(FAssetFileHeader);
+            const size_t payloadOffset =
+                headerOffset + static_cast<size_t>(container.headerByteSize);
+
+            const size_t requiredSize =
+                payloadOffset + static_cast<size_t>(container.payloadByteSize);
+
+            if (bytes.size() < requiredSize)
+            {
+                std::cerr << "[JAssetFile]: Truncated binary .jasset file: "
+                          << filePath << "\n";
+                return false;
+            }
+
+            const char* headerBegin =
+                reinterpret_cast<const char*>(bytes.data() + headerOffset);
+
+            const std::string headerJson(
+                headerBegin,
+                static_cast<size_t>(container.headerByteSize));
+
+            return ParseHeaderJson(headerJson, outHeader);
         }
-
-        const auto* prefix = reinterpret_cast<const FAssetBinaryPrefix*>(bytes.data());
-        const size_t requiredSize =
-            sizeof(FAssetBinaryPrefix) +
-            static_cast<size_t>(prefix->headerByteSize) +
-            static_cast<size_t>(prefix->payloadByteSize);
-
-        if (bytes.size() < requiredSize)
-        {
-            std::cerr << "[JAssetFile]: Binary .jasset is truncated: " << filePath << "\n";
-            return false;
-        }
-
-        const char* headerBegin =
-            reinterpret_cast<const char*>(bytes.data() + sizeof(FAssetBinaryPrefix));
-
-        const std::string headerJson(headerBegin, static_cast<size_t>(prefix->headerByteSize));
-        return ParseHeaderJson(headerJson, outHeader);
     }
 
-    // Legacy JSON-only path
+    // ---------------------------------------------------------------------
+    // Legacy JSON-only asset format
+    // ---------------------------------------------------------------------
     JsonReader reader;
     if (!reader.LoadFromFile(filePath) || !reader.IsValid())
     {
-        std::cerr << "[JAssetFile]: Failed to read JSON .jasset file: " << filePath << "\n";
+        std::cerr << "[JAssetFile]: Failed to read JSON .jasset file: "
+                  << filePath << "\n";
         return false;
     }
 
     if (!reader.IsObject("header"))
     {
-        std::cerr << "[JAssetFile]: Missing 'header' object in .jasset: " << filePath << "\n";
+        std::cerr << "[JAssetFile]: Missing 'header' object in .jasset: "
+                  << filePath << "\n";
         return false;
     }
 
     return ReadHeaderObject(reader.GetObject("header"), outHeader);
 }
+
 
 bool AssetFile::ReadJsonAsset(const std::string& filePath,
                               FAssetHeader& outHeader,
@@ -182,47 +171,38 @@ bool AssetFile::ReadBinaryAsset(const std::string& filePath,
                                 std::vector<uint8_t>& outPayload)
 {
     outPayload.clear();
-
     const auto bytesOpt = UFileSystem::ReadBinaryFile(filePath);
     if (!bytesOpt.has_value())
-    {
-        std::cerr << "[JAssetFile]: Failed to read binary .jasset file: " << filePath << "\n";
         return false;
-    }
 
     const std::vector<uint8_t>& bytes = *bytesOpt;
+    if (bytes.size() < sizeof(FAssetFileHeader))
+        return false;
 
-    if (!IsBinaryAssetBuffer(bytes))
+    const auto* fileHeader = reinterpret_cast<const FAssetFileHeader*>(bytes.data());
+    if (std::memcmp(fileHeader->magic, "JAST", 4) != 0)
     {
-        std::cerr << "[JAssetFile]: File is not a binary .jasset: " << filePath << "\n";
+        std::cerr << "[JAssetFile]: Invalid magic for .jasset\n";
         return false;
     }
 
-    if (bytes.size() < sizeof(FAssetBinaryPrefix))
-    {
-        std::cerr << "[JAssetFile]: Binary .jasset prefix is truncated: " << filePath << "\n";
-        return false;
-    }
+    const size_t headerOffset = sizeof(FAssetFileHeader);
+    const size_t payloadOffset = headerOffset + static_cast<size_t>(fileHeader->headerByteSize);
 
-    const auto* prefix = reinterpret_cast<const FAssetBinaryPrefix*>(bytes.data());
-    const size_t headerOffset = sizeof(FAssetBinaryPrefix);
-    const size_t payloadOffset = headerOffset + static_cast<size_t>(prefix->headerByteSize);
-    const size_t requiredSize = payloadOffset + static_cast<size_t>(prefix->payloadByteSize);
-
-    if (bytes.size() < requiredSize)
+    if (bytes.size() < payloadOffset + static_cast<size_t>(fileHeader->payloadByteSize))
     {
-        std::cerr << "[JAssetFile]: Binary .jasset is truncated: " << filePath << "\n";
+        std::cerr << "[JAssetFile]: Truncated .jasset file\n";
         return false;
     }
 
     const char* headerBegin = reinterpret_cast<const char*>(bytes.data() + headerOffset);
-    const std::string headerJson(headerBegin, static_cast<size_t>(prefix->headerByteSize));
-
+    std::string headerJson(headerBegin, fileHeader->headerByteSize);
     if (!ParseHeaderJson(headerJson, outHeader))
         return false;
 
     const uint8_t* payloadBegin = bytes.data() + payloadOffset;
-    outPayload.assign(payloadBegin, payloadBegin + static_cast<size_t>(prefix->payloadByteSize));
+    outPayload.assign(payloadBegin, payloadBegin + static_cast<size_t>(fileHeader->payloadByteSize));
+
     return true;
 }
 

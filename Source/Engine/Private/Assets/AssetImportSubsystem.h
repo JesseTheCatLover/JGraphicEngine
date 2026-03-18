@@ -5,7 +5,7 @@
 #include <string>
 
 #include "Assets/FAssetImportRequest.h"
-#include "../../Public/Assets/FAssetImportResult.h"
+#include "Assets/FAssetImportResult.h"
 #include "Core/Memory/SmartPointers.h"
 
 class IAssetImporter;
@@ -25,7 +25,7 @@ public:
                 FAssetImportResult& outResult) const;
 
 private:
-    const IAssetImporter* FindImporterForExtension(const std::string& extension) const;
+    [[nodiscard]] const IAssetImporter* FindImporterForExtension(const std::string& extension) const;
 
 private:
     std::vector<TUniquePtr<IAssetImporter>> m_Importers;

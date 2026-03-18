@@ -40,7 +40,9 @@ std::string UPath::GetExtension(const std::string& path)
 
 std::string UPath::RemoveExtension(const std::string &path)
 {
-    return std::filesystem::path(path).stem().string();
+    std::filesystem::path p(path);
+    p.replace_extension();
+    return p.string();
 }
 
 bool UPath::IsAbsolute(const std::string& path)
