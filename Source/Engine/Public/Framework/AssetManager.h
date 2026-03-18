@@ -42,4 +42,5 @@ public:
     [[nodiscard]] const FAssetRecord* FindByPhysicalPath(const std::string& physicalPath) const;
 
     [[nodiscard]] const std::vector<FAssetRecord>* GetAllAssets() const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByPrefix(const std::string& virtualPrefix) const;
 };

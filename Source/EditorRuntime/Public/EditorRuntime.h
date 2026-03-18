@@ -25,6 +25,8 @@ private:
     SceneManager& m_SceneManager;
     RendererSubsystem& m_Renderer;
     IPlatformSurface& m_PlatformSurface;
+    AssetManager& m_AssetManager;
+    VirtualPathMounter& m_VirtualPathMounter;
     ResourceSubsystem& m_Resource;
     InputSubsystem& m_InputSubsystem;
 

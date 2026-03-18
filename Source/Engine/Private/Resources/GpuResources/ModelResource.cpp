@@ -74,8 +74,9 @@ namespace
 
 // ====== construction ======
 
-ModelResource::ModelResource(std::string sourcePath)
-    : m_Source(std::move(sourcePath))
+ModelResource::ModelResource(std::string sourcePath, AssetRegistrySubsystem* registry)
+    : m_Source(std::move(sourcePath)),
+    m_AssetRegistry(registry)
 {
     stbi_set_flip_vertically_on_load(true);
 }

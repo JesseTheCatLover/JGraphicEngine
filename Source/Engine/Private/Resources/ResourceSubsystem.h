@@ -1,4 +1,4 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
 #include <unordered_map>
@@ -15,6 +15,7 @@
 #include "IGpuResource.h"
 #include "Core/Memory/SmartPointers.h"
 
+class AssetRegistrySubsystem;
 class IRenderDevice;
 
 /**
@@ -43,7 +44,9 @@ public:
     ~ResourceSubsystem() = default;
 
 private:
-    ResourceSubsystem() = default;
+    explicit ResourceSubsystem(AssetRegistrySubsystem* assetRegistry)
+        : m_AssetRegistry(assetRegistry)
+    {}
 
     /** @brief Shared pointer to the base resource type. */
     using BasePtr = TSharedPtr<ICpuResource>;
@@ -54,6 +57,8 @@ private:
         BasePtr ptr;
         std::type_index type{ typeid(void) };
     };
+
+    AssetRegistrySubsystem* m_AssetRegistry = nullptr;
 
     mutable std::shared_mutex m_Mutex;                  ///< Thread-safe read/write access.
     std::unordered_map<JAssetID, Entry> m_ByAsset;      ///< Cache by asset UUID.
@@ -103,13 +108,20 @@ public:
         {
             std::shared_lock rlock(m_Mutex);
             if (auto it = m_ByAsset.find(assetId); it != m_ByAsset.end())
+            {
+                if (it->second.type != std::type_index(typeid(T)))
+                {
+                    std::cerr << "[ResourceSubsystem]: Type mismatch for asset '" << assetId << "'\n";
+                    return nullptr;
+                }
+
                 return std::dynamic_pointer_cast<T>(it->second.ptr);
+            }
         }
 
-        // Create new instance
+        // Create new instance (outside lock)
         auto createdResource = CreateInstance<T>(
-            std::integral_constant<bool, std::is_constructible<T, IRenderDevice *, Args...>::value
-            >{},
+            std::integral_constant<bool, std::is_constructible<T, IRenderDevice *, Args...>::value>{},
             std::forward<Args>(args)...
         );
 
@@ -128,6 +140,19 @@ public:
         }
 
         std::unique_lock wlock(m_Mutex);
+
+        // Double check in case another thread inserted while we were creating
+        if (auto it = m_ByAsset.find(assetId); it != m_ByAsset.end())
+        {
+            if (it->second.type != std::type_index(typeid(T)))
+            {
+                std::cerr << "[ResourceSubsystem]: Type mismatch for asset '" << assetId << "'\n";
+                return nullptr;
+            }
+
+            return std::dynamic_pointer_cast<T>(it->second.ptr);
+        }
+
         m_ByAsset[assetId] = Entry{createdResource, std::type_index(typeid(T))};
 
         return createdResource;
@@ -197,7 +222,7 @@ private:
     template<class T, class... Args>
     TSharedPtr<T> CreateInstance(std::true_type /* has (IRenderDevice*, Args...) */, Args&&... args)
     {
-        auto p = MakeShared<T>(m_Device, std::forward<Args>(args)...);
+        auto p = MakeShared<T>(m_Device, std::forward<Args>(args)..., m_AssetRegistry);
 
         if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
         {
@@ -209,7 +234,7 @@ private:
     template<class T, class... Args>
     TSharedPtr<T> CreateInstance(std::false_type /* fallback */, Args&&... args)
     {
-        auto p = MakeShared<T>(std::forward<Args>(args)...);
+        auto p = MakeShared<T>(std::forward<Args>(args)..., m_AssetRegistry);
 
         if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
         {

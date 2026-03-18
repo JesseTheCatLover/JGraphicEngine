@@ -5,7 +5,7 @@
 #include <string>
 
 #include "Assets/FAssetImportRequest.h"
-#include "FAssetImportResult.h"
+#include "../../Public/Assets/FAssetImportResult.h"
 #include "Core/Memory/SmartPointers.h"
 
 class IAssetImporter;

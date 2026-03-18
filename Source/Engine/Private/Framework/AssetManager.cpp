@@ -93,3 +93,14 @@ const std::vector<FAssetRecord>* AssetManager::GetAllAssets() const
 {
     return m_Registry ? &m_Registry->GetAllAssets() : nullptr;
 }
+
+std::vector<const FAssetRecord*> AssetManager::GetAssetsByPrefix(const std::string& virtualPrefix) const
+{
+    if (!m_Registry)
+    {
+        std::cerr << "[AssetManager]: Registry is null" << "\n";
+        return {};
+    }
+
+    return m_Registry->GetAssetsByPrefix(virtualPrefix);
+}

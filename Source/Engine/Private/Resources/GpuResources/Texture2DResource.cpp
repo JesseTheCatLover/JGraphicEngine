@@ -3,74 +3,15 @@
 #include "Texture2DResource.h"
 
 #include <iostream>
-#include <filesystem>
+#include <fstream>
 
-#include "Core/EngineGlobals.h"
-#include "Core/Project/ProjectContext.h"
-#include "Core/Project/VirtualPathMounter.h"
+#include "Assets/AssetRegistrySubsystem.h"
 #include "Rendering/IRenderDevice.h"
-#include "stb/stb_image.h"
-#include "Utilities/UPath.h"
 
-namespace
+Texture2DResource::Texture2DResource(FDesc desc, AssetRegistrySubsystem* assetRegistry)
+    : m_Desc(std::move(desc)),
+    m_AssetRegistry(assetRegistry)
 {
-    static std::string NormalizeSlashes(std::string s)
-    {
-        for (char& c : s)
-            if (c == '\\')
-                c = '/';
-        return s;
-    }
-
-    static bool StartsWithVirtualRoot(const std::string& path)
-    {
-        return path.rfind("/Engine", 0) == 0 || path.rfind("/Project", 0) == 0;
-    }
-
-    // Accept:
-    //  - absolute filesystem path
-    //  - virtual asset path (/Engine/... or /Project/...)
-    //  - legacy relative path (temporary fallback)
-    static std::string ResolveToAbsolutePath(const std::string& inPath)
-    {
-        namespace fs = std::filesystem;
-
-        std::string p = NormalizeSlashes(inPath);
-        fs::path fp(p);
-
-        // 1) Absolute filesystem path
-        if (fp.is_absolute() && !StartsWithVirtualRoot(p))
-            return UPath::Normalize(p);
-
-        // 2) Virtual asset path
-        if (StartsWithVirtualRoot(p))
-        {
-            if (GEngine)
-            {
-                std::string resolved;
-                if (GEngine->GetVirtualPathMounter().ResolveVirtualToPhysical(p, resolved))
-                    return resolved;
-            }
-
-            return {};
-        }
-
-        // 3) Legacy fallback: treat as project-assets-relative or project-root-relative
-        // This is only to keep old code working during transition.
-        if (GEngine)
-        {
-            const std::string projectRoot = GEngine->GetProjectContext()->GetProjectRoot();
-            return UPath::Normalize(UPath::Join(projectRoot, p));
-        }
-
-        return {};
-    }
-}
-
-Texture2DResource::Texture2DResource(FDesc desc)
-    : m_Desc(std::move(desc))
-{
-    stbi_set_flip_vertically_on_load(m_Desc.bFlipY ? 1 : 0);
 }
 
 void Texture2DResource::OnCreateGpuResources()
@@ -103,26 +44,61 @@ void Texture2DResource::LoadCPU()
     m_W = 0;
     m_H = 0;
 
-    const std::string absPath = ResolveToAbsolutePath(m_Desc.path);
-    if (absPath.empty())
+    if (!m_AssetRegistry)
     {
-        std::cerr << "[Texture2DResource]: Failed to resolve path: " << m_Desc.path << "\n";
-        m_CpuReady = false;
+        std::cerr << "[Texture2DResource]: AssetRegistrySubsystem null\n";
         return;
     }
 
-    int comp = 0;
-    unsigned char* data = stbi_load(absPath.c_str(), &m_W, &m_H, &comp, 4);
-    if (!data)
+    const FAssetRecord* record =
+        m_AssetRegistry->FindByAssetID(m_Desc.assetId);
+
+    if (!record)
     {
-        std::cerr << "[Texture2DResource]: Failed to load image: " << absPath << "\n";
-        m_CpuReady = false;
+        std::cerr << "[Texture2DResource]: Asset not found: "
+                  << m_Desc.assetId << "\n";
         return;
     }
 
-    const size_t byteCount = static_cast<size_t>(m_W) * static_cast<size_t>(m_H) * 4u;
-    m_Pixels.assign(data, data + byteCount);
-    stbi_image_free(data);
+    const std::string& path = record->physicalPath;
+    std::ifstream file(path, std::ios::binary);
+    if (!file)
+    {
+        std::cerr << "[Texture2DResource]: Failed to open .jasset file: " << path << "\n";
+        return;
+    }
+
+    struct FTexHeader
+    {
+        uint32_t magic;
+        uint32_t width;
+        uint32_t height;
+        uint32_t format; // RGBA8, etc.
+    } header{};
+
+    file.read(reinterpret_cast<char*>(&header), sizeof(header));
+
+    constexpr uint32_t Magic = 0x4A415354; // 'JAST'
+
+    if (header.magic != Magic)
+    {
+        std::cerr << "[Texture2DResource]: Invalid .jasset magic header in " << path << "\n";
+        return;
+    }
+
+    m_W = static_cast<int>(header.width);
+    m_H = static_cast<int>(header.height);
+
+    const size_t dataSize = static_cast<size_t>(m_W) * static_cast<size_t>(m_H) * 4;
+    m_Pixels.resize(dataSize);
+
+    file.read(reinterpret_cast<char*>(m_Pixels.data()), dataSize);
+    if (!file)
+    {
+        std::cerr << "[Texture2DResource]: Failed reading pixel payload\n";
+        m_Pixels.clear();
+        return;
+    }
 
     m_CpuReady = true;
 }
@@ -158,20 +134,20 @@ void Texture2DResource::UploadGPU()
 
     ro.bSRGB = m_Desc.bSRGB;
 
-    // Destroy previous GPU texture if re-creating (safety)
     if (m_Texture.IsValid())
         dev->DestroyTexture(m_Texture);
 
     m_Texture = dev->CreateTexture(ro);
 
     if (!m_Texture.IsValid())
-        std::cerr << "[Texture2DResource]: CreateTexture failed for: " << m_Desc.path << "\n";
+        std::cerr << "[Texture2DResource]: CreateTexture failed for asset: "
+                  << m_Desc.assetId << "\n";
 }
 
 void Texture2DResource::ReleaseCPU()
 {
     m_Pixels.clear();
-    m_Pixels.shrink_to_fit(); // optional: free memory aggressively for editor startup burst
+    m_Pixels.shrink_to_fit();
     m_W = 0;
     m_H = 0;
     m_CpuReady = false;

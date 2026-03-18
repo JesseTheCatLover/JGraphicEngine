@@ -29,7 +29,7 @@ public:
     [[nodiscard]] const std::vector<FEditorTextureAsset>& GetAllTextures() const { return m_Textures; }
 
 private:
-    void ScanAndLoadTextures(EditorRuntime& runtime, const std::string& rootVirtualDir);
+    void ScanAndLoadTextures(EditorRuntime& runtime);
 
 private:
     std::unordered_map<std::string, RTextureHandle> m_TextureMap;

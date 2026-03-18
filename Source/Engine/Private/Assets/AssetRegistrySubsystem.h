@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "FAssetRecord.h"
+#include "../../Public/Assets/FAssetRecord.h"
 
 class VirtualPathMounter;
 
@@ -38,6 +38,7 @@ public:
     [[nodiscard]] const FAssetRecord* FindByPhysicalPath(const std::string& physicalPath) const;
 
     [[nodiscard]] const std::vector<FAssetRecord>& GetAllAssets() const { return m_Assets; }
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByPrefix(const std::string& virtualPrefix) const;
 
 private:
     bool RegisterAsset(FAssetRecord record);

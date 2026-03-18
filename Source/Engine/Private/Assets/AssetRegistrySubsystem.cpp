@@ -1,6 +1,6 @@
 // Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "Assets/AssetRegistrySubsystem.h"
+#include "AssetRegistrySubsystem.h"
 
 #include <iostream>
 
@@ -117,6 +117,19 @@ const FAssetRecord* AssetRegistrySubsystem::FindByPhysicalPath(const std::string
         return nullptr;
 
     return &m_Assets[it->second];
+}
+
+std::vector<const FAssetRecord*> AssetRegistrySubsystem::GetAssetsByPrefix(const std::string& virtualPrefix) const
+{
+    std::vector<const FAssetRecord*> results;
+
+    for (const FAssetRecord& record : m_Assets)
+    {
+        if (record.virtualPath.starts_with(virtualPrefix))
+            results.push_back(&record);
+    }
+
+    return results;
 }
 
 bool AssetRegistrySubsystem::RegisterAsset(FAssetRecord record)

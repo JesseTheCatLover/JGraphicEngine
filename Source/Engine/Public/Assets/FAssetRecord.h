@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "EAssetDomain.h"
 #include "FAssetHeader.h"
 
 struct FAssetRecord
@@ -22,6 +23,8 @@ struct FAssetRecord
 
     std::string sourcePath;    // optional
     std::string importerName;  // optional
+
+    EAssetDomain domain;
 
     std::vector<std::string> dependencyAssetIDs;
 };

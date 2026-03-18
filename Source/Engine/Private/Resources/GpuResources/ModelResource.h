@@ -10,6 +10,7 @@
 #include "Rendering/RObjects.h"
 #include "Rendering/RHandles.h"
 
+class AssetRegistrySubsystem;
 class IRenderDevice;
 
 /**
@@ -24,7 +25,7 @@ class IRenderDevice;
 class ModelResource : public GpuResource // TODO: Temp
 {
 public:
-    explicit ModelResource(std::string sourcePath);
+    explicit ModelResource(std::string sourcePath, AssetRegistrySubsystem* registry);
 
     // GpuResource
     void OnCreateGpuResources() override;
@@ -63,6 +64,8 @@ private:
     };
 
 private:
+    AssetRegistrySubsystem* m_AssetRegistry = nullptr;
+
     // CPU data
     std::vector<FMeshCPU> m_MeshesCPU;
     std::vector<FTexCPU>  m_TexturesCPU;   // unique textures deduped by absolute path

@@ -1,4 +1,4 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "Resources/ResourceSubsystem.h"
 #include <vector>
@@ -32,13 +32,12 @@ bool ResourceSubsystem::Unload(const JAssetID& assetId)
         if (it == m_ByAsset.end())
             return false;
 
-        // Check refcount before copying out
         lastOwner = (it->second.ptr.use_count() == 1);
-        ptr = it->second.ptr; // keep alive outside
+        ptr = it->second.ptr;
         m_ByAsset.erase(it);
     }
 
-    if (ptr && lastOwner)
+    if (ptr && lastOwner && m_Device)
     {
         if (auto* gpuResource = dynamic_cast<IGpuResource*>(ptr.get()))
             gpuResource->DestroyGpuResources(m_Device);
@@ -56,7 +55,7 @@ size_t ResourceSubsystem::UnloadUnused()
         for (auto it = m_ByAsset.begin(); it != m_ByAsset.end();)
         {
             BasePtr& sp = it->second.ptr;
-            if (sp && sp.use_count() == 1) // only manager holds it
+            if (sp && sp.use_count() == 1)
             {
                 toDestroy.push_back(sp);
                 it = m_ByAsset.erase(it);
@@ -68,10 +67,12 @@ size_t ResourceSubsystem::UnloadUnused()
         }
     }
 
-    // Outside the lock, release GPU caches
     for (auto& pointer : toDestroy)
-        if (auto* gpuResource = dynamic_cast<IGpuResource*>(pointer.get()))
-            gpuResource->DestroyGpuResources(m_Device);
+    {
+        if (m_Device)
+            if (auto* gpuResource = dynamic_cast<IGpuResource*>(pointer.get()))
+                gpuResource->DestroyGpuResources(m_Device);
+    }
 
     return toDestroy.size();
 }
@@ -79,6 +80,7 @@ size_t ResourceSubsystem::UnloadUnused()
 void ResourceSubsystem::UnloadAll()
 {
     std::vector<BasePtr> toDestroy;
+
     {
         std::unique_lock wlock(m_Mutex);
         for (auto& [id, entry] : m_ByAsset)
@@ -88,17 +90,23 @@ void ResourceSubsystem::UnloadAll()
     }
 
     for (auto& p : toDestroy)
-        if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
-            gpu->DestroyGpuResources(m_Device);
+    {
+        if (m_Device)
+            if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
+                gpu->DestroyGpuResources(m_Device);
+    }
 }
 
 void ResourceSubsystem::DebugDump() const
 {
     std::shared_lock rlock(m_Mutex);
+
     std::cout << "[ResourceSubsystem]: Cache list:\n";
+
     for (const auto& [id, entry] : m_ByAsset)
     {
         if (!entry.ptr) continue;
+
         std::cout << " assetId='" << id << "'"
                   << " type=" << entry.type.name()
                   << " refs=" << entry.ptr.use_count()
