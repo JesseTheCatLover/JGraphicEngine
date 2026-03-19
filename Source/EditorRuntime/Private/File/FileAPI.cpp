@@ -73,3 +73,38 @@ std::vector<const FAssetRecord *> EditorFileAPI::GetAssetsByPrefix(const std::st
 {
     return m_AssetManager.GetAssetsByPrefix(virtualPrefix);
 }
+
+std::vector<const FAssetRecord*> EditorFileAPI::GetUserVisibleAssets() const
+{
+    return m_AssetManager.GetUserVisibleAssets();
+}
+
+std::vector<const FAssetRecord*> EditorFileAPI::GetAssetsByType(EAssetType type) const
+{
+    return m_AssetManager.GetAssetsByType(type);
+}
+
+std::vector<const FAssetRecord*> EditorFileAPI::GetAssetsByDomain(EAssetDomain domain) const
+{
+    return m_AssetManager.GetAssetsByDomain(domain);
+}
+
+std::vector<const FAssetRecord*> EditorFileAPI::GetAssetsByVisibility(EAssetVisibility visibility) const
+{
+    return m_AssetManager.GetAssetsByVisibility(visibility);
+}
+
+std::vector<const FAssetRecord*> EditorFileAPI::GetDependencies(const std::string& assetID) const
+{
+    return m_AssetManager.GetDependencies(assetID);
+}
+
+const FAssetRecord* EditorFileAPI::FindByAssetID(const std::string& assetID) const
+{
+    return m_AssetManager.FindByAssetID(assetID);
+}
+
+const FAssetRecord* EditorFileAPI::FindByVirtualPath(const std::string& virtualPath) const
+{
+    return m_AssetManager.FindByVirtualPath(virtualPath);
+}

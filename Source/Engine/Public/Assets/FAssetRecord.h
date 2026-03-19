@@ -25,6 +25,7 @@ struct FAssetRecord
     std::string importerName;  // optional
 
     EAssetDomain domain;
+    EAssetVisibility visibility = EAssetVisibility::Project;
 
     std::vector<std::string> dependencyAssetIDs;
 };

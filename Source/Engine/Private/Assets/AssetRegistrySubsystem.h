@@ -5,11 +5,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../../Public/Assets/FAssetRecord.h"
+#include "Assets/FAssetRecord.h"
 
 class VirtualPathMounter;
 
-class AssetRegistrySubsystem
+class AssetRegistrySubsystem // TODO: Implement index map lookup for future + startup caching and cooks
 {
 public:
     AssetRegistrySubsystem() = default;
@@ -33,15 +33,50 @@ public:
      */
     bool ScanMount(const VirtualPathMounter& mounter, const std::string& virtualRoot);
 
+public:
     [[nodiscard]] const FAssetRecord* FindByAssetID(const std::string& assetID) const;
     [[nodiscard]] const FAssetRecord* FindByVirtualPath(const std::string& virtualPath) const;
     [[nodiscard]] const FAssetRecord* FindByPhysicalPath(const std::string& physicalPath) const;
 
+public:
     [[nodiscard]] const std::vector<FAssetRecord>& GetAllAssets() const { return m_Assets; }
+
+    /**
+     * @brief Returns assets visible to the user (filters EnginePrivate).
+     */
+    [[nodiscard]] std::vector<const FAssetRecord*> GetUserVisibleAssets() const;
+
+    /**
+     * @brief Returns all assets under a virtual path prefix.
+     */
     [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByPrefix(const std::string& virtualPrefix) const;
+
+    /**
+     * @brief Returns assets of a specific type.
+     */
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByType(EAssetType type) const;
+
+    /**
+     * @brief Returns assets belonging to a specific domain.
+     */
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByDomain(EAssetDomain domain) const;
+
+    /**
+     * @brief Returns assets with a specific visibility.
+     */
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByVisibility(EAssetVisibility visibility) const;
+
+    /**
+     * @brief Returns dependency asset records.
+     */
+    [[nodiscard]] std::vector<const FAssetRecord*> GetDependencies(const std::string& assetID) const;
 
 private:
     bool RegisterAsset(FAssetRecord record);
+
+    void DetermineDomainAndVisibility(
+        FAssetRecord& record,
+        const std::string& virtualRoot) const;
 
 private:
     std::vector<FAssetRecord> m_Assets;

@@ -15,7 +15,10 @@ bool AssetManager::Initialize(AssetRegistrySubsystem* registry,
     m_Registry = registry;
     m_Importer = importer;
     m_PathMounter = pathMounter;
-    return m_Registry != nullptr && m_Importer != nullptr && m_PathMounter != nullptr;
+
+    return m_Registry != nullptr &&
+           m_Importer != nullptr &&
+           m_PathMounter != nullptr;
 }
 
 void AssetManager::Shutdown()
@@ -39,7 +42,7 @@ bool AssetManager::ImportAsset(const FAssetImportRequest& request, FAssetImportR
 
     if (!m_Importer || !m_Registry || !m_PathMounter)
     {
-        std::cerr << "[AssetManager]: Asset manager is not initialized" << "\n";
+        std::cerr << "[AssetManager]: Asset manager is not initialized\n";
         outResult.bSuccess = false;
         return false;
     }
@@ -50,12 +53,15 @@ bool AssetManager::ImportAsset(const FAssetImportRequest& request, FAssetImportR
     // simplest v1: rebuild whole registry after import
     if (!m_Registry->Rebuild(*m_PathMounter))
     {
-        outResult.warnings.emplace_back("Asset imported, but registry rebuild reported errors.");
+        outResult.warnings.emplace_back(
+            "Asset imported, but registry rebuild reported errors.");
     }
 
     if (!outResult.errors.empty())
     {
-        std::cerr << "[AssetManager]: Error(s) while loading " << request.sourceFilePath << ":\n";
+        std::cerr << "[AssetManager]: Error(s) while loading "
+                  << request.sourceFilePath << ":\n";
+
         for (const auto& error : outResult.errors)
             std::cerr << error << "\n";
 
@@ -65,7 +71,9 @@ bool AssetManager::ImportAsset(const FAssetImportRequest& request, FAssetImportR
 
     if (!outResult.warnings.empty())
     {
-        std::cout << "[AssetManager]: Warning(s) while loading " << request.sourceFilePath << ":\n";
+        std::cout << "[AssetManager]: Warning(s) while loading "
+                  << request.sourceFilePath << ":\n";
+
         for (const auto& warning : outResult.warnings)
             std::cout << warning << "\n";
     }
@@ -98,9 +106,64 @@ std::vector<const FAssetRecord*> AssetManager::GetAssetsByPrefix(const std::stri
 {
     if (!m_Registry)
     {
-        std::cerr << "[AssetManager]: Registry is null" << "\n";
+        std::cerr << "[AssetManager]: Registry is null\n";
         return {};
     }
 
     return m_Registry->GetAssetsByPrefix(virtualPrefix);
+}
+
+std::vector<const FAssetRecord*> AssetManager::GetUserVisibleAssets() const
+{
+    if (!m_Registry)
+    {
+        std::cerr << "[AssetManager]: Registry is null\n";
+        return {};
+    }
+
+    return m_Registry->GetUserVisibleAssets();
+}
+
+std::vector<const FAssetRecord*> AssetManager::GetAssetsByType(EAssetType type) const
+{
+    if (!m_Registry)
+    {
+        std::cerr << "[AssetManager]: Registry is null\n";
+        return {};
+    }
+
+    return m_Registry->GetAssetsByType(type);
+}
+
+std::vector<const FAssetRecord*> AssetManager::GetAssetsByDomain(EAssetDomain domain) const
+{
+    if (!m_Registry)
+    {
+        std::cerr << "[AssetManager]: Registry is null\n";
+        return {};
+    }
+
+    return m_Registry->GetAssetsByDomain(domain);
+}
+
+std::vector<const FAssetRecord*> AssetManager::GetAssetsByVisibility(EAssetVisibility visibility) const
+{
+    if (!m_Registry)
+    {
+        std::cerr << "[AssetManager]: Registry is null\n";
+        return {};
+    }
+
+    return m_Registry->GetAssetsByVisibility(visibility);
+}
+
+std::vector<const FAssetRecord*> AssetManager::GetDependencies(const std::string& assetID) const
+{
+    if (!m_Registry)
+    {
+        std::cerr << "[AssetManager]: Registry is null\n";
+        return {};
+    }
+
+    return m_Registry->GetDependencies(assetID);
 }

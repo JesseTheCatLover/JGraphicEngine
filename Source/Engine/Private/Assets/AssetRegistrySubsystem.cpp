@@ -22,6 +22,7 @@ bool AssetRegistrySubsystem::Rebuild(const VirtualPathMounter& mounter)
     Clear();
 
     bool bOk = true;
+
     if (mounter.IsMounted("/Engine"))
         bOk &= ScanMount(mounter, "/Engine");
 
@@ -38,19 +39,22 @@ bool AssetRegistrySubsystem::ScanMount(const VirtualPathMounter& mounter, const 
         return false;
 
     const std::string& physicalRoot = mount->physicalRoot;
+
     if (!UFileSystem::DirectoryExists(physicalRoot))
     {
         std::cerr << "[AssetRegistry]: Mounted root does not exist: " << physicalRoot << "\n";
         return false;
     }
 
-    const std::vector<std::string> files = UFileSystem::ListFiles(physicalRoot, "jasset", true, true);
+    const std::vector<std::string> files =
+        UFileSystem::ListFiles(physicalRoot, "jasset", true, true);
 
     bool bAllGood = true;
 
     for (const std::string& physicalPath : files)
     {
         FAssetHeader header;
+
         if (!AssetFile::ReadHeader(physicalPath, header))
         {
             std::cerr << "[AssetRegistry]: Failed to read asset header: " << physicalPath << "\n";
@@ -59,6 +63,7 @@ bool AssetRegistrySubsystem::ScanMount(const VirtualPathMounter& mounter, const 
         }
 
         std::string virtualPath;
+
         if (!mounter.ResolvePhysicalToVirtual(physicalPath, virtualPath))
         {
             std::cerr << "[AssetRegistry]: Failed to convert physical path to virtual path: "
@@ -68,6 +73,7 @@ bool AssetRegistrySubsystem::ScanMount(const VirtualPathMounter& mounter, const 
         }
 
         FAssetRecord record;
+
         record.assetID = header.assetID;
         record.assetName = header.assetName;
         record.assetType = header.assetType;
@@ -80,6 +86,8 @@ bool AssetRegistrySubsystem::ScanMount(const VirtualPathMounter& mounter, const 
         record.importerName = header.importerName;
         record.dependencyAssetIDs = header.dependencyAssetIDs;
 
+        DetermineDomainAndVisibility(record, virtualRoot);
+
         if (!RegisterAsset(std::move(record)))
         {
             std::cerr << "[AssetRegistry]: Duplicate or invalid asset registration for: "
@@ -90,6 +98,27 @@ bool AssetRegistrySubsystem::ScanMount(const VirtualPathMounter& mounter, const 
     }
 
     return bAllGood;
+}
+
+void AssetRegistrySubsystem::DetermineDomainAndVisibility( // TODO: maybe for future the header of assets can override the visibility
+    FAssetRecord& record,
+    const std::string& virtualRoot) const
+{
+    if (virtualRoot == "/Engine")
+        record.domain = EAssetDomain::Engine;
+    else
+        record.domain = EAssetDomain::Project;
+
+    if (record.domain == EAssetDomain::Project)
+    {
+        record.visibility = EAssetVisibility::Project;
+        return;
+    }
+
+    if (record.virtualPath.starts_with("/Engine/Editor"))
+        record.visibility = EAssetVisibility::EnginePrivate;
+    else
+        record.visibility = EAssetVisibility::EnginePublic;
 }
 
 const FAssetRecord* AssetRegistrySubsystem::FindByAssetID(const std::string& assetID) const
@@ -119,7 +148,23 @@ const FAssetRecord* AssetRegistrySubsystem::FindByPhysicalPath(const std::string
     return &m_Assets[it->second];
 }
 
-std::vector<const FAssetRecord*> AssetRegistrySubsystem::GetAssetsByPrefix(const std::string& virtualPrefix) const
+std::vector<const FAssetRecord*> AssetRegistrySubsystem::GetUserVisibleAssets() const
+{
+    std::vector<const FAssetRecord*> results;
+
+    for (const FAssetRecord& record : m_Assets)
+    {
+        if (record.visibility == EAssetVisibility::EnginePrivate)
+            continue;
+
+        results.push_back(&record);
+    }
+
+    return results;
+}
+
+std::vector<const FAssetRecord*> AssetRegistrySubsystem::GetAssetsByPrefix(
+    const std::string& virtualPrefix) const
 {
     std::vector<const FAssetRecord*> results;
 
@@ -127,6 +172,65 @@ std::vector<const FAssetRecord*> AssetRegistrySubsystem::GetAssetsByPrefix(const
     {
         if (record.virtualPath.starts_with(virtualPrefix))
             results.push_back(&record);
+    }
+
+    return results;
+}
+
+std::vector<const FAssetRecord*> AssetRegistrySubsystem::GetAssetsByType(EAssetType type) const
+{
+    std::vector<const FAssetRecord*> results;
+
+    for (const FAssetRecord& record : m_Assets)
+    {
+        if (record.assetType == type)
+            results.push_back(&record);
+    }
+
+    return results;
+}
+
+std::vector<const FAssetRecord*> AssetRegistrySubsystem::GetAssetsByDomain(EAssetDomain domain) const
+{
+    std::vector<const FAssetRecord*> results;
+
+    for (const FAssetRecord& record : m_Assets)
+    {
+        if (record.domain == domain)
+            results.push_back(&record);
+    }
+
+    return results;
+}
+
+std::vector<const FAssetRecord*> AssetRegistrySubsystem::GetAssetsByVisibility(
+    EAssetVisibility visibility) const
+{
+    std::vector<const FAssetRecord*> results;
+
+    for (const FAssetRecord& record : m_Assets)
+    {
+        if (record.visibility == visibility)
+            results.push_back(&record);
+    }
+
+    return results;
+}
+
+std::vector<const FAssetRecord*> AssetRegistrySubsystem::GetDependencies(
+    const std::string& assetID) const
+{
+    std::vector<const FAssetRecord*> results;
+
+    const FAssetRecord* asset = FindByAssetID(assetID);
+    if (!asset)
+        return results;
+
+    for (const std::string& depID : asset->dependencyAssetIDs)
+    {
+        const FAssetRecord* dep = FindByAssetID(depID);
+        if (dep)
+            results.push_back(dep);
     }
 
     return results;

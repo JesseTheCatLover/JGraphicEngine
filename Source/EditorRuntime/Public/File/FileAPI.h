@@ -1,6 +1,8 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include "Assets/AssetTypes.h"
+#include "Assets/EAssetDomain.h"
 #include "Rendering/RHandles.h"
 
 struct FAssetRecord;
@@ -24,4 +26,11 @@ public:
 
     [[nodiscard]] const std::vector<FAssetRecord>* GetAllAssets() const;
     [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByPrefix(const std::string& virtualPrefix) const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetUserVisibleAssets() const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByType(EAssetType type) const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByDomain(EAssetDomain domain) const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByVisibility(EAssetVisibility visibility) const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetDependencies(const std::string& assetID) const;
+    [[nodiscard]] const FAssetRecord* FindByAssetID(const std::string& assetID) const;
+    [[nodiscard]] const FAssetRecord* FindByVirtualPath(const std::string& virtualPath) const;
 };
