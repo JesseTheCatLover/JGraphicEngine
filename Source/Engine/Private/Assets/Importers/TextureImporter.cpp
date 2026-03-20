@@ -11,36 +11,11 @@
 #include "Assets/AssetFile.h"
 #include "Assets/FAssetHeader.h"
 #include "Assets/Payloads/FTexturePayloadHeader.h"
-#include "Core/Project/VirtualPathMounter.h"
-#include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 #include "Utilities/UUUID.h"
 
 namespace
 {
-    static std::string ToLowerCopy(std::string s)
-    {
-        std::transform(s.begin(), s.end(), s.begin(),
-            [](unsigned char c)
-            {
-                return static_cast<char>(std::tolower(c));
-            });
-        return s;
-    }
-
-    static bool IsSupportedImportRoot(const std::string& virtualPath)
-    {
-        return virtualPath.rfind("/Project", 0) == 0
-            || virtualPath.rfind("/Engine", 0) == 0;
-    }
-
-    static std::string MakeDestinationVirtualPath(const std::string& destinationVirtualFolder,
-                                                  const std::string& sourceFilePath)
-    {
-        const std::string sourceStem = UPath::GetFileName(sourceFilePath, /*bIncludeExtension*/false);
-        return UPath::Join(destinationVirtualFolder, sourceStem + ".jasset");
-    }
-
     static std::vector<uint8_t> BuildTexturePayloadRGBA8(int width,
                                                          int height,
                                                          int channels,
@@ -73,92 +48,10 @@ std::vector<std::string> TextureImporter::GetSupportedSourceExtensions() const
     return { "png", "jpg", "jpeg" };
 }
 
-bool TextureImporter::Import(const FAssetImportRequest& request,
-                             const VirtualPathMounter& pathMounter,
-                             FAssetImportResult& outResult) const
+bool TextureImporter::OnImport(const FAssetImportRequest &request, const VirtualPathMounter &pathMounter,
+    const std::string &destinationVirtualPath, const std::string &destinationPhysicalPath,
+    FAssetImportResult &outResult) const
 {
-    outResult = {};
-
-    // ------------------------------------------------------------
-    // Validate source
-    // ------------------------------------------------------------
-    if (request.sourceFilePath.empty())
-    {
-        outResult.errors.emplace_back("Source file path is empty.");
-        return false;
-    }
-
-    if (!UFileSystem::FileExists(request.sourceFilePath))
-    {
-        outResult.errors.push_back("Source file does not exist: " + request.sourceFilePath);
-        return false;
-    }
-
-    // ------------------------------------------------------------
-    // Validate destination folder
-    // ------------------------------------------------------------
-    if (request.destinationVirtualFolder.empty())
-    {
-        outResult.errors.emplace_back("Destination virtual folder is empty.");
-        return false;
-    }
-
-    if (!IsSupportedImportRoot(request.destinationVirtualFolder))
-    {
-        outResult.errors.emplace_back(
-            "Destination virtual folder must be under a supported mounted root such as /Project or /Engine."
-        );
-        return false;
-    }
-
-    const std::string sourceExt = ToLowerCopy(UPath::GetExtension(request.sourceFilePath));
-    const auto supported = GetSupportedSourceExtensions();
-
-    bool bSupported = false;
-    for (const std::string& ext : supported)
-    {
-        if (ToLowerCopy(ext) == sourceExt)
-        {
-            bSupported = true;
-            break;
-        }
-    }
-
-    if (!bSupported)
-    {
-        outResult.errors.emplace_back("Unsupported source texture extension: " + sourceExt);
-        return false;
-    }
-
-    // ------------------------------------------------------------
-    // Build destination paths
-    // ------------------------------------------------------------
-    const std::string destinationVirtualPath =
-        MakeDestinationVirtualPath(request.destinationVirtualFolder, request.sourceFilePath);
-
-    std::string destinationPhysicalPath;
-    if (!pathMounter.ResolveVirtualToPhysical(destinationVirtualPath, destinationPhysicalPath))
-    {
-        outResult.errors.emplace_back(
-            "Failed to resolve destination virtual path to a physical path: " + destinationVirtualPath
-        );
-        return false;
-    }
-
-    if (UFileSystem::FileExists(destinationPhysicalPath) && !request.bOverwrite)
-    {
-        outResult.errors.emplace_back(
-            "Destination asset already exists and overwrite is disabled: " + destinationVirtualPath
-        );
-        return false;
-    }
-
-    if (!UFileSystem::CreateDirectory(UPath::GetParent(destinationPhysicalPath)))
-    {
-        outResult.errors.emplace_back("Failed to create destination folder: " + UPath::GetParent(destinationPhysicalPath));
-        return false;
-    }
-
     // ------------------------------------------------------------
     // Load source image
     // ------------------------------------------------------------
@@ -168,12 +61,8 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
     int height = 0;
     int sourceChannels = 0;
 
-    unsigned char* pixels = stbi_load(
-        request.sourceFilePath.c_str(),
-        &width,
-        &height,
-        &sourceChannels,
-        4 // force RGBA8
+    unsigned char* pixels = stbi_load(request.sourceFilePath.c_str(), &width, &height,
+        &sourceChannels, 4 // force RGBA8
     );
 
     if (!pixels)
@@ -201,9 +90,9 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
     }
 
     // ------------------------------------------------------------
-    // Build binary payload
+    // Build payload
     // ------------------------------------------------------------
-    const bool bSRGB = true; // default for imported color textures in v1
+    const bool bSRGB = true;
 
     std::vector<uint8_t> payloadBytes =
         BuildTexturePayloadRGBA8(width, height, 4, bSRGB, pixels, pixelByteCount);
@@ -216,7 +105,7 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
     // ------------------------------------------------------------
     FAssetHeader header{};
     header.assetID = UUUID::GenerateUUID();
-    header.assetName = UPath::GetFileName(request.sourceFilePath, /*bIncludeExtension*/false);
+    header.assetName = UPath::GetFileName(request.sourceFilePath, false);
     header.assetType = EAssetType::Texture2D;
     header.encoding = EAssetEncoding::Binary;
     header.containerVersion = FAssetHeader::CurrentContainerVersion;
@@ -226,7 +115,7 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
     header.dependencyAssetIDs.clear();
 
     // ------------------------------------------------------------
-    // Write asset container (.jasset)
+    // Write asset
     // ------------------------------------------------------------
     if (!AssetFile::WriteBinaryAsset(destinationPhysicalPath, header, payloadBytes))
     {
@@ -245,5 +134,6 @@ bool TextureImporter::Import(const FAssetImportRequest& request,
 
     outResult.createdAssets.push_back(std::move(created));
     outResult.bSuccess = true;
+
     return true;
 }
