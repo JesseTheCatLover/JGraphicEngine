@@ -56,7 +56,7 @@ RTextureHandle EditorFileAPI::LoadEditorTextureFromFile(const char* virtualFileP
     const std::string key = "EditorTex:" + record->assetID;
 
     Texture2DResource::FDesc desc;
-    desc.assetId = record->assetID;
+    desc.assetID = record->assetID;
     desc.bSRGB = bSRGB;
 
     auto res = m_Resource.Load<Texture2DResource>(key.c_str(), desc);

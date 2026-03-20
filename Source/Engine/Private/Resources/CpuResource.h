@@ -1,11 +1,22 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
-#include "ICpuResource.h"
+#include <string>
+#include <vector>
+#include <cstdint>
 
-class CpuResource : public ICpuResource
+#include "ICpuResource.h"
+#include "Assets/FAssetHeader.h"
+
+class AssetRegistrySubsystem;
+
+class CpuResource : public virtual ICpuResource
 {
-public:
-    CpuResource() = default;
-    ~CpuResource() override = default;
+protected:
+    CpuResource(AssetRegistrySubsystem* registry)
+        : m_AssetRegistry(registry) {}
+
+    AssetRegistrySubsystem* m_AssetRegistry = nullptr;
+
+    bool LoadAssetBinary(const std::string& assetID, FAssetHeader& outHeader, std::vector<uint8_t>& outPayload);
 };

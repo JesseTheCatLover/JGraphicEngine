@@ -6,6 +6,7 @@
 #include <cctype>
 
 #include "Assets/Importers/IAssetImporter.h"
+#include "Assets/Importers/TextureImporter.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
@@ -22,6 +23,11 @@ namespace
     }
 }
 
+void AssetImportSubsystem::RegisterEssentialImporters()
+{
+    RegisterImporter(MakeUnique<TextureImporter>());
+}
+
 void AssetImportSubsystem::RegisterImporter(TUniquePtr<IAssetImporter> importer)
 {
     if (!importer)
@@ -33,6 +39,11 @@ void AssetImportSubsystem::RegisterImporter(TUniquePtr<IAssetImporter> importer)
 void AssetImportSubsystem::ClearImporters()
 {
     m_Importers.clear();
+}
+
+void AssetImportSubsystem::Shutdown()
+{
+    ClearImporters();
 }
 
 bool AssetImportSubsystem::Import(const FAssetImportRequest& request,

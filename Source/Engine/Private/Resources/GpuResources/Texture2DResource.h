@@ -15,7 +15,7 @@ class Texture2DResource : public GpuResource
 public:
     struct FDesc
     {
-        std::string assetId;  // Asset UUID registered in AssetRegistrySubsystem (.jasset)
+        std::string assetID;
         bool bSRGB = true;
         bool bGenerateMipmaps = true;
         ETexWrap wrapS = ETexWrap::Repeat;
@@ -25,22 +25,21 @@ public:
     };
 
 public:
-    explicit Texture2DResource(FDesc desc, AssetRegistrySubsystem* assetRegistry);
+    explicit Texture2DResource(FDesc desc, AssetRegistrySubsystem* registry);
 
-    void OnCreateGpuResources() override;
+    bool OnCreateGpuResources() override;
     void OnDestroyGpuResources() override;
 
     [[nodiscard]] RTextureHandle GetTexture() const { return m_Texture; }
-    [[nodiscard]] const std::string& GetAssetId() const { return m_Desc.assetId; }
+    [[nodiscard]] const std::string& GetAssetID() const { return m_Desc.assetID; }
 
 private:
     void LoadCPU();
-    void UploadGPU();
+    bool UploadGPU();
     void ReleaseCPU();
 
 private:
     FDesc m_Desc;
-    AssetRegistrySubsystem* m_AssetRegistry = nullptr;
 
     // CPU staging
     int m_W = 0;
@@ -48,6 +47,6 @@ private:
     std::vector<unsigned char> m_Pixels;
     bool m_CpuReady = false;
 
-    // GPU resource handle
+    // GPU resource
     RTextureHandle m_Texture{};
 };

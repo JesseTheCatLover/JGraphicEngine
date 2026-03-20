@@ -22,6 +22,7 @@ public:
 
 public:
     void Clear();
+    void Shutdown();
 
     /**
      * @brief Scan all mounted roots and rebuild the registry from .jasset headers.

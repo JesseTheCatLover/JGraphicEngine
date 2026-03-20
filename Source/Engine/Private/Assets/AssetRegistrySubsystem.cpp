@@ -17,6 +17,11 @@ void AssetRegistrySubsystem::Clear()
     m_ByPhysicalPath.clear();
 }
 
+void AssetRegistrySubsystem::Shutdown()
+{
+    Clear();
+}
+
 bool AssetRegistrySubsystem::Rebuild(const VirtualPathMounter& mounter)
 {
     Clear();

@@ -28,7 +28,7 @@ public:
     explicit ModelResource(std::string sourcePath, AssetRegistrySubsystem* registry);
 
     // GpuResource
-    void OnCreateGpuResources() override;
+    bool OnCreateGpuResources() override;
     void OnDestroyGpuResources() override;
 
     struct FSubmeshGPU

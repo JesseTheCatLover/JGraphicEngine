@@ -75,7 +75,9 @@ namespace
 // ====== construction ======
 
 ModelResource::ModelResource(std::string sourcePath, AssetRegistrySubsystem* registry)
-    : m_Source(std::move(sourcePath)),
+    :
+    GpuResource(registry),
+    m_Source(std::move(sourcePath)),
     m_AssetRegistry(registry)
 {
     stbi_set_flip_vertically_on_load(true);
@@ -83,7 +85,7 @@ ModelResource::ModelResource(std::string sourcePath, AssetRegistrySubsystem* reg
 
 // ====== GpuResource hooks ======
 
-void ModelResource::OnCreateGpuResources()
+bool ModelResource::OnCreateGpuResources()
 {
     if (!m_CpuReady)
         LoadCPU();

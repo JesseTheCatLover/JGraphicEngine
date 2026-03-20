@@ -17,8 +17,10 @@ public:
     AssetImportSubsystem() = default;
     ~AssetImportSubsystem() = default;
 
+    void RegisterEssentialImporters();
     void RegisterImporter(TUniquePtr<IAssetImporter> importer);
     void ClearImporters();
+    void Shutdown();
 
     bool Import(const FAssetImportRequest& request,
                 const VirtualPathMounter& pathMounter,

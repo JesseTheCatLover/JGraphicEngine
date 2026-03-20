@@ -1,16 +1,19 @@
 //  Copyright 2025 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include "CpuResource.h"
 #include "IGpuResource.h"
 
-class GpuResource : public IGpuResource
+class GpuResource : public CpuResource, public IGpuResource
 {
 private:
     IRenderDevice* m_Device = nullptr;
     bool m_GpuCacheCreated = false;
 
 public:
-    GpuResource() = default;
+    explicit GpuResource(AssetRegistrySubsystem* registry)
+        : CpuResource(registry)
+    {}
     ~GpuResource() override { /* NOTE: Manager should call DestroyGpuResources() before destructor */ }
 
     // IGpuResource
@@ -19,16 +22,23 @@ public:
 
     void CreateGpuResources(IRenderDevice* device) final
     {
-        if (!m_GpuCacheCreated) {
-            if (device) m_Device = device;
-            OnCreateGpuResources(); // Implemented by derived
+        if (m_GpuCacheCreated)
+            return;
+
+        if (device)
+            m_Device = device;
+
+        if (!m_Device)
+            return;
+
+        if (OnCreateGpuResources()) // Implement by derived
             m_GpuCacheCreated = true;
-        }
     }
-    void DestroyGpuResources(IRenderDevice* device) final
+
+    void DestroyGpuResources() final
     {
-        if (m_GpuCacheCreated) {
-            if (device) m_Device = device;
+        if (m_GpuCacheCreated)
+        {
             OnDestroyGpuResources(); // Implemented by derived
             m_GpuCacheCreated = false;
         }
@@ -36,7 +46,7 @@ public:
 
 protected:
     // Derived classes implement the actual work, using m_Device.
-    virtual void OnCreateGpuResources() = 0;
+    virtual bool OnCreateGpuResources() = 0;
     virtual void OnDestroyGpuResources() = 0;
 
     [[nodiscard]] IRenderDevice* GetDevice() const { return m_Device; }

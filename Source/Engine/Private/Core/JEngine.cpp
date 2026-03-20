@@ -12,7 +12,7 @@
 #if JENGINE_WITH_SOURCE_ASSETS
 #include "Assets/EngineSourceAssetBootstrapper.h"
 #endif
-#include "Assets/Importers/TextureImporter.h"
+#include "Assets/Importers/IAssetImporter.h"
 #include "Core/TServiceContainer.h"
 #include "Framework/InputManager.h"
 #include "Framework/PostProcessManager.h"
@@ -243,7 +243,7 @@ bool JEngine::InitializeSubsystems()
         std::cerr << "[JEngine]: Failed to initialize asset import subsystem" << std::endl;
         return false;
     }
-    m_AssetImportSubsystem->RegisterImporter(MakeUnique<TextureImporter>());
+    m_AssetImportSubsystem->RegisterEssentialImporters();
 
     m_ResourceSubSystem = TUniquePtr<ResourceSubsystem>(new ResourceSubsystem(m_AssetRegistrySubsystem.get()));
     if (!m_ResourceSubSystem)
@@ -476,6 +476,8 @@ void JEngine::Shutdown()
 {
     GEngine = nullptr;
     m_Renderer->Shutdown();
+    m_AssetImportSubsystem->Shutdown();
+    m_AssetRegistrySubsystem->Shutdown();
     m_ResourceSubSystem->Shutdown();
     m_InputSubSystem->Shutdown();
     m_PlatformSurface->Shutdown();

@@ -96,22 +96,22 @@ public:
      *
      * @tparam T Resource type.
      * @tparam Args Constructor argument types.
-     * @param assetId Unique asset UUID string.
+     * @param assetID Unique asset UUID string.
      * @param args Forwarded constructor arguments (typically asset-specific info).
      */
     template<class T, class... Args>
-    TSharedPtr<T> Load(const JAssetID &assetId, Args &&... args)
+    TSharedPtr<T> Load(const JAssetID &assetID, Args &&... args)
     {
         static_assert(std::is_base_of<ICpuResource, T>::value, "T must derive from ICpuResource");
 
         // Fast path read
         {
             std::shared_lock rlock(m_Mutex);
-            if (auto it = m_ByAsset.find(assetId); it != m_ByAsset.end())
+            if (auto it = m_ByAsset.find(assetID); it != m_ByAsset.end())
             {
                 if (it->second.type != std::type_index(typeid(T)))
                 {
-                    std::cerr << "[ResourceSubsystem]: Type mismatch for asset '" << assetId << "'\n";
+                    std::cerr << "[ResourceSubsystem]: Type mismatch for asset '" << assetID << "'\n";
                     return nullptr;
                 }
 
@@ -142,18 +142,19 @@ public:
         std::unique_lock wlock(m_Mutex);
 
         // Double check in case another thread inserted while we were creating
-        if (auto it = m_ByAsset.find(assetId); it != m_ByAsset.end())
+        if (auto it = m_ByAsset.find(assetID); it != m_ByAsset.end())
         {
             if (it->second.type != std::type_index(typeid(T)))
             {
-                std::cerr << "[ResourceSubsystem]: Type mismatch for asset '" << assetId << "'\n";
+                std::cerr << "[ResourceSubsystem]: Type mismatch for asset '" << assetID << "'\n";
                 return nullptr;
             }
 
             return std::dynamic_pointer_cast<T>(it->second.ptr);
         }
 
-        m_ByAsset[assetId] = Entry{createdResource, std::type_index(typeid(T))};
+        m_ByAsset[assetID] = Entry{
+            std::static_pointer_cast<ICpuResource>(createdResource), std::type_index(typeid(T))};
 
         return createdResource;
     }
@@ -223,11 +224,6 @@ private:
     TSharedPtr<T> CreateInstance(std::true_type /* has (IRenderDevice*, Args...) */, Args&&... args)
     {
         auto p = MakeShared<T>(m_Device, std::forward<Args>(args)..., m_AssetRegistry);
-
-        if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
-        {
-            gpu->SetRenderDevice(m_Device);
-        }
         return p;
     }
 
@@ -235,11 +231,6 @@ private:
     TSharedPtr<T> CreateInstance(std::false_type /* fallback */, Args&&... args)
     {
         auto p = MakeShared<T>(std::forward<Args>(args)..., m_AssetRegistry);
-
-        if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
-        {
-            gpu->SetRenderDevice(m_Device);
-        }
         return p;
     }
 };

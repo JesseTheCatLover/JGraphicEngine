@@ -8,7 +8,7 @@ void ResourceSubsystem::Shutdown()
     UnloadAll();
 }
 
-std::shared_ptr<ICpuResource> ResourceSubsystem::Get(const JAssetID& assetId) const
+TSharedPtr<ICpuResource> ResourceSubsystem::Get(const JAssetID& assetId) const
 {
     std::shared_lock rlock(m_Mutex);
     auto it = m_ByAsset.find(assetId);
@@ -40,7 +40,7 @@ bool ResourceSubsystem::Unload(const JAssetID& assetId)
     if (ptr && lastOwner && m_Device)
     {
         if (auto* gpuResource = dynamic_cast<IGpuResource*>(ptr.get()))
-            gpuResource->DestroyGpuResources(m_Device);
+            gpuResource->DestroyGpuResources();
     }
 
     return true;
@@ -71,7 +71,7 @@ size_t ResourceSubsystem::UnloadUnused()
     {
         if (m_Device)
             if (auto* gpuResource = dynamic_cast<IGpuResource*>(pointer.get()))
-                gpuResource->DestroyGpuResources(m_Device);
+                gpuResource->DestroyGpuResources();
     }
 
     return toDestroy.size();
@@ -93,7 +93,7 @@ void ResourceSubsystem::UnloadAll()
     {
         if (m_Device)
             if (auto* gpu = dynamic_cast<IGpuResource*>(p.get()))
-                gpu->DestroyGpuResources(m_Device);
+                gpu->DestroyGpuResources();
     }
 }
 

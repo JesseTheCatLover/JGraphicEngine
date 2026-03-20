@@ -13,7 +13,7 @@ public:
     virtual void CreateGpuResources(IRenderDevice* device) = 0;
 
     // Called before dropping the last engine reference. Should free GPU objects.
-    virtual void DestroyGpuResources(IRenderDevice* device) = 0;
+    virtual void DestroyGpuResources() = 0;
 
     // Wire the render device into the resource (before CreateGpuResources).
     virtual void SetRenderDevice(IRenderDevice* device) = 0;
