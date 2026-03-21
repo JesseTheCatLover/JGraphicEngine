@@ -29,8 +29,8 @@ public:
     [[nodiscard]] bool IsMounted(const std::string& virtualRoot) const;
     [[nodiscard]] const FVirtualMountPoint* FindMount(const std::string& virtualRoot) const;
 
-    [[nodiscard]] bool ResolveVirtualToPhysical(const std::string& virtualPath, std::string& outPhysicalPath) const;
-    [[nodiscard]] bool ResolvePhysicalToVirtual(const std::string& physicalPath, std::string& outVirtualPath) const;
+    bool ResolveVirtualToPhysical(const std::string& virtualPath, std::string& outPhysicalPath) const;
+    bool ResolvePhysicalToVirtual(const std::string& physicalPath, std::string& outVirtualPath) const;
 
     [[nodiscard]] const std::vector<FVirtualMountPoint>& GetMounts() const { return m_Mounts; }
 

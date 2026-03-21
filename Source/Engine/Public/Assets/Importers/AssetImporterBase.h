@@ -15,6 +15,7 @@ protected:
         const std::string& destinationPhysicalPath, FAssetImportResult& outResult) const = 0;
 
 private:
+    // Helpers
     bool ValidateSource(const FAssetImportRequest& request, FAssetImportResult& outResult) const;
 
     bool ValidateDestination(const FAssetImportRequest& request, FAssetImportResult& outResult) const;

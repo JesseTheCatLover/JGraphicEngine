@@ -56,8 +56,8 @@ public:
     /**
      * @brief Import an asset into the project.
      *
-     * The importer determines the correct importer plugin based on the
-     * source file and writes the resulting .jasset container.
+     * The importer determines the correct importer plugin, based on the
+     * source file and writes the resulting ".jasset" file.
      */
     bool ImportAsset(
         const FAssetImportRequest& request,
