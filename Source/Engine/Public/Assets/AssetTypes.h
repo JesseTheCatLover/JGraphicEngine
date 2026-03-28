@@ -10,6 +10,7 @@ enum class EAssetType : uint16_t
     Unknown = 0,
     Texture2D,
     StaticMesh,
+    SkeletalMesh,
     Material,
     AudioClip,
     Scene,
@@ -26,13 +27,14 @@ inline constexpr std::string_view ToString(EAssetType type)
 {
     switch (type)
     {
-        case EAssetType::Texture2D:  return "Texture2D";
-        case EAssetType::StaticMesh: return "StaticMesh";
-        case EAssetType::Material:   return "Material";
-        case EAssetType::AudioClip:  return "AudioClip";
-        case EAssetType::Scene:      return "Scene";
-        case EAssetType::Schematic:  return "Schematic";
-        default:                     return "Unknown";
+        case EAssetType::Texture2D:    return "Texture2D";
+        case EAssetType::StaticMesh:   return "StaticMesh";
+        case EAssetType::SkeletalMesh: return "SkeletalMesh";
+        case EAssetType::Material:     return "Material";
+        case EAssetType::AudioClip:    return "AudioClip";
+        case EAssetType::Scene:        return "Scene";
+        case EAssetType::Schematic:    return "Schematic";
+        default:                       return "Unknown";
     }
 }
 
@@ -48,12 +50,13 @@ inline constexpr std::string_view ToString(EAssetEncoding encoding)
 
 inline EAssetType AssetTypeFromString(const std::string& value)
 {
-    if (value == "Texture2D")  return EAssetType::Texture2D;
-    if (value == "StaticMesh") return EAssetType::StaticMesh;
-    if (value == "Material")   return EAssetType::Material;
-    if (value == "AudioClip")  return EAssetType::AudioClip;
-    if (value == "Scene")      return EAssetType::Scene;
-    if (value == "Schematic")     return EAssetType::Schematic;
+    if (value == "Texture2D")    return EAssetType::Texture2D;
+    if (value == "StaticMesh")   return EAssetType::StaticMesh;
+    if (value == "SkeletalMesh") return EAssetType::SkeletalMesh;
+    if (value == "Material")     return EAssetType::Material;
+    if (value == "AudioClip")    return EAssetType::AudioClip;
+    if (value == "Scene")        return EAssetType::Scene;
+    if (value == "Schematic")    return EAssetType::Schematic;
     return EAssetType::Unknown;
 }
 

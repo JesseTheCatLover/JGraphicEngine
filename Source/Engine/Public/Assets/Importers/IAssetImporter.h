@@ -25,8 +25,8 @@ public:
     /** @return Human-readable importer name, e.g. "TextureImporter". */
     [[nodiscard]] virtual std::string GetImporterName() const = 0;
 
-    /** @return Primary asset type produced by this importer. */
-    [[nodiscard]] virtual EAssetType GetOutputAssetType() const = 0;
+    /** @return Primary asset types produced by this importer. */
+    [[nodiscard]] virtual std::vector<EAssetType> GetOutputAssetTypes() const = 0;
 
     /** @return Supported source extensions without dot, e.g. png, jpg. */
     [[nodiscard]] virtual std::vector<std::string> GetSupportedSourceExtensions() const = 0;

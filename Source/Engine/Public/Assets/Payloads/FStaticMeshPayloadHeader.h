@@ -32,6 +32,6 @@ struct FModelSubMesh
 
 struct FMaterialSlot
 {
-    uint32_t nameLength = 0;
-    uint32_t baseColorTextureLength = 0;
+    uint32_t nameLength;
+    uint32_t materialAssetIDLength;
 };

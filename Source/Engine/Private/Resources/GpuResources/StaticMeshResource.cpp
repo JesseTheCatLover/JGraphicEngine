@@ -128,7 +128,7 @@ void StaticMeshResource::LoadCPU()
     }
     offset += static_cast<size_t>(subMeshTableSize);
 
-    // 5) Read material slots: FMaterialSlot headers + strings
+    // 5) Read material slots
     const uint32_t materialSlotCount = smHeader->materialSlotCount;
     m_MeshCPU.MaterialSlots.clear();
     m_MeshCPU.MaterialSlots.reserve(materialSlotCount);
@@ -143,10 +143,10 @@ void StaticMeshResource::LoadCPU()
             reinterpret_cast<const FMaterialSlot*>(base + offset);
         offset += sizeof(FMaterialSlot);
 
-        const uint32_t nameLen    = slotHeader->nameLength;
-        const uint32_t texPathLen = slotHeader->baseColorTextureLength;
+        const uint32_t nameLen = slotHeader->nameLength;
+        const uint32_t assetIDLen = slotHeader->materialAssetIDLength;
 
-        // 5.2) Name bytes
+        // 5.2) Name
         if (!ensureAvailable(nameLen))
             return;
 
@@ -155,29 +155,29 @@ void StaticMeshResource::LoadCPU()
         {
             name.assign(
                 reinterpret_cast<const char*>(base + offset),
-                reinterpret_cast<const char*>(base + offset) + nameLen
+                nameLen
             );
         }
         offset += nameLen;
 
-        // 5.3) Texture path / asset ID bytes
-        if (!ensureAvailable(texPathLen))
+        // 5.3) Material Asset ID
+        if (!ensureAvailable(assetIDLen))
             return;
 
-        std::string baseColorTex;
-        if (texPathLen > 0)
+        std::string matID;
+        if (assetIDLen > 0)
         {
-            baseColorTex.assign(
+            matID.assign(
                 reinterpret_cast<const char*>(base + offset),
-                reinterpret_cast<const char*>(base + offset) + texPathLen
+                assetIDLen
             );
         }
-        offset += texPathLen;
+        offset += assetIDLen;
 
-        // 5.4) Store in CPU structure
+        // Store CPU structure
         FMaterialSlotCPU slotCPU{};
-        slotCPU.name             = std::move(name);
-        slotCPU.baseColorTexture = std::move(baseColorTex);
+        slotCPU.name           = std::move(name);
+        slotCPU.materialAssetID = std::move(matID);
 
         m_MeshCPU.MaterialSlots.push_back(std::move(slotCPU));
     }
@@ -229,20 +229,6 @@ void StaticMeshResource::UploadGPU()
 
     // 3) Basic metadata
     meshDesc.vertexStride = static_cast<Rint>(m_MeshCPU.VertexStride);
-
-    // NOTE: attributes layout is engine-specific. For now you can either:
-    //   - Leave attributes empty and have backend assume a default layout, or
-    //   - Fill it based on your known vertex format.
-    // Example (position-only, tightly packed vec3):
-    //
-    // FVertexAttribute posAttrib{};
-    // posAttrib.location   = 0;
-    // posAttrib.offset     = 0;
-    // posAttrib.size       = 3;          // vec3
-    // posAttrib.type       = /* GL_FLOAT or your enum for float */;
-    // posAttrib.normalized = false;
-    // meshDesc.attributes.push_back(posAttrib);
-
     meshDesc.bHasNormals  = m_MeshCPU.bHasNormals;
     meshDesc.bHasTangents = m_MeshCPU.bHasTangents;
     meshDesc.bHasUVs      = m_MeshCPU.bHasUVs;
@@ -255,9 +241,9 @@ void StaticMeshResource::UploadGPU()
     {
         FSubmeshGPU smGPU{};
         smGPU.mesh              = sharedMeshHandle;
+        smGPU.firstIndex        = smCPU.firstIndex;
+        smGPU.indexCount        = smCPU.indexCount;
         smGPU.materialSlotIndex = smCPU.materialSlotIndex;
-        // NOTE: the draw range (firstIndex/indexCount) will be used by
-        // whoever submits the draw calls, not stored here.
 
         m_SubmeshesGPU.push_back(smGPU);
     }

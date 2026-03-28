@@ -6,7 +6,7 @@
 #include <cctype>
 
 #include "Assets/Importers/IAssetImporter.h"
-#include "Assets/Importers/StaticMeshImporter.h"
+#include "Assets/Importers/ModelImporter.h"
 #include "Assets/Importers/TextureImporter.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
@@ -27,7 +27,7 @@ namespace
 void AssetImportSubsystem::RegisterEssentialImporters()
 {
     RegisterImporter(MakeUnique<TextureImporter>());
-    RegisterImporter(MakeUnique<StaticMeshImporter>());
+    RegisterImporter(MakeUnique<ModelImporter>());
 }
 
 void AssetImportSubsystem::RegisterImporter(TUniquePtr<IAssetImporter> importer)

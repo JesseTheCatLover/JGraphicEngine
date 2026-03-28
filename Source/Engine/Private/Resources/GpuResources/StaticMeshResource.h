@@ -17,7 +17,9 @@ public:
     struct FSubmeshGPU
     {
         RMeshHandle mesh{};
-        uint32_t    materialSlotIndex = 0; // index into CPU material slots
+        uint32_t firstIndex = 0;
+        uint32_t indexCount = 0;
+        uint32_t materialSlotIndex = 0; // index into CPU material slots
     };
 
     struct FDesc
@@ -38,7 +40,7 @@ public:
     struct FMaterialSlotCPU
     {
         std::string name;
-        std::string baseColorTexture;
+        std::string materialAssetID;
     };
 
     struct FSubmeshCPU

@@ -20,6 +20,9 @@ public:
       FAssetImportResult& outResult) const override;
 
     [[nodiscard]] std::string GetImporterName() const override { return "TextureImporter"; }
-    [[nodiscard]] EAssetType GetOutputAssetType() const override { return EAssetType::Texture2D; }
+    [[nodiscard]] std::vector<EAssetType> GetOutputAssetTypes() const override
+    {
+        return {EAssetType::Texture2D};
+    }
     [[nodiscard]] std::vector<std::string> GetSupportedSourceExtensions() const override;
 };
