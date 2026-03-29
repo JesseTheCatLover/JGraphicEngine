@@ -41,7 +41,8 @@ enum class REPropKind : uint8_t
     Value,           // serialize via value IO (by typeName)
     ReflectedStruct, // recursively serialize using reflectedType
     Enum,            // serialize via enum info (enumType)
-    ObjectPtr        // serialize object reference (UUID/type/etc) using objectType
+    ObjectPtr,       // serialize object reference (UUID/type/etc) using objectType
+    Array
 };
 
 // Optional hooks (future-proof; can be null in MVP)
@@ -66,6 +67,14 @@ struct REEnum
     std::string underlyingType; // raw, optional
     REMetaList meta;
     std::vector<REEnumValue> values;
+};
+
+struct REArrayAccessor
+{
+    std::function<size_t(void*)> size;
+    std::function<void(void*, size_t)> resize;
+    std::function<void*(void*, size_t)> get;
+    std::function<const void*(const void*, size_t)> getConst;
 };
 
 struct REProperty
@@ -99,6 +108,18 @@ struct REProperty
 
     uint8_t valueSize = 0;   // bytes of the stored field (or underlying enum)
     bool bSigned = true; // optional, nice for correct sign-extension
+
+    // Array info
+    std::string elementTypeName;
+    REPropKind elementKind = REPropKind::Unknown;
+
+    const REType* elementReflectedType = nullptr;
+    const REEnum* elementEnumType = nullptr;
+    const REType* elementObjectType = nullptr;
+
+    REArrayAccessor array;
+
+    bool bIsArray = false;
 
     // Cached resolved view (editor/script/serialization). Computed on demand.
     mutable bool bResolvedMetaCached = false;
@@ -367,8 +388,10 @@ private:
     // internal helpers
     REType& EnsureTypeEntry(const std::type_index& idx);
     REType* FindTypeMutable(const std::type_index& idx);
+    static bool TryParseVector(const std::string& raw, std::string& outElement);
     void ResolvePropertyKinds(REType& owner);
     void ResolveEnumNumericValues();
+    static std::string NormalizeTypeName(std::string s);
 
     // We store REType in unique_ptr to make returned const REType* stable forever.
     std::unordered_map<std::type_index, std::unique_ptr<REType>> m_Types;

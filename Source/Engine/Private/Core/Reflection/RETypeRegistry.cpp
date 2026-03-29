@@ -191,10 +191,42 @@ REType* RETypeRegistry::FindTypeMutable(const std::type_index& idx)
     return (it != m_Types.end()) ? it->second.get() : nullptr;
 }
 
+bool RETypeRegistry::TryParseVector(const std::string &raw, std::string &outElement)
+{
+    std::string s = NormalizeTypeName(raw);
+
+    const std::string prefix = "std::vector<";
+    if (s.rfind(prefix, 0) != 0)
+        return false;
+
+    size_t start = prefix.size();
+    size_t depth = 1;
+
+    for (size_t i = start; i < s.size(); ++i)
+    {
+        char c = s[i];
+
+        if (c == '<')
+            depth++;
+        else if (c == '>')
+        {
+            depth--;
+
+            if (depth == 0)
+            {
+                outElement = s.substr(start, i - start);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void RETypeRegistry::BeginType(const char* name,
-                              RETypeKind kind,
-                              const std::type_info& selfType,
-                              const std::type_info& baseType)
+                               RETypeKind kind,
+                               const std::type_info& selfType,
+                               const std::type_info& baseType)
 {
     const auto selfIdx = std::type_index(selfType);
     const auto baseIdx = std::type_index(baseType);
@@ -497,7 +529,7 @@ static void ReplaceAll(std::string& s, const std::string& from, const std::strin
     }
 }
 
-static std::string NormalizeTypeName(std::string s)
+std::string RETypeRegistry::NormalizeTypeName(std::string s)
 {
     // 1) collapse whitespace
     s = Trim(s);
@@ -614,7 +646,70 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
         const std::string raw = p.typeName;
         const std::string norm = NormalizeTypeName(raw);
 
-        // 1) Enum by name
+        // 1) Array (std::vector support)
+        {
+            std::string element;
+            if (TryParseVector(raw, element))
+            {
+                p.kind = REPropKind::Array;
+                p.bIsArray = true;
+
+                p.elementTypeName = NormalizeTypeName(element);
+                p.elementKind = REPropKind::Unknown;
+                p.elementReflectedType = nullptr;
+                p.elementEnumType = nullptr;
+                p.elementObjectType = nullptr;
+
+                const std::string elemNorm = NormalizeTypeName(element);
+
+                // Enum element
+                if (const REEnum* e = FindEnumByName(elemNorm))
+                {
+                    p.elementKind = REPropKind::Enum;
+                    p.elementEnumType = e;
+                    continue;
+                }
+
+                // Reflected struct/class element
+                if (const REType* rt = FindTypeByName(elemNorm))
+                {
+                    if (rt->kind == RETypeKind::Struct)
+                    {
+                        p.elementKind = REPropKind::ReflectedStruct;
+                        p.elementReflectedType = rt;
+                    }
+                    else
+                    {
+                        p.elementKind = REPropKind::Value;
+                        p.elementReflectedType = rt;
+                    }
+                    continue;
+                }
+
+                // Object pointer element
+                if (TypeLooksLikePointer(element))
+                {
+                    std::string base = StripPointerStars(StripSpaces(element));
+                    base = NormalizeTypeName(base);
+
+                    if (const REType* objT = FindTypeByName(base))
+                    {
+                        if (objT->kind == RETypeKind::Class)
+                        {
+                            p.elementKind = REPropKind::ObjectPtr;
+                            p.elementObjectType = objT;
+                            continue;
+                        }
+                    }
+                }
+
+                // Default element
+                p.elementKind = REPropKind::Value;
+                continue;
+            }
+        }
+
+        // 2) Enum by name
         if (const REEnum* e = FindEnumByName(norm))
         {
             p.kind = REPropKind::Enum;
@@ -622,7 +717,7 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
             continue;
         }
 
-        // 2) Reflected struct/class by name
+        // 3) Reflected struct/class by name
         if (const REType* rt = FindTypeByName(norm))
         {
             if (rt->kind == RETypeKind::Struct)
@@ -639,7 +734,7 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
             continue;
         }
 
-        // 3) Pointer: treat as object pointer if pointee is a reflected class
+        // 4) Pointer: treat as object pointer if pointee is a reflected class
         if (TypeLooksLikePointer(raw))
         {
             // strip spaces then strip '*', then normalize again for const/etc
@@ -659,7 +754,7 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
             }
         }
 
-        // 4) Default
+        // 5) Default
         p.kind = REPropKind::Value;
     }
 }
@@ -754,7 +849,9 @@ void RETypeRegistry::DebugDumpAllTypes() const
                     case REPropKind::ReflectedStruct: std::cout << "ReflectedStruct\n"; break;
                     case REPropKind::Enum:            std::cout << "Enum\n"; break;
                     case REPropKind::ObjectPtr:       std::cout << "ObjectPtr\n"; break;
+                    case REPropKind::Array:           std::cout << "Array\n"; break;
                     default:                          std::cout << "Unknown\n"; break;
+
                 }
 
                 for (const auto& m : p.meta)
