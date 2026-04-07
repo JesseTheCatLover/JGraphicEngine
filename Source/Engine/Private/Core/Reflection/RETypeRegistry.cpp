@@ -11,6 +11,45 @@
 #include "Core/FObjectInitTLS.h"
 #include "Core/JCoreObject.h"
 
+namespace
+{
+    template<typename VecT>
+    void SetupStdVectorAccessors(REProperty& p)
+    {
+        using ElementT = typename VecT::value_type;
+
+        p.bIsArray = true;
+
+        p.array.size = [](void* fieldPtr) -> size_t
+        {
+            auto& vec = *reinterpret_cast<VecT*>(fieldPtr);
+            return vec.size();
+        };
+
+        p.array.resize = [](void* fieldPtr, size_t n)
+        {
+            auto& vec = *reinterpret_cast<VecT*>(fieldPtr);
+            vec.resize(n);
+        };
+
+        p.array.get = [](void* fieldPtr, size_t i) -> void*
+        {
+            auto& vec = *reinterpret_cast<VecT*>(fieldPtr);
+            if (i >= vec.size())
+                return nullptr;
+            return &vec[i];
+        };
+
+        p.array.getConst = [](const void* fieldPtr, size_t i) -> const void*
+        {
+            auto& vec = *reinterpret_cast<const VecT*>(fieldPtr);
+            if (i >= vec.size())
+                return nullptr;
+            return &vec[i];
+        };
+    }
+}
+
 static const std::type_index kVoidType = std::type_index(typeid(void));
 
 RETypeRegistry& RETypeRegistry::Get()
@@ -643,13 +682,18 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
         p.enumType = nullptr;
         p.objectType = nullptr;
 
-        const std::string raw = p.typeName;
-        const std::string norm = NormalizeTypeName(raw);
+        // Normalize once and store it back, so everyone (including DebugDumpAllTypes)
+        // sees the canonical type string.
+        p.typeName = NormalizeTypeName(p.typeName);
+
+        const std::string& raw  = p.typeName; // now already normalized
+        const std::string& norm = p.typeName;
 
         // 1) Array (std::vector support)
         {
             std::string element;
-            if (TryParseVector(raw, element))
+            // IMPORTANT: use the normalized name here, not the original raw string
+            if (TryParseVector(norm, element))
             {
                 p.kind = REPropKind::Array;
                 p.bIsArray = true;
@@ -660,7 +704,15 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
                 p.elementEnumType = nullptr;
                 p.elementObjectType = nullptr;
 
-                const std::string elemNorm = NormalizeTypeName(element);
+                const std::string elemNorm = p.elementTypeName;
+
+                // Known element types: wire std::vector accessors here
+                if (elemNorm == "std::string")
+                {
+                    SetupStdVectorAccessors<std::vector<std::string>>(p);
+                    p.elementKind = REPropKind::Value;
+                    continue;
+                }
 
                 // Enum element
                 if (const REEnum* e = FindEnumByName(elemNorm))

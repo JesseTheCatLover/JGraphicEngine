@@ -275,6 +275,77 @@ static bool ReadValueByTypeName(const JsonReader& reader, const char* name, void
     return false;
 }
 
+static bool ReadValueFromJson(const JJson& elem, void* fieldPtr, const std::string& typeName)
+{
+    if (typeName == "int" || typeName == "int32" || typeName == "int32_t")
+    {
+        *reinterpret_cast<int*>(fieldPtr) = elem.get<int>();
+        return true;
+    }
+
+    if (typeName == "size_t" || typeName == "std::size_t")
+    {
+        *reinterpret_cast<size_t*>(fieldPtr) = elem.get<size_t>();
+        return true;
+    }
+
+    if (typeName == "float")
+    {
+        *reinterpret_cast<float*>(fieldPtr) = elem.get<float>();
+        return true;
+    }
+
+    if (typeName == "double")
+    {
+        *reinterpret_cast<double*>(fieldPtr) = elem.get<double>();
+        return true;
+    }
+
+    if (typeName == "bool")
+    {
+        *reinterpret_cast<bool*>(fieldPtr) = elem.get<bool>();
+        return true;
+    }
+
+    if (typeName == "std::string" || typeName == "string")
+    {
+        *reinterpret_cast<std::string*>(fieldPtr) = elem.get<std::string>();
+        return true;
+    }
+
+    if (typeName == "FVector2")
+    {
+        *reinterpret_cast<FVector2*>(fieldPtr) = elem.get<FVector2>();
+        return true;
+    }
+
+    if (typeName == "FVector3")
+    {
+        *reinterpret_cast<FVector3*>(fieldPtr) = elem.get<FVector3>();
+        return true;
+    }
+
+    if (typeName == "FVector4")
+    {
+        *reinterpret_cast<FVector4*>(fieldPtr) = elem.get<FVector4>();
+        return true;
+    }
+
+    if (typeName == "FQuat")
+    {
+        *reinterpret_cast<FQuat*>(fieldPtr) = elem.get<FQuat>();
+        return true;
+    }
+
+    if (typeName == "FTransform")
+    {
+        *reinterpret_cast<FTransform*>(fieldPtr) = elem.get<FTransform>();
+        return true;
+    }
+
+    return false;
+}
+
 static bool EqualsValueByTypeName(const void* a, const void* b, const std::string& typeName)
 {
     if (typeName == "int" || typeName == "int32" || typeName == "int32_t")
@@ -649,6 +720,61 @@ void ReflectSerialize::SerializeProperty(JsonWriter& writer, const REProperty& p
             break;
         }
 
+        case REPropKind::Array:
+        {
+            if (!prop.array.size)
+                break;
+
+            const size_t count = prop.array.size(const_cast<void*>(fieldPtr));
+
+            writer.BeginArray(fieldName);
+
+            for (size_t i = 0; i < count; ++i)
+            {
+                const void* elemPtr = prop.array.getConst(fieldPtr, i);
+
+                switch (prop.elementKind)
+                {
+                    case REPropKind::Value:
+                    {
+                        WriteValueByTypeName(writer, nullptr, elemPtr, prop.elementTypeName);
+                        break;
+                    }
+
+                    case REPropKind::ReflectedStruct:
+                    {
+                        writer.BeginObject();
+                        SerializeTypeProperties(writer, *prop.elementReflectedType, elemPtr);
+                        writer.EndObject();
+                        break;
+                    }
+
+                    case REPropKind::Enum:
+                    {
+                        int64_t v = 0;
+                        const size_t sz = EnumUnderlyingSizeBytes(*prop.elementEnumType);
+                        std::memcpy(&v, elemPtr, std::min(sz, sizeof(v)));
+                        writer.WriteValue(v);
+                        break;
+                    }
+
+                    case REPropKind::ObjectPtr:
+                    {
+                        const JCoreObject* obj = *reinterpret_cast<JCoreObject* const*>(elemPtr);
+                        std::string uuid = obj ? obj->GetUUID() : "";
+                        writer.WriteValue(uuid);
+                        break;
+                    }
+
+                    default:
+                        break;
+                }
+            }
+
+            writer.EndArray();
+            break;
+        }
+
         default:
             break;
     }
@@ -707,6 +833,75 @@ void ReflectSerialize::DeserializeProperty(const JsonReader& reader, const REPro
                 resolved = g_ObjectResolver(uuid);
 
             *reinterpret_cast<JCoreObject**>(fieldPtr) = resolved;
+            break;
+        }
+
+        case REPropKind::Array:
+        {
+            // Read array of element readers
+            std::vector<JsonReader> elementReaders = reader.GetArray(fieldName);
+            size_t count = elementReaders.size();
+
+            if (!prop.array.resize || !prop.array.get) {
+                std::cerr << "[JReflection] Array property '" << prop.name
+                          << "' is missing resize/get accessors\n";
+                break;
+            }
+
+            // Resize destination vector
+            prop.array.resize(fieldPtr, count);
+
+            for (size_t i = 0; i < count; ++i)
+            {
+                void* elemPtr = prop.array.get(fieldPtr, i);
+                if (!elemPtr)
+                {
+                    std::cerr << "[JReflection]: array.get returned null for property '"
+                              << prop.name << "', index " << i << "\n";
+                    continue;
+                }
+
+                JsonReader& elemReader = elementReaders[i];
+
+                switch (prop.elementKind)
+                {
+                    case REPropKind::Value:
+                    {
+                        // Array elements have no key -> pass nullptr
+                        ReadValueByTypeName(elemReader, nullptr, elemPtr, prop.elementTypeName);
+                        break;
+                    }
+
+                    case REPropKind::ReflectedStruct:
+                    {
+                        if (prop.elementReflectedType)
+                            DeserializeTypeProperties(elemReader, *prop.elementReflectedType, elemPtr);
+                        break;
+                    }
+
+                    case REPropKind::Enum:
+                    {
+                        int64_t raw = elemReader.GetData().get<int64_t>();
+                        size_t sz = EnumUnderlyingSizeBytes(*prop.elementEnumType);
+                        std::memcpy(elemPtr, &raw, sz);
+                        break;
+                    }
+
+                    case REPropKind::ObjectPtr:
+                    {
+                        std::string uuid = elemReader.GetData().get<std::string>();
+                        JCoreObject* resolved = uuid.empty() ? nullptr :
+                            (g_ObjectResolver ? g_ObjectResolver(uuid) : nullptr);
+
+                        *reinterpret_cast<JCoreObject**>(elemPtr) = resolved;
+                        break;
+                    }
+
+                    default:
+                        break;
+                }
+            }
+
             break;
         }
 

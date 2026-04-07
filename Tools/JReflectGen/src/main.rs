@@ -159,6 +159,24 @@ fn is_ident_continue(c: char) -> bool {
     c == '_' || c.is_ascii_alphanumeric()
 }
 
+fn normalize_type_name(raw: &str) -> String {
+    // 1. Strip whitespace around angle brackets and commas
+    //    e.g. "std::vector < std::string >" -> "std::vector<std::string>"
+    //         "std::map  < A , B >"        -> "std::map<A,B>"
+
+    // Step 1: remove all spaces around '<', '>', ','.
+    // Simpler approach: remove *all* whitespace, then re-insert spaces only
+    let mut s = String::with_capacity(raw.len());
+    for ch in raw.chars() {
+        if ch.is_whitespace() {
+            continue;
+        }
+        s.push(ch);
+    }
+
+    s
+}
+
 fn tokenize(src: &str) -> Vec<Token> {
     let mut out = Vec::new();
 
@@ -1236,11 +1254,12 @@ fn emit_generated_cpp_for_class(header_path: &str, class: &ClassInfo) -> String 
 
     // Properties
     for p in &class.properties {
+        let normalized_ty = normalize_type_name(&p.ty.raw);
         out.push_str(&format!(
             "            R.AddProperty(typeid({}), \"{}\", \"{}\", {}::_JReflect_PrivateAccess::MemberPtr(&{}::{}));\n",
             class_name,
             escape_cpp_string(&p.name),
-            escape_cpp_string(&p.ty.raw),
+            escape_cpp_string(&normalized_ty),
             class_name,
             class_name,
             p.name
