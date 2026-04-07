@@ -4,16 +4,14 @@
 
 #include "Texture2DResource.h"
 #include "Assets/Payloads/FMaterialPayloadHeader.h"
-#include "Rendering/RendererSubsystem.h"
-#include "Rendering/IRenderDevice.h"
 #include "Assets/AssetRegistrySubsystem.h"
+#include "Rendering/IRenderDevice.h"
 #include "Resources/ResourceSubsystem.h"
 
-MaterialResource::MaterialResource(FDesc desc, RendererSubsystem* renderer, ResourceSubsystem* resources,
+MaterialResource::MaterialResource(FDesc desc,ResourceSubsystem* resources,
                                    AssetRegistrySubsystem* registry)
     : GpuResource(registry)
     , m_Desc(std::move(desc))
-    , m_Renderer(renderer)
     , m_Resources(resources)
     , m_Registry(registry)
 {
@@ -28,10 +26,10 @@ bool MaterialResource::OnCreateGpuResources()
         return false;
 
     // Acquire RendererSubsystem to register this material
-    if (!m_Renderer)
+    if (!GetDevice())
         return false;
 
-    UploadGPU(m_Renderer);
+    UploadGPU(GetDevice());
     ReleaseCPU();
 
     return true;
@@ -39,12 +37,12 @@ bool MaterialResource::OnCreateGpuResources()
 
 void MaterialResource::OnDestroyGpuResources()
 {
-    if (!m_Renderer)
+    if (!GetDevice())
         return;
 
     if (m_Handle.IsValid())
     {
-        m_Renderer->DestroyMaterial(m_Handle);
+        GetDevice()->DestroyMaterial(m_Handle);
         m_Handle = RMaterialHandle::Invalid();
     }
 }
@@ -185,12 +183,12 @@ void MaterialResource::LoadCPU()
     m_CpuReady = true;
 }
 
-void MaterialResource::UploadGPU(RendererSubsystem* renderer)
+void MaterialResource::UploadGPU(IRenderDevice* device)
 {
-    if (!renderer)
+    if (!device)
         return;
 
-    m_Handle = renderer->CreateMaterial(m_Surface);
+    m_Handle = GetDevice()->CreateMaterial(m_Surface);
 }
 
 void MaterialResource::ReleaseCPU()

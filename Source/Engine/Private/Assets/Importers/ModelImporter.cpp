@@ -7,6 +7,7 @@
 #include <assimp/scene.h>
 
 #include <cstring>
+#include <iostream>
 
 #include "Assets/AssetFile.h"
 #include "Assets/Payloads/FStaticMeshPayloadHeader.h"
@@ -341,6 +342,9 @@ namespace
             outResult.errors.push_back("Failed to write material asset: " + matPhysicalPath);
             return false;
         }
+        std::cout << "Material: " << material.name << "\n";
+        std::cout << "BaseColor: " << material.baseColorTexturePath << "\n";
+
 
         FImportedAssetInfo created{};
         created.assetID      = assetHeader.assetID;

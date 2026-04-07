@@ -4,7 +4,6 @@
 
 #include "Scene/ActorComponents/JTransformComponent.h"
 #include <vector>
-#include "glm/matrix.hpp"
 #include "JSceneComponent.generated.h"
 
 /**

@@ -1,42 +1,69 @@
-//  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
 
-#include "JRenderableComponent.h"
-#include "Core/JCoreObject.h"
+#include <string>
+#include <vector>
 
+#include "Core/Memory/SmartPointers.h"
+#include "Scene/SceneComponents/JRenderableComponent.h"
+#include "Rendering/RHandles.h"
+#include "JStaticMeshComponent.generated.h"
+
+class AssetRegistrySubsystem;
+struct FRenderContext;
 class IRenderSubmission;
+class StaticMeshResource;
+class MaterialResource;
+class ResourceSubsystem;
 
+JCLASS()
 class JStaticMeshComponent : public JRenderableComponent
 {
-    DECLARE_JOBJECT(JStaticMeshComponent, JRenderableComponent);
-
-private:
-    RMeshHandle m_Mesh{};
-    RShaderHandle m_Shader{};
-    RMaterialHandle m_Material{};
+    GENERATED_BODY()
 
 public:
-    void SetMesh(RMeshHandle m) { m_Mesh = m; }
-    void SetShader(RShaderHandle s) { m_Shader = s; }
-    void SetMaterial(RMaterialHandle mat) { m_Material = mat; }
+    JStaticMeshComponent() = default;
+    virtual ~JStaticMeshComponent() = default;
 
-    void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const override
-    {
-        if (!IsVisible() || !m_Mesh.IsValid() || !m_Shader.IsValid())
-            return;
+    /// Assign a static mesh by asset ID.
+    void SetStaticMesh(const std::string& assetID);
 
-        RDrawCommand cmd{};
-        cmd.state.mesh = m_Mesh;
-        cmd.state.shader = m_Shader;
-        cmd.state.material = m_Material;
-        cmd.transform = GetWorldTransform().ToMatrix();
+    /// Optional: override shader for this mesh.
+    void SetShader(RShaderHandle shader) { m_Shader = shader; }
 
-        const uint16_t depthBucket = 0;
-        cmd.packet = RCommandQueue::MakeSortKey(
-            GetRenderLayer(), cmd.state.shader.id, cmd.state.material.id, depthBucket);
+    TSharedPtr<StaticMeshResource> GetStaticMesh() const { return m_StaticMesh; }
 
-        submission.SubmitDrawCommand(cmd);
-    }
-    // TODO: Serialization
+    /// Per-material-slot override: index must be < mesh material slot count.
+    void SetMaterialOverride(size_t slotIndex, const std::string& materialAssetID);
+
+    // JRenderableComponent
+    void GatherProxies(IRenderSubmission& submission, const FRenderContext& ctx) const override;
+
+protected:
+    void AllocateGpuResources() override;
+
+private:
+    void ResolveMaterials() const; // lazily resolve on demand
+
+private:
+    JPROPERTY(HiddenInInspector)
+    std::string m_StaticMeshAssetID;
+
+    // Cached static mesh resource
+    TSharedPtr<StaticMeshResource> m_StaticMesh;
+
+    // Optional shader override (single shader for all submeshes)
+    RShaderHandle m_Shader{};
+
+    // Per-slot override asset IDs
+    JPROPERTY()
+    std::vector<std::string> m_MaterialOverrideAssetIDs;
+
+    // Cached resolved material handles (GPU materials) per slot
+    mutable std::vector<RMaterialHandle> m_ResolvedMaterials;
+    mutable bool m_bMaterialsResolved = false;
+
+    ResourceSubsystem* m_ResourceSubsystem = nullptr;
+    AssetRegistrySubsystem* m_AssetRegistry = nullptr;
 };

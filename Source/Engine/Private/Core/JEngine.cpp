@@ -36,6 +36,7 @@
 #include "Core/Project/VirtualPathMounter.h"
 #include "Framework/AssetManager.h"
 #include "Rendering/FRenderView.h"
+#include "Scene/SceneComponents/JStaticMeshComponent.h"
 
 JEngine::JEngine()
     : m_Services(MakeUnique<TServiceContainer>()),
@@ -426,6 +427,13 @@ bool JEngine::InitialBuildAssetPipeline()
     }
 #endif
 
+    FAssetImportRequest request;
+    GetVirtualPathMounter().ResolveVirtualToPhysical("/Project/TheArmoury/model.obj", request.sourceFilePath);
+    request.destinationVirtualFolder = "/Project/TheArmoury/";
+
+    FAssetImportResult result;
+    GetAssetManager()->ImportAsset(request, result);
+
     if (m_ProjectContext->IsOpen() && m_AssetRegistrySubsystem)
     {
         if (!m_AssetRegistrySubsystem->Rebuild(*m_VirtualPathMounter))
@@ -713,7 +721,7 @@ void JEngine::RegisterServices()
 
 bool JEngine::BootstrapScene()
 {
-    constexpr const char* kSceneVirtualPath = "/Project/Scenes/ScannedScene.jscene";
+    constexpr const char* kSceneVirtualPath = "/Project/Scenes/ScannedSceneVer2.jscene";
 
     auto* startupScene = GetSceneManager()->LoadSceneFile(kSceneVirtualPath);
     if (!startupScene)
@@ -725,8 +733,8 @@ bool JEngine::BootstrapScene()
 
 void JEngine::CreateDefaultScene()
 {
-    constexpr const char* kSceneVirtualPath = "/Project/Scenes/ScannedScene.jscene";
-    constexpr const char* kSceneName = "ScannedScene";
+    constexpr const char* kSceneVirtualPath = "/Project/Scenes/ScannedSceneVer2.jscene";
+    constexpr const char* kSceneName = "ScannedSceneVer2";
 
     if (!GetSceneManager())
     {
@@ -760,50 +768,46 @@ void JEngine::CreateDefaultScene()
     if (!bCreatedNewScene)
         return;
 
-    auto spawnModelActor = [&](const char* actorName, const char* modelKey) -> JActor*
+    auto spawnActorWithStaticMeshComp = [&](const char* actorName, const char* assetID, const char* compName) -> JActor*
     {
         JActor* actor = GetSceneManager()->SpawnActor<JActor>();
         if (!actor) return nullptr;
 
         actor->SetActorName(actorName ? actorName : "ModelActor");
 
-        auto* modelComp = actor->AddRuntimeComponent<JModelComponent>("ModelComponent");
-        modelComp->SetModel(modelKey);
+        auto* StaticMeshComp = actor->AddRuntimeComponent<JStaticMeshComponent>(compName);
+        StaticMeshComp->SetStaticMesh(assetID);
 
         return actor;
     };
+    JActor* actor1 = spawnActorWithStaticMeshComp("TheArmoury", GetAssetManager()->FindByVirtualPath(
+        "/Project/TheArmoury/model.jasset")->assetID.c_str(), "ArmouryStaticMesh");
 
-    JActor* actor1 = GetSceneManager()->SpawnActor<JActor>();
-    actor1->SetActorName("TheArmoury");
-
-    auto* modelArmoury = actor1->AddRuntimeComponent<JModelComponent>("ModelArmouryComponent");
-    modelArmoury->SetModel("TheArmoury/model.obj");
-
-    auto actor2 = spawnModelActor("Tape", "Tape/Tape.obj");
-    actor2->SetActorLocation(5.f, 0.f, 5.f);
-    actor2->SetActorScale(FVector3(0.5f));
-
-    auto actor3dup = spawnModelActor("Tape", "Tape/Tape.obj");
-    actor3dup->AttachToActor(actor2);
-    actor3dup->SetActorLocation(7.f, 3.f, 5.f);
-    actor3dup->SetActorRotation(70.f, 0.f, 20.f);
-    actor3dup->SetActorScale(FVector3(0.5f));
-
-    auto actor4dup = spawnModelActor("Tape", "Tape/Tape.obj");
-    actor4dup->AttachToActor(actor2);
-    actor4dup->SetActorLocation(5.f, 1.f, 5.f);
-    actor4dup->SetActorRotation(50.f, 10.f, 30.f);
-    actor4dup->SetActorScale(FVector3(0.5f));
-
-    JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
-    cameraActor->SetActorName("CameraActor");
-    cameraActor->AddRuntimeComponent<JCameraComponent>("CameraComponent");
-    cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
-
-    auto chair = spawnModelActor("WoodenChair", "DiningChair/DiningChair.obj");
-    chair->SetActorLocation(0.f, 8.f, 1.2f);
-    chair->SetActorScale(FVector3(5.f));
-    chair->SetActorRotation(0.f, 100.f, 0.f);
+    // auto actor2 = spawnModelActor("Tape", "Tape/Tape.obj");
+    // actor2->SetActorLocation(5.f, 0.f, 5.f);
+    // actor2->SetActorScale(FVector3(0.5f));
+    //
+    // auto actor3dup = spawnModelActor("Tape", "Tape/Tape.obj");
+    // actor3dup->AttachToActor(actor2);
+    // actor3dup->SetActorLocation(7.f, 3.f, 5.f);
+    // actor3dup->SetActorRotation(70.f, 0.f, 20.f);
+    // actor3dup->SetActorScale(FVector3(0.5f));
+    //
+    // auto actor4dup = spawnModelActor("Tape", "Tape/Tape.obj");
+    // actor4dup->AttachToActor(actor2);
+    // actor4dup->SetActorLocation(5.f, 1.f, 5.f);
+    // actor4dup->SetActorRotation(50.f, 10.f, 30.f);
+    // actor4dup->SetActorScale(FVector3(0.5f));
+    //
+    // JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
+    // cameraActor->SetActorName("CameraActor");
+    // cameraActor->AddRuntimeComponent<JCameraComponent>("CameraComponent");
+    // cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
+    //
+    // auto chair = spawnModelActor("WoodenChair", "DiningChair/DiningChair.obj");
+    // chair->SetActorLocation(0.f, 8.f, 1.2f);
+    // chair->SetActorScale(FVector3(5.f));
+    // chair->SetActorRotation(0.f, 100.f, 0.f);
 
     GetSceneManager()->SaveSceneFile(scene, kSceneVirtualPath);
 }

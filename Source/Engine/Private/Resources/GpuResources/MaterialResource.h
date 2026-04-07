@@ -3,13 +3,12 @@
 #pragma once
 #include <string>
 
+#include "Rendering/FSurfaceDesc.h"
 #include "Resources/GpuResource.h"
-#include "Rendering/RendererSubsystem.h"
 #include "Rendering/RHandles.h"
 
 class ResourceSubsystem;
 class AssetRegistrySubsystem;
-class RendererSubsystem;
 
 /**
  * @class MaterialResource
@@ -32,7 +31,6 @@ private:
     FDesc                   m_Desc;
     AssetRegistrySubsystem* m_Registry  = nullptr;
     ResourceSubsystem*      m_Resources = nullptr;
-    RendererSubsystem*      m_Renderer  = nullptr;
 
     // CPU-side data
     FSurfaceDesc m_Surface{};
@@ -42,7 +40,7 @@ private:
     RMaterialHandle m_Handle{};
 
 public:
-    explicit MaterialResource(FDesc desc, RendererSubsystem* renderer, ResourceSubsystem* resources,
+    explicit MaterialResource(FDesc desc, ResourceSubsystem* resources,
         AssetRegistrySubsystem* registry);
 
     bool OnCreateGpuResources() override;
@@ -57,7 +55,7 @@ public:
 private:
     // Loading and staging steps
     void LoadCPU();
-    void UploadGPU(RendererSubsystem* renderer);
+    void UploadGPU(IRenderDevice* device);
     void ReleaseCPU();
 
     RTextureHandle GetTextureHandleForAssetID(const std::string& assetID);
