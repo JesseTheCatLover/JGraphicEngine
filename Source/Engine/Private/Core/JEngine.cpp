@@ -434,6 +434,16 @@ bool JEngine::InitialBuildAssetPipeline()
     FAssetImportResult result;
     GetAssetManager()->ImportAsset(request, result);
 
+    GetVirtualPathMounter().ResolveVirtualToPhysical("/Project/Tape/Tape.obj", request.sourceFilePath);
+    request.destinationVirtualFolder = "/Project/Tape/";
+
+    GetAssetManager()->ImportAsset(request, result);
+
+    GetVirtualPathMounter().ResolveVirtualToPhysical("/Project/DiningChair/DiningChair.obj", request.sourceFilePath);
+    request.destinationVirtualFolder = "/Project/DiningChair/";
+
+    GetAssetManager()->ImportAsset(request, result);
+
     if (m_ProjectContext->IsOpen() && m_AssetRegistrySubsystem)
     {
         if (!m_AssetRegistrySubsystem->Rebuild(*m_VirtualPathMounter))
@@ -780,34 +790,39 @@ void JEngine::CreateDefaultScene()
 
         return actor;
     };
+
     JActor* actor1 = spawnActorWithStaticMeshComp("TheArmoury", GetAssetManager()->FindByVirtualPath(
         "/Project/TheArmoury/model.jasset")->assetID.c_str(), "ArmouryStaticMesh");
 
-    // auto actor2 = spawnModelActor("Tape", "Tape/Tape.obj");
-    // actor2->SetActorLocation(5.f, 0.f, 5.f);
-    // actor2->SetActorScale(FVector3(0.5f));
-    //
-    // auto actor3dup = spawnModelActor("Tape", "Tape/Tape.obj");
-    // actor3dup->AttachToActor(actor2);
-    // actor3dup->SetActorLocation(7.f, 3.f, 5.f);
-    // actor3dup->SetActorRotation(70.f, 0.f, 20.f);
-    // actor3dup->SetActorScale(FVector3(0.5f));
-    //
-    // auto actor4dup = spawnModelActor("Tape", "Tape/Tape.obj");
-    // actor4dup->AttachToActor(actor2);
-    // actor4dup->SetActorLocation(5.f, 1.f, 5.f);
-    // actor4dup->SetActorRotation(50.f, 10.f, 30.f);
-    // actor4dup->SetActorScale(FVector3(0.5f));
-    //
-    // JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
-    // cameraActor->SetActorName("CameraActor");
-    // cameraActor->AddRuntimeComponent<JCameraComponent>("CameraComponent");
-    // cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
-    //
-    // auto chair = spawnModelActor("WoodenChair", "DiningChair/DiningChair.obj");
-    // chair->SetActorLocation(0.f, 8.f, 1.2f);
-    // chair->SetActorScale(FVector3(5.f));
-    // chair->SetActorRotation(0.f, 100.f, 0.f);
+    auto actor2 = spawnActorWithStaticMeshComp("Tape 1", GetAssetManager()->FindByVirtualPath(
+        "/Project/Tape/Tape.jasset")->assetID.c_str(), "TapeStaticMesh");
+    actor2->SetActorLocation(5.f, 0.f, 5.f);
+    actor2->SetActorScale(FVector3(0.5f));
+
+    auto actor3dup = spawnActorWithStaticMeshComp("Tape 2", GetAssetManager()->FindByVirtualPath(
+        "/Project/Tape/Tape.jasset")->assetID.c_str(), "TapeStaticMesh");
+    actor3dup->AttachToActor(actor2);
+    actor3dup->SetActorLocation(7.f, 3.f, 5.f);
+    actor3dup->SetActorRotation(70.f, 0.f, 20.f);
+    actor3dup->SetActorScale(FVector3(0.5f));
+
+    auto actor4dup = spawnActorWithStaticMeshComp("Tape 3", GetAssetManager()->FindByVirtualPath(
+        "/Project/Tape/Tape.jasset")->assetID.c_str(), "TapeStaticMesh");
+    actor4dup->AttachToActor(actor2);
+    actor4dup->SetActorLocation(5.f, 1.f, 5.f);
+    actor4dup->SetActorRotation(50.f, 10.f, 30.f);
+    actor4dup->SetActorScale(FVector3(0.5f));
+
+    JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
+    cameraActor->SetActorName("CameraActor");
+    cameraActor->AddRuntimeComponent<JCameraComponent>("CameraComponent");
+    cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
+
+    auto chair = spawnActorWithStaticMeshComp("DiningChair", GetAssetManager()->FindByVirtualPath(
+        "/Project/DiningChair/DiningChair.jasset")->assetID.c_str(), "DiningChairStaticMesh");
+    chair->SetActorLocation(0.f, 8.f, 1.2f);
+    chair->SetActorScale(FVector3(5.f));
+    chair->SetActorRotation(0.f, 100.f, 0.f);
 
     GetSceneManager()->SaveSceneFile(scene, kSceneVirtualPath);
 }

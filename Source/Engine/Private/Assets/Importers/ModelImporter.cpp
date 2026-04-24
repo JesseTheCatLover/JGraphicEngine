@@ -7,11 +7,12 @@
 #include <assimp/scene.h>
 
 #include <cstring>
-#include <iostream>
 
 #include "Assets/AssetFile.h"
+#include "Assets/AssetImportSubsystem.h"
 #include "Assets/Payloads/FStaticMeshPayloadHeader.h"
 #include "Assets/Payloads/FMaterialPayloadHeader.h"
+#include "Core/JEngine.h"
 #include "Utilities/UPath.h"
 #include "Utilities/UUUID.h"
 
@@ -24,8 +25,8 @@ namespace
     {
         float position[3];
         float normal[3];
-        float tangent[3];
         float texcoord[2];
+        float tangent[3];
     };
 
     // ----------------------------------------------------------------------
@@ -53,17 +54,28 @@ namespace
                 v.normal[2] = mesh->mNormals[i].z;
             }
 
+            if (mesh->HasTextureCoords(0))
+            {
+                v.texcoord[0] = mesh->mTextureCoords[0][i].x;
+                v.texcoord[1] = mesh->mTextureCoords[0][i].y;
+            }
+            else
+            {
+                v.texcoord[0] = 0.0f;
+                v.texcoord[1] = 0.0f;
+            }
+
             if (mesh->HasTangentsAndBitangents())
             {
                 v.tangent[0] = mesh->mTangents[i].x;
                 v.tangent[1] = mesh->mTangents[i].y;
                 v.tangent[2] = mesh->mTangents[i].z;
             }
-
-            if (mesh->HasTextureCoords(0))
+            else
             {
-                v.texcoord[0] = mesh->mTextureCoords[0][i].x;
-                v.texcoord[1] = mesh->mTextureCoords[0][i].y;
+                v.tangent[0] = 0.0f;
+                v.tangent[1] = 0.0f;
+                v.tangent[2] = 0.0f;
             }
 
             outVerts.push_back(v);
@@ -90,6 +102,7 @@ namespace
     {
         std::string name;
 
+        // Source file paths from Assimp
         std::string baseColorTexturePath;
         std::string normalTexturePath;
         std::string metallicTexturePath;
@@ -97,6 +110,15 @@ namespace
         std::string metalRoughnessTexturePath;
         std::string occlusionTexturePath;
         std::string emissiveTexturePath;
+
+        // Resulting engine asset IDs (after texture import)
+        std::string baseColorTextureAssetID;
+        std::string normalTextureAssetID;
+        std::string metallicTextureAssetID;
+        std::string roughnessTextureAssetID;
+        std::string metalRoughnessTextureAssetID;
+        std::string occlusionTextureAssetID;
+        std::string emissiveTextureAssetID;
 
         float uvTiling[2] = { 1.0f, 1.0f }; // Default to 1:1
     };
@@ -185,25 +207,23 @@ namespace
     }
 
     bool WriteMaterialAsset(const FImportedMaterialTemp& material,
-                            const std::string& baseVirtualPath,
-                            const std::string& basePhysicalPath,
+                            const std::string& assetBaseName,
+                            const std::string& destinationVirtualFolder,
+                            const std::string& destinationPhysicalFolder,
                             size_t materialIndex,
                             FAssetImportResult& outResult)
-  {
-        // Base file name (without extension) of the *destination* .jasset file root
-        // e.g. "/Game/Meshes/crate.jasset" -> baseName = "crate"
-        const std::string baseName = UPath::GetFileName(basePhysicalPath, false);
+    {
+        const std::string matFileName =
+        assetBaseName + "_mat" + std::to_string(materialIndex) + ".jasset";
 
-        // Physical path: same directory, suffixed, .jasset
-        // e.g. "/Game/Meshes/crate_mat0.jasset"
-        const std::string matFileName    = baseName + "_mat" + std::to_string(materialIndex) + ".jasset";
-        const std::string matPhysicalDir = UPath::GetParent(basePhysicalPath);
-        const std::string matPhysicalPath = UPath::Join(matPhysicalDir, matFileName);
+        const std::string matPhysicalPath =
+            UPath::Join(destinationPhysicalFolder, matFileName);
 
-        // Virtual path: same rule, just on the virtual side
-        const std::string matVirtualName = baseName + "_mat" + std::to_string(materialIndex);
-        const std::string matVirtualDir  = UPath::GetParent(baseVirtualPath);
-        const std::string matVirtualPath = UPath::Join(matVirtualDir, matVirtualName);
+        const std::string matVirtualName =
+            assetBaseName + "_mat" + std::to_string(materialIndex);
+
+        const std::string matVirtualPath =
+            UPath::Join(destinationVirtualFolder, matVirtualName);
 
         // Build payload
         FMaterialPayloadHeader header{};
@@ -211,37 +231,36 @@ namespace
 
         // Flags / params
         header.flags = 0;
-        if (!material.baseColorTexturePath.empty())
+        if (!material.baseColorTextureAssetID.empty())
         {
             header.flags |= MATERIAL_FLAG_HAS_BASE_COLOR_TEXTURE;
         }
-        if (!material.normalTexturePath.empty())
+        if (!material.normalTextureAssetID.empty())
         {
             header.flags |= MATERIAL_FLAG_HAS_NORMAL_TEXTURE;
         }
-        if (!material.metallicTexturePath.empty())
+        if (!material.metallicTextureAssetID.empty())
         {
             header.flags |= MATERIAL_FLAG_HAS_METALLIC_TEXTURE;
         }
-        if (!material.roughnessTexturePath.empty())
+        if (!material.roughnessTextureAssetID.empty())
         {
             header.flags |= MATERIAL_FLAG_HAS_ROUGHNESS_TEXTURE;
         }
-        if (!material.metalRoughnessTexturePath.empty())
+        if (!material.metalRoughnessTextureAssetID.empty())
         {
             header.flags |= MATERIAL_FLAG_HAS_METAL_ROUGHNESS_MAP;
         }
-        if (!material.occlusionTexturePath.empty())
+        if (!material.occlusionTextureAssetID.empty())
         {
             header.flags |= MATERIAL_FLAG_HAS_OCCLUSION_TEXTURE;
         }
-        if (!material.emissiveTexturePath.empty())
+        if (!material.emissiveTextureAssetID.empty())
         {
             header.flags |= MATERIAL_FLAG_HAS_EMISSIVE_TEXTURE;
         }
 
-        // For now we only support base color texture + default params
-        // (factors may be extended later as needed).
+        // Default param values; expand as needed
         FMaterialParams params{};
         params.baseColorFactor[0] = 1.0f;
         params.baseColorFactor[1] = 1.0f;
@@ -258,32 +277,22 @@ namespace
         params.uvTiling[0] = material.uvTiling[0];
         params.uvTiling[1] = material.uvTiling[1];
 
-        // Path lengths
-        header.baseColorTexturePathLength      =
-            static_cast<uint32_t>(material.baseColorTexturePath.size());
-        header.normalTexturePathLength         =
-            static_cast<uint32_t>(material.normalTexturePath.size());
-        header.metallicTexturePathLength       =
-            static_cast<uint32_t>(material.metallicTexturePath.size());
-        header.roughnessTexturePathLength      =
-            static_cast<uint32_t>(material.roughnessTexturePath.size());
-        header.metalRoughnessTexturePathLength =
-            static_cast<uint32_t>(material.metalRoughnessTexturePath.size());
-        header.occlusionTexturePathLength      =
-            static_cast<uint32_t>(material.occlusionTexturePath.size());
-        header.emissiveTexturePathLength       =
-            static_cast<uint32_t>(material.emissiveTexturePath.size());
+        header.baseColorTextureAssetIDLength = static_cast<uint32_t>(material.baseColorTextureAssetID.size());
+        header.normalTextureAssetIDLength    = static_cast<uint32_t>(material.normalTextureAssetID.size());
+        header.metallicTextureAssetIDLength  = static_cast<uint32_t>(material.metallicTextureAssetID.size());
+        header.roughnessTextureAssetIDLength = static_cast<uint32_t>(material.roughnessTextureAssetID.size());
+        header.metalRoughnessTextureAssetIDLength = static_cast<uint32_t>(material.metalRoughnessTextureAssetID.size());
+        header.occlusionTextureAssetIDLength = static_cast<uint32_t>(material.occlusionTextureAssetID.size());
+        header.emissiveTextureAssetIDLength  = static_cast<uint32_t>(material.emissiveTextureAssetID.size());
 
-        const size_t payloadSize =
-            sizeof(FMaterialPayloadHeader) +
-            sizeof(FMaterialParams) +
-            header.baseColorTexturePathLength +
-            header.normalTexturePathLength +
-            header.metallicTexturePathLength +
-            header.roughnessTexturePathLength +
-            header.metalRoughnessTexturePathLength +
-            header.occlusionTexturePathLength +
-            header.emissiveTexturePathLength;
+        const size_t payloadSize = sizeof(FMaterialPayloadHeader) + sizeof(FMaterialParams) +
+            header.baseColorTextureAssetIDLength +
+            header.normalTextureAssetIDLength +
+            header.metallicTextureAssetIDLength +
+            header.roughnessTextureAssetIDLength +
+            header.metalRoughnessTextureAssetIDLength +
+            header.occlusionTextureAssetIDLength +
+            header.emissiveTextureAssetIDLength;
 
         std::vector<uint8_t> payload(payloadSize);
         size_t offset = 0;
@@ -297,33 +306,33 @@ namespace
         write(&header, sizeof(header));
         write(&params, sizeof(params));
 
-        if (!material.baseColorTexturePath.empty())
+        if (!material.baseColorTextureAssetID.empty())
         {
-            write(material.baseColorTexturePath.data(), material.baseColorTexturePath.size());
+            write(material.baseColorTextureAssetID.data(), material.baseColorTextureAssetID.size());
         }
-        if (!material.normalTexturePath.empty())
+        if (!material.normalTextureAssetID.empty())
         {
-            write(material.normalTexturePath.data(), material.normalTexturePath.size());
+            write(material.normalTextureAssetID.data(), material.normalTextureAssetID.size());
         }
-        if (!material.metallicTexturePath.empty())
+        if (!material.metallicTextureAssetID.empty())
         {
-            write(material.metallicTexturePath.data(), material.metallicTexturePath.size());
+            write(material.metallicTextureAssetID.data(), material.metallicTextureAssetID.size());
         }
-        if (!material.roughnessTexturePath.empty())
+        if (!material.roughnessTextureAssetID.empty())
         {
-            write(material.roughnessTexturePath.data(), material.roughnessTexturePath.size());
+            write(material.roughnessTextureAssetID.data(), material.roughnessTextureAssetID.size());
         }
-        if (!material.metalRoughnessTexturePath.empty())
+        if (!material.metalRoughnessTextureAssetID.empty())
         {
-            write(material.metalRoughnessTexturePath.data(), material.metalRoughnessTexturePath.size());
+            write(material.metalRoughnessTextureAssetID.data(), material.metalRoughnessTextureAssetID.size());
         }
-        if (!material.occlusionTexturePath.empty())
+        if (!material.occlusionTextureAssetID.empty())
         {
-            write(material.occlusionTexturePath.data(), material.occlusionTexturePath.size());
+            write(material.occlusionTextureAssetID.data(), material.occlusionTextureAssetID.size());
         }
-        if (!material.emissiveTexturePath.empty())
+        if (!material.emissiveTextureAssetID.empty())
         {
-            write(material.emissiveTexturePath.data(), material.emissiveTexturePath.size());
+            write(material.emissiveTextureAssetID.data(), material.emissiveTextureAssetID.size());
         }
 
         // Asset header
@@ -334,7 +343,7 @@ namespace
         assetHeader.encoding         = EAssetEncoding::Binary;
         assetHeader.containerVersion = FAssetHeader::CurrentContainerVersion;
         assetHeader.payloadVersion   = header.version;
-        assetHeader.sourcePath       = basePhysicalPath;
+        assetHeader.sourcePath       = matPhysicalPath;
         assetHeader.importerName     = "ModelImporter";
 
         if (!AssetFile::WriteBinaryAsset(matPhysicalPath, assetHeader, payload))
@@ -342,9 +351,6 @@ namespace
             outResult.errors.push_back("Failed to write material asset: " + matPhysicalPath);
             return false;
         }
-        std::cout << "Material: " << material.name << "\n";
-        std::cout << "BaseColor: " << material.baseColorTexturePath << "\n";
-
 
         FImportedAssetInfo created{};
         created.assetID      = assetHeader.assetID;
@@ -372,109 +378,133 @@ namespace
 
         std::vector<std::string> materialSlotNames;
         std::vector<std::string> materialSlotAssetIDs;
+
+        // maps slot index -> original aiMaterial index
+        std::vector<uint32_t> rawMaterialIndexForSlot;
     };
 
-    static FImportedMeshTemp BuildSingleMeshFromScene(
-     const aiScene* scene,
-     const std::vector<FImportedMaterialTemp>& materials)
+        static FImportedMeshTemp BuildSingleMeshFromScene(
+        const aiScene* scene,
+        const std::vector<FImportedMaterialTemp>& materials)
     {
         FImportedMeshTemp result{};
         result.name = "Mesh";
 
-        std::vector<FVertexPointUV>& vertices = result.vertices;
-        std::vector<uint32_t>& indices        = result.indices;
-        std::vector<FModelSubMesh>& subMeshes = result.subMeshes;
+        auto& vertices      = result.vertices;
+        auto& indices       = result.indices;
+        auto& subMeshes     = result.subMeshes;
 
         vertices.clear();
         indices.clear();
         subMeshes.clear();
 
-        // Build submeshes
+        // ----------------------------------------------------------
+        // 1. Extract meshes
+        // ----------------------------------------------------------
         for (uint32_t i = 0; i < scene->mNumMeshes; ++i)
         {
             const aiMesh* mesh = scene->mMeshes[i];
 
-            const uint32_t firstIndex = static_cast<uint32_t>(indices.size());
-
+            uint32_t firstIndex = static_cast<uint32_t>(indices.size());
             ExtractMeshData(mesh, vertices, indices);
 
             FModelSubMesh sm{};
-            sm.firstIndex    = firstIndex;
-            sm.indexCount    = mesh->mNumFaces * 3;
+            sm.firstIndex = firstIndex;
+            sm.indexCount = mesh->mNumFaces * 3;
             sm.materialIndex = mesh->mMaterialIndex;
-
             subMeshes.push_back(sm);
         }
 
-        // Material slots
-        const size_t materialCount = materials.size();
+        // ----------------------------------------------------------
+        // 2. Gather *used* material indices
+        // ----------------------------------------------------------
+        std::vector<uint32_t> used;
+        used.reserve(scene->mNumMeshes);
 
-        result.materialSlots.resize(materialCount);
-        result.materialSlotNames.resize(materialCount);
-        result.materialSlotAssetIDs.resize(materialCount);
+        for (auto& sm : subMeshes)
+            used.push_back(sm.materialIndex);
 
-        for (size_t i = 0; i < materialCount; ++i)
+        std::sort(used.begin(), used.end());
+        used.erase(std::unique(used.begin(), used.end()), used.end());
+
+        // Example: raw indices = (3,0,3,5) -> used = (0,3,5)
+
+        // ----------------------------------------------------------
+        // 3. Build remap table
+        // ----------------------------------------------------------
+        // rawMatIndex -> compact index
+        std::unordered_map<uint32_t, uint32_t> remap;
+        remap.reserve(used.size());
+
+        for (uint32_t i = 0; i < used.size(); ++i)
+            remap[used[i]] = i;
+
+        // ----------------------------------------------------------
+        // 4. Apply remap to submeshes
+        // ----------------------------------------------------------
+        for (auto& sm : subMeshes)
+            sm.materialIndex = remap[sm.materialIndex];
+
+        // ----------------------------------------------------------
+        // 5. Build material slot arrays
+        // ----------------------------------------------------------
+        result.materialSlotNames.resize(used.size());
+        result.materialSlotAssetIDs.resize(used.size());
+        result.materialSlots.resize(used.size());
+        result.rawMaterialIndexForSlot = used;
+
+        for (size_t i = 0; i < used.size(); ++i)
         {
-            const auto& srcMat = materials[i];
-            auto& slot = result.materialSlots[i];
+            uint32_t rawIndex = used[i];
+            const auto& srcMat = materials[rawIndex];
 
-            result.materialSlotNames[i] = srcMat.name;
-            result.materialSlotAssetIDs[i] = "";
+            result.materialSlotNames[i]    = srcMat.name;
+            result.materialSlotAssetIDs[i] = "";   // filled later in OnImport()
 
-            slot.nameLength = (uint32_t)result.materialSlotNames[i].size();
-            slot.materialAssetIDLength = 0;
+            result.materialSlots[i].nameLength = (uint32_t)result.materialSlotNames[i].size();
+            result.materialSlots[i].materialAssetIDLength = 0;
         }
 
         return result;
     }
 
-    static bool WriteStaticMeshAsset(const FImportedMeshTemp& meshTemp,
-                                     const std::string& baseVirtualPath,
-                                     const std::string& basePhysicalPath,
+       static bool WriteStaticMeshAsset(const FImportedMeshTemp& meshTemp,
+                                     const std::string& assetBaseName,
+                                     const std::string& destinationVirtualFolder,
+                                     const std::string& destinationPhysicalFolder,
                                      FAssetImportResult& outResult)
     {
-        const std::string baseName = UPath::GetFileName(basePhysicalPath, false);
+        const std::string meshFileName = assetBaseName + ".jasset";
+        const std::string meshPhysicalPath = UPath::Join(destinationPhysicalFolder, meshFileName);
+        const std::string meshVirtualPath = UPath::Join(destinationVirtualFolder, assetBaseName);
 
-        // e.g. crate.jasset (static mesh)
-        const std::string meshFileName     = baseName + ".jasset";
-        const std::string meshPhysicalDir  = UPath::GetParent(basePhysicalPath);
-        const std::string meshPhysicalPath = UPath::Join(meshPhysicalDir, meshFileName);
-
-        const std::string meshVirtualName = baseName;
-        const std::string meshVirtualDir  = UPath::GetParent(baseVirtualPath);
-        const std::string meshVirtualPath = UPath::Join(meshVirtualDir, meshVirtualName);
-
-        const auto& vertices      = meshTemp.vertices;
-        const auto& indices       = meshTemp.indices;
-        const auto& subMeshes     = meshTemp.subMeshes;
+        const auto& vertices = meshTemp.vertices;
+        const auto& indices = meshTemp.indices;
+        const auto& subMeshes = meshTemp.subMeshes;
         const auto& materialSlots = meshTemp.materialSlots;
 
+        // ----------------------------------------------------------
+        // Build header
+        // ----------------------------------------------------------
         FStaticMeshPayloadHeader header{};
-        header.version = 1;
+        header.version           = 1;
+        header.vertexCount       = (uint32_t)vertices.size();
+        header.indexCount        = (uint32_t)indices.size();
+        header.subMeshCount      = (uint32_t)subMeshes.size();
+        header.materialSlotCount = (uint32_t)materialSlots.size();
 
-        header.vertexCount      = static_cast<uint32_t>(vertices.size());
-        header.indexCount       = static_cast<uint32_t>(indices.size());
-        header.subMeshCount     = static_cast<uint32_t>(subMeshes.size());
-        header.materialSlotCount = static_cast<uint32_t>(materialSlots.size()); // *** FIXED
+        header.vertexStride = sizeof(FVertexPointUV);
+        header.bHasNormals  = 1;
+        header.bHasTangents = 1;
+        header.bHasUVs      = 1;
+        header.reserved     = 0;
 
-        header.vertexStride  = sizeof(FVertexPointUV);
-        header.bHasNormals   = 1;
-        header.bHasTangents  = 1;
-        header.bHasUVs       = 1;
-        header.reserved      = 0;
+        header.vertexBufferSize = (uint64_t)vertices.size() * sizeof(FVertexPointUV);
+        header.indexBufferSize  = (uint64_t)indices.size()  * sizeof(uint32_t);
+        header.subMeshTableSize = (uint64_t)subMeshes.size() * sizeof(FModelSubMesh);
 
-        header.vertexBufferSize  =
-            static_cast<uint64_t>(vertices.size()) * sizeof(FVertexPointUV);
-        header.indexBufferSize   =
-            static_cast<uint64_t>(indices.size()) * sizeof(uint32_t);
-        header.subMeshTableSize  =
-            static_cast<uint64_t>(subMeshes.size()) * sizeof(FModelSubMesh);
-
-        // Compute material slot table + string blob sizes
-        uint64_t materialSlotsTableSize = 0;
-        uint64_t materialStringsSize    = 0;
-
-        materialSlotsTableSize = static_cast<uint64_t>(materialSlots.size()) * sizeof(FMaterialSlot);
+        // Calculate material slot string blob size
+        uint64_t materialStringsSize = 0;
 
         for (size_t i = 0; i < materialSlots.size(); ++i)
         {
@@ -482,22 +512,21 @@ namespace
             materialStringsSize += meshTemp.materialSlotAssetIDs[i].size();
         }
 
-        // Total payload:
-        // header
-        // vertex buffer
-        // index buffer
-        // submesh table
-        // material slot table
-        // material slot strings blob (names + material asset IDs)
-        const uint64_t totalSize =
+        uint64_t materialSlotTableSize =
+            (uint64_t)materialSlots.size() * sizeof(FMaterialSlot);
+
+        uint64_t totalSize =
             sizeof(FStaticMeshPayloadHeader) +
             header.vertexBufferSize +
             header.indexBufferSize +
             header.subMeshTableSize +
-            materialSlotsTableSize +
+            materialSlotTableSize +
             materialStringsSize;
 
-        std::vector<uint8_t> payload(static_cast<size_t>(totalSize));
+        // ----------------------------------------------------------
+        // Write payload
+        // ----------------------------------------------------------
+        std::vector<uint8_t> payload(totalSize);
         size_t offset = 0;
 
         auto write = [&](const void* data, size_t size)
@@ -506,120 +535,182 @@ namespace
             offset += size;
         };
 
-        // header
         write(&header, sizeof(header));
 
-        // vertex buffer
         if (!vertices.empty())
-        {
-            write(vertices.data(), static_cast<size_t>(header.vertexBufferSize));
-        }
+            write(vertices.data(), (size_t)header.vertexBufferSize);
 
-        // index buffer
         if (!indices.empty())
-        {
-            write(indices.data(), static_cast<size_t>(header.indexBufferSize));
-        }
+            write(indices.data(), (size_t)header.indexBufferSize);
 
-        // submesh table
         if (!subMeshes.empty())
-        {
-            write(subMeshes.data(), static_cast<size_t>(header.subMeshTableSize));
-        }
+            write(subMeshes.data(), (size_t)header.subMeshTableSize);
 
-        // material slot table
-        if (!materialSlots.empty())
-        {
-            write(materialSlots.data(), static_cast<size_t>(materialSlotsTableSize));
-        }
-
-        // material slot strings blob
-        for (size_t i = 0; i < materialSlots.size(); ++i)
-        {
-            const std::string& nameStr = meshTemp.materialSlotNames[i];
-            const std::string& idStr = meshTemp.materialSlotAssetIDs[i];
-
-            if (!nameStr.empty())
+            for (size_t i = 0; i < materialSlots.size(); ++i)
             {
-                write(nameStr.data(), nameStr.size());
+                // Write header
+                write(&materialSlots[i], sizeof(FMaterialSlot));
+
+                // Write name
+                const auto& name = meshTemp.materialSlotNames[i];
+                if (!name.empty()) write(name.data(), name.size());
+
+                // Write asset ID
+                const auto& id = meshTemp.materialSlotAssetIDs[i];
+                if (!id.empty()) write(id.data(), id.size());
             }
 
-            if (!idStr.empty())
-            {
-                write(idStr.data(), idStr.size());
-            }
-        }
-
-        // Asset header
+        // ----------------------------------------------------------
+        // Write asset file
+        // ----------------------------------------------------------
         FAssetHeader assetHeader{};
         assetHeader.assetID          = UUUID::GenerateUUID();
-        assetHeader.assetName        = meshVirtualName;
+        assetHeader.assetName        = assetBaseName;
         assetHeader.assetType        = EAssetType::StaticMesh;
         assetHeader.encoding         = EAssetEncoding::Binary;
         assetHeader.containerVersion = FAssetHeader::CurrentContainerVersion;
         assetHeader.payloadVersion   = header.version;
-        assetHeader.sourcePath       = basePhysicalPath;
+        assetHeader.sourcePath       = meshPhysicalPath;
         assetHeader.importerName     = "ModelImporter";
 
         if (!AssetFile::WriteBinaryAsset(meshPhysicalPath, assetHeader, payload))
         {
-            outResult.errors.push_back("Failed to write static mesh asset: " + meshPhysicalPath);
+            outResult.errors.push_back("Failed to write static mesh: " + meshPhysicalPath);
             return false;
         }
 
-        FImportedAssetInfo created{};
-        created.assetID      = assetHeader.assetID;
-        created.assetType    = EAssetType::StaticMesh;
-        created.virtualPath  = meshVirtualPath;
-        created.physicalPath = meshPhysicalPath;
+        FImportedAssetInfo info{};
+        info.assetID      = assetHeader.assetID;
+        info.assetType    = EAssetType::StaticMesh;
+        info.virtualPath  = meshVirtualPath;
+        info.physicalPath = meshPhysicalPath;
 
-        outResult.createdAssets.push_back(std::move(created));
+        outResult.createdAssets.push_back(std::move(info));
         return true;
     }
+
 } // anonymous namespace
 
 // ----------------------------------------------------------------------
 // ModelImporter Implementation
 // ----------------------------------------------------------------------
 
+std::string ModelImporter::ImportTextureIfNeeded(const std::string &texturePath, const std::string &modelSourceDir,
+    const std::string &destinationVirtualFolder, AssetImportSubsystem *importer, const VirtualPathMounter &pathMounter,
+    FAssetImportResult &outResult) const
+
+{
+    if (texturePath.empty())
+        return "";
+
+    // Resolve to an absolute path
+    const std::string absolutePath = UPath::Normalize(UPath::Join(modelSourceDir, texturePath));
+
+    // Check cache first
+    auto it = m_TextureCache.find(absolutePath);
+    if (it != m_TextureCache.end())
+        return it->second;
+
+    FAssetImportRequest texReq{};
+    texReq.sourceFilePath = absolutePath;
+    texReq.destinationVirtualFolder = UPath::Join(destinationVirtualFolder, "Textures");
+
+    // Record how many assets existed before importing this texture
+    const size_t beforeCount = outResult.createdAssets.size();
+
+    if (!importer->Import(texReq, pathMounter, outResult))
+        return "";
+
+    if (outResult.createdAssets.size() <= beforeCount)
+        return "";
+
+    // Assume the last created asset from this request is the texture
+    const std::string assetID = outResult.createdAssets.back().assetID;
+
+    // Store in cache
+    m_TextureCache[absolutePath] = assetID;
+
+    return assetID;
+}
+
 bool ModelImporter::OnImport(const FAssetImportRequest& request,
                              const VirtualPathMounter& pathMounter,
-                             const std::string& destinationVirtualPath,
+                             const std::string&
+                             destinationVirtualPath,
                              const std::string& destinationPhysicalPath,
                              FAssetImportResult& outResult) const
 {
-    Assimp::Importer importer;
+    Assimp::Importer assimpImporter;
 
-    const aiScene* scene = importer.ReadFile(
+    const aiScene* scene = assimpImporter.ReadFile(
         request.sourceFilePath,
         aiProcess_Triangulate |
         aiProcess_GenNormals |
         aiProcess_CalcTangentSpace |
         aiProcess_JoinIdenticalVertices |
         aiProcess_ImproveCacheLocality |
-        aiProcess_SortByPType |
-        aiProcess_FlipUVs
+        aiProcess_SortByPType
     );
 
     if (!scene || !scene->HasMeshes())
     {
-        outResult.errors.push_back("Assimp failed to load: " + std::string(importer.GetErrorString()));
+        outResult.errors.push_back("Assimp failed to load: " + std::string(assimpImporter.GetErrorString()));
         outResult.bSuccess = false;
         return false;
     }
 
     const std::string normalizedSourcePath = UPath::Normalize(request.sourceFilePath);
-    (void)normalizedSourcePath; // currently unused
+    const std::string modelSourceDir = UPath::GetParent(normalizedSourcePath);
+    const std::string assetBaseName = UPath::GetFileName(normalizedSourcePath, false);
 
-    // 1) Import materials (one .jasset per aiMaterial)
-    const auto materials = CollectMaterials(scene);
+    const std::string destinationPhysicalFolder = UPath::GetParent(destinationPhysicalPath);
+    const std::string destinationVirtualFolder = UPath::GetParent(destinationVirtualPath);
 
+    // 0) Get access to AssetImportSubsystem
+    AssetImportSubsystem* importSubsystem = JEngine::Get().GetAssetImportSubsystem();
+    if (!importSubsystem)
+    {
+        outResult.errors.push_back("ModelImporter: AssetImportSubsystem is null.");
+        outResult.bSuccess = false;
+        return false;
+    }
+
+    // 1) Collect materials from scene
+    std::vector<FImportedMaterialTemp> materials = CollectMaterials(scene);
+
+    // 1.1) Import textures for each material and fill AssetIDs
+    for (auto& mat : materials)
+    {
+        mat.baseColorTextureAssetID =
+            ImportTextureIfNeeded(mat.baseColorTexturePath, modelSourceDir, destinationVirtualFolder, importSubsystem, pathMounter, outResult);
+
+        mat.normalTextureAssetID =
+            ImportTextureIfNeeded(mat.normalTexturePath, modelSourceDir, destinationVirtualFolder, importSubsystem, pathMounter, outResult);
+
+        mat.metallicTextureAssetID =
+            ImportTextureIfNeeded(mat.metallicTexturePath, modelSourceDir, destinationVirtualFolder, importSubsystem, pathMounter, outResult);
+
+        mat.roughnessTextureAssetID =
+            ImportTextureIfNeeded(mat.roughnessTexturePath, modelSourceDir, destinationVirtualFolder, importSubsystem, pathMounter, outResult);
+
+        mat.metalRoughnessTextureAssetID =
+            ImportTextureIfNeeded(mat.metalRoughnessTexturePath, modelSourceDir, destinationVirtualFolder, importSubsystem, pathMounter, outResult);
+
+        mat.occlusionTextureAssetID =
+            ImportTextureIfNeeded(mat.occlusionTexturePath, modelSourceDir, destinationVirtualFolder, importSubsystem, pathMounter, outResult);
+
+        mat.emissiveTextureAssetID =
+            ImportTextureIfNeeded(mat.emissiveTexturePath, modelSourceDir, destinationVirtualFolder, importSubsystem, pathMounter, outResult);
+    }
+
+    // 1.2) Write material assets (one .jasset per aiMaterial)
     std::vector<std::string> materialAssetIDs;
     materialAssetIDs.reserve(materials.size());
 
     for (size_t i = 0; i < materials.size(); ++i)
     {
-        if (!WriteMaterialAsset(materials[i], destinationVirtualPath, destinationPhysicalPath, i,outResult))
+        if (!WriteMaterialAsset(materials[i], assetBaseName, destinationVirtualFolder, destinationPhysicalFolder,
+                   i, outResult))
         {
             outResult.bSuccess = false;
             return false;
@@ -630,14 +721,26 @@ bool ModelImporter::OnImport(const FAssetImportRequest& request,
 
     // 2) Import static mesh (single combined mesh with submeshes)
     FImportedMeshTemp meshTemp = BuildSingleMeshFromScene(scene, materials);
-    for (size_t i = 0; i < meshTemp.materialSlots.size(); ++i)
+
+    // Fill material slot asset IDs on the mesh
+    for (size_t slot = 0; slot < meshTemp.materialSlots.size(); ++slot)
     {
-        meshTemp.materialSlotAssetIDs[i] = materialAssetIDs[i];
-        meshTemp.materialSlots[i].materialAssetIDLength = (uint32_t)materialAssetIDs[i].size();
+        uint32_t rawIndex = meshTemp.rawMaterialIndexForSlot[slot];
+
+        if (rawIndex >= materialAssetIDs.size())
+            continue;
+
+        const std::string& assetID = materialAssetIDs[rawIndex];
+
+        meshTemp.materialSlotAssetIDs[slot] = assetID;
+        meshTemp.materialSlots[slot].materialAssetIDLength =
+            static_cast<uint32_t>(assetID.size());
     }
 
-    // Write mesh asset
-    if (!WriteStaticMeshAsset(meshTemp, destinationVirtualPath, destinationPhysicalPath, outResult))
+    // 2.1) Write mesh asset
+    if (!WriteStaticMeshAsset(meshTemp, assetBaseName, destinationVirtualFolder,
+                     destinationPhysicalFolder, outResult))
+
     {
         outResult.bSuccess = false;
         return false;

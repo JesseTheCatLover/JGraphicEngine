@@ -45,8 +45,8 @@ public:
 
     struct FSubmeshCPU
     {
-        uint32_t firstIndex        = 0;
-        uint32_t indexCount        = 0;
+        uint32_t firstIndex = 0;
+        uint32_t indexCount = 0;
         uint32_t materialSlotIndex = 0;
     };
 
@@ -56,19 +56,19 @@ public:
 private:
     struct FMeshCPU
     {
-        uint32_t VertexCount  = 0;
-        uint32_t IndexCount   = 0;
+        uint32_t VertexCount = 0;
+        uint32_t IndexCount = 0;
         uint32_t VertexStride = 0;
 
-        bool bHasNormals  = false;
+        bool bHasNormals = false;
         bool bHasTangents = false;
-        bool bHasUVs      = false;
+        bool bHasUVs = false;
 
         // Raw shared buffers as in the payload
         std::vector<uint8_t> VertexBuffer;
         std::vector<uint8_t> IndexBuffer;
 
-        std::vector<FSubmeshCPU>      Submeshes;
+        std::vector<FSubmeshCPU> Submeshes;
         std::vector<FMaterialSlotCPU> MaterialSlots;
     };
 
@@ -83,7 +83,7 @@ private:
 
     // CPU staging
     FMeshCPU m_MeshCPU;
-    bool     m_CpuReady = false;
+    bool m_CpuReady = false;
 
     // GPU objects
     std::vector<FSubmeshGPU> m_SubmeshesGPU;

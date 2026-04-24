@@ -30,7 +30,7 @@ bool MaterialResource::OnCreateGpuResources()
         return false;
 
     UploadGPU(GetDevice());
-    ReleaseCPU();
+    //ReleaseCPU();
 
     return true;
 }
@@ -109,13 +109,13 @@ void MaterialResource::LoadCPU()
     // -----------------------------
     // Read ALL texture paths from payload in order
     // -----------------------------
-    std::string baseColorTexPath      = readString(matHeader->baseColorTexturePathLength);
-    std::string normalTexPath         = readString(matHeader->normalTexturePathLength);
-    std::string metallicTexPath       = readString(matHeader->metallicTexturePathLength);
-    std::string roughnessTexPath      = readString(matHeader->roughnessTexturePathLength);
-    std::string metalRoughnessTexPath = readString(matHeader->metalRoughnessTexturePathLength);
-    std::string occlusionTexPath      = readString(matHeader->occlusionTexturePathLength);
-    std::string emissiveTexPath       = readString(matHeader->emissiveTexturePathLength);
+    std::string baseColorTexPath      = readString(matHeader->baseColorTextureAssetIDLength);
+    std::string normalTexPath         = readString(matHeader->normalTextureAssetIDLength);
+    std::string metallicTexPath       = readString(matHeader->metallicTextureAssetIDLength);
+    std::string roughnessTexPath      = readString(matHeader->roughnessTextureAssetIDLength);
+    std::string metalRoughnessTexPath = readString(matHeader->metalRoughnessTextureAssetIDLength);
+    std::string occlusionTexPath      = readString(matHeader->occlusionTextureAssetIDLength);
+    std::string emissiveTexPath       = readString(matHeader->emissiveTextureAssetIDLength);
 
     // ---------------------------------------
     // Resolve asset IDs -> texture handles

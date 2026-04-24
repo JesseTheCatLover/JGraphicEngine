@@ -120,7 +120,7 @@ bool Texture2DResource::UploadGPU()
 
     if (!m_Texture.IsValid())
     {
-        std::cerr << "[Texture2DResource]: Texturre creation failed for asset " << m_Desc.assetID << "\n";
+        std::cerr << "[Texture2DResource]: Texture creation failed for asset " << m_Desc.assetID << "\n";
         return false;
     }
 

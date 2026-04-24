@@ -8,13 +8,13 @@ struct FMaterialPayloadHeader
     uint32_t version;   // e.g. 1
     uint32_t flags;     // bitmask for which slots/fields are used
 
-    uint32_t baseColorTexturePathLength; // bytes, NOT including a null terminator
-    uint32_t normalTexturePathLength;
-    uint32_t metallicTexturePathLength;
-    uint32_t roughnessTexturePathLength;
-    uint32_t metalRoughnessTexturePathLength;
-    uint32_t occlusionTexturePathLength;
-    uint32_t emissiveTexturePathLength;
+    uint32_t baseColorTextureAssetIDLength;
+    uint32_t normalTextureAssetIDLength;
+    uint32_t metallicTextureAssetIDLength;
+    uint32_t roughnessTextureAssetIDLength;
+    uint32_t metalRoughnessTextureAssetIDLength;
+    uint32_t occlusionTextureAssetIDLength;
+    uint32_t emissiveTextureAssetIDLength;
 };
 
 // Flags
