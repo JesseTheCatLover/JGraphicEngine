@@ -1,7 +1,7 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "Controllers/InspectorController.h"
-#include "Controllers/InspectorProviders/ActorInspectorProvider.h"
+#include "Controllers/Documents/ActorInspectorProvider.h"
 
 #include "Core/EditorHost.h"
 #include "Core/Services/SelectionService.h"
@@ -31,7 +31,7 @@ void InspectorController::Update(float /*deltaTime*/, const FInspectorPanelInput
         out.statusText = "Inspector: nothing selected.";
         return;
     }
-    if (selected.size() > 1)
+    if (selected.size() > 1) // TODO: Implement multi-selection for actors for the inspector panel
     {
         out.statusText = "Inspector: multi-select not supported yet.";
         return;

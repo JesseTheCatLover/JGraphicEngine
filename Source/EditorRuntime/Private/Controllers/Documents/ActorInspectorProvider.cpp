@@ -1,6 +1,6 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "Controllers/InspectorProviders/ActorInspectorProvider.h"
+#include "Controllers/Documents/ActorInspectorProvider.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -11,7 +11,7 @@
 #include <string>
 #include <functional>
 
-#include "Controllers/InspectorProviders/FInspectorDocument.h"
+#include "Controllers/Documents/FInspectorDocument.h"
 #include "Core/EditorHost.h"
 #include "Core/Services/SceneQueryService.h"
 

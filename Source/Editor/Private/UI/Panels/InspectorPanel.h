@@ -10,7 +10,7 @@
 
 #include "UI/IEditorPanels.h"
 #include "Controllers/Inputs/FInspectorPanelInput.h"
-#include "Controllers/InspectorProviders/FInspectorDocument.h"
+#include "Controllers/Documents/FInspectorDocument.h"
 
 class EditorHost;
 

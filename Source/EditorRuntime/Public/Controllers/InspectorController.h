@@ -4,7 +4,7 @@
 
 #include "PanelRegistry.h"
 #include "Core/Memory/SmartPointers.h"
-#include "InspectorProviders/FInspectorDocument.h"
+#include "Documents/FInspectorDocument.h"
 
 class ActorInspectorProvider;
 struct FInspectorPanelInput;

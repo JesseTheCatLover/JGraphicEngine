@@ -3,7 +3,7 @@
 #pragma once
 
 #include <cstdint>
-#include "Controllers/InspectorProviders/FInspectorDocument.h"
+#include "Controllers/Documents/FInspectorDocument.h"
 
 struct FInspectorOutput
 {
