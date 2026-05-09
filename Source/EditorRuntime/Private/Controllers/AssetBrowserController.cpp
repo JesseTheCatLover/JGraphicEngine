@@ -9,6 +9,8 @@
 #include "Core/EditorHost.h"
 #include "File/FileAPI.h"
 #include "Assets/FAssetRecord.h"
+#include "Controllers/Inputs/FAssetBrowserPanelInput.h"
+#include "Controllers/Outputs/FAssetBrowserOutput.h"
 #include "Utilities/UPath.h"
 
 AssetBrowserController::AssetBrowserController(PanelID id, EditorHost& host, EditorRuntime& runtime)
@@ -28,6 +30,45 @@ AssetBrowserController::~AssetBrowserController()
 {
     // Nothing special yet.
     // If we later subscribe to registry events, unsubscribe here.
+}
+
+namespace
+{
+    static bool IsRootPath(const std::string& p)
+    {
+        return p == "/" || p.empty();
+    }
+}
+
+void AssetBrowserController::Update(float /*deltaTime*/, const FAssetBrowserPanelInput &input, FAssetBrowserOutput &out)
+{
+    // Always reset out (Inspector does this too)
+    out = {};
+    out.bValid = true;
+
+    // 1) Process navigation / commands
+    if (input.bNavigateHome)
+    {
+        SetCurrentPath("/Project");
+    }
+    else if (input.bNavigateUp)
+    {
+        const std::string parent = ComputeParentPath(m_Document.currentPath);
+        SetCurrentPath(parent);
+    }
+    else if (input.bNavigateToPath)
+    {
+        SetCurrentPath(input.navigateToPath);
+    }
+
+    if (input.bForceRefresh)
+        m_Dirty = true;
+
+    // 2) Rebuild doc if needed
+    Refresh();
+
+    // 3) Produce output snapshot
+    out.document = m_Document;
 }
 
 void AssetBrowserController::OnPanelDestroyed()
@@ -273,4 +314,21 @@ bool AssetBrowserController::IsDirectChildAsset(
 
     // Direct child asset: remainder contains no '/'
     return remainder.find('/') == std::string::npos;
+}
+
+std::string AssetBrowserController::ComputeParentPath(const std::string& path)
+{
+    std::string p = UPath::Normalize(path);
+    if (IsRootPath(p))
+        return "/";
+
+    // Remove trailing slash if any (Normalize likely already does, but be safe)
+    while (p.size() > 1 && p.back() == '/')
+        p.pop_back();
+
+    std::size_t lastSlash = p.find_last_of('/');
+    if (lastSlash == std::string::npos || lastSlash == 0)
+        return "/";
+
+    return p.substr(0, lastSlash);
 }

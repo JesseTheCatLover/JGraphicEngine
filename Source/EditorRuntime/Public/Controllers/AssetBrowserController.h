@@ -8,6 +8,8 @@
 #include "PanelRegistry.h"
 #include "Documents/FAssetBrowserDocument.h"
 
+struct FAssetBrowserOutput;
+struct FAssetBrowserPanelInput;
 class EditorHost;
 class EditorRuntime;
 class EditorFileAPI;
@@ -35,6 +37,8 @@ private:
 
     [[nodiscard]] bool IsDirectChildAsset(const std::string& parentDir, const std::string& assetVirtualPath) const;
 
+    [[nodiscard]] static std::string ComputeParentPath(const std::string& path);
+
 public:
     AssetBrowserController(PanelID id, EditorHost& host, EditorRuntime& runtime);
     ~AssetBrowserController();
@@ -57,7 +61,7 @@ public:
     // For external invalidation (e.g. asset imported / registry changed)
     void Invalidate() { m_Dirty = true; }
 
-    // Optional: if you want to notify controller on panel destruction (like Viewport)
+    void Update(float deltaTime, const FAssetBrowserPanelInput& input, FAssetBrowserOutput& out);
     void OnPanelDestroyed();
 
 };

@@ -6,6 +6,7 @@
 #include "UI/Panels/InspectorPanel.h"
 #include "UI/Panels/ViewportPanel.h"
 #include "UI/Panels/SceneHierarchyPanel.h"
+#include "UI/Panels/AssetBrowserPanel.h"
 
 void EditorPanelTracker::Initialize(EditorHost& host)
 {
@@ -121,7 +122,13 @@ void EditorPanelTracker::ApplyLayout(EditorHost& host, EditorLayoutModel& layout
                         m_PanelsOwned.emplace_back(std::move(p));
                         break;
                     }
-                    // case EEditorPanelType::AssetBrowser: { ... } break;
+                    case EEditorPanelType::AssetBrowser:
+                    {
+                        auto p = MakeUnique<AssetBrowserPanel>();
+                        p->OnCreate(host);
+                        m_PanelsOwned.emplace_back(std::move(p));
+                        break;
+                    }
                     // case EEditorPanelType::Console: { ... } break;
                     default: break;
                 }

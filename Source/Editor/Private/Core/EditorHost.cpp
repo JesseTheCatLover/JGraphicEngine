@@ -12,6 +12,7 @@
 #include "Services/SceneQueryService.h"
 #include "Services/SelectionService.h"
 #include "Services/ShellCommandService.h"
+#include "Subsystems/AssetBrowserSubsystem.h"
 #include "Subsystems/InspectorSubsystem.h"
 #include "Subsystems/SceneHierarchySubsystem.h"
 #include "Subsystems/ViewportSubsystem.h"
@@ -33,6 +34,7 @@ void EditorHost::RegisterCoreSubsystems()
     m_PanelContainer->RegisterSubsystem<ViewportSubsystem>(*this, m_EditorRuntime, *m_ToolService);
     m_PanelContainer->RegisterSubsystem<SceneHierarchySubsystem>(*this);
     m_PanelContainer->RegisterSubsystem<InspectorSubsystem>(*this);
+    m_PanelContainer->RegisterSubsystem<AssetBrowserSubsystem>(*this, m_EditorRuntime);
 }
 
 void EditorHost::RegisterCoreServices()
