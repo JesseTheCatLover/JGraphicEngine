@@ -9,7 +9,30 @@
 #include <fstream>
 #include <iostream>
 
-#include <mach-o/dyld.h>
+#ifdef JENGINE_PLATFORM_WINDOWS
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+
+    #include <windows.h>
+
+    #undef CreateDirectory
+    #undef DeleteFile
+    #undef MoveFile
+#endif
+
+#ifdef JENGINE_PLATFORM_MACOS
+    #include <mach-o/dyld.h>
+#endif
+
+#ifdef JENGINE_PLATFORM_LINUX
+    #include <unistd.h>
+    #include <limits.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -186,7 +209,7 @@ std::filesystem::path UFileSystem::GetExecutablePath()
     return {};
 
 #elif defined(JENGINE_PLATFORM_LINUX)
-    char buffer[1024];
+    char buffer[PATH_MAX];
     const ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
     if (len != -1)
     {

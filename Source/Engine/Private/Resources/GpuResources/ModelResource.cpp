@@ -92,6 +92,8 @@ bool ModelResource::OnCreateGpuResources()
 
     UploadGPU();
     ReleaseCPU(); // keep RAM usage low; comment out if you want CPU copy in editor.
+
+    return true;
 }
 
 void ModelResource::OnDestroyGpuResources()
