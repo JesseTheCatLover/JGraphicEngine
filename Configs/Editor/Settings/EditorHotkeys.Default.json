@@ -1,0 +1,919 @@
+{
+    "Hotkeys": {
+        "version": 1,
+        "commands": [
+            {
+                "name": "Editor.App.Quit",
+                "category": "Application",
+                "description": "Quit editor",
+                "chords": [
+                    {
+                        "keys": [
+                            13
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            13
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.File.NewScene",
+                "category": "File",
+                "description": "Create a new scene",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            74
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            74
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            74
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            74
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.File.OpenScene",
+                "category": "File",
+                "description": "Open a scene",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            75
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            75
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            75
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            75
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.File.Save",
+                "category": "File",
+                "description": "Save current scene",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            79
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            79
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            79
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            79
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.File.SaveAs",
+                "category": "File",
+                "description": "Save current scene as",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            91,
+                            79
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            91,
+                            79
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            91,
+                            79
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            91,
+                            79
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.File.SaveAll",
+                "category": "File",
+                "description": "Save all modified content",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            87,
+                            79
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            87,
+                            79
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            87,
+                            79
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            87,
+                            79
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Edit.Copy",
+                "category": "Edit",
+                "description": "Copy selected objects",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            63
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            63
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            63
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            63
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Edit.Paste",
+                "category": "Edit",
+                "description": "Paste objects",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            82
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            82
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.History.Undo",
+                "category": "Edit",
+                "description": "Undo last action",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            86
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            86
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            86
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            86
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.History.Redo",
+                "category": "Edit",
+                "description": "Redo last action",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            87,
+                            86
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            87,
+                            86
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            87,
+                            86
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            87,
+                            86
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.View.ToggleSceneHierarchy",
+                "category": "View",
+                "description": "Toggle Scene Hierarchy panel",
+                "chords": [
+                    {
+                        "keys": [
+                            86
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            86
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.View.ToggleInspector",
+                "category": "View",
+                "description": "Toggle Inspector panel",
+                "chords": [
+                    {
+                        "keys": [
+                            82
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            82
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.View.ToggleAssetBrowser",
+                "category": "View",
+                "description": "Toggle Asset Browser panel",
+                "chords": [
+                    {
+                        "keys": [
+                            63
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            63
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.View.ToggleConsole",
+                "category": "View",
+                "description": "Toggle Console panel",
+                "chords": [
+                    {
+                        "keys": [
+                            84
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            84
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Viewport.FocusSelection",
+                "category": "Viewport",
+                "description": "Focus camera on selection",
+                "chords": [
+                    {
+                        "keys": [
+                            66
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            66
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Viewport.ToggleGameView",
+                "category": "Viewport",
+                "description": "Toggle game view",
+                "chords": [
+                    {
+                        "keys": [
+                            67
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            67
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Viewport.SetSingleView",
+                "category": "Viewport",
+                "description": "Set viewport layout to single view",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            52
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82,
+                            52
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            52
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82,
+                            52
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Viewport.SetDoubleView",
+                "category": "Viewport",
+                "description": "Set viewport layout to double view",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            53
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82,
+                            53
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            53
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82,
+                            53
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Viewport.SetTripleView",
+                "category": "Viewport",
+                "description": "Set viewport layout to triple view",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            54
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82,
+                            54
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            54
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82,
+                            54
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Viewport.SetQuadView",
+                "category": "Viewport",
+                "description": "Set viewport layout to quad view",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            55
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82,
+                            55
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            55
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            93,
+                            82,
+                            55
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Viewport.ToggleTabVisibility",
+                "category": "Viewport",
+                "description": "Toggle viewport dock tab visibility",
+                "chords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            68
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            91,
+                            82,
+                            68
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            89,
+                            82,
+                            68
+                        ],
+                        "platforms": 3,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    },
+                    {
+                        "keys": [
+                            91,
+                            82,
+                            68
+                        ],
+                        "platforms": 4,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Tools.Translate",
+                "category": "Tools",
+                "description": "Select translate tool",
+                "chords": [
+                    {
+                        "keys": [
+                            83
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            83
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Tools.Rotate",
+                "category": "Tools",
+                "description": "Select rotate tool",
+                "chords": [
+                    {
+                        "keys": [
+                            78
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            78
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            },
+            {
+                "name": "Editor.Tools.Scale",
+                "category": "Tools",
+                "description": "Select scale tool",
+                "chords": [
+                    {
+                        "keys": [
+                            65
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ],
+                "defaultChords": [
+                    {
+                        "keys": [
+                            65
+                        ],
+                        "platforms": 0,
+                        "allowExtraModifiers": true,
+                        "allowExtraKeys": false
+                    }
+                ]
+            }
+        ]
+    }
+}
