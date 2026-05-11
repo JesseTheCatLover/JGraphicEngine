@@ -35,7 +35,7 @@ target_compile_definitions(Engine PRIVATE
 
 # Link dependencies
 target_link_libraries(Engine
-        PUBLIC glad stb glfw assimp glm nlohmann_json
+        PUBLIC glad stb glfw assimp glm nlohmann_json nfd
 )
 
 # ---------------- Reflection CodeGen (JReflectGen) ----------------

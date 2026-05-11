@@ -26,8 +26,43 @@ target_include_directories(imgui
 )
 target_link_libraries(imgui PUBLIC glfw)
 
+# --- Native File Dialog Extended ---
+add_library(nfd STATIC)
+
+target_include_directories(nfd PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/nfd-extended/include"
+)
+
+if(WIN32)
+    target_sources(nfd PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/nfd-extended/src/nfd_win.cpp"
+    )
+
+elseif(APPLE)
+    target_sources(nfd PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/nfd-extended/src/nfd_cocoa.m"
+    )
+
+    find_library(COCOA_LIBRARY Cocoa)
+    target_link_libraries(nfd PRIVATE ${COCOA_LIBRARY})
+
+elseif(UNIX)
+    target_sources(nfd PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/nfd-extended/src/nfd_gtk.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/nfd-extended/src/nfd_portal.cpp"
+    )
+
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK REQUIRED gtk+-3.0)
+
+    target_include_directories(nfd PRIVATE ${GTK_INCLUDE_DIRS})
+    target_link_libraries(nfd PRIVATE ${GTK_LIBRARIES})
+
+endif()
+
+
 # Third party folder
-set_target_properties(glfw stb imgui glm assimp PROPERTIES
+set_target_properties(glfw stb imgui glm assimp nfd PROPERTIES
         EXCLUDE_FROM_ALL TRUE
         FOLDER "ThirdParty"
 )
