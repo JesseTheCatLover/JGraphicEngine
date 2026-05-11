@@ -2,7 +2,57 @@
 
 #include "GLFWSurface.h"
 #include "GLFW/glfw3.h"
+#include "nfd.h"
+
 #include <iostream>
+#include <sstream>
+
+namespace
+{
+    std::vector<nfdnfilteritem_t> BuildNfdFilter(const char* filterList,
+                                                 std::vector<std::string>& backingStrings)
+    {
+        std::vector<nfdnfilteritem_t> result;
+        if (!filterList || *filterList == '\0')
+            return result;
+
+        // We'll store name/spec strings in backingStrings so their memory stays valid.
+        std::stringstream ss(filterList);
+        std::string group;
+        while (std::getline(ss, group, ';'))
+        {
+            if (group.empty())
+                continue;
+
+            std::string name;
+            std::string spec;
+
+            auto colonPos = group.find(':');
+            if (colonPos != std::string::npos)
+            {
+                name = group.substr(0, colonPos);
+                spec = group.substr(colonPos + 1);
+            }
+            else
+            {
+                // If no name, use spec as both name and spec.
+                name = group;
+                spec = group;
+            }
+
+            // Store in backingStrings so c_str() is stable
+            backingStrings.push_back(name);
+            backingStrings.push_back(spec);
+
+            nfdnfilteritem_t item{};
+            item.name = backingStrings[backingStrings.size() - 2].c_str();
+            item.spec = backingStrings[backingStrings.size() - 1].c_str();
+            result.push_back(item);
+        }
+
+        return result;
+    }
+}
 
 GLFWSurface::~GLFWSurface()
 {
@@ -234,6 +284,122 @@ void GLFWSurface::SetVSync(bool vSync)
 float GLFWSurface::GetTimeSeconds()
 {
     return static_cast<float>(glfwGetTime());
+}
+
+std::string GLFWSurface::OpenFileDialog(const char* filterList, const char* defaultPath)
+{
+    nfdnchar_t* outPath = nullptr;
+
+    std::vector<std::string> filterBacking;
+    auto filters = BuildNfdFilter(filterList, filterBacking);
+    const nfdnfilteritem_t* filterPtr = filters.empty() ? nullptr : filters.data();
+    nfdfiltersize_t filterCount = static_cast<nfdfiltersize_t>(filters.size());
+
+    nfdresult_t result = NFD_OpenDialogN(
+        &outPath,       // outPath
+        filterPtr,      // filterList
+        filterCount,    // filterCount
+        defaultPath     // defaultPath
+    );
+
+    std::string path;
+    if (result == NFD_OKAY && outPath)
+    {
+        path = outPath;
+        NFD_FreePathN(outPath);
+    }
+
+    return path;
+}
+
+std::vector<std::string> GLFWSurface::OpenFileDialogMultiple(const char* filterList, const char* defaultPath)
+{
+    const nfdpathset_t* outPaths = nullptr;
+
+    std::vector<std::string> filterBacking;
+    auto filters = BuildNfdFilter(filterList, filterBacking);
+    const nfdnfilteritem_t* filterPtr = filters.empty() ? nullptr : filters.data();
+    nfdfiltersize_t filterCount = static_cast<nfdfiltersize_t>(filters.size());
+
+    nfdresult_t result = NFD_OpenDialogMultipleN(
+        &outPaths,      // outPaths
+        filterPtr,      // filterList
+        filterCount,    // filterCount
+        defaultPath     // defaultPath
+    );
+
+    std::vector<std::string> paths;
+    if (result == NFD_OKAY && outPaths)
+    {
+        // 1) Get count via out parameter
+        nfdpathsetsize_t count = 0;
+        nfdresult_t countResult = NFD_PathSet_GetCount(outPaths, &count);
+        if (countResult == NFD_OKAY && count > 0)
+        {
+            paths.reserve(static_cast<size_t>(count));
+
+            // 2) Iterate and get each path via out parameter
+            for (nfdpathsetsize_t i = 0; i < count; ++i)
+            {
+                nfdnchar_t* p = nullptr;
+                nfdresult_t pathResult = NFD_PathSet_GetPathN(outPaths, i, &p);
+                if (pathResult == NFD_OKAY && p)
+                    paths.emplace_back(p);
+            }
+        }
+
+        // 3) Free the path set
+        NFD_PathSet_Free(outPaths);
+    }
+
+    return paths;
+}
+
+std::string GLFWSurface::OpenFolderDialog(const char* defaultPath)
+{
+    nfdnchar_t* outPath = nullptr;
+
+    nfdresult_t result = NFD_PickFolderN(
+        &outPath,       // outPath
+        defaultPath     // defaultPath
+    );
+
+    std::string path;
+    if (result == NFD_OKAY && outPath)
+    {
+        path = outPath;
+        NFD_FreePathN(outPath);
+    }
+
+    return path;
+}
+
+std::string GLFWSurface::SaveFileDialog(const char* filterList, const char* defaultPath, const char* defaultName)
+{
+    nfdchar_t* outPath = nullptr;
+
+    std::vector<std::string> filterBacking;
+    auto filters = BuildNfdFilter(filterList, filterBacking);
+    const nfdfilteritem_t* filterPtr = filters.empty() ? nullptr : filters.data();
+    nfdfiltersize_t filterCount = static_cast<nfdfiltersize_t>(filters.size());
+
+
+    nfdresult_t result = NFD_SaveDialogN(
+        &outPath,           // outPath
+        filterPtr,          // filterList
+        filterCount,        // filterCount
+        defaultPath,        // defaultPath
+        defaultName         // defaultName
+    );
+
+    std::string path;
+    if (result == NFD_OKAY && outPath)
+    {
+        path = outPath;
+        NFD_FreePathN(outPath);
+    }
+
+    return path;
 }
 
 void GLFWSurface::UpdateCursor()

@@ -20,7 +20,7 @@ struct FSurfaceState
     int height = 720;
     bool bvSync = true;
     EWindowState windowState = EWindowState::Maximized;
-    std::string title = "JGraphicEngine";
+    std::string title = "JGraphXEngine";
     void* nativeHandle = nullptr;
     void* monitorHandle = nullptr;
 };
@@ -79,4 +79,26 @@ public:
     using GetProcAddressFunc = void* (*)(const char*);
     // Optional: for OpenGL-style loaders
     virtual GetProcAddressFunc GetProcAddressFunction() const { return nullptr; }
+
+    // Native file dialogues:
+
+    // Return empty string if user cancels.
+    virtual std::string OpenFileDialog(
+        const char* filterList,   // e.g. "png,jpg;fbx,obj"
+        const char* defaultPath)  // nullptr = OS default
+    = 0;
+
+    // Multiple selection
+    virtual std::vector<std::string> OpenFileDialogMultiple(
+        const char* filterList,
+        const char* defaultPath) = 0;
+
+    // Folder picker
+    virtual std::string OpenFolderDialog(const char* defaultPath) = 0;
+
+    // Save dialog
+    virtual std::string SaveFileDialog(
+        const char* filterList,
+        const char* defaultPath,
+        const char* defaultName) = 0;
 };

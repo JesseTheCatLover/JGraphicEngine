@@ -73,6 +73,16 @@ public:
 
     float GetTimeSeconds() override;
 
+    // Native file dialogues:
+
+    std::string OpenFileDialog(const char *filterList, const char *defaultPath) override;
+
+    std::vector<std::string> OpenFileDialogMultiple(const char *filterList, const char *defaultPath) override;
+
+    std::string OpenFolderDialog(const char *defaultPath) override;
+
+    std::string SaveFileDialog(const char *filterList, const char *defaultPath, const char* defaultName = nullptr) override;
+
 private:
     void UpdateCursor();
 };

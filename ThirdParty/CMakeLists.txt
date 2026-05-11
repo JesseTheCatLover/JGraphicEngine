@@ -43,8 +43,21 @@ elseif(APPLE)
             "${CMAKE_CURRENT_SOURCE_DIR}/nfd-extended/src/nfd_cocoa.m"
     )
 
-    find_library(COCOA_LIBRARY Cocoa)
-    target_link_libraries(nfd PRIVATE ${COCOA_LIBRARY})
+    # Required frameworks
+    find_library(COCOA_LIBRARY Cocoa REQUIRED)
+    find_library(UTI_LIBRARY UniformTypeIdentifiers REQUIRED)
+
+    # Optional, older SDKs / NFD revisions might use it; ignore if not found
+    find_library(MOBILE_CORE_SERVICES_LIBRARY MobileCoreServices)
+
+    target_link_libraries(nfd PRIVATE
+            ${COCOA_LIBRARY}
+            ${UTI_LIBRARY}
+    )
+
+    if(MOBILE_CORE_SERVICES_LIBRARY)
+        target_link_libraries(nfd PRIVATE ${MOBILE_CORE_SERVICES_LIBRARY})
+    endif()
 
 elseif(UNIX)
     target_sources(nfd PRIVATE
