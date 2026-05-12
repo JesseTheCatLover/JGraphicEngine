@@ -1,86 +1,63 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
 #include "Rendering/IPlatformSurface.h"
 
+#include "Core/Memory/SmartPointers.h"
+#include <vector>
+
+class GLFWWindow;
 struct GLFWwindow;
 
 class GLFWSurface : public IPlatformSurface
 {
 private:
-    GLFWwindow* m_Window = nullptr;
-    FSurfaceState m_State{};
-    ECursorMode m_CursorMode = ECursorMode::Visible;
+    TSharedPtr<IPlatformWindow> m_PrimaryWindow;
+    TWeakPtr<IPlatformWindow> m_FocusedWindow;
 
-    FResizeCallback m_FramebufferResizeCallback;
+    // Track created windows
+    std::vector<TSharedPtr<GLFWWindow>> m_Windows;
+
+    bool m_Initialized = false;
+    bool m_Shutdown = false;
 
 public:
     GLFWSurface() = default;
     ~GLFWSurface() override;
 
-    bool Initialize(const FSurfaceState &state) override;
-
+    bool Initialize() override;
     void Shutdown() override;
 
-    GetProcAddressFunc GetProcAddressFunction() const override;
+    TSharedPtr<IPlatformWindow> CreateWindow(const FWindowDesc& statem, bool bPrimary = false) override;
+    void DestroyWindow(const TSharedPtr<IPlatformWindow>& window) override;
 
-    void Present() override;
+    [[nodiscard]] TSharedPtr<IPlatformWindow> GetFocusedWindow() const override;
 
-    void SwapBuffers() override;
+    [[nodiscard]] TSharedPtr<IPlatformWindow> GetPrimaryWindow() const override;
 
-    void SetSurfaceSize(int width, int height) override;
+    [[nodiscard]] TSharedPtr<IPlatformWindow> GetEffectiveInputWindow() const override;
+
+    [[nodiscard]] std::vector<TSharedPtr<IPlatformWindow>> GetAllWindows() const override;
+
+    void MakeContextCurrent(const TSharedPtr<IPlatformWindow> &window) override;
+
+    void Present(const TSharedPtr<IPlatformWindow>& window) override;
+
+    void SwapBuffers(const TSharedPtr<IPlatformWindow>& window) override;
 
     void PollSurfaceEvents() override;
 
-    [[nodiscard]] bool ShouldClose() const override;
-
-    void SetShouldClose(bool bShould) override;
-
-    void GetWindowSize(int &w, int &h) const override;
-
-    void* GetNativeHandle() const override;
-
-    [[nodiscard]] bool IsFullscreen() const override;
-
-    [[nodiscard]] int GetWidth() const override;
-
-    [[nodiscard]] int GetHeight() const override;
-
-    [[nodiscard]] float GetAspectRatio() const override;
-
-    void SetCursorMode(ECursorMode mode) override;
-
-    void GetFramebufferSize(int &w, int &h) const override;
-
-    void SetCursorVisible() override;
-
-    void SetCursorHidden() override;
-
-    void SetCursorDisabled() override;
-
-    [[nodiscard]] bool IsVSyncEnabled() const override;
-
-    FSurfaceState GetState() const override;
-
-    void SetTitle(const std::string &title) override;
-
-    void SetVSync(bool vSync) override;
-
-    void SetFramebufferResizeCallback(FResizeCallback callback) override
-    {
-        m_FramebufferResizeCallback = std::move(callback);
-    }
-
     float GetTimeSeconds() override;
+
+    GetProcAddressFunc GetProcAddressFunction() const override;
+
+    void* GetPlatformSpecificHandle() const override { return nullptr; }
 
     // Native file dialogues:
 
     std::string OpenFileDialog(const char *filterList, const char *defaultPath) override;
-
     std::vector<std::string> OpenFileDialogMultiple(const char *filterList, const char *defaultPath) override;
-
     std::string OpenFolderDialog(const char *defaultPath) override;
-
     std::string SaveFileDialog(const char *filterList, const char *defaultPath, const char* defaultName = nullptr) override;
 
 private:

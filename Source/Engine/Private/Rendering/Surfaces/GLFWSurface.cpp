@@ -1,4 +1,4 @@
-// Copyright 2025 JesseTheCatLover. All Rights Reserved.
+// Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "GLFWSurface.h"
 #include "GLFW/glfw3.h"
@@ -6,6 +6,8 @@
 
 #include <iostream>
 #include <sstream>
+
+#include "GLFWWindow.h"
 
 namespace
 {
@@ -56,16 +58,22 @@ namespace
 
 GLFWSurface::~GLFWSurface()
 {
-    GLFWSurface::Shutdown();
+    Shutdown();
 }
 
-bool GLFWSurface::Initialize(const FSurfaceState &state)
+bool GLFWSurface::Initialize()
 {
+    if (m_Initialized)
+        return true;
+
     if (!glfwInit())
     {
         std::cerr << "[GLFWSurface]: Failed to initialize GLFW" << std::endl;
         return false;
     }
+
+    m_Initialized = true;
+    m_Shutdown = false;
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -75,104 +83,199 @@ bool GLFWSurface::Initialize(const FSurfaceState &state)
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    m_State = state;
-
-    GLFWmonitor* monitor = static_cast<GLFWmonitor*>(state.monitorHandle);
-    if (!monitor)
-        monitor = glfwGetPrimaryMonitor(); // default fallback if not specified
-
-    if (IsFullscreen() || m_State.windowState == EWindowState::Maximized)
-    {
-        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-        glfwWindowHint(GLFW_RED_BITS, mode->redBits);
-        glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
-        glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-        glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-        m_State.width = mode->width;
-        m_State.height = mode->height;
-    }
-    else // Windowed (with borders) in saved width/height
-    {
-        glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);  // title bar
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-        glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE);
-        glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
-        glfwWindowHint(GLFW_FLOATING, GLFW_FALSE);   // stays behind other floating windows
-        m_State.width = state.width;
-        m_State.height = state.height;
-    }
-
-    GLFWmonitor* winMonitor = IsFullscreen() ? monitor : nullptr;
-    m_Window = glfwCreateWindow(m_State.width, m_State.height, state.title.c_str(),  winMonitor, nullptr);
-
-    if (!m_Window)
-    {
-        std::cerr << "[GLFWSurface]: Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return false;
-    }
-
-    // Store the native handle
-    m_State.nativeHandle = m_Window;
-    m_State.monitorHandle = monitor;
-
-    // Make glfw allow binding to c++ objects
-    glfwSetWindowUserPointer(m_Window, this);
-
-    // Framebuffer callback (often fires at end / on DPI changes)
-    glfwSetFramebufferSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
-    {
-        auto* surface = static_cast<GLFWSurface*>(glfwGetWindowUserPointer(window));
-        if (!surface)
-            return;
-
-        if (surface->m_FramebufferResizeCallback)
-            surface->m_FramebufferResizeCallback(width, height);
-    });
-
-    // Make context current (for OpenGL)
-    glfwMakeContextCurrent(m_Window); // TODO: Check only if using OpenGL with a macro or smth else.
-
-    // Apply vsync
-    glfwSwapInterval(state.bvSync ? 1 : 0);
-
     return true;
 }
 
 void GLFWSurface::Shutdown()
 {
-    if (m_Window)
+    if (m_Shutdown)
+        return;
+
+    m_Shutdown = true;
+
+    // Destroy windows first
+    for (auto& window : m_Windows)
     {
-        glfwDestroyWindow(m_Window);
-        m_Window = nullptr;
+        if (window)
+            window->Shutdown();
     }
 
+    m_Windows.clear();
+    m_PrimaryWindow.reset();
+
     glfwTerminate();
-    std::cout << "[GLFWSurface]: Shutdown completed" << std::endl;
+    std::cout << "[GLFWSurface]: Shutdown completed\n";
 }
 
-IPlatformSurface::GetProcAddressFunc GLFWSurface::GetProcAddressFunction() const
+TSharedPtr<IPlatformWindow> GLFWSurface::CreateWindow(const FWindowDesc& state, bool bPrimary)
 {
-    // Explicitly cast the GLFW function to our expected signature.
-    return reinterpret_cast<GetProcAddressFunc>(glfwGetProcAddress);
+    GLFWwindow* shareContext = nullptr;
+
+    if (m_PrimaryWindow)
+    {
+        // We already have a primary window; share its context
+        auto primaryGLFW = std::dynamic_pointer_cast<GLFWWindow>(m_PrimaryWindow);
+        if (primaryGLFW)
+        {
+            shareContext = static_cast<GLFWwindow*>(primaryGLFW->GetNativeHandle());
+        }
+    }
+
+    // Construct the GLFWWindow with the chosen shareContext
+    auto window = MakeShared<GLFWWindow>(state, shareContext);
+
+    if (!window->Initialize())
+    {
+        std::cerr << "[GLFWSurface]: Failed to create GLFWWindow\n";
+        return nullptr;
+    }
+
+    // Close handler – delegates to surface
+    window->SetCloseHandler(
+        [this, weakWindow = TWeakPtr(window)]
+        (GLFWWindow&)
+        {
+            auto locked = weakWindow.lock();
+            if (!locked)
+                return;
+
+            DestroyWindow(locked);
+        });
+
+    // Focus callback – updates m_FocusedWindow
+    window->SetFocusCallback(
+        [this, weakWindow = TWeakPtr<IPlatformWindow>(std::static_pointer_cast<IPlatformWindow>(window))]
+        (IPlatformWindow&, bool focused)
+        {
+            auto locked = weakWindow.lock();
+
+            if (!locked)
+                return;
+
+            if (focused)
+            {
+                m_FocusedWindow = locked;
+            }
+            else
+            {
+                auto current = m_FocusedWindow.lock();
+                if (current == locked)
+                    m_FocusedWindow.reset();
+            }
+        });
+
+    m_Windows.push_back(window);
+
+    // Set primary window if this is the primary one
+    if (!m_PrimaryWindow && bPrimary)
+    {
+        m_PrimaryWindow = std::static_pointer_cast<IPlatformWindow>(window);
+        MakeContextCurrent(window);
+    }
+
+    return std::static_pointer_cast<IPlatformWindow>(window);
 }
 
-void GLFWSurface::Present()
+void GLFWSurface::DestroyWindow(const TSharedPtr<IPlatformWindow>& window)
 {
-    SwapBuffers();
+    if (!window)
+        return;
+
+    auto glfwWindow = std::dynamic_pointer_cast<GLFWWindow>(window);
+    if (!glfwWindow)
+        return;
+
+    auto focused = m_FocusedWindow.lock();
+    if (focused == window)
+    {
+        m_FocusedWindow.reset();
+    }
+
+    // Do not allow destroying the primary mid-session
+    if (m_PrimaryWindow == window)
+    {
+        return;
+    }
+
+    // Native destroy via the window's own logic
+    glfwWindow->Shutdown();
+
+    // Remove from our list if it’s a GLFWWindow we own
+    for (auto it = m_Windows.begin(); it != m_Windows.end(); ++it)
+    {
+        if (it->get() == glfwWindow.get())
+        {
+            m_Windows.erase(it);
+            break;
+        }
+    }
 }
 
-void GLFWSurface::SwapBuffers()
+
+TSharedPtr<IPlatformWindow> GLFWSurface::GetFocusedWindow() const
 {
-    if (m_Window)
-        glfwSwapBuffers(m_Window);
+    return m_FocusedWindow.lock();
 }
 
-void GLFWSurface::SetSurfaceSize(int width, int height)
+TSharedPtr<IPlatformWindow> GLFWSurface::GetPrimaryWindow() const
 {
-    m_State.width = width;
-    m_State.height = height;
-    glfwSetWindowSize(m_Window, width, height);
+    return m_PrimaryWindow;
+}
+
+TSharedPtr<IPlatformWindow> GLFWSurface::GetEffectiveInputWindow() const
+{
+    auto focused = m_FocusedWindow.lock();
+    if (focused)
+        return focused;
+
+    return m_PrimaryWindow;
+}
+
+std::vector<TSharedPtr<IPlatformWindow>> GLFWSurface::GetAllWindows() const
+{
+    std::vector<TSharedPtr<IPlatformWindow>> result;
+    result.reserve(m_Windows.size());
+
+    for (const auto& win : m_Windows)
+    {
+        if (win) result.push_back(std::static_pointer_cast<IPlatformWindow>(win));
+    }
+
+    return result;
+}
+
+void GLFWSurface::MakeContextCurrent(const TSharedPtr<IPlatformWindow> &window)
+{
+    if (!window)
+    {
+        glfwMakeContextCurrent(nullptr);
+        return;
+    }
+
+    auto glfwWindow = std::dynamic_pointer_cast<GLFWWindow>(window);
+    if (!glfwWindow)
+        return;
+
+    void* native = glfwWindow->GetNativeHandle(); // or similar getter
+    glfwMakeContextCurrent(static_cast<GLFWwindow*>(native));
+}
+
+void GLFWSurface::Present(const TSharedPtr<IPlatformWindow>& window)
+{
+    SwapBuffers(window);
+}
+
+void GLFWSurface::SwapBuffers(const TSharedPtr<IPlatformWindow>& window)
+{
+    if (!window)
+        return;
+
+    auto glfwWindow = std::dynamic_pointer_cast<GLFWWindow>(window);
+    if (!glfwWindow)
+        return;
+
+    void* native = glfwWindow->GetNativeHandle();
+    glfwSwapBuffers(static_cast<GLFWwindow*>(native));
 }
 
 void GLFWSurface::PollSurfaceEvents()
@@ -180,110 +283,15 @@ void GLFWSurface::PollSurfaceEvents()
     glfwPollEvents();
 }
 
-bool GLFWSurface::ShouldClose() const
-{
-    return glfwWindowShouldClose(m_Window);
-}
-
-void GLFWSurface::SetShouldClose(bool bShould)
-{
-    glfwSetWindowShouldClose(m_Window, bShould);
-}
-
-void GLFWSurface::GetWindowSize(int &w, int &h) const
-{
-    if (m_Window)
-        glfwGetWindowSize(m_Window, &w, &h);
-    else
-    {
-        w = 0;
-        h = 0;
-    }
-}
-
-void* GLFWSurface::GetNativeHandle() const
-{
-    return reinterpret_cast<void*>(m_Window);
-}
-
-bool GLFWSurface::IsFullscreen() const
-{
-    return m_State.windowState == EWindowState::Fullscreen ? true : false;
-}
-
-int GLFWSurface::GetWidth() const
-{
-    return m_State.width;
-}
-
-int GLFWSurface::GetHeight() const
-{
-    return m_State.height;
-}
-
-float GLFWSurface::GetAspectRatio() const
-{
-    if (m_State.height <= 0 || m_State.width <= 0)
-        return 1.0f;
-    return static_cast<float>(m_State.width) / static_cast<float>(m_State.height);
-}
-
-void GLFWSurface::SetCursorMode(ECursorMode mode)
-{
-    m_CursorMode = mode;
-    UpdateCursor();
-}
-
-void GLFWSurface::GetFramebufferSize(int &w, int &h) const
-{
-    if (m_Window) glfwGetFramebufferSize(m_Window, &w, &h);
-    else { w = h = 0; }
-}
-
-void GLFWSurface::SetCursorVisible()
-{
-    m_CursorMode = ECursorMode::Visible;
-    UpdateCursor();
-}
-
-void GLFWSurface::SetCursorHidden()
-{
-    m_CursorMode = ECursorMode::Hidden;
-    UpdateCursor();
-}
-
-void GLFWSurface::SetCursorDisabled()
-{
-    m_CursorMode = ECursorMode::Disabled;
-    UpdateCursor();
-}
-
-bool GLFWSurface::IsVSyncEnabled() const
-{
-    return m_State.bvSync;
-}
-
-FSurfaceState GLFWSurface::GetState() const
-{
-    return m_State;
-}
-
-void GLFWSurface::SetTitle(const std::string &title)
-{
-    m_State.title = title;
-    if (m_Window)
-        glfwSetWindowTitle(m_Window, title.c_str());
-}
-
-void GLFWSurface::SetVSync(bool vSync)
-{
-    m_State.bvSync = vSync;
-    if (m_Window) glfwSwapInterval(vSync ? 1 : 0);
-}
-
 float GLFWSurface::GetTimeSeconds()
 {
     return static_cast<float>(glfwGetTime());
+}
+
+IPlatformSurface::GetProcAddressFunc GLFWSurface::GetProcAddressFunction() const
+{
+    // Explicitly cast the GLFW function to our expected signature.
+    return reinterpret_cast<GetProcAddressFunc>(glfwGetProcAddress);
 }
 
 std::string GLFWSurface::OpenFileDialog(const char* filterList, const char* defaultPath)
@@ -400,22 +408,4 @@ std::string GLFWSurface::SaveFileDialog(const char* filterList, const char* defa
     }
 
     return path;
-}
-
-void GLFWSurface::UpdateCursor()
-{
-    if (!m_Window) return;
-    switch (m_CursorMode)
-    {
-        case ECursorMode::Visible:
-            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            break;
-        case ECursorMode::Hidden:
-            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-            break;
-        case ECursorMode::Disabled:
-            // Capture and hide the cursor
-            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            break;
-    }
 }

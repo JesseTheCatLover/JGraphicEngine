@@ -3,16 +3,16 @@
 #pragma once
 #include "Core/Memory/SmartPointers.h"
 #include "IInputBackend.h"
-#include "../../Public/Rendering/IPlatformSurface.h"
+#include "Rendering/IPlatformWindow.h"
 
 class InputBackendFactory
 {
 public:
     /**
-     * @brief Create an input backend appropriate for the given platform surface.
+     * @brief Create an input backend appropriate for the given platform window.
      *
-     * @param surface The active platform surface (window, etc.).
+     * @param window The active platform window.
      * @return TUniquePtr<IInputBackend> or nullptr on failure.
      */
-    static TUniquePtr<IInputBackend> MakeInputBackend(IPlatformSurface* surface);
+    static TUniquePtr<IInputBackend> MakeInputBackend(IPlatformWindow* window);
 };

@@ -3,7 +3,6 @@
 #include "EditorApp.h"
 
 #include <Core/CoreMinimal.h>
-#include <Rendering/IPlatformSurface.h>
 #include <GLFW/glfw3.h>
 #include <Renderer/Backends/ImGuiBackend.h>
 #include <iostream>
@@ -14,6 +13,7 @@
 #include "Core/Services/ShellCommandService.h"
 #include "Renderer/ImGuiRenderer.h"
 #include "Layout/EditorLayoutModel.h"
+#include "Rendering/IPlatformWindow.h"
 
 EditorApp::EditorApp()
 {
@@ -47,26 +47,30 @@ void EditorApp::Shutdown()
     m_Window = nullptr;
 }
 
-void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
+TUniquePtr<IProjectLaunchUI> EditorApp::CreateProjectLaunchUI()
 {
-    if (!surface)
+}
+
+void EditorApp::OnEngineInitialized(IPlatformWindow* window)
+{
+    if (!window)
     {
-        std::cerr << "[EditorApp]: surface is null" << std::endl;
+        std::cerr << "[EditorApp]: window is null" << std::endl;
         return;
     }
 
     // Grab native handle from the surface
-    void* native = surface->GetNativeHandle();
+    void* native = window->GetNativeHandle();
 
-    GLFWwindow* window = static_cast<GLFWwindow*>(native);
-    if (!window)
+    GLFWwindow* nativeWindow = static_cast<GLFWwindow*>(native); // TODO: Should be backend agnostic in future
+    if (!nativeWindow)
     {
         std::cerr << "[EditorApp]: native handle is not a valid GLFWwindow" << std::endl;
         return;
     }
 
     // Retrieve native GLFW window
-    m_Window = window;
+    m_Window = nativeWindow;
     if (!m_Window)
     {
         std::cerr << "[EditorApp]: Native surface handle is not a GLFWwindow " << std::endl;
@@ -75,7 +79,7 @@ void EditorApp::OnEngineInitialized(IPlatformSurface* surface)
 
 
     // Initialize ImGui backend
-    m_EditorUIBackend = MakeUnique<ImGuiBackend>(window);
+    m_EditorUIBackend = MakeUnique<ImGuiBackend>(nativeWindow);
 
     // EditorRuntime (safe bridge API to Engine)
     m_EditorRuntime = TUniquePtr<EditorRuntime>(new EditorRuntime());

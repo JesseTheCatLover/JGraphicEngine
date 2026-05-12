@@ -4,79 +4,56 @@
 #include <string>
 #include <functional>
 
-enum class EWindowState
-{
-    Normal,
-    Minimized,
-    Maximized,
-    Fullscreen,
-    Hidden,
-    Lost
-};
+#include "WindowDescTypes.h"
+#include "Core/Memory/SmartPointers.h"
 
-struct FSurfaceState
-{
-    int width = 1280;
-    int height = 720;
-    bool bvSync = true;
-    EWindowState windowState = EWindowState::Maximized;
-    std::string title = "JGraphXEngine";
-    void* nativeHandle = nullptr;
-    void* monitorHandle = nullptr;
-};
-
-enum class ECursorMode
-{
-    Visible,
-    Hidden,
-    Disabled
-};
+class IPlatformWindow;
 
 class IPlatformSurface
 {
 public:
-    using FResizeCallback = std::function<void(int width, int height)>;
+    using GetProcAddressFunc = void* (*)(const char*);
 
 public:
     virtual ~IPlatformSurface() = default;
 
-    virtual bool Initialize(const FSurfaceState& state) = 0;
+    // System-level initialization. No window state here.
+
+    virtual bool Initialize() = 0;
     virtual void Shutdown() = 0;
-    [[nodiscard]] virtual bool ShouldClose() const = 0;
-    virtual void SetShouldClose(bool bShould) = 0;
 
-    virtual void Present() = 0;
-    virtual void SwapBuffers() {} // Optional override, for GL/EGL backends that use implicit swap-chains
-    virtual void SetSurfaceSize(int width, int height) = 0;
+    // Window management
 
+    virtual TSharedPtr<IPlatformWindow> CreateWindow(const FWindowDesc& state, bool bPrimary = false) = 0;
+    virtual void DestroyWindow(const TSharedPtr<IPlatformWindow>& window) = 0;
+
+    // Primary window: stable anchor for engine
+    [[nodiscard]] virtual TSharedPtr<IPlatformWindow> GetPrimaryWindow() const = 0;
+
+    // Focused window: currently active for input
+    [[nodiscard]] virtual TSharedPtr<IPlatformWindow> GetFocusedWindow() const = 0;
+
+    // Effective input window: focus if present, otherwise primary
+    [[nodiscard]] virtual TSharedPtr<IPlatformWindow> GetEffectiveInputWindow() const = 0;
+
+    // List all windows
+    [[nodiscard]] virtual std::vector<TSharedPtr<IPlatformWindow>> GetAllWindows() const = 0;
+
+    // Bind a given window’s context (backend-agnostic wrapper)
+    virtual void MakeContextCurrent(const TSharedPtr<IPlatformWindow>& window) = 0;
+
+    virtual void Present(const TSharedPtr<IPlatformWindow>& window) = 0;
+
+    // Optional override, for GL/EGL backends that use implicit swap-chains
+    virtual void SwapBuffers(const TSharedPtr<IPlatformWindow>& window) {}
+
+    // Process OS/system events for all windows
     virtual void PollSurfaceEvents() = 0;
-
-    virtual void* GetNativeHandle() const = 0;
-    [[nodiscard]] virtual int GetWidth() const = 0;
-    [[nodiscard]] virtual int GetHeight() const = 0;
-    [[nodiscard]] virtual float GetAspectRatio() const = 0;
-    virtual void GetFramebufferSize(int& w, int& h) const = 0;
-    virtual void GetWindowSize(int& w, int& h) const = 0;
-    [[nodiscard]] virtual bool IsVSyncEnabled() const = 0;
-    [[nodiscard]] virtual bool IsFullscreen() const = 0;
-    [[nodiscard]] virtual FSurfaceState GetState() const = 0;
-
-    virtual void SetTitle(const std::string& title) = 0;
-    virtual void SetVSync(bool vSync) = 0;
-
-    virtual void SetCursorMode(ECursorMode mode) {}
-    virtual void SetCursorVisible() {}
-    virtual void SetCursorHidden() {}
-    virtual void SetCursorDisabled() {}
 
     virtual float GetTimeSeconds() = 0;
 
     virtual void* GetPlatformSpecificHandle() const { return nullptr; } // optional override
 
-    virtual void SetFramebufferResizeCallback(FResizeCallback callback) {}
-    virtual void SetWindowResizeCallback(FResizeCallback callback) {}
-
-    using GetProcAddressFunc = void* (*)(const char*);
     // Optional: for OpenGL-style loaders
     virtual GetProcAddressFunc GetProcAddressFunction() const { return nullptr; }
 

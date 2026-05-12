@@ -36,6 +36,7 @@
 #include "Core/Project/VirtualPathMounter.h"
 #include "Framework/AssetManager.h"
 #include "Rendering/FRenderView.h"
+#include "Rendering/IPlatformWindow.h"
 #include "Scene/SceneComponents/JStaticMeshComponent.h"
 
 JEngine::JEngine()
@@ -149,7 +150,7 @@ bool JEngine::Initialize()
 
     if (m_EditorBridge)
     {
-        m_EditorBridge->OnEngineInitialized(m_PlatformSurface.get());
+        m_EditorBridge->OnEngineInitialized(m_PrimaryWindow.get());
     }
 
     return true;
@@ -157,7 +158,7 @@ bool JEngine::Initialize()
 
 bool JEngine::SurfaceInitialize()
 {
-    FSurfaceState surfaceState;
+    FWindowDesc surfaceState;
     surfaceState.width = m_Context->GetFramebufferWidth();
     surfaceState.height = m_Context->GetFramebufferHeight();
     surfaceState.windowState = EWindowState::Maximized;
@@ -170,23 +171,25 @@ bool JEngine::SurfaceInitialize()
         std::cerr << "[JEngine]: No surface backend available for requested API" << std::endl;
         return false;
     }
-    if (!m_PlatformSurface->Initialize(surfaceState))
+    if (!m_PlatformSurface->Initialize())
     {
         std::cerr << "[JEngine]: Failed to initialize the platform surface" << std::endl;
         return false;
     }
 
+    m_PrimaryWindow = m_PlatformSurface->CreateWindow(surfaceState, true);
+
     // Ensure initial framebuffer size is correct
     {
         int fbW = 0, fbH = 0;
-        m_PlatformSurface->GetFramebufferSize(fbW, fbH);
+        m_PrimaryWindow->GetFramebufferSize(fbW, fbH);
         m_Context->SetFramebufferSize(fbW, fbH);
     }
 
     // --- Register callbacks ---
 
     // Framebuffer callback
-    m_PlatformSurface->SetFramebufferResizeCallback(
+    m_PrimaryWindow->SetFramebufferResizeCallback(
         [this](int fbWidth, int fbHeight)
         {
             m_Context->SetFramebufferSize(fbWidth, fbHeight);
@@ -211,7 +214,14 @@ bool JEngine::InitializeBackends()
         return false;
     }
 
-    m_InputBackend = InputBackendFactory::MakeInputBackend(m_PlatformSurface.get());
+    auto inputWindow = m_PlatformSurface->GetEffectiveInputWindow();
+    if (!inputWindow)
+    {
+        std::cerr << "[JEngine]: No effective input window available.\n";
+        return false;
+    }
+
+    m_InputBackend = InputBackendFactory::MakeInputBackend(inputWindow.get());
     if (!m_InputBackend)
     {
         std::cerr << "[JEngine]: No input backend available for the os/platform" << std::endl;
@@ -457,7 +467,7 @@ bool JEngine::InitialBuildAssetPipeline()
 
 void JEngine::RunMainLoop()
 {
-    while (!m_PlatformSurface->ShouldClose() && m_Context->GetIsRunning())
+    while (!m_PrimaryWindow->ShouldClose() && m_Context->GetIsRunning())
     {
         CalculateDeltaTime();
 
@@ -483,7 +493,7 @@ void JEngine::RunMainLoop()
             m_EditorBridge->OnRenderOverlay(m_Context->GetDeltaTime());
 
         // Swap front/back buffers (show rendered frame)
-        m_PlatformSurface->SwapBuffers();
+        m_PlatformSurface->Present(m_PrimaryWindow);
 
         // Poll window + input events
         m_PlatformSurface->PollSurfaceEvents();
@@ -645,6 +655,11 @@ EngineContext& JEngine::GetEngineContext()
 IPlatformSurface * JEngine::GetPlatformSurface()
 {
     return m_PlatformSurface.get();
+}
+
+IPlatformWindow* JEngine::GetPrimaryWindow()
+{
+    return m_PrimaryWindow.get();
 }
 
 RendererSubsystem * JEngine::GetRenderer()

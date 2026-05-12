@@ -7,6 +7,7 @@
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+class IPlatformWindow;
 class AssetManager;
 class AssetImportSubsystem;
 class AssetRegistrySubsystem;
@@ -50,6 +51,7 @@ public:
     [[nodiscard]] EngineContext& GetEngineContext();
 
     IPlatformSurface* GetPlatformSurface();
+    IPlatformWindow* GetPrimaryWindow();
     RendererSubsystem* GetRenderer();
     AssetImportSubsystem* GetAssetImportSubsystem();
     AssetRegistrySubsystem* GetAssetRegistrySubsystem();
@@ -82,6 +84,7 @@ private:
     TUniquePtr<VirtualPathMounter> m_VirtualPathMounter;
 
     TUniquePtr<IPlatformSurface> m_PlatformSurface;
+    TSharedPtr<IPlatformWindow> m_PrimaryWindow;
     TUniquePtr<IRenderBackend> m_RenderBackend;
     TUniquePtr<RendererSubsystem> m_Renderer;
     TUniquePtr<AssetImportSubsystem> m_AssetImportSubsystem;

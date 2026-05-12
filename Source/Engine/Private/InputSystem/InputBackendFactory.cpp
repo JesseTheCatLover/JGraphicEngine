@@ -8,18 +8,18 @@
     #include "Backends/GLFWInputBackend.h"
 #endif
 
-TUniquePtr<IInputBackend> InputBackendFactory::MakeInputBackend(IPlatformSurface* surface)
+TUniquePtr<IInputBackend> InputBackendFactory::MakeInputBackend(IPlatformWindow* window)
 {
-    if (!surface)
+    if (!window)
     {
-        std::cerr << "[InputBackendFactory] No surface provided, cannot create input backend\n";
+        std::cerr << "[InputBackendFactory] No window provided, cannot create input backend\n";
         return nullptr;
     }
 
 #if JENGINE_PLATFORM_MACOS || JENGINE_PLATFORM_LINUX || JENGINE_PLATFORM_WINDOWS
     // Desktop builds – currently using GLFW everywhere
 #if defined(HAVE_GLFW)
-    void* nativeHandle = surface->GetNativeHandle();
+    void* nativeHandle = window->GetNativeHandle();
     auto* glfwWindow = reinterpret_cast<GLFWwindow*>(nativeHandle);
     if (!glfwWindow)
     {
