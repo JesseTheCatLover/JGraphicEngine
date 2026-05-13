@@ -43,7 +43,7 @@ public:
     JEngine& operator=(const JEngine&) = delete;
 
     template<typename T>
-    std::shared_ptr<T> GetService();
+    TSharedPtr<T> GetService();
 
     template<typename T>
     void RegisterFactory(std::function<std::shared_ptr<T>()> factory);

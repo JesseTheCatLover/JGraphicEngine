@@ -5,6 +5,7 @@
 #include <memory>
 #include <typeindex>
 #include <unordered_map>
+#include "Core/Memory/SmartPointers.h"
 
 class TServiceContainer
 {
@@ -13,13 +14,13 @@ private:
 
     // Register how to make a service
     template<typename T>
-    void RegisterFactory(std::function<std::shared_ptr<T>()> factory) {
+    void RegisterFactory(std::function<TSharedPtr<T>()> factory) {
         m_Factories[typeid(T)] = [factory]() { return factory(); };
     }
 
     // Get an existing service, or create one if needed
     template<typename T>
-    std::shared_ptr<T> GetService() {
+    TSharedPtr<T> GetService() {
         auto it = m_Services.find(typeid(T));
         if (it != m_Services.end())
             return std::static_pointer_cast<T>(it->second);
@@ -35,6 +36,6 @@ private:
         return nullptr;
     }
 
-    std::unordered_map<std::type_index, std::shared_ptr<void>> m_Services;
-    std::unordered_map<std::type_index, std::function<std::shared_ptr<void>()>> m_Factories;
+    std::unordered_map<std::type_index, TSharedPtr<void>> m_Services;
+    std::unordered_map<std::type_index, std::function<TSharedPtr<void>()>> m_Factories;
 };
