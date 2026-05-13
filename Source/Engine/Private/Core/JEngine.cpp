@@ -50,8 +50,43 @@ JEngine::~JEngine()
 {
 }
 
+bool JEngine::InitializeRuntime()
+{
+    m_Context = TUniquePtr<EngineContext>(new EngineContext());
+
+    if (!SurfaceInitialize())
+    {
+        std::cerr << "[JEngine]: Failed to initialize platform surface" << std::endl;
+        return false;
+    }
+    if (!InitializeBackends())
+    {
+        std::cerr << "[JEngine]: Failed to initialize backends" << std::endl;
+        return false;
+    }
+
+    GEngine = this;
+    RegisterServices();
+
+    if (!InitializeSubsystems())
+    {
+        std::cerr << "[JEngine]: Failed to initialize subsystems" << std::endl;
+        return false;
+    }
+
+    bRuntimeInitialized = true;
+
+    return true;
+}
+
 bool JEngine::OpenProject(const FProjectOpenRequest& request)
 {
+    if (!bRuntimeInitialized)
+    {
+        std::cerr << "[JEngine]: Runtime is not initialized. Cannot open project.\n";
+        return false;
+    }
+
     // Reset mount state first so we never keep stale mappings.
     m_ProjectContext->Reset();
     m_VirtualPathMounter->Clear();
@@ -83,59 +118,17 @@ bool JEngine::OpenProject(const FProjectOpenRequest& request)
         return false;
     }
 
-    return true;
-}
-
-bool JEngine::Run()
-{
-    if (!m_ProjectContext->IsOpen())
+    if (!InitializeProject())
     {
-        std::cerr << "[JEngine]: Cannot run without an open project.\n";
+        std::cerr << "[JEngine]: Initialization of the project has failed" << std::endl;
         return false;
     }
-
-    if (!Initialize())
-    {
-        std::cerr << "[JEngine]: Initialization of the engine has failed" << std::endl;
-        return false;
-    }
-
-    // Bootstrap default scene
-    if (!BootstrapScene())
-    {
-        std::cerr << "[JEngine]: Bootstrapping the default scene has failed" << std::endl;
-        return false;
-    }
-    RunMainLoop();
-    Shutdown();
 
     return true;
 }
 
-bool JEngine::Initialize()
+bool JEngine::InitializeProject()
 {
-    m_Context = TUniquePtr<EngineContext>(new EngineContext());
-
-    if (!SurfaceInitialize())
-    {
-        std::cerr << "[JEngine]: Failed to initialize platform surface" << std::endl;
-        return false;
-    }
-    if (!InitializeBackends())
-    {
-        std::cerr << "[JEngine]: Failed to initialize backends" << std::endl;
-        return false;
-    }
-
-    GEngine = this;
-    RegisterServices();
-
-    if (!InitializeSubsystems())
-    {
-        std::cerr << "[JEngine]: Failed to initialize subsystems" << std::endl;
-        return false;
-    }
-
     if (!InitializeManagers())
     {
         std::cerr << "[JEngine]: Failed to initialize managers" << std::endl;
@@ -148,10 +141,37 @@ bool JEngine::Initialize()
         return false;
     }
 
+    // Bootstrap default scene
+    if (!BootstrapScene())
+    {
+        std::cerr << "[JEngine]: Bootstrapping the default scene has failed" << std::endl;
+        return false;
+    }
+
     if (m_EditorBridge)
     {
-        m_EditorBridge->OnEngineInitialized(m_PrimaryWindow.get());
+        m_EditorBridge->OnProjectInitialized(m_PrimaryWindow.get());
     }
+
+    return true;
+}
+
+bool JEngine::Run()
+{
+    if (!bRuntimeInitialized)
+    {
+        std::cerr << "[JEngine]: Runtime is not initialized. Cannot run." << std::endl;
+        return false;
+    }
+
+    if (!m_ProjectContext->IsOpen())
+    {
+        std::cerr << "[JEngine]: Cannot run without an open project.\n";
+        return false;
+    }
+
+    RunMainLoop();
+    Shutdown();
 
     return true;
 }
@@ -509,6 +529,7 @@ void JEngine::Shutdown()
     m_ResourceSubSystem->Shutdown();
     m_InputSubSystem->Shutdown();
     m_PlatformSurface->Shutdown();
+    bRuntimeInitialized = false;
 }
 
 void JEngine::Tick()

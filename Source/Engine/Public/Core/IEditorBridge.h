@@ -15,7 +15,7 @@ class IEditorBridge
 {
 public:
     virtual ~IEditorBridge() = default;
-    virtual void OnEngineInitialized(IPlatformWindow* window) = 0;
+    virtual void OnProjectInitialized(IPlatformWindow* window) = 0;
     virtual void OnSceneLoaded(const std::string& sceneName) = 0;
     virtual void OnRenderOverlay(float deltaTime) = 0;
     virtual void OnTick(float deltaTime) = 0;

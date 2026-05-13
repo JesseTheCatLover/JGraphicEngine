@@ -72,11 +72,9 @@ private:
     JEngine();
     ~JEngine();
 
-    bool OpenProject(const FProjectOpenRequest& request);
-
-    bool Run();
-
     void SetEditorBridge(IEditorBridge* bridge) { m_EditorBridge = bridge; }
+
+    bool bRuntimeInitialized = false;
 
     TUniquePtr<EngineContext> m_Context;
     IEditorBridge* m_EditorBridge = nullptr;
@@ -95,7 +93,12 @@ private:
 
     TUniquePtr<TServiceContainer> m_Services;
 
-    bool Initialize();
+    bool InitializeRuntime();
+    bool OpenProject(const FProjectOpenRequest& request);
+    bool InitializeProject();
+
+    bool Run();
+
     bool SurfaceInitialize();
     bool InitializeBackends();
     bool InitializeSubsystems();

@@ -99,8 +99,22 @@ bool JApplication::RunFromArgs(int argc, char** argv)
 
 bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
 {
-    ConsoleProjectLaunchUI launchUI;
-    ProjectLaunchResolver launchResolver(launchUI);
+    auto& engine = JEngine::Get();
+
+    engine.InitializeRuntime();
+
+    TUniquePtr<IProjectLaunchUI> launchUI;
+    if (editor)
+    {
+        //launchUI = editor->CreateProjectLaunchUI();
+        launchUI = MakeUnique<ConsoleProjectLaunchUI>();
+    }
+    else
+    {
+        launchUI = MakeUnique<ConsoleProjectLaunchUI>();
+    }
+
+    ProjectLaunchResolver launchResolver(*launchUI);
 
     FProjectOpenRequest openRequest{};
 
@@ -117,8 +131,6 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
         std::cerr << "[JApplication]: Failed to resolve project launch request.\n";
         return false;
     }
-
-    auto& engine = JEngine::Get();
 
     if (editor)
         engine.SetEditorBridge(editor);

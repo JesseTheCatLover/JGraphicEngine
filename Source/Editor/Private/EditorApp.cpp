@@ -51,7 +51,7 @@ TUniquePtr<IProjectLaunchUI> EditorApp::CreateProjectLaunchUI()
 {
 }
 
-void EditorApp::OnEngineInitialized(IPlatformWindow* window)
+void EditorApp::OnProjectInitialized(IPlatformWindow* window)
 {
     if (!window)
     {

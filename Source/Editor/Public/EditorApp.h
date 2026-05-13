@@ -45,7 +45,7 @@ public:
 
     void Shutdown();
 
-    void OnEngineInitialized(IPlatformWindow* window) override;
+    void OnProjectInitialized(IPlatformWindow* window) override;
     void OnSceneLoaded(const std::string &sceneName) override;
     void OnRenderOverlay(float deltaTime) override;
     void OnTick(float deltaTime) override;
