@@ -1,7 +1,13 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include <string>
+#include <vector>
 
+#include "Core/Memory/SmartPointers.h"
+
+struct FWindowDesc;
+class IPlatformWindow;
 class InputManager;
 enum class ECursorMode;
 class IPlatformSurface;
@@ -17,6 +23,19 @@ private:
 public:
     EditorSurfaceAPI(EngineContext& ctx, IPlatformSurface& surface, InputManager& inputManager);
 
+    // File dialogs
+    std::string OpenFileDialog(const char* filterList, const char* defaultPath = nullptr);
+    std::vector<std::string> OpenFileDialogMultiple(const char* filterList, const char* defaultPath = nullptr);
+    std::string OpenFolderDialog(const char* defaultPath = nullptr);
+    std::string SaveFileDialog(const char* filterList,
+                               const char* defaultPath = nullptr,
+                               const char* defaultName = nullptr);
+
+    // Windows
+    TSharedPtr<IPlatformWindow> CreateWindow(const FWindowDesc& desc);
+    void DestroyWindow(const TSharedPtr<IPlatformWindow>& window);
+
+    // Cursor
     void SetCursorDisabled();
     void SetCursorHidden();
     void SetCursorVisible();
