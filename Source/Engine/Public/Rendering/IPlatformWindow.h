@@ -35,6 +35,10 @@ public:
     [[nodiscard]] virtual bool IsFullscreen() const = 0;
     [[nodiscard]] virtual FWindowDesc GetState() const = 0;
 
+    virtual void Show() = 0;
+    virtual void Hide() = 0;
+    virtual bool IsVisible() const = 0;
+
     virtual void SetTitle(const std::string& title) = 0;
     virtual void SetVSync(bool vSync) = 0;
 

@@ -237,6 +237,21 @@ FWindowDesc GLFWWindow::GetState() const
     return m_State;
 }
 
+void GLFWWindow::Show()
+{
+    glfwShowWindow(m_Window);
+}
+
+void GLFWWindow::Hide()
+{
+    glfwHideWindow(m_Window);
+}
+
+bool GLFWWindow::IsVisible() const
+{
+    return glfwGetWindowAttrib(m_Window, GLFW_VISIBLE) == GLFW_TRUE;
+}
+
 void GLFWWindow::SetTitle(const std::string& title)
 {
     m_State.title = title;

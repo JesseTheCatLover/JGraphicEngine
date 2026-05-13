@@ -53,6 +53,10 @@ public:
     bool IsFullscreen() const override;
     FWindowDesc GetState() const override;
 
+    void Show() override;
+    void Hide() override;
+    bool IsVisible() const override;
+
     void SetTitle(const std::string& title) override;
     void SetVSync(bool vSync) override;
 
