@@ -16,12 +16,12 @@ class EditorAssetCache;
 class EditorLayoutModel;
 class IEditorPanel;
 class EditorHost;
-struct GLFWwindow;
+class IPlatformWindow;
 
 class EditorApp : public IEditorBridge
 {
 private:
-    GLFWwindow* m_Window;
+    IPlatformWindow* m_Window;
 
     // Core components
     TUniquePtr<EditorRuntime> m_EditorRuntime;

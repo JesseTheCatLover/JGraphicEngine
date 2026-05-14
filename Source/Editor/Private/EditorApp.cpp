@@ -35,8 +35,11 @@ void EditorApp::EndFrame()
 void EditorApp::Shutdown()
 {
     // Destroy core/context
-    m_EditorHost->Shutdown();
-    m_EditorHost.reset();
+   if (m_EditorHost)
+   {
+       m_EditorHost->Shutdown();
+       m_EditorHost.reset();
+   }
 
     if (m_EditorUIBackend)
     {
@@ -47,10 +50,6 @@ void EditorApp::Shutdown()
     m_Window = nullptr;
 }
 
-TUniquePtr<IProjectLaunchUI> EditorApp::CreateProjectLaunchUI()
-{
-}
-
 void EditorApp::OnProjectInitialized(IPlatformWindow* window)
 {
     if (!window)
@@ -59,24 +58,18 @@ void EditorApp::OnProjectInitialized(IPlatformWindow* window)
         return;
     }
 
+    // Retrieve native window
+    m_Window = window;
+
     // Grab native handle from the surface
     void* native = window->GetNativeHandle();
 
-    GLFWwindow* nativeWindow = static_cast<GLFWwindow*>(native); // TODO: Should be backend agnostic in future
+    GLFWwindow* nativeWindow = static_cast<GLFWwindow*>(native); // TODO: Should be backend agnostic in future by the BackendFactory
     if (!nativeWindow)
     {
         std::cerr << "[EditorApp]: native handle is not a valid GLFWwindow" << std::endl;
         return;
     }
-
-    // Retrieve native GLFW window
-    m_Window = nativeWindow;
-    if (!m_Window)
-    {
-        std::cerr << "[EditorApp]: Native surface handle is not a GLFWwindow " << std::endl;
-        return;
-    }
-
 
     // Initialize ImGui backend
     m_EditorUIBackend = MakeUnique<ImGuiBackend>(nativeWindow);

@@ -152,6 +152,7 @@ bool JEngine::InitializeProject()
     {
         m_EditorBridge->OnProjectInitialized(m_PrimaryWindow.get());
     }
+    m_PrimaryWindow->Show();
 
     return true;
 }
@@ -198,6 +199,7 @@ bool JEngine::SurfaceInitialize()
     }
 
     m_PrimaryWindow = m_PlatformSurface->CreateWindow(surfaceState, true);
+    m_PrimaryWindow->Hide();
 
     // Ensure initial framebuffer size is correct
     {

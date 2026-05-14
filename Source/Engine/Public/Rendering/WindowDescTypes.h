@@ -15,7 +15,7 @@ enum class EWindowState
     Lost
 };
 
-struct FWindowDesc
+struct FWindowDesc // TODO: Implement bResizable
 {
     int width = 1280;
     int height = 720;

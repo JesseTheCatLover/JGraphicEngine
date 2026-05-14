@@ -102,6 +102,11 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
     auto& engine = JEngine::Get();
 
     engine.InitializeRuntime();
+    if (!engine.InitializeRuntime())
+    {
+        std::cerr << "[JApplication]: Failed to initialize engine runtime.\n";
+        return false;
+    }
 
     TUniquePtr<IProjectLaunchUI> launchUI;
     if (editor)
@@ -112,6 +117,12 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
     else
     {
         launchUI = MakeUnique<ConsoleProjectLaunchUI>();
+    }
+
+    if (!launchUI)
+    {
+        std::cerr << "[JApplication]: Failed to create launch UI.\n";
+        return false;
     }
 
     ProjectLaunchResolver launchResolver(*launchUI);
