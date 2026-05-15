@@ -28,7 +28,7 @@ public:
     bool Initialize() override;
     void Shutdown() override;
 
-    TSharedPtr<IPlatformWindow> CreateWindow(const FWindowDesc& statem, bool bPrimary = false) override;
+    TSharedPtr<IPlatformWindow> CreateWindow(const FWindowDesc& windowDesc, bool bPrimary = false) override;
     void DestroyWindow(const TSharedPtr<IPlatformWindow>& window) override;
 
     [[nodiscard]] TSharedPtr<IPlatformWindow> GetFocusedWindow() const override;

@@ -24,7 +24,7 @@ public:
 
     // Window management
 
-    virtual TSharedPtr<IPlatformWindow> CreateWindow(const FWindowDesc& state, bool bPrimary = false) = 0;
+    virtual TSharedPtr<IPlatformWindow> CreateWindow(const FWindowDesc& windowDesc, bool bPrimary = false) = 0;
     virtual void DestroyWindow(const TSharedPtr<IPlatformWindow>& window) = 0;
 
     // Primary window: stable anchor for engine

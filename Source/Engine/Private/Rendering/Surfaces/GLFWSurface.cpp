@@ -107,7 +107,7 @@ void GLFWSurface::Shutdown()
     std::cout << "[GLFWSurface]: Shutdown completed\n";
 }
 
-TSharedPtr<IPlatformWindow> GLFWSurface::CreateWindow(const FWindowDesc& state, bool bPrimary)
+TSharedPtr<IPlatformWindow> GLFWSurface::CreateWindow(const FWindowDesc& windowDesc, bool bPrimary)
 {
     GLFWwindow* shareContext = nullptr;
 
@@ -122,7 +122,7 @@ TSharedPtr<IPlatformWindow> GLFWSurface::CreateWindow(const FWindowDesc& state, 
     }
 
     // Construct the GLFWWindow with the chosen shareContext
-    auto window = MakeShared<GLFWWindow>(state, shareContext);
+    auto window = MakeShared<GLFWWindow>(windowDesc, shareContext);
 
     if (!window->Initialize())
     {
@@ -256,8 +256,7 @@ void GLFWSurface::MakeContextCurrent(const TSharedPtr<IPlatformWindow> &window)
     if (!glfwWindow)
         return;
 
-    void* native = glfwWindow->GetNativeHandle(); // or similar getter
-    glfwMakeContextCurrent(static_cast<GLFWwindow*>(native));
+    glfwMakeContextCurrent(static_cast<GLFWwindow*>(glfwWindow->GetNativeHandle()));
 }
 
 void GLFWSurface::Present(const TSharedPtr<IPlatformWindow>& window)
