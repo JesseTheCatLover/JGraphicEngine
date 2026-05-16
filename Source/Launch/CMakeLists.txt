@@ -23,6 +23,7 @@ target_include_directories(JApplication
 target_link_libraries(JApplication
         PUBLIC Engine
         PUBLIC Editor
+        PUBLIC imgui
 )
 
 # Final executable output layout:

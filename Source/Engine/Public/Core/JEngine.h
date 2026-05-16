@@ -73,6 +73,7 @@ private:
     ~JEngine();
 
     void SetEditorBridge(IEditorBridge* bridge) { m_EditorBridge = bridge; }
+    IRenderBackend* GetRenderBackend();
 
     bool bRuntimeInitialized = false;
 

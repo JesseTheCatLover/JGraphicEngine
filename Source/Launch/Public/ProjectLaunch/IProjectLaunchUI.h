@@ -34,4 +34,6 @@ public:
      * @brief Show an error message.
      */
     virtual void ShowError(const std::string& title, const std::string& message) = 0;
+
+    virtual void Shutdown() {}
 };

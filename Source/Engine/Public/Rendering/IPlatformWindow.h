@@ -57,5 +57,4 @@ public:
     virtual void SetFramebufferResizeCallback(FResizeCallback callback) {}
     virtual void SetWindowResizeCallback(FResizeCallback callback) {}
     virtual void SetFocusCallback(FFocusCallback callback) {}
-
 };

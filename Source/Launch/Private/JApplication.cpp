@@ -11,6 +11,7 @@
 #include "Core/Project/FProjectOpenRequest.h"
 #include "ProjectLaunch/ProjectLaunchResolver.h"
 #include "ProjectLaunch/ConsoleProjectLaunchUI.h"
+#include "ProjectLaunch/ImGuiProjectLaunchUI.h"
 #include "ProjectLaunch/LaunchSettings.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
@@ -110,8 +111,7 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
     TUniquePtr<IProjectLaunchUI> launchUI;
     if (editor)
     {
-        //launchUI = editor->CreateProjectLaunchUI();
-        launchUI = MakeUnique<ConsoleProjectLaunchUI>();
+        launchUI = MakeUnique<ImGuiProjectLaunchUI>(engine.GetPlatformSurface(), engine.GetRenderBackend());
     }
     else
     {
@@ -141,6 +141,9 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
         std::cerr << "[JApplication]: Failed to resolve project launch request.\n";
         return false;
     }
+
+    launchUI->Shutdown();
+    launchUI.reset();
 
     if (editor)
         engine.SetEditorBridge(editor);

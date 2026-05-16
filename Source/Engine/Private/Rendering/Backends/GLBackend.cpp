@@ -12,6 +12,7 @@
 
 #include "Framework/DebugDrawFramework.h"
 #include "Rendering/RCommandQueue.h"
+#include "Rendering/RObjects.h"
 
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE

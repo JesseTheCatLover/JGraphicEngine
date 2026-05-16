@@ -2,12 +2,15 @@
 
 #pragma once
 
-#include "RObjects.h"
 #include "Rendering/RHandles.h"
 #include "Core/Math/FVector3.h"
 #include "Rendering/EProjectionType.h"
 #include "Rendering/FProjectionDesc.h"
 
+struct RFramebuffer;
+struct RTexture;
+struct RMesh;
+struct RShader;
 // This describes how the backend's axes relate to ENGINE axes.
 // Engine coordinate system : X=Forward, Y=Right, Z=Up
 struct FBackendCoordDesc

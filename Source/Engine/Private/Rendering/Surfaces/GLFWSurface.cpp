@@ -42,9 +42,28 @@ namespace
                 spec = group;
             }
 
+            // --- Sanitize the spec string for NFD ---
+            // Remove wildcards (*), dots (.), and spaces.
+            // Example: "*.png, *.jpg" becomes "png,jpg"
+            std::string cleanSpec;
+            for (char c : spec)
+            {
+                if (c != '*' && c != '.' && c != ' ')
+                {
+                    cleanSpec += c;
+                }
+            }
+
+            // If the spec becomes entirely empty (e.g., from "*.*"),
+            // (If we want "All Files", we just pass no filter to NFD at all).
+            if (cleanSpec.empty())
+            {
+                continue;
+            }
+
             // Store in backingStrings so c_str() is stable
             backingStrings.push_back(name);
-            backingStrings.push_back(spec);
+            backingStrings.push_back(cleanSpec);
 
             nfdnfilteritem_t item{};
             item.name = backingStrings[backingStrings.size() - 2].c_str();

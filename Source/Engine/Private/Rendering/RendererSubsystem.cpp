@@ -2,13 +2,14 @@
 
 #include "RendererSubsystem.h"
 
-#include "IRenderBackend.h"
+#include "Rendering/IRenderBackend.h"
 #include "RRenderProxies.h"
 #include "Core/EngineGlobals.h"
 #include "Framework/PostProcessManager.h"
 #include <algorithm>
 #include <unordered_map>
-#include <iostream>
+
+#include "RObjects.h"
 #include "Core/EngineContext.h"
 #include "Framework/DebugDrawFramework.h"
 #include "Rendering/FRenderView.h"

@@ -5,7 +5,7 @@
 
 #include "EGraphicsAPI.h"
 #include "ESurfaceAPI.h"
-#include "IRenderBackend.h"
+#include "Rendering/IRenderBackend.h"
 #include "Core/Memory/SmartPointers.h"
 
 class BackendFactory
