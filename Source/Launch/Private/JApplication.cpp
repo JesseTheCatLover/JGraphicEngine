@@ -101,7 +101,6 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
 {
     auto& engine = JEngine::Get();
 
-    engine.InitializeRuntime();
     if (!engine.InitializeRuntime())
     {
         std::cerr << "[JApplication]: Failed to initialize engine runtime.\n";

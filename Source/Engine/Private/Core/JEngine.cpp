@@ -52,6 +52,13 @@ JEngine::~JEngine()
 
 bool JEngine::InitializeRuntime()
 {
+    if (bRuntimeInitialized)
+    {
+        std::cerr << "[JEngine]: InitializeRuntime() called more than once, "
+                     "Ignoring subsequent call\n";
+        return true;
+    }
+
     m_Context = TUniquePtr<EngineContext>(new EngineContext());
 
     if (!SurfaceInitialize())
