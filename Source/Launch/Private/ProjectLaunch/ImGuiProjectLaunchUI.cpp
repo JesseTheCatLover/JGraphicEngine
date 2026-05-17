@@ -7,9 +7,11 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "UI/Themes/ImGuiTheme.h"
 #include "Rendering/IRenderBackend.h"
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/IPlatformWindow.h"
+#include "Utilities/UPath.h"
 
 namespace
 {
@@ -19,9 +21,11 @@ namespace
     }
 }
 
-ImGuiProjectLaunchUI::ImGuiProjectLaunchUI(IPlatformSurface *surface, IRenderBackend* renderBackend)
+ImGuiProjectLaunchUI::ImGuiProjectLaunchUI(IPlatformSurface *surface, IRenderBackend* renderBackend,
+    std::string engineRootPath)
     : m_Surface(surface)
     , m_RenderBackend(renderBackend)
+    , m_EngineRootPath(engineRootPath)
 {
 }
 
@@ -55,7 +59,6 @@ bool ImGuiProjectLaunchUI::StartWindow()
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr; // manual save/load
-    ImGui::StyleColorsDark();
 
     // 3) Init backends using the native handle from IPlatformWindow
     void* native = m_Window->GetNativeHandle(); // TODO: Make sure the received window is glfw based, otherwise it will crash
@@ -70,6 +73,10 @@ bool ImGuiProjectLaunchUI::StartWindow()
     ImGui_ImplOpenGL3_Init("#version 330");
 
     m_windowInitialized = true;
+
+    SetupLauncherStyle();
+    SetupFonts();
+
     return true;
 }
 
@@ -82,8 +89,20 @@ void ImGuiProjectLaunchUI::ShutdownWindow()
     m_Surface->MakeContextCurrent(nullptr);
     m_Surface->DestroyWindow(m_Window);
 
-
     m_windowInitialized = false;
+}
+
+void ImGuiProjectLaunchUI::SetupLauncherStyle()
+{
+    ImGuiTheme::FThemeOptions themeOptions;
+    themeOptions.enableDocking = false;
+    ImGuiTheme::ApplyEditorTheme(themeOptions);
+}
+
+void ImGuiProjectLaunchUI::SetupFonts()
+{
+    ImGuiTheme::TryLoadDefaultFontFromFile(UPath::Join(m_EngineRootPath, "Assets", "Editor", "Fonts",
+        "FunnelSans.ttf"));
 }
 
 EProjectLaunchAction ImGuiProjectLaunchUI::PromptForLaunchAction()
@@ -91,144 +110,445 @@ EProjectLaunchAction ImGuiProjectLaunchUI::PromptForLaunchAction()
     if (!StartWindow())
         return EProjectLaunchAction::Cancel;
 
-    EProjectLaunchAction chosenAction = EProjectLaunchAction::Cancel;
+    // Clear cached results from any previous invocation
+    m_CachedProjectToOpen.clear();
+    m_CachedCreateRequest = FProjectCreateRequest{};
+    m_SelectedItemIndex = -1;
+    m_SelectedCategory = EBrowserCategory::RecentProjects;
 
-    auto draw = [&](bool& accepted, bool& running) -> bool
+    RefreshRecentProjects();
+    LoadTemplates();
+
+    return RunUnifiedBrowserLoop();
+}
+
+EProjectLaunchAction ImGuiProjectLaunchUI::RunUnifiedBrowserLoop()
+{
+    EProjectLaunchAction chosenAction = EProjectLaunchAction::None;
+
+    bool finished = false;
+
+    while (!finished && !m_Window->ShouldClose())
     {
-        ImGui::SetNextWindowSize(ImVec2(600, 300), ImGuiCond_FirstUseEver);
-        ImGui::Begin("JEditor Project Browser", nullptr, ImGuiWindowFlags_NoCollapse);
-        ImGui::Text("Welcome to JEditor");
-        ImGui::Separator();
+        // Process OS events
+        m_Surface->PollSurfaceEvents();
 
-        if (ImGui::Button("Open Existing Project", ImVec2(200, 0)))
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // Fullscreen root window
+        const ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(vp->WorkPos);
+        ImGui::SetNextWindowSize(vp->WorkSize);
+        ImGui::SetNextWindowViewport(vp->ID);
+
+        ImGuiWindowFlags rootFlags =
+            ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse;
+
+        bool rootOpen = true;
+        ImGui::Begin("##ProjectBrowserRoot", &rootOpen, rootFlags);
+
+        // Bottom bar height (two rows of controls)
+        float bottomBarHeight = ImGui::GetFrameHeight() * 2.1f + 1.0f;
+
+        ImVec2 avail = ImGui::GetContentRegionAvail();
+        float mainHeight = avail.y - bottomBarHeight;
+
+        if (mainHeight < 0)
+            mainHeight = 0;
+
+        // ================= MAIN REGION =================
+        ImGui::BeginChild("MainRegion", ImVec2(0, mainHeight), false);
+
+        if (ImGui::BeginTable("##ProjectBrowserTable", 3,
+                              ImGuiTableFlags_BordersInnerV |
+                              ImGuiTableFlags_SizingStretchProp,
+                              ImVec2(0, 0)))
         {
-            chosenAction = EProjectLaunchAction::OpenExisting;
-            accepted = true;
-            ImGui::End();
-            return true; // done
+            ImGui::TableSetupColumn("Sidebar", ImGuiTableColumnFlags_WidthFixed, 220.0f);
+            ImGui::TableSetupColumn("Content", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthFixed, 360.0f);
+
+            ImGui::TableNextRow();
+
+            ImGui::TableSetColumnIndex(0);
+            DrawSidebar();
+
+            ImGui::TableSetColumnIndex(1);
+            DrawContentGrid();
+
+            ImGui::TableSetColumnIndex(2);
+            DrawDetailsPane();
+
+            ImGui::EndTable();
         }
 
-        if (ImGui::Button("Create New Project", ImVec2(200, 0)))
+        ImGui::EndChild();
+
+        // ================= BOTTOM BAR =================
+        ImGui::BeginChild("BottomBar", ImVec2(0, 0), false);
+        DrawBottomBar(chosenAction, finished);
+        ImGui::EndChild();
+
+        // ================= ERROR MODAL =================
+        if (m_ShowingError)
         {
-            chosenAction = EProjectLaunchAction::CreateNew;
-            accepted = true;
-            ImGui::End();
-            return true; // done
+            // Request opening the popup this frame
+            ImGui::OpenPopup(m_ErrorTitle.c_str());
         }
 
-        if (ImGui::Button("Cancel", ImVec2(200, 0)))
+        // Draw the popup if it's open
+        DrawErrorPopup(m_ErrorTitle, m_ErrorMessage);
+
+        // ================= END ROOT WINDOW =================
+        ImGui::End(); // Root Window
+
+        // If the user clicked the OS close button (rootOpen becomes false),
+        // treat it as Quit.
+        if (!rootOpen && !finished)
         {
             chosenAction = EProjectLaunchAction::Cancel;
-            accepted = false;
-            ImGui::End();
-            return true; // done
+            finished = true;
         }
 
-        ImGui::End();
-        return false; // keep looping
-    };
+        // Render
+        ImGui::Render();
 
-    bool ok = RunModalLoop(draw);
-    if (!ok && chosenAction != EProjectLaunchAction::OpenExisting &&
-        chosenAction != EProjectLaunchAction::CreateNew)
-    {
-        chosenAction = EProjectLaunchAction::Cancel;
+        m_RenderBackend->ClearColorDepth(0.10f, 0.10f, 0.10f, 1.0f, false);
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        // Present via platform surface
+        m_Surface->Present(m_Window);
     }
+
+    if (chosenAction == EProjectLaunchAction::None)
+        chosenAction = EProjectLaunchAction::Cancel;
 
     return chosenAction;
 }
 
-bool ImGuiProjectLaunchUI::PromptForProjectFile(std::string& outProjectFilePath)
+void ImGuiProjectLaunchUI::DrawSidebar()
 {
-    if (!StartWindow())
-        return false;
+    ImGui::BeginChild("Sidebar", ImVec2(0,0), false);
+    ImGui::Dummy(ImVec2(0, 10)); // Padding
+    ImGui::Indent(10.0f);
 
-    outProjectFilePath.clear();
-
-    auto draw = [&](bool& accepted, bool& running) -> bool
+    ImGui::TextDisabled("PROJECTS");
+    if (ImGui::Selectable("Recent Projects", m_SelectedCategory == EBrowserCategory::RecentProjects))
     {
-        bool done = DrawProjectFilePicker(outProjectFilePath);
-        if (done)
-        {
-            accepted = !outProjectFilePath.empty();
-            running  = false;
-        }
-        return done;
-    };
+        m_SelectedCategory = EBrowserCategory::RecentProjects;
+        m_SelectedItemIndex = -1;
+    }
 
-    return RunModalLoop(draw);
+    ImGui::Dummy(ImVec2(0, 20));
+
+    ImGui::TextDisabled("CREATE NEW");
+    if (ImGui::Selectable("Games", m_SelectedCategory == EBrowserCategory::Games))
+    {
+        m_SelectedCategory = EBrowserCategory::Games;
+        m_SelectedItemIndex = -1;
+    }
+    if (ImGui::Selectable("Animation & Film", m_SelectedCategory == EBrowserCategory::Animation))
+    {
+        m_SelectedCategory = EBrowserCategory::Animation;
+        m_SelectedItemIndex = -1;
+    }
+
+    ImGui::Unindent(10.0f);
+    ImGui::EndChild();
 }
 
-bool ImGuiProjectLaunchUI::PromptForEnginePath(const std::string& projectFilePath, std::string& outEnginePath)
+bool ImGuiProjectLaunchUI::PromptForProjectFile(std::string& outProjectFilePath)
 {
-    if (!StartWindow())
+    // The engine expects to pop a modal here, but because we already captured it
+    // in the unified loop, we just instantly return our cached data.
+    if (m_CachedProjectToOpen.empty())
         return false;
 
-    outEnginePath.clear();
+    outProjectFilePath = m_CachedProjectToOpen;
+    return true;
+}
 
-    auto draw = [&](bool& accepted, bool& running) -> bool
+bool ImGuiProjectLaunchUI::PromptForEnginePath(const std::string &projectFilePath, std::string &outEnginePath)
+{
+    // Try to start / reuse the window
+    if (!StartWindow())
     {
-        bool done = DrawEnginePathPicker(projectFilePath, outEnginePath);
-        if (done)
-        {
-            accepted = !outEnginePath.empty();
-            running  = false;
-        }
-        return done;
-    };
+        std::cerr << "[ImGuiLaunchUI]: Failed to start window for engine path picker.\n";
+        return false;
+    }
 
-    return RunModalLoop(draw);
+    // Default suggestion based on m_EngineRootPath
+    if (outEnginePath.empty() && !m_EngineRootPath.empty())
+    {
+        outEnginePath = m_EngineRootPath;
+    }
+
+    bool done = false;
+    bool accepted = false; // true if user clicked OK with a non-empty path
+
+    while (!done && !m_Window->ShouldClose())
+    {
+        // Process OS events
+        m_Surface->PollSurfaceEvents();
+
+        // New ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // Draw the simple picker window; it returns true when user hits OK or Cancel
+        if (DrawEnginePathPicker(outEnginePath))
+        {
+            // If outEnginePath is non-empty, consider it accepted
+            accepted = !outEnginePath.empty();
+            done = true;
+        }
+
+        // Render frame
+        ImGui::Render();
+        m_RenderBackend->ClearColorDepth(0.10f, 0.10f, 0.10f, 1.0f, false);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        m_Surface->Present(m_Window);
+    }
+
+    // If window was closed externally, treat as cancel
+    if (m_Window->ShouldClose())
+    {
+        outEnginePath.clear();
+        accepted = false;
+    }
+
+    return accepted;
 }
 
 bool ImGuiProjectLaunchUI::PromptForNewProject(FProjectCreateRequest& outRequest)
 {
-    if (!StartWindow())
+    // Instantly return our cached data.
+    if (m_CachedCreateRequest.projectName.empty() || m_CachedCreateRequest.parentDirectory.empty())
         return false;
 
-    outRequest = {}; // reset
-
-    auto draw = [&](bool& accepted, bool& running) -> bool
-    {
-        bool done = DrawNewProjectScreen(outRequest);
-        if (done)
-        {
-            // For now, accept if name and folder are non-empty
-            accepted = !outRequest.projectName.empty() &&
-                       !outRequest.parentDirectory.empty();
-            running  = false;
-        }
-        return done;
-    };
-
-    return RunModalLoop(draw);
+    outRequest = m_CachedCreateRequest;
+    return true;
 }
 
 void ImGuiProjectLaunchUI::ShowError(const std::string& title, const std::string& message)
 {
     if (!StartWindow())
     {
-        // fallback
-        std::cerr << "[LaunchUI Error] " << title << ": " << message << "\n";
+        std::cerr << "[LaunchUI]: Error: " << title << ": " << message << "\n";
         return;
     }
 
-    ImGui::OpenPopup(title.c_str());
+    m_ErrorTitle = title;
+    m_ErrorMessage = message;
+    m_ShowingError = true;
+}
 
-    auto draw = [&](bool& accepted, bool& running) -> bool
+void ImGuiProjectLaunchUI::DrawContentGrid()
+{
+    ImGui::BeginChild("ContentGrid", ImVec2(0,0), false);
+    ImGui::Dummy(ImVec2(0, 10));
+
+    const auto& items = (m_SelectedCategory == EBrowserCategory::RecentProjects) ? m_RecentProjects : m_Templates;
+
+    if (items.empty())
     {
-        DrawErrorPopup(title, message);
-        // We exit when popup closes
-        bool popupStillOpen = ImGui::IsPopupOpen(title.c_str());
-        if (!popupStillOpen)
+        ImGui::TextDisabled("No items found.");
+    }
+    else
+    {
+        // Simple list representation for now (we can make this a true grid of cards later)
+        for (int i = 0; i < items.size(); ++i)
         {
-            accepted = true;  // doesn't matter much for errors
-            running  = false;
-            return true;
+            bool isSelected = (m_SelectedItemIndex == i);
+            if (ImGui::Selectable(items[i].Name.c_str(), isSelected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(0, 40)))
+            {
+                m_SelectedItemIndex = i;
+            }
         }
-        return false;
-    };
+    }
 
-    RunModalLoop(draw);
+    ImGui::EndChild();
+}
+
+void ImGuiProjectLaunchUI::DrawDetailsPane()
+{
+    ImGui::BeginChild("DetailsPane", ImVec2(0,0), false);
+    ImGui::Dummy(ImVec2(0, 10));
+    const auto& items = (m_SelectedCategory == EBrowserCategory::RecentProjects) ? m_RecentProjects : m_Templates;
+
+    if (m_SelectedItemIndex >= 0 && m_SelectedItemIndex < items.size())
+    {
+        const FBrowserItem& item = items[m_SelectedItemIndex];
+
+        // Title
+        ImGui::TextUnformatted(item.Name.c_str());
+        ImGui::Separator();
+
+        // Placeholder for a thumbnail image
+        ImGui::Dummy(ImVec2(0, 10));
+        ImGui::Button("Thumbnail Placeholder", ImVec2(ImGui::GetContentRegionAvail().x, 150));
+        ImGui::Dummy(ImVec2(0, 10));
+
+        // Details
+        ImGui::TextWrapped("%s", item.Description.c_str());
+        ImGui::Dummy(ImVec2(0, 10));
+        ImGui::TextDisabled("Path: %s", item.Path.c_str());
+    }
+    else
+    {
+        ImGui::TextDisabled("Select an item to view details.");
+    }
+
+    ImGui::EndChild();
+}
+
+void ImGuiProjectLaunchUI::DrawBottomBar(EProjectLaunchAction& outAction, bool& outFinished)
+{
+    ImGui::Separator();
+
+    // Bottom bar padding
+    ImGui::Dummy(ImVec2(0, 4));
+    ImGui::Indent(10.0f);
+
+    float rightAlignOffset = ImGui::GetWindowWidth() - 250.0f;
+
+    if (m_SelectedCategory == EBrowserCategory::RecentProjects)
+    {
+        // --- RECENT PROJECTS BOTTOM BAR ---
+        if (ImGui::Button("Browse...", ImVec2(100, 30)))
+        {
+            std::string folder = m_Surface->OpenFolderDialog(nullptr);
+            if (!folder.empty())
+            {
+                std::string foundPath;
+                if (SearchForProjectFile(folder, foundPath))
+                {
+                    m_CachedProjectToOpen = foundPath;
+                    outAction = EProjectLaunchAction::OpenExisting;
+                    outFinished = true;
+                }
+                else
+                {
+                    ShowError("Project Not Found", "Could not find a .jproject file in the selected directory.");
+                }
+            }
+        }
+
+        ImGui::SameLine(rightAlignOffset);
+
+        if (ImGui::Button("Cancel", ImVec2(100, 30)))
+        {
+            outAction = EProjectLaunchAction::Cancel;
+            outFinished = true;
+        }
+
+        ImGui::SameLine();
+
+        // Only enable "Open" if something is selected
+        ImGui::BeginDisabled(m_SelectedItemIndex < 0 || m_SelectedItemIndex >= m_RecentProjects.size());
+        if (ImGui::Button("Open", ImVec2(100, 30)))
+        {
+            m_CachedProjectToOpen = m_RecentProjects[m_SelectedItemIndex].Path;
+            outAction = EProjectLaunchAction::OpenExisting;
+            outFinished = true;
+        }
+        ImGui::EndDisabled();
+    }
+    else
+    {
+        // --- TEMPLATES / CREATE PROJECT BOTTOM BAR ---
+        ImGui::Text("Project Name:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(200.0f);
+        ImGui::InputText("##ProjName", m_NewProjectName, sizeof(m_NewProjectName));
+
+        ImGui::SameLine();
+        ImGui::Text("Location:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(300.0f);
+        ImGui::InputText("##ProjPath", m_NewProjectPath, sizeof(m_NewProjectPath));
+
+        ImGui::SameLine();
+        if (ImGui::Button("...", ImVec2(30, 0)))
+        {
+            std::string currentFolder = m_NewProjectPath;
+            std::string folder = m_Surface->OpenFolderDialog(GetNonEmptyOrNull(currentFolder));
+            if (!folder.empty()) std::snprintf(m_NewProjectPath, sizeof(m_NewProjectPath), "%s", folder.c_str());
+        }
+
+        ImGui::SameLine(rightAlignOffset);
+
+        if (ImGui::Button("Cancel", ImVec2(100, 30)))
+        {
+            outAction = EProjectLaunchAction::Cancel;
+            outFinished = true;
+        }
+
+        ImGui::SameLine();
+
+        // Ensure name and path are filled
+        bool canCreate = (strlen(m_NewProjectName) > 0) && (strlen(m_NewProjectPath) > 0) && (m_SelectedItemIndex >= 0);
+        ImGui::BeginDisabled(!canCreate);
+        if (ImGui::Button("Create", ImVec2(100, 30)))
+        {
+            m_CachedCreateRequest.projectName = m_NewProjectName;
+            m_CachedCreateRequest.parentDirectory = m_NewProjectPath;
+            // TODO: m_CachedCreateRequest.templatePath = m_Templates[m_SelectedItemIndex].Path;
+            outAction = EProjectLaunchAction::CreateNew;
+            outFinished = true;
+        }
+        ImGui::EndDisabled();
+    }
+
+    ImGui::Unindent(10.0f);
+}
+
+bool ImGuiProjectLaunchUI::SearchForProjectFile(const std::filesystem::path& folderPath, std::string& outProjectPath)
+{
+    try
+    {
+        for (auto& entry : std::filesystem::recursive_directory_iterator(folderPath))
+        {
+            if (entry.is_regular_file() && entry.path().extension() == ".jproject")
+            {
+                outProjectPath = entry.path().string();
+                return true;
+            }
+        }
+    }
+    catch (...)
+    {
+        // Catch filesystem permission errors
+    }
+    return false;
+}
+
+void ImGuiProjectLaunchUI::RefreshRecentProjects()
+{
+    m_RecentProjects.clear();
+    // TODO: MOCK DATA: Replace with actual config file loading later
+    m_RecentProjects.push_back({"My Peak Game", "C:/JEngineProjects/MyPeakGame/MyPeakGame.jproject", "Last modified: Today", false});
+    m_RecentProjects.push_back({"Test Sandbox", "D:/Work/TestSandbox/TestSandbox.jproject", "Last modified: Yesterday", false});
+}
+
+void ImGuiProjectLaunchUI::LoadTemplates()
+{
+    m_Templates.clear();
+    // TODO: MOCK DATA: Replace with scanning the Engine/Templates directory later
+    m_Templates.push_back({"Blank Project", "", "A clean empty project with no starter content.", true});
+    m_Templates.push_back({"First Person", "", "A project template featuring a first-person character.", true});
+    m_Templates.push_back({"Third Person", "", "A project template featuring a third-person character.", true});
 }
 
 void ImGuiProjectLaunchUI::Shutdown()
@@ -239,151 +559,12 @@ void ImGuiProjectLaunchUI::Shutdown()
     }
 }
 
-template<typename DrawFunc>
-bool ImGuiProjectLaunchUI::RunModalLoop(DrawFunc drawFunc)
-{
-    if (!m_Window)
-        return false;
-
-    bool running = true;
-    bool accepted = false;
-
-    while (running)
-    {
-        m_Surface->PollSurfaceEvents();
-
-        if (m_Window->ShouldClose())
-        {
-            running = false;
-            accepted = false;
-            break;
-        }
-
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        m_RenderBackend->ClearColorDepth(0.f, 0.f, 0.f, 1.f);
-
-        // Let the given draw function render its UI and optionally tell us when to accept/cancel.
-        bool done = drawFunc(accepted, running);
-        if (done)
-        {
-            running = false;
-        }
-
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        m_Surface->SwapBuffers(m_Window);
-    }
-
-    return accepted;
-}
-
-bool ImGuiProjectLaunchUI::DrawLaunchActionScreen(EProjectLaunchAction &outAction)
-{
-    ImGui::SetNextWindowSize(ImVec2(600, 300), ImGuiCond_FirstUseEver);
-    ImGui::Begin("JEditor Project Browser", nullptr, ImGuiWindowFlags_NoCollapse);
-    ImGui::Text("Welcome to JEditor");
-    ImGui::Separator();
-
-    bool done = false;
-
-    if (ImGui::Button("Open Existing Project", ImVec2(200, 0)))
-    {
-        outAction = EProjectLaunchAction::OpenExisting;
-        done = true;
-    }
-
-    if (ImGui::Button("Create New Project", ImVec2(200, 0)))
-    {
-        outAction = EProjectLaunchAction::CreateNew;
-        done = true;
-    }
-
-    if (ImGui::Button("Cancel", ImVec2(200, 0)))
-    {
-        outAction = EProjectLaunchAction::Cancel;
-        done = true;
-    }
-
-    ImGui::End();
-    return done; // true => caller should exit modal loop
-}
-
-bool ImGuiProjectLaunchUI::DrawProjectFilePicker(std::string &outProjectFilePath)
-{
-    ImGui::SetNextWindowSize(ImVec2(700, 200), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Open Project", nullptr, ImGuiWindowFlags_NoCollapse);
-
-    // Static state for this UI
-    static char pathBuffer[512] = {0};
-    static bool initialized = false;
-
-    // Initialize buffer from current outProjectFilePath once
-    if (!initialized)
-    {
-        if (!outProjectFilePath.empty())
-        {
-            std::snprintf(pathBuffer, sizeof(pathBuffer), "%s", outProjectFilePath.c_str());
-        }
-        initialized = true;
-    }
-
-    ImGui::InputText("Project File (.jproject)", pathBuffer, sizeof(pathBuffer));
-
-    if (ImGui::Button("Browse..."))
-    {
-        // Derive default directory from current buffer if possible
-        std::string currentPath = pathBuffer;
-        std::string defaultDir;
-
-        if (!currentPath.empty())
-        {
-            // crude: everything up to last slash
-            auto pos = currentPath.find_last_of("/\\");
-            if (pos != std::string::npos)
-                defaultDir = currentPath.substr(0, pos);
-        }
-
-        const char* defaultPath = GetNonEmptyOrNull(defaultDir);
-
-        std::string path = m_Surface->OpenFileDialog("jproject", defaultPath);
-        if (!path.empty())
-        {
-            std::snprintf(pathBuffer, sizeof(pathBuffer), "%s", path.c_str());
-        }
-    }
-
-    bool done = false;
-
-    if (ImGui::Button("OK"))
-    {
-        outProjectFilePath = pathBuffer;
-        if (!outProjectFilePath.empty())
-        {
-            done = true;
-        }
-    }
-
-    ImGui::SameLine();
-    if (ImGui::Button("Cancel"))
-    {
-        outProjectFilePath.clear();
-        done = true;
-    }
-
-    ImGui::End();
-    return done;
-}
-
-bool ImGuiProjectLaunchUI::DrawEnginePathPicker(const std::string &projectFilePath, std::string &outEnginePath)
+bool ImGuiProjectLaunchUI::DrawEnginePathPicker(std::string &outEnginePath)
 {
     ImGui::SetNextWindowSize(ImVec2(700, 250), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Select Engine", nullptr, ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Select Engine Executable", nullptr, ImGuiWindowFlags_NoCollapse);
 
-    ImGui::Text("Project '%s' needs an engine path.", projectFilePath.c_str());
+    ImGui::Text("Could not find the engine executable to run this project. Please locate the engine's folder:");
     ImGui::Separator();
 
     static char pathBuffer[512] = {0};
@@ -446,69 +627,15 @@ bool ImGuiProjectLaunchUI::DrawEnginePathPicker(const std::string &projectFilePa
     return done;
 }
 
-bool ImGuiProjectLaunchUI::DrawNewProjectScreen(FProjectCreateRequest &outRequest)
-{
-    ImGui::SetNextWindowSize(ImVec2(700, 300), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Create New Project", nullptr, ImGuiWindowFlags_NoCollapse);
-
-    static char nameBuffer[128] = {0};
-    static char folderBuffer[512] = {0};
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        if (!outRequest.projectName.empty())
-            std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", outRequest.projectName.c_str());
-        if (!outRequest.parentDirectory.empty())
-            std::snprintf(folderBuffer, sizeof(folderBuffer), "%s", outRequest.parentDirectory.c_str());
-        initialized = true;
-    }
-
-    ImGui::InputText("Project Name", nameBuffer, sizeof(nameBuffer));
-    ImGui::InputText("Project Folder", folderBuffer, sizeof(folderBuffer));
-
-    if (ImGui::Button("Browse..."))
-    {
-        std::string currentFolder = folderBuffer;
-        const char* defaultPath = GetNonEmptyOrNull(currentFolder);
-
-        std::string chosenFolder = m_Surface->OpenFolderDialog(defaultPath);
-        if (!chosenFolder.empty())
-        {
-            std::snprintf(folderBuffer, sizeof(folderBuffer), "%s", chosenFolder.c_str());
-        }
-    }
-
-    bool done = false;
-
-    if (ImGui::Button("Create"))
-    {
-        std::string name   = nameBuffer;
-        std::string folder = folderBuffer;
-
-        if (!name.empty() && !folder.empty())
-        {
-            outRequest.projectName     = name;
-            outRequest.parentDirectory = folder;
-            // TODO: set additional fields on outRequest as needed (templates, etc.)
-            done = true;
-        }
-        // Optionally show validation errors here (e.g., ImGui::TextColored)
-    }
-
-    ImGui::SameLine();
-    if (ImGui::Button("Cancel"))
-    {
-        done = true;
-    }
-
-    ImGui::End();
-    return done;
-}
-
 void ImGuiProjectLaunchUI::DrawErrorPopup(const std::string &title, const std::string &message)
 {
     bool open = true;
+
+    // Set a minimum size; the window can grow if needed.
+    ImGui::SetNextWindowSizeConstraints(
+        ImVec2(400.0f, 0.0f),   // min size (width 400, height auto)
+        ImVec2(FLT_MAX, FLT_MAX) // max size (no limit)
+    );
 
     if (ImGui::BeginPopupModal(title.c_str(), &open, ImGuiWindowFlags_AlwaysAutoResize))
     {
@@ -522,4 +649,7 @@ void ImGuiProjectLaunchUI::DrawErrorPopup(const std::string &title, const std::s
 
         ImGui::EndPopup();
     }
+
+    if (!open)
+        m_ShowingError = false; // ensure member exists
 }

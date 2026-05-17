@@ -7,5 +7,6 @@ enum class EProjectLaunchAction : uint8_t
 {
     Cancel = 0,
     OpenExisting,
-    CreateNew
+    CreateNew,
+    None
 };

@@ -108,10 +108,13 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
         return false;
     }
 
+    const std::string currentEngineRoot = GuessCurrentEngineRoot();
+
     TUniquePtr<IProjectLaunchUI> launchUI;
     if (editor)
     {
-        launchUI = MakeUnique<ImGuiProjectLaunchUI>(engine.GetPlatformSurface(), engine.GetRenderBackend());
+        launchUI = MakeUnique<ImGuiProjectLaunchUI>(engine.GetPlatformSurface(), engine.GetRenderBackend(),
+            currentEngineRoot);
     }
     else
     {
@@ -130,8 +133,6 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
 
     std::string explicitProjectPath;
     TryGetArgValue(argc, argv, "--project", explicitProjectPath);
-
-    const std::string currentEngineRoot = GuessCurrentEngineRoot();
 
     // v1 behavior:
     // - if --project is passed, use it
