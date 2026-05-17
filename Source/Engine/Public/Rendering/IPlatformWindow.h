@@ -45,6 +45,8 @@ public:
     virtual void SetTitle(const std::string& title) = 0;
     virtual void SetVSync(bool vSync) = 0;
 
+    virtual std::string GetTitle() = 0;
+
     // Native handle (HWND/NSWindow/GLFWwindow/XboxSwapChain/etc.)
     virtual void* GetNativeHandle() const = 0;
 

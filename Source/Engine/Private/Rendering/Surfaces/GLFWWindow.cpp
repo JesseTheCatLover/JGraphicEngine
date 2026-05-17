@@ -317,6 +317,11 @@ void GLFWWindow::SetVSync(bool vSync)
         glfwSwapInterval(vSync ? 1 : 0);
 }
 
+std::string GLFWWindow::GetTitle()
+{
+    return std::string(glfwGetWindowTitle(m_Window));
+}
+
 void* GLFWWindow::GetNativeHandle() const
 {
     return reinterpret_cast<void*>(m_Window);

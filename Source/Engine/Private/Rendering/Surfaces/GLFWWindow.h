@@ -63,6 +63,8 @@ public:
     void SetTitle(const std::string& title) override;
     void SetVSync(bool vSync) override;
 
+    std::string GetTitle() override;
+
     void* GetNativeHandle() const override;
 
     void SetCursorMode(ECursorMode mode) override;
