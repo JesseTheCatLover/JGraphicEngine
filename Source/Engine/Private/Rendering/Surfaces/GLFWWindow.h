@@ -49,6 +49,9 @@ public:
     int GetHeight() const override;
     float GetAspectRatio() const override;
 
+    void SetMinSize(int minWidth, int minHeight) override;
+    void SetMaxSize(int maxWidth, int maxHeight) override;
+
     bool IsVSyncEnabled() const override;
     bool IsFullscreen() const override;
     FWindowDesc GetState() const override;

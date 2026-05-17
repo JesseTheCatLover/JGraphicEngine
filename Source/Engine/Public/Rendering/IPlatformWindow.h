@@ -29,6 +29,9 @@ public:
     [[nodiscard]] virtual int GetHeight() const = 0;
     [[nodiscard]] virtual float GetAspectRatio() const = 0;
 
+    virtual void SetMinSize(int minWidth, int minHeight) {}
+    virtual void SetMaxSize(int maxWidth, int maxHeight) {}
+
     // State and meta
 
     [[nodiscard]] virtual bool IsVSyncEnabled() const = 0;

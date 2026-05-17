@@ -45,6 +45,9 @@ bool GLFWWindow::Initialize()
         // keep width/height from m_State as passed in
     }
 
+    // Before creating the window, set hints based on m_State
+    glfwWindowHint(GLFW_RESIZABLE, m_State.bResizable ? GLFW_TRUE : GLFW_FALSE);
+
     GLFWmonitor* winMonitor = IsFullscreen() ? monitor : nullptr;
     m_Window = glfwCreateWindow(
         m_State.width,
@@ -64,6 +67,18 @@ bool GLFWWindow::Initialize()
     m_State.monitorHandle = monitor;
 
     glfwSetWindowUserPointer(m_Window, this);
+
+    // --- Clamp minimum/maximum size if specified ---
+    int minW = (m_State.minWidth  > 0) ? m_State.minWidth  : GLFW_DONT_CARE;
+    int minH = (m_State.minHeight > 0) ? m_State.minHeight : GLFW_DONT_CARE;
+    int maxW = (m_State.maxWidth  > 0) ? m_State.maxWidth  : GLFW_DONT_CARE;
+    int maxH = (m_State.maxHeight > 0) ? m_State.maxHeight : GLFW_DONT_CARE;
+
+    glfwSetWindowSizeLimits(
+        m_Window,
+        minW, minH,   // min width/height
+        maxW, maxH    // max width/height
+    );
 
     // Framebuffer resize callback
     glfwSetFramebufferSizeCallback(
@@ -220,6 +235,42 @@ float GLFWWindow::GetAspectRatio() const
     if (m_State.height <= 0 || m_State.width <= 0)
         return 1.0f;
     return static_cast<float>(m_State.width) / static_cast<float>(m_State.height);
+}
+
+void GLFWWindow::SetMinSize(int minWidth, int minHeight)
+{
+    m_State.minWidth  = minWidth;
+    m_State.minHeight = minHeight;
+
+    if (m_Window)
+    {
+        int minW = (minWidth  > 0) ? minWidth  : GLFW_DONT_CARE;
+        int minH = (minHeight > 0) ? minHeight : GLFW_DONT_CARE;
+
+        // Keep current max limits
+        int maxW = (m_State.maxWidth  > 0) ? m_State.maxWidth  : GLFW_DONT_CARE;
+        int maxH = (m_State.maxHeight > 0) ? m_State.maxHeight : GLFW_DONT_CARE;
+
+        glfwSetWindowSizeLimits(m_Window, minW, minH, maxW, maxH);
+    }
+}
+
+void GLFWWindow::SetMaxSize(int maxWidth, int maxHeight)
+{
+    m_State.maxWidth  = maxWidth;
+    m_State.maxHeight = maxHeight;
+
+    if (m_Window)
+    {
+        // Keep current min limits
+        int minW = (m_State.minWidth  > 0) ? m_State.minWidth  : GLFW_DONT_CARE;
+        int minH = (m_State.minHeight > 0) ? m_State.minHeight : GLFW_DONT_CARE;
+
+        int maxW = (maxWidth  > 0) ? maxWidth  : GLFW_DONT_CARE;
+        int maxH = (maxHeight > 0) ? maxHeight : GLFW_DONT_CARE;
+
+        glfwSetWindowSizeLimits(m_Window, minW, minH, maxW, maxH);
+    }
 }
 
 bool GLFWWindow::IsVSyncEnabled() const
