@@ -135,6 +135,7 @@ bool JEngine::OpenProject(const FProjectOpenRequest& request)
         return false;
     }
 
+    m_PrimaryWindow->SetTitle(m_PrimaryWindow->GetTitle() + " - " + m_ProjectContext->GetProjectName());
     m_PrimaryWindow->Show();
 
     return true;
