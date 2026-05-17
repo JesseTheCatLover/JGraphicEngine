@@ -45,6 +45,8 @@ bool ImGuiProjectLaunchUI::StartWindow()
     windowDesc.height = 720;
     windowDesc.title = "JEditor - Project Browser";
     windowDesc.windowState = EWindowState::Normal;
+    windowDesc.minWidth = 1000;
+    windowDesc.minHeight = 480;
 
     auto window = m_Surface->CreateWindow(windowDesc);
     if (!window)
@@ -468,6 +470,7 @@ void ImGuiProjectLaunchUI::DrawBottomBar(EProjectLaunchAction& outAction, bool& 
     else
     {
         // --- TEMPLATES / CREATE PROJECT BOTTOM BAR ---
+        ImGui::AlignTextToFramePadding();
         ImGui::Text("Project Name:");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(200.0f);
