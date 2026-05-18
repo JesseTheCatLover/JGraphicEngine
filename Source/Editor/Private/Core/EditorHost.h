@@ -5,6 +5,7 @@
 #include "EditorRuntime.h"
 #include "TEditorServiceContainer.h"
 #include "TPanelContainer.h"
+#include "DialogManager.h"
 #include "Core/Memory/SmartPointers.h"
 #include "Subsystems/ViewportSubsystem.h"
 
@@ -20,6 +21,7 @@ private:
     EditorRuntime& m_EditorRuntime;
     TUniquePtr<ToolService> m_ToolService;
     TUniquePtr<TPanelContainer> m_PanelContainer;
+    TUniquePtr<DialogManager> m_DialogManager;
     TUniquePtr<TEditorServiceContainer> m_Services;
 
     void RegisterCoreSubsystems();
@@ -48,4 +50,5 @@ public:
 
     EditorRuntime& GetRuntime() { return m_EditorRuntime; }
 
+    DialogManager& GetDialogManager() { return *m_DialogManager; }
 };

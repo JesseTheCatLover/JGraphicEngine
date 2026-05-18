@@ -8,18 +8,19 @@
 #include "Core/EditorHost.h"
 #include "EditorRuntime.h"
 #include "Layout/EditorLayoutModel.h"
-#include "../Core/EditorAssetCache.h"
+#include "Core/EditorAssetCache.h"
 #include "Core/Services/EditTimelineService.h"
 #include "Core/Services/HotkeyService.h"
 #include "Core/Services/ShellCommandService.h"
 #include "UI/IEditorPanel.h"
 
-static bool IsViewportKey(const char* key)
+static bool IsViewportKey(const char *key)
 {
     return (std::strncmp(key, "Viewport", 8) == 0);
 }
 
-void ImGuiRenderer::Initialize(EditorHost& host, EditorRuntime& runtime, EditorLayoutModel& layout, EditorAssetCache& cache)
+void ImGuiRenderer::Initialize(EditorHost &host, EditorRuntime &runtime, EditorLayoutModel &layout,
+                               EditorAssetCache &cache)
 {
     m_Host = &host;
     m_Runtime = &runtime;
@@ -57,15 +58,23 @@ void ImGuiRenderer::RenderChrome(float deltaTime)
 
 void ImGuiRenderer::RenderPanels(std::span<IEditorPanel * const> panels)
 {
-    for (IEditorPanel* p : panels)
+    for (IEditorPanel *p: panels)
     {
         if (!p) continue;
 
-        if (const ImGuiWindowClass* wc = GetDockClassForPanel(*p))
+        if (const ImGuiWindowClass *wc = GetDockClassForPanel(*p))
             ImGui::SetNextWindowClass(wc);
 
         p->Draw(*m_Host);
     }
+}
+
+void ImGuiRenderer::RenderDialogs()
+{
+    if (!m_Host)
+        return;
+
+    m_Host->GetDialogManager().DrawDialogs();
 }
 
 void ImGuiRenderer::DrawMainMenuBar()
@@ -73,8 +82,8 @@ void ImGuiRenderer::DrawMainMenuBar()
     if (!ImGui::BeginMainMenuBar() || !m_Host)
         return;
 
-    auto& shell = m_Host->GetService<ShellCommandService>();
-    auto& hotkeys = m_Host->GetService<HotkeyService>();
+    auto &shell = m_Host->GetService<ShellCommandService>();
+    auto &hotkeys = m_Host->GetService<HotkeyService>();
 
     if (ImGui::BeginMenu("File"))
     {
@@ -109,22 +118,22 @@ void ImGuiRenderer::DrawMainMenuBar()
     {
         bool bHierarchy = m_Layout->IsPanelVisible(EEditorPanelType::SceneHierarchy);
         if (ImGui::MenuItem("Scene Hierarchy",
-            hotkeys.GetShortcutText("Editor.View.ToggleSceneHierarchy").c_str(), bHierarchy))
+                            hotkeys.GetShortcutText("Editor.View.ToggleSceneHierarchy").c_str(), bHierarchy))
             shell.Execute("Editor.View.ToggleSceneHierarchy");
 
         bool bConsole = m_Layout->IsPanelVisible(EEditorPanelType::Console);
         if (ImGui::MenuItem("Console",
-            hotkeys.GetShortcutText("Editor.View.ToggleConsole").c_str(), bConsole))
+                            hotkeys.GetShortcutText("Editor.View.ToggleConsole").c_str(), bConsole))
             shell.Execute("Editor.View.ToggleConsole");
 
         bool bAssetBrowser = m_Layout->IsPanelVisible(EEditorPanelType::AssetBrowser);
         if (ImGui::MenuItem("Asset Browser",
-            hotkeys.GetShortcutText("Editor.View.ToggleAssetBrowser").c_str(), bAssetBrowser))
+                            hotkeys.GetShortcutText("Editor.View.ToggleAssetBrowser").c_str(), bAssetBrowser))
             shell.Execute("Editor.View.ToggleAssetBrowser");
 
         bool bInspector = m_Layout->IsPanelVisible(EEditorPanelType::Inspector);
         if (ImGui::MenuItem("Inspector",
-            hotkeys.GetShortcutText("Editor.View.ToggleInspector").c_str(), bInspector))
+                            hotkeys.GetShortcutText("Editor.View.ToggleInspector").c_str(), bInspector))
             shell.Execute("Editor.View.ToggleInspector");
 
         ImGui::EndMenu();
@@ -135,26 +144,26 @@ void ImGuiRenderer::DrawMainMenuBar()
         if (ImGui::BeginMenu("Multi-View Modes", "Ctrl+M+V"))
         {
             if (ImGui::MenuItem("Single View",
-                hotkeys.GetShortcutText("Editor.Viewport.SetSingleView").c_str()))
+                                hotkeys.GetShortcutText("Editor.Viewport.SetSingleView").c_str()))
                 shell.Execute("Editor.Viewport.SetSingleView");
 
             if (ImGui::MenuItem("Double View",
-                hotkeys.GetShortcutText("Editor.Viewport.SetDoubleView").c_str()))
+                                hotkeys.GetShortcutText("Editor.Viewport.SetDoubleView").c_str()))
                 shell.Execute("Editor.Viewport.SetDoubleView");
 
             if (ImGui::MenuItem("Triple View",
-                hotkeys.GetShortcutText("Editor.Viewport.SetTripleView").c_str()))
+                                hotkeys.GetShortcutText("Editor.Viewport.SetTripleView").c_str()))
                 shell.Execute("Editor.Viewport.SetTripleView");
 
             if (ImGui::MenuItem("Quad View",
-                hotkeys.GetShortcutText("Editor.Viewport.SetQuadView").c_str()))
+                                hotkeys.GetShortcutText("Editor.Viewport.SetQuadView").c_str()))
                 shell.Execute("Editor.Viewport.SetQuadView");
 
             ImGui::EndMenu();
         }
 
         if (ImGui::MenuItem("Toggle Tab Visibility",
-                hotkeys.GetShortcutText("Editor.Viewport.ToggleTabVisibility").c_str()))
+                            hotkeys.GetShortcutText("Editor.Viewport.ToggleTabVisibility").c_str()))
         {
             shell.Execute("Editor.Viewport.ToggleTabVisibility");
         }
@@ -191,7 +200,7 @@ void ImGuiRenderer::DrawMainMenuBar()
 
 void ImGuiRenderer::DrawToolbar()
 {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGuiViewport *viewport = ImGui::GetMainViewport();
 
     ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + ImGui::GetFrameHeight()));
     ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, 32.0f));
@@ -202,25 +211,25 @@ void ImGuiRenderer::DrawToolbar()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
     ImGuiWindowFlags toolbarFlags =
-        ImGuiWindowFlags_NoDecoration |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoScrollWithMouse |
-        ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoBringToFrontOnFocus |
-        ImGuiWindowFlags_NoDocking;
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoDocking;
 
     ImGui::Begin("##Toolbar", nullptr, toolbarFlags);
 
     // Example: draw a few cached icons if they exist
     // Keys correspond to files under Assets/Editor/Textures** (without extension)
     // e.g. Assets/Editor/Textures/Toolbar/Save.png -> "Toolbar/Save"
-    const char* keys[] = { "Toolbar/Save", "Toolbar/Run", "Toolbar/Translate", "Toolbar/Rotate", "Toolbar/Scale" };
+    const char *keys[] = {"Toolbar/Save", "Toolbar/Run", "Toolbar/Translate", "Toolbar/Rotate", "Toolbar/Scale"};
 
     ImVec2 uv0(0.0f, 1.0f);
     ImVec2 uv1(1.0f, 0.0f);
 
-    for (const char* k : keys)
+    for (const char *k: keys)
     {
         RTextureHandle h = m_Cache->GetTexture(k);
         if (!h.IsValid())
@@ -230,16 +239,19 @@ void ImGuiRenderer::DrawToolbar()
         ImVec2 avail = ImGui::GetContentRegionAvail();
         float hh = (avail.y > 0.f) ? avail.y : 0.f;
 
-        auto texId = (ImTextureID)m_Runtime->GetViewport().GetNativeTexture(h);
+        auto texId = (ImTextureID) m_Runtime->GetViewport().GetNativeTexture(h);
         ImGui::Image(texId, ImVec2(hh, hh), uv0, uv1);
     }
 
     std::string gizmoMode = "GizmoMode: ";
     switch (m_Host->GetSubsystem<ViewportSubsystem>().GetGizmoMode())
     {
-        case GizmoEditorTool::EMode::Translate: gizmoMode += "Translate"; break;
-        case GizmoEditorTool::EMode::Scale:     gizmoMode += "Scale"; break;
-        case GizmoEditorTool::EMode::Rotate:    gizmoMode += "Rotate"; break;
+        case GizmoEditorTool::EMode::Translate: gizmoMode += "Translate";
+            break;
+        case GizmoEditorTool::EMode::Scale: gizmoMode += "Scale";
+            break;
+        case GizmoEditorTool::EMode::Rotate: gizmoMode += "Rotate";
+            break;
         default: break;
     }
     ImGui::SameLine();
@@ -248,8 +260,10 @@ void ImGuiRenderer::DrawToolbar()
     std::string gizmoSpace = "GizmoSpace: ";
     switch (m_Host->GetSubsystem<ViewportSubsystem>().GetGizmoSpace())
     {
-        case GizmoEditorTool::ESpace::World: gizmoSpace += "World"; break;
-        case GizmoEditorTool::ESpace::Local: gizmoSpace += "Local"; break;
+        case GizmoEditorTool::ESpace::World: gizmoSpace += "World";
+            break;
+        case GizmoEditorTool::ESpace::Local: gizmoSpace += "Local";
+            break;
         default: break;
     }
 
@@ -338,7 +352,7 @@ void ImGuiRenderer::DrawDockspaceAndPanels(float /*deltaTime*/)
     ImGui::End();
 }
 
-const ImGuiWindowClass* ImGuiRenderer::GetDockClassForPanel(const IEditorPanel& panel)
+const ImGuiWindowClass *ImGuiRenderer::GetDockClassForPanel(const IEditorPanel &panel)
 {
     if (panel.GetDockGroup() == EPanelDockGroup::Viewport)
         return &m_ViewportDockClass;

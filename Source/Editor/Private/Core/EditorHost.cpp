@@ -3,8 +3,8 @@
 #include "EditorHost.h"
 
 #include "TPanelContainer.h"
+#include "DialogManager.h"
 #include "ToolService.h"
-#include "Layout/EditorLayoutModel.h"
 #include "Services/EditTimelineService.h"
 #include "Services/HierarchyService.h"
 #include "Services/HotkeyService.h"
@@ -23,6 +23,7 @@ m_EditorRuntime(runtime)
     m_Services = MakeUnique<TEditorServiceContainer>();
     m_ToolService = TUniquePtr<ToolService>(new ToolService());
     m_PanelContainer = TUniquePtr<TPanelContainer>(new TPanelContainer(*this, runtime, *m_ToolService));
+    m_DialogManager = MakeUnique<DialogManager>(*this, runtime);
 
     RegisterCoreSubsystems();
     RegisterCoreServices();

@@ -2,7 +2,6 @@
 
 #include "EditorApp.h"
 
-#include <Core/CoreMinimal.h>
 #include <GLFW/glfw3.h>
 #include <Renderer/Backends/ImGuiBackend.h>
 #include <iostream>
@@ -107,6 +106,7 @@ void EditorApp::OnRenderOverlay(float deltaTime)
     m_Renderer->RenderChrome(deltaTime); // menu clicks happen here
     m_PanelTracker->ApplyLayout(*m_EditorHost, *m_LayoutModel); // reacts same frame
     m_Renderer->RenderPanels(m_PanelTracker->GetDrawPanels()); // draws updated panels
+    m_Renderer->RenderDialogs();
     EndFrame();
 }
 

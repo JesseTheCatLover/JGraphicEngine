@@ -13,6 +13,7 @@ public:
 
     void RenderChrome(float deltaTime) override;
     void RenderPanels(std::span<IEditorPanel* const> panels) override;
+    void RenderDialogs() override;
 
 private:
     void DrawMainMenuBar();

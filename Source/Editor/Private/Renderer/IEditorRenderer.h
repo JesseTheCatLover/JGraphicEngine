@@ -32,4 +32,5 @@ public:
     // Called once per frame between UIBackend BeginFrame/EndFrame
     virtual void RenderChrome(float deltaTime) = 0; ///< menu + toolbar + dockspace
     virtual void RenderPanels(std::span<IEditorPanel* const> panels) = 0; ///< draws panels
+    virtual void RenderDialogs() = 0; ///< draw dialogs
 };
