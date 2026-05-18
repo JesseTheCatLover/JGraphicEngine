@@ -3,7 +3,7 @@
 #pragma once
 #include <span>
 
-#include "UI/IEditorPanels.h"
+#include "UI/IEditorPanel.h"
 
 class IEditorPanel;
 class EditorHost;

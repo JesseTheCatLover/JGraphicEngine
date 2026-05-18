@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "UI/IEditorPanels.h"
+#include "UI/IEditorPanel.h"
 
 class EditorHost;
 class EditorContext;

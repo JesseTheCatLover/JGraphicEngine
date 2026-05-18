@@ -5,7 +5,7 @@
 #include <string>
 #include <cstdint>
 
-#include "UI/IEditorPanels.h"
+#include "UI/IEditorPanel.h"
 #include "Controllers/Inputs/FHierarchyPanelInput.h"
 
 class SelectionService;

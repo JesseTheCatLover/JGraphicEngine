@@ -8,7 +8,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "UI/IEditorPanels.h"
+#include "UI/IEditorPanel.h"
 #include "Controllers/Inputs/FInspectorPanelInput.h"
 #include "Controllers/Documents/FInspectorDocument.h"
 

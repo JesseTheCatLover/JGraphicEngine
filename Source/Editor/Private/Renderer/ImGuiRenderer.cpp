@@ -12,7 +12,7 @@
 #include "Core/Services/EditTimelineService.h"
 #include "Core/Services/HotkeyService.h"
 #include "Core/Services/ShellCommandService.h"
-#include "UI/IEditorPanels.h"
+#include "UI/IEditorPanel.h"
 
 static bool IsViewportKey(const char* key)
 {

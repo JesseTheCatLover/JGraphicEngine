@@ -7,7 +7,7 @@
 #include <cstring>
 
 #include "Core/Memory/SmartPointers.h"
-#include "UI/IEditorPanels.h"
+#include "UI/IEditorPanel.h"
 #include "Layout/EditorLayoutModel.h"
 
 class EditorHost;
