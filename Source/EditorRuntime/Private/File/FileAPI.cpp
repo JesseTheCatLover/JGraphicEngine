@@ -11,7 +11,7 @@
 #include "Resources/GpuResources/Texture2DResource.h"
 
 EditorFileAPI::EditorFileAPI(EngineContext &ctx, ResourceSubsystem &resource, VirtualPathMounter& pathMounter,
-    AssetManager& assetManager):
+                             AssetManager& assetManager):
 m_Context(ctx),
 m_Resource(resource),
 m_PathMounter(pathMounter),
@@ -107,4 +107,23 @@ const FAssetRecord* EditorFileAPI::FindByAssetID(const std::string& assetID) con
 const FAssetRecord* EditorFileAPI::FindByVirtualPath(const std::string& virtualPath) const
 {
     return m_AssetManager.FindByVirtualPath(virtualPath);
+}
+
+bool EditorFileAPI::ImportAsset(const FAssetImportRequest &request, FAssetImportResult &outResult)
+{
+    return m_AssetManager.ImportAsset(request, outResult);
+}
+
+std::vector<FAssetImportResult> EditorFileAPI::ImportAssetsBatch(const std::vector<FAssetImportRequest> &requests)
+{
+    std::vector<FAssetImportResult> results;
+
+    for (const auto& req : requests)
+    {
+        FAssetImportResult result{};
+        m_AssetManager.ImportAsset(req, result);
+        results.push_back(result);
+    }
+
+    return results;
 }

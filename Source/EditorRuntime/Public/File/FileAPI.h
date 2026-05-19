@@ -1,10 +1,14 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+#include <vector>
+#include <string>
 #include "Assets/AssetTypes.h"
 #include "Assets/EAssetDomain.h"
 #include "Rendering/RHandles.h"
 
+struct FAssetImportResult;
+struct FAssetImportRequest;
 struct FAssetRecord;
 class VirtualPathMounter;
 class AssetManager;
@@ -33,4 +37,8 @@ public:
     [[nodiscard]] std::vector<const FAssetRecord*> GetDependencies(const std::string& assetID) const;
     [[nodiscard]] const FAssetRecord* FindByAssetID(const std::string& assetID) const;
     [[nodiscard]] const FAssetRecord* FindByVirtualPath(const std::string& virtualPath) const;
+
+    bool ImportAsset(const FAssetImportRequest& request, FAssetImportResult& outResult);
+
+    std::vector<FAssetImportResult> ImportAssetsBatch(const std::vector<FAssetImportRequest>& requests);
 };
