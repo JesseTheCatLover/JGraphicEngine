@@ -4,31 +4,6 @@
 
 #include "UI/IEditorDialog.h"
 
-template<typename TDialog>
-TDialog* DialogManager::FindDialogInstance()
-{
-    for (auto& dlg : m_Dialogs)
-        if (auto* casted = dynamic_cast<TDialog*>(dlg.get()))
-            return casted;
-    return nullptr;
-}
-
-template<typename TDialog>
-TDialog* DialogManager::OpenDialog()
-{
-    TDialog* instance = FindDialogInstance<TDialog>();
-    if (!instance)
-    {
-        auto ptr = MakeUnique<TDialog>();
-        instance = ptr.get();
-        instance->OnCreate(m_Host, m_Runtime);
-        m_Dialogs.emplace_back(std::move(ptr));
-    }
-
-    instance->OnOpen(m_Host, m_Runtime);
-    return instance;
-}
-
 void DialogManager::DrawDialogs()
 {
     for (auto it = m_Dialogs.begin(); it != m_Dialogs.end(); /* no increment */)

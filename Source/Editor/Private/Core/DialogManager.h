@@ -18,7 +18,20 @@ public:
     {}
 
     template<typename TDialog>
-    TDialog* OpenDialog();
+    TDialog* OpenDialog()
+    {
+        TDialog* instance = FindDialogInstance<TDialog>();
+        if (!instance)
+        {
+            auto ptr = MakeUnique<TDialog>();
+            instance = ptr.get();
+            instance->OnCreate(m_Host, m_Runtime);
+            m_Dialogs.emplace_back(std::move(ptr));
+        }
+
+        instance->OnOpen(m_Host, m_Runtime);
+        return instance;
+    }
 
     void DrawDialogs();
 
@@ -28,5 +41,11 @@ private:
     std::vector<TUniquePtr<IEditorDialog>> m_Dialogs;
 
     template<typename TDialog>
-    TDialog* FindDialogInstance();
+    TDialog* FindDialogInstance()
+    {
+        for (auto& dlg : m_Dialogs)
+            if (auto* casted = dynamic_cast<TDialog*>(dlg.get()))
+                return casted;
+        return nullptr;
+    }
 };
