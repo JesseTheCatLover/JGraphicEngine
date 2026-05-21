@@ -24,12 +24,12 @@ public:
     EditorSurfaceAPI(EngineContext& ctx, IPlatformSurface& surface, InputManager& inputManager);
 
     // File dialogs
-    std::string OpenFileDialog(const char* filterList, const char* defaultPath = nullptr);
-    std::vector<std::string> OpenFileDialogMultiple(const char* filterList, const char* defaultPath = nullptr);
-    std::string OpenFolderDialog(const char* defaultPath = nullptr);
+    std::string OpenFileDialog(const char* filterList, const char* defaultPath);
+    std::vector<std::string> OpenFileDialogMultiple(const char* filterList, const char* defaultPath);
+    std::string OpenFolderDialog(const char* defaultPath);
     std::string SaveFileDialog(const char* filterList,
-                               const char* defaultPath = nullptr,
-                               const char* defaultName = nullptr);
+                               const char* defaultPath,
+                               const char* defaultName);
 
     // Windows
     TSharedPtr<IPlatformWindow> CreateWindow(const FWindowDesc& desc);

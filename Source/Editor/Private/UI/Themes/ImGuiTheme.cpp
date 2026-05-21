@@ -60,6 +60,15 @@ namespace ImGuiTheme
         colors[ImGuiCol_TabUnfocusedActive] = bg_light;
 
         style.TabRounding = 3.0f;
+
+        // Remove the grip arrow
+        ImVec4 oldGrip     = style.Colors[ImGuiCol_ResizeGrip];
+        ImVec4 oldGripAct  = style.Colors[ImGuiCol_ResizeGripActive];
+        ImVec4 oldGripHov  = style.Colors[ImGuiCol_ResizeGripHovered];
+
+        style.Colors[ImGuiCol_ResizeGrip]        = ImVec4(0, 0, 0, 0);
+        style.Colors[ImGuiCol_ResizeGripActive]  = ImVec4(0, 0, 0, 0);
+        style.Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0, 0, 0, 0);
     }
 
     bool TryLoadDefaultFontFromFile(const std::string& ttfPath, float sizePx)

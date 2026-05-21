@@ -1,3 +1,5 @@
+//  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
+
 #include "AssetBrowserPanel.h"
 
 #include <vector>
@@ -12,6 +14,7 @@
 
 #include "Core/EditorHost.h"
 #include "Subsystems/AssetBrowserSubsystem.h"
+#include "UI/Dialogs/AssetImporterDialog.h"
 
 namespace
 {
@@ -166,6 +169,32 @@ void AssetBrowserPanel::Draw(EditorHost& host)
     input.bForceRefresh   = false;
 
     // ---------------- Toolbar ----------------
+
+    if (DrawToolbarButton("Save All", "Save all the edited assets"))
+    {
+
+    }
+
+    ImGui::SameLine();
+    if (DrawToolbarButton("Import", "Import Assets From System Files"))
+    {
+       host.GetDialogManager().OpenDialog<AssetImporterDialog>();
+    }
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    const float exploreButtonsWidth = 154.0f;
+    const float spacing = style.ItemSpacing.x;
+
+    float available = ImGui::GetContentRegionAvail().x;
+    float searchWidth = available - exploreButtonsWidth - spacing;
+
+    if (searchWidth < 140.0f)
+        searchWidth = 140.0f;
+
+    ImGui::SetNextItemWidth(searchWidth);
+    ImGui::InputTextWithHint("##AssetSearch", "Search assets...", m_SearchBuf, sizeof(m_SearchBuf));
+
+    ImGui::SameLine();
     if (DrawToolbarButton("Home", "Go to assets root"))
         input.bNavigateHome = true;
 
@@ -176,10 +205,6 @@ void AssetBrowserPanel::Draw(EditorHost& host)
     ImGui::SameLine();
     if (DrawToolbarButton("Refresh", "Refresh current folder"))
         input.bForceRefresh = true;
-
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(260.0f);
-    ImGui::InputTextWithHint("##AssetSearch", "Search assets...", m_SearchBuf, sizeof(m_SearchBuf));
 
     // ---------------- Breadcrumbs ----------------
     {

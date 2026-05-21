@@ -6,31 +6,26 @@
 #include <vector>
 
 #include "UI/IEditorDialog.h"
-#include "Assets/FAssetImportRequest.h"
-#include "Assets/FAssetImportResult.h"
 
 class AssetImporterDialog final : public IEditorDialog
 {
-public:
-    AssetImporterDialog() = default;
-
-    const char* GetName() const override { return "AssetImporterDialog"; }
-
-    // Called when dialog is created once
-    void OnCreate(EditorHost& host, EditorRuntime& runtime) override {}
-    void OnDestroy(EditorHost& host, EditorRuntime& runtime) override {}
-
-    // Called every time user wants to open it
-    void OnOpen(EditorHost& host, EditorRuntime& runtime) override;
-
-    void Draw(EditorHost& host, EditorRuntime& runtime) override;
-    bool IsOpen() const override { return m_IsOpen; }
-
 private:
-    bool m_IsOpen = false;
-    bool m_InitialPopupOpened = false;
+    bool m_bIsOpen = false;
 
-    struct PendingItem
+    float m_InitialWidth = 800.f;
+    float m_InitialHeight = 500.f;
+
+    float m_MinWidth = 600.0f;
+    float m_MinHeight = 400.0f;
+    float m_MaxWidth = 1600.0f;
+    float m_MaxHeight = 1200.0f;
+
+    bool m_bInitializedSplitter = false;
+    float m_LeftPaneWidth = -1.0f;
+    const float m_MinLeftPaneWidth = 220.0f;
+    const float m_MinRightPaneWidth = 280.0f;
+
+    struct FPendingItem
     {
         std::string sourceFilePath;
         std::string destinationVirtualFolder;
@@ -38,6 +33,45 @@ private:
         // later: per-type options
     };
 
-    std::vector<PendingItem> m_Items;
-    int m_SelectedIndex = -1;
+    // Pending items
+    std::vector<FPendingItem> m_Items;
+
+    // List selection (indices into m_Items)
+    std::vector<int> m_SelectedIndices;
+
+    // Left pane behavior
+    void DrawLeftPane(EditorHost& host, EditorRuntime& runtime);
+    void DrawLeftTopBar(EditorHost& host, EditorRuntime& runtime);
+    void DrawLeftItemList(EditorHost& host, EditorRuntime& runtime);
+    void DrawLeftBottomBar(EditorHost& host, EditorRuntime& runtime);
+
+    // Right pane behavior
+    void DrawRightPane(EditorHost& host, EditorRuntime& runtime);
+
+    // Actions
+    void OnBrowseSourceFiles(EditorHost& host, EditorRuntime& runtime);
+    void OnChooseDestinationForSelected(EditorHost& host, EditorRuntime& runtime);
+    void OnDeleteSelected();
+    void OnCancel();
+    void OnDone(EditorHost& host, EditorRuntime& runtime);
+
+    // Helpers
+    void BuildImportRequestsAndSubmit(EditorHost& host, EditorRuntime& runtime);
+    void EnsureSelectionIsValid();
+
+public:
+    AssetImporterDialog() = default;
+
+    [[nodiscard]] const char* GetName() const override { return "AssetImporterDialog"; }
+
+    // Called when dialog is created once
+    void OnCreate(EditorHost& host, EditorRuntime& runtime) override;
+
+    void OnDestroy(EditorHost& host, EditorRuntime& runtime) override;
+
+    // Called every time user wants to open it
+    void OnOpen(EditorHost& host, EditorRuntime& runtime) override;
+
+    void Draw(EditorHost& host, EditorRuntime& runtime) override;
+    [[nodiscard]] bool IsOpen() const override { return m_bIsOpen; }
 };

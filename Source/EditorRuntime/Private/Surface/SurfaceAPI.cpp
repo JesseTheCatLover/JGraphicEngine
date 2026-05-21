@@ -13,22 +13,22 @@ EditorSurfaceAPI::EditorSurfaceAPI(EngineContext &ctx, IPlatformSurface &surface
 
 std::string EditorSurfaceAPI::OpenFileDialog(const char *filterList, const char *defaultPath)
 {
-    m_PlatformSurface.OpenFileDialog(filterList, defaultPath);
+    return m_PlatformSurface.OpenFileDialog(filterList, defaultPath);
 }
 
 std::vector<std::string> EditorSurfaceAPI::OpenFileDialogMultiple(const char *filterList, const char *defaultPath)
 {
-    m_PlatformSurface.OpenFileDialogMultiple(filterList, defaultPath);
+    return m_PlatformSurface.OpenFileDialogMultiple(filterList, defaultPath);
 }
 
 std::string EditorSurfaceAPI::OpenFolderDialog(const char *defaultPath)
 {
-    m_PlatformSurface.OpenFolderDialog(defaultPath);
+    return m_PlatformSurface.OpenFolderDialog(defaultPath);
 }
 
 std::string EditorSurfaceAPI::SaveFileDialog(const char *filterList, const char *defaultPath, const char *defaultName)
 {
-    m_PlatformSurface.SaveFileDialog(filterList, defaultPath, defaultName);
+    return m_PlatformSurface.SaveFileDialog(filterList, defaultPath, defaultName);
 }
 
 TSharedPtr<IPlatformWindow> EditorSurfaceAPI::CreateWindow(const FWindowDesc &desc)
