@@ -8,6 +8,7 @@
 
 #include <imgui.h>
 
+#include "FolderPickerDialog.h"
 #include "imgui_internal.h"
 
 void AssetImporterDialog::OnCreate(EditorHost& host, EditorRuntime& runtime)
@@ -142,6 +143,9 @@ void AssetImporterDialog::Draw(EditorHost& host, EditorRuntime& runtime)
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     DrawRightPane(host, runtime);
     ImGui::EndChild();
+
+    // Tick the update
+    UpdateFolderPickerResult(host, runtime);
 
     ImGui::End(); // Window end
 }
@@ -329,7 +333,7 @@ void AssetImporterDialog::DrawRightPane(EditorHost& host, EditorRuntime& runtime
         std::snprintf(buffer, sizeof(buffer), "%s", item.destinationVirtualFolder.c_str());
 
         ImGui::Text("Destination Folder: ");
-        if (ImGui::InputText("", buffer, sizeof(buffer)))
+        if (ImGui::InputText("##DestinationFolderInput", buffer, sizeof(buffer)))
         {
             item.destinationVirtualFolder = buffer;
         }
@@ -412,21 +416,29 @@ void AssetImporterDialog::OnChooseDestinationForSelected(EditorHost& host, Edito
     if (m_SelectedIndices.empty())
         return;
 
-    // TODO: Replace this with our real virtual-path picker dialog workflow later
-    // Example desired result:
-    // std::optional<std::string> selectedPath = host.GetDialogManager().OpenVirtualFolderPicker("/Project");
+    // 1) Open the folder picker dialog
+    auto* picker = host.GetDialogManager().RequestOpenDialog<FolderPickerDialog>();
+    if (!picker)
+        return; // safety
 
-    std::string selectedPath; // TODO: fill from real folder picker
-    bool bAccepted = false;    // TODO: set from picker result
+    // Configure for this use
+    picker->SetTitle("Choose Destination Folder");
 
-    if (!bAccepted)
-        return;
+    std::string initialPath = "/Project";
 
-    for (int idx : m_SelectedIndices)
+    // We want to base it on the first selected item:
+    int firstIdx = m_SelectedIndices.front();
+    if (firstIdx >= 0 && firstIdx < static_cast<int>(m_Items.size()))
     {
-        if (idx >= 0 && idx < static_cast<int>(m_Items.size()))
-            m_Items[idx].destinationVirtualFolder = selectedPath;
+        const std::string& dest = m_Items[firstIdx].destinationVirtualFolder;
+        if (!dest.empty())
+            initialPath = dest;
     }
+
+    picker->SetInitialPath(initialPath);
+
+    // 2) We do NOT block/wait here. The user will interact with the dialog.
+    // The picker will set its result and close itself; we read it later.
 }
 
 void AssetImporterDialog::OnDeleteSelected()
@@ -511,4 +523,34 @@ void AssetImporterDialog::EnsureSelectionIsValid()
     m_SelectedIndices.erase(
         std::unique(m_SelectedIndices.begin(), m_SelectedIndices.end()),
         m_SelectedIndices.end());
+}
+
+void AssetImporterDialog::UpdateFolderPickerResult(EditorHost& host, EditorRuntime& runtime)
+{
+    (void)runtime;
+
+    auto* picker = host.GetDialogManager().FindDialogInstance<FolderPickerDialog>();
+    if (!picker)
+        return; // dialog not open / already destroyed
+
+    // We only care after the user has made a choice and the dialog closed
+    // or at least after they hit "Select".
+    const auto& result = picker->GetResult();
+    if (!result.bAccepted)
+        return;
+
+    const std::string& selectedPath = result.selectedPath;
+    if (selectedPath.empty())
+        return;
+
+    // Apply to currently selected items
+    EnsureSelectionIsValid();
+    if (m_SelectedIndices.empty())
+        return;
+
+    for (int idx : m_SelectedIndices)
+    {
+        if (idx >= 0 && idx < static_cast<int>(m_Items.size()))
+            m_Items[idx].destinationVirtualFolder = selectedPath;
+    }
 }

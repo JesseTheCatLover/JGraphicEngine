@@ -59,6 +59,7 @@ private:
     // Helpers
     void BuildImportRequestsAndSubmit(EditorHost& host, EditorRuntime& runtime);
     void EnsureSelectionIsValid();
+    void UpdateFolderPickerResult(EditorHost& host, EditorRuntime& runtime);
 
 public:
     AssetImporterDialog() = default;
