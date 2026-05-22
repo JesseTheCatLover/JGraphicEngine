@@ -133,7 +133,7 @@ public:
    * @brief Closes a dialog (if it exists).
    *
    * Behavior:
-   * - If an instance exists, calls `OnClose(...)`.
+   * - If an instance exists, calls `OnClose()`.
    * - Actual destruction/removal is performed later by the manager at a safe point.
    *
    * @tparam TDialog Dialog type deriving from `IEditorDialog`.
@@ -142,6 +142,6 @@ public:
     void CloseDialog()
     {
         if (TDialog* dlg = FindDialogInstance<TDialog>())
-            dlg->OnClose(m_Host, m_Runtime);
+            dlg->OnClose();
     }
 };

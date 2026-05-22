@@ -19,9 +19,9 @@ void AssetImporterDialog::OnCreate(EditorHost& host, EditorRuntime& runtime)
 
 void AssetImporterDialog::OnDestroy(EditorHost& host, EditorRuntime& runtime)
 {
-    (void)host;
     (void)runtime;
 
+    host.GetDialogManager().CloseDialog<FolderPickerDialog>();
     m_Items.clear();
     m_SelectedIndices.clear();
     m_bIsOpen = false;
