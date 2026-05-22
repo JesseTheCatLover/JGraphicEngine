@@ -12,13 +12,13 @@ struct FSelectionModifiers;
 class CameraEditorTool;
 class EditorHost;
 
-class PickingService : public IEditorService
+class ScenePickingService : public IEditorService
 {
 private:
     EditorHost& m_Host;
 
 public:
-    explicit PickingService(EditorHost& host);
+    explicit ScenePickingService(EditorHost& host);
 
     [[nodiscard]] ActorID PickActorAtViewportPos(const CameraEditorTool& cam,
                        float width, float height,

@@ -8,7 +8,7 @@
 #include "Services/EditTimelineService.h"
 #include "Services/HierarchyService.h"
 #include "Services/HotkeyService.h"
-#include "Services/PickingService.h"
+#include "Services/ScenePickingService.h"
 #include "Services/SceneQueryService.h"
 #include "Services/SelectionService.h"
 #include "Services/ShellCommandService.h"
@@ -43,7 +43,7 @@ void EditorHost::RegisterCoreServices()
     m_Services->Register<SceneQueryService>(m_EditorRuntime);
     m_Services->Register<SelectionService>(m_EditorRuntime);
     m_Services->Register<HierarchyService>(*this);
-    m_Services->Register<PickingService>(*this);
+    m_Services->Register<ScenePickingService>(*this);
     m_Services->Register<EditTimelineService>(*this);
     m_EditorRuntime.SetEditSink(&GetService<EditTimelineService>());
     m_Services->Register<ShellCommandService>(*this);

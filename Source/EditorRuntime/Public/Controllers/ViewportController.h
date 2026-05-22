@@ -12,7 +12,7 @@
 class ViewportSubsystem;
 class HierarchyService;
 class SelectionService;
-class PickingService;
+class ScenePickingService;
 
 enum class EMouseCaptureKind : uint8_t
 {
@@ -41,7 +41,7 @@ private:
 
     // Service cashes
     SelectionService& m_Selection;
-    PickingService&   m_Picker;
+    ScenePickingService&   m_Picker;
     HierarchyService&  m_Hierarchy;
     ViewportSubsystem& m_ViewportSubsystem;
 
@@ -102,7 +102,7 @@ private:
     bool BuildRenderView(FRenderView& outView) const;
     void SubmitView(const FRenderView& view);
 
-    void HandleActorPicking(const FViewportPanelInput& input, CameraEditorTool* cam, const PickingService& picker,
+    void HandleActorPicking(const FViewportPanelInput& input, CameraEditorTool* cam, const ScenePickingService& picker,
                                                     SelectionService& selection, const HierarchyService& hierarchy);
 
     void EnsureGizmoIDs();

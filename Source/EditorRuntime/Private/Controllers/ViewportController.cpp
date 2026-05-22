@@ -14,7 +14,7 @@
 #include "ToolService.h"
 #include "Core/Services/EditTimelineService.h"
 #include "Core/Services/HierarchyService.h"
-#include "Core/Services/PickingService.h"
+#include "Core/Services/ScenePickingService.h"
 #include "Core/Services/SceneQueryService.h"
 #include "Core/Services/SelectionService.h"
 #include "Framework/InputManager.h"
@@ -29,7 +29,7 @@ ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRunti
     , m_Runtime(runtime)
     , m_Tools(tools)
     , m_Selection(m_Host.GetService<SelectionService>())
-    , m_Picker(m_Host.GetService<PickingService>())
+    , m_Picker(m_Host.GetService<ScenePickingService>())
     , m_Hierarchy(m_Host.GetService<HierarchyService>())
     , m_ViewportSubsystem(m_Host.GetSubsystem<ViewportSubsystem>())
 {
@@ -461,7 +461,7 @@ void ViewportController::UpdateSharedGizmoModePolicy(const FViewportPanelInput& 
 
 void ViewportController::HandleActorPicking(const FViewportPanelInput& input,
                                            CameraEditorTool* cam,
-                                           const PickingService& picker,
+                                           const ScenePickingService& picker,
                                            SelectionService& selection,
                                            const HierarchyService& hierarchy)
 {

@@ -1,16 +1,16 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "PickingService.h"
+#include "ScenePickingService.h"
 
 #include "SceneQueryService.h"
 #include "Core/EditorHost.h"
 #include "Core/Math/FViewportMath.h"
 
-PickingService::PickingService(EditorHost &host)
+ScenePickingService::ScenePickingService(EditorHost &host)
 : m_Host(host)
 {}
 
-ActorID PickingService::PickActorAtViewportPos(const CameraEditorTool& cam, float w, float h, float x, float y) const
+ActorID ScenePickingService::PickActorAtViewportPos(const CameraEditorTool& cam, float w, float h, float x, float y) const
 {
     if (w <= 0.f || h <= 0.f) return 0;
 
