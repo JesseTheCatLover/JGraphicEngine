@@ -4,11 +4,33 @@
 
 #include <unordered_set>
 #include <algorithm>
+#include <functional>
 
 #include "imgui.h"
+#include "misc/cpp/imgui_stdlib.h"
 #include "Assets/FAssetRecord.h"
 #include "Utilities/UPath.h"
 #include "EditorRuntime.h"
+
+namespace
+{
+    static bool IsAncestorPath(const std::string& ancestor, const std::string& path)
+    {
+        if (ancestor.empty() || path.empty())
+            return false;
+
+        if (ancestor == path)
+            return false;
+
+        if (path.size() <= ancestor.size())
+            return false;
+
+        if (path.rfind(ancestor, 0) != 0)
+            return false;
+
+        return path[ancestor.size()] == '/';
+    }
+}
 
 bool FolderPickerDialog::IsRootPath(const std::string& path)
 {
@@ -30,6 +52,10 @@ void FolderPickerDialog::OnOpen(EditorHost& /*host*/, EditorRuntime& /*runtime*/
     m_bIsOpen = true;
     m_bJustOpened = true; // next Draw will SetNextWindowFocus()
     m_Result = FFolderPickerResult{}; // reset result for this run
+
+    m_bDirty = true;
+
+    SyncPathInputToCurrentPath();
 }
 
 void FolderPickerDialog::OnClose()
@@ -103,7 +129,7 @@ void FolderPickerDialog::DrawContent(EditorHost& host, EditorRuntime& runtime)
 
     ImGui::Separator();
 
-    // Bottom bar: Cancel / Select
+    // Bottom bar: Create Folder / Cancel / Select
     DrawBottomBar();
 }
 
@@ -122,37 +148,35 @@ void FolderPickerDialog::DrawTopBar()
     }
 
     ImGui::SameLine();
-    ImGui::TextUnformatted("Current:");
+
+    if (ImGui::Button("Expand All"))
+    {
+        ExpandAll();
+    }
 
     ImGui::SameLine();
-    ImGui::TextUnformatted(m_CurrentPath.c_str());
+
+    if (ImGui::Button("Collapse All"))
+    {
+        CollapseAll();
+    }
 }
 
 void FolderPickerDialog::DrawDirectoryList()
 {
-    ImGui::TextUnformatted("Subfolders:");
-    ImGui::BeginChild("##FolderPicker_DirList",
+    ImGui::TextUnformatted("Folders:");
+    ImGui::BeginChild("##FolderPicker_DirTree",
                       ImVec2(0, -ImGui::GetFrameHeightWithSpacing() * 2.0f),
                       true,
                       ImGuiWindowFlags_HorizontalScrollbar);
 
-    if (m_Directories.empty())
+    if (m_RootDirectories.empty())
     {
-        ImGui::TextDisabled("No subfolders here.");
+        ImGui::TextDisabled("No folders available.");
     }
     else
     {
-        for (const FDirectoryEntry& dir : m_Directories)
-        {
-            // Show as selectable row
-            bool dummySelected = false;
-            if (ImGui::Selectable(dir.name.c_str(), dummySelected,
-                                  ImGuiSelectableFlags_AllowDoubleClick))
-            {
-                // Single-click navigates into it.
-                SetCurrentPath(dir.virtualPath);
-            }
-        }
+        DrawDirectoryTree();
     }
 
     ImGui::EndChild();
@@ -160,19 +184,41 @@ void FolderPickerDialog::DrawDirectoryList()
 
 void FolderPickerDialog::DrawBottomBar()
 {
-    float contentWidth = ImGui::GetContentRegionAvail().x;
-
-    // Left: display "Destination"
     ImGui::TextUnformatted("Destination:");
-    ImGui::SameLine();
-    ImGui::TextUnformatted(m_CurrentPath.c_str());
 
-    // Right: buttons
+    ImGui::SameLine();
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f)); // smaller vertical padding
+    ImGui::SetNextItemWidth(-1.f);
+    if (ImGui::InputText("##FolderPickerDestination",
+                         &m_PathInputBuffer,
+                         ImGuiInputTextFlags_EnterReturnsTrue))
+    {
+        ApplyPathInput();
+    }
+
+    if (ImGui::IsItemDeactivatedAfterEdit())
+    {
+        ApplyPathInput();
+    }
+    ImGui::PopStyleVar();
+
+    float fullWidth = ImGui::GetContentRegionAvail().x;
+
     float buttonWidth   = 80.0f;
     float spacing       = ImGui::GetStyle().ItemSpacing.x;
-    float totalButtonsW = buttonWidth * 2.0f + spacing;
+    float totalRightButtonsW = buttonWidth * 2.0f + spacing;
 
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (contentWidth - totalButtonsW));
+    // Left side: Create Folder
+    if (ImGui::Button("Create Folder", ImVec2(0, 0)))
+    {
+        // TODO: Implement folder creation logic
+    }
+
+    // Right side: Cancel / Select
+    // Move cursor to the right side of the bar for the other buttons
+    float rightButtonsX = ImGui::GetCursorPosX() + (fullWidth - totalRightButtonsW);
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(rightButtonsX);
 
     if (ImGui::Button("Cancel", ImVec2(buttonWidth, 0)))
     {
@@ -183,12 +229,14 @@ void FolderPickerDialog::DrawBottomBar()
 
     ImGui::SameLine();
 
-    bool canSelect = !m_CurrentPath.empty();
+    const bool canSelect = !m_CurrentPath.empty();
     if (!canSelect)
         ImGui::BeginDisabled();
 
     if (ImGui::Button("Select", ImVec2(buttonWidth, 0)))
     {
+        ApplyPathInput();
+
         m_Result.bAccepted = true;
         m_Result.selectedPath = m_CurrentPath;
         OnClose();
@@ -203,8 +251,8 @@ void FolderPickerDialog::RefreshIfDirty(EditorRuntime& runtime)
     if (!m_bDirty)
         return;
 
-    m_Directories.clear();
-    BuildDirectories(runtime);
+    m_RootDirectories.clear();
+    BuildDirectoryTree(runtime);
     m_bDirty = false;
 }
 
@@ -215,10 +263,13 @@ void FolderPickerDialog::SetCurrentPath(const std::string& path)
         normalized = "/";
 
     if (m_CurrentPath == normalized)
+    {
+        m_PathInputBuffer = m_CurrentPath;
         return;
+    }
 
     m_CurrentPath = normalized;
-    m_bDirty = true;
+    m_PathInputBuffer = m_CurrentPath;
 }
 
 std::string FolderPickerDialog::ComputeParentPath(const std::string& path) const
@@ -237,86 +288,219 @@ std::string FolderPickerDialog::ComputeParentPath(const std::string& path) const
     return p.substr(0, lastSlash);
 }
 
-void FolderPickerDialog::BuildDirectories(EditorRuntime& runtime)
+void FolderPickerDialog::BuildDirectoryTree(EditorRuntime& runtime)
 {
     std::vector<const FAssetRecord*> assets = runtime.GetFile().GetUserVisibleAssets();
-
-    const std::string parentDir = UPath::Normalize(m_CurrentPath);
-
-    std::unordered_set<std::string> seenDirVirtualPaths;
-    seenDirVirtualPaths.reserve(32);
 
     for (const FAssetRecord* record : assets)
     {
         if (!record)
             continue;
 
-        const std::string& assetPathRaw = record->virtualPath;
-        if (assetPathRaw.empty())
+        const std::string normalizedAssetPath = UPath::Normalize(record->virtualPath);
+        if (normalizedAssetPath.empty() || normalizedAssetPath[0] != '/')
             continue;
 
-        const std::string assetVirtualPath = UPath::Normalize(assetPathRaw);
-        if (assetVirtualPath.empty() || assetVirtualPath[0] != '/')
+        // Remove filename, keep only folder path
+        const std::size_t lastSlash = normalizedAssetPath.find_last_of('/');
+        if (lastSlash == std::string::npos || lastSlash == 0)
             continue;
 
-        std::string normalizedParent = parentDir;
+        const std::string folderPath = normalizedAssetPath.substr(0, lastSlash);
+        if (folderPath.empty() || folderPath[0] != '/')
+            continue;
 
-        if (normalizedParent == "/")
+        std::vector<FDirectoryNode>* currentChildren = &m_RootDirectories;
+        std::string currentPath;
+
+        std::size_t pos = 1; // skip leading '/'
+
+        while (pos < folderPath.size())
         {
-            // Root: get first segment /Project from /Project/Textures/Wood.jasset
-            std::size_t secondSlash = assetVirtualPath.find('/', 1);
-            if (secondSlash == std::string::npos)
-                continue; // asset directly in root, no folder
+            const std::size_t slash = folderPath.find('/', pos);
+            const bool bLastSegment = (slash == std::string::npos);
 
-            std::string childName = assetVirtualPath.substr(1, secondSlash - 1);
-            std::string childVirtualPath = assetVirtualPath.substr(0, secondSlash);
+            const std::size_t segmentEnd = bLastSegment ? folderPath.size() : slash;
+            const std::string segmentName = folderPath.substr(pos, segmentEnd - pos);
 
-            if (!seenDirVirtualPaths.insert(childVirtualPath).second)
-                continue;
+            if (segmentName.empty())
+                break;
 
-            FDirectoryEntry entry;
-            entry.name = std::move(childName);
-            entry.virtualPath = std::move(childVirtualPath);
-            m_Directories.emplace_back(std::move(entry));
-        }
-        else
-        {
-            // Non-root: require asset path starts with "/ParentDir/"
-            std::string prefix = normalizedParent;
-            prefix.push_back('/');
+            currentPath += "/";
+            currentPath += segmentName;
 
-            if (assetVirtualPath.rfind(prefix, 0) != 0)
-                continue;
+            FDirectoryNode* node = FindOrAddChildNode(*currentChildren, segmentName, currentPath);
+            currentChildren = &node->children;
 
-            std::string remainder = assetVirtualPath.substr(prefix.size());
-            if (remainder.empty())
-                continue;
+            if (bLastSegment)
+                break;
 
-            std::size_t slashPos = remainder.find('/');
-            if (slashPos == std::string::npos)
-            {
-                // asset directly under parent, no child folder
-                continue;
-            }
-
-            std::string childName = remainder.substr(0, slashPos);
-            std::string childVirtualPath = normalizedParent;
-            childVirtualPath.push_back('/');
-            childVirtualPath += childName;
-
-            if (!seenDirVirtualPaths.insert(childVirtualPath).second)
-                continue;
-
-            FDirectoryEntry entry;
-            entry.name = std::move(childName);
-            entry.virtualPath = std::move(childVirtualPath);
-            m_Directories.emplace_back(std::move(entry));
+            pos = slash + 1;
         }
     }
 
-    std::sort(m_Directories.begin(), m_Directories.end(),
-              [](const FDirectoryEntry& a, const FDirectoryEntry& b)
-              {
-                  return a.name < b.name;
-              });
+    // Sort recursively
+    std::function<void(std::vector<FDirectoryNode>&)> sortNodes =
+        [&](std::vector<FDirectoryNode>& nodes)
+        {
+            std::sort(nodes.begin(), nodes.end(),
+                      [](const FDirectoryNode& a, const FDirectoryNode& b)
+                      {
+                          return a.name < b.name;
+                      });
+
+            for (FDirectoryNode& node : nodes)
+                sortNodes(node.children);
+        };
+
+    sortNodes(m_RootDirectories);
+}
+
+void FolderPickerDialog::DrawDirectoryTree()
+{
+    for (FDirectoryNode& node : m_RootDirectories)
+        DrawDirectoryNode(node);
+}
+
+void FolderPickerDialog::DrawDirectoryNode(FDirectoryNode& node)
+{
+    const bool bIsSelected  = (m_CurrentPath == node.virtualPath);
+    const bool bHasChildren = !node.children.empty();
+
+    ImGuiTreeNodeFlags flags =
+        ImGuiTreeNodeFlags_SpanAvailWidth |
+        ImGuiTreeNodeFlags_OpenOnArrow |
+        ImGuiTreeNodeFlags_OpenOnDoubleClick;
+
+    if (bIsSelected)
+        flags |= ImGuiTreeNodeFlags_Selected;
+
+    if (!bHasChildren)
+        flags |= ImGuiTreeNodeFlags_Leaf;
+
+    bool bShouldBeOpen = IsNodeExpanded(node.virtualPath);
+
+    if (IsAncestorPath(node.virtualPath, m_CurrentPath))
+        bShouldBeOpen = true;
+
+    ImGui::SetNextItemOpen(bShouldBeOpen, ImGuiCond_Always);
+
+    const bool bOpened = ImGui::TreeNodeEx(node.virtualPath.c_str(), flags, "%s", node.name.c_str());
+
+    if (ImGui::IsItemClicked())
+    {
+        SetCurrentPath(node.virtualPath);
+    }
+
+    if (bHasChildren)
+    {
+        if (bOpened)
+            m_ExpandedPaths.insert(node.virtualPath);
+        else
+            m_ExpandedPaths.erase(node.virtualPath);
+    }
+
+    if (bOpened)
+    {
+        for (FDirectoryNode& child : node.children)
+            DrawDirectoryNode(child);
+
+        ImGui::TreePop();
+    }
+}
+
+FolderPickerDialog::FDirectoryNode* FolderPickerDialog::FindOrAddChildNode(
+    std::vector<FDirectoryNode>& children,
+    const std::string& name,
+    const std::string& virtualPath)
+{
+    for (FDirectoryNode& child : children)
+    {
+        if (child.virtualPath == virtualPath)
+            return &child;
+    }
+
+    FDirectoryNode node;
+    node.name = name;
+    node.virtualPath = virtualPath;
+    children.emplace_back(std::move(node));
+    return &children.back();
+}
+
+void FolderPickerDialog::ExpandAll()
+{
+    m_ExpandedPaths.clear();
+    ExpandAllNodes(m_RootDirectories);
+}
+
+void FolderPickerDialog::ExpandAllNodes(const std::vector<FDirectoryNode>& nodes)
+{
+    for (const FDirectoryNode& node : nodes)
+    {
+        if (!node.children.empty())
+            m_ExpandedPaths.insert(node.virtualPath);
+
+        ExpandAllNodes(node.children);
+    }
+}
+
+void FolderPickerDialog::CollapseAll()
+{
+    m_ExpandedPaths.clear();
+}
+
+bool FolderPickerDialog::IsNodeExpanded(const std::string& virtualPath) const
+{
+    return m_ExpandedPaths.find(virtualPath) != m_ExpandedPaths.end();
+}
+
+void FolderPickerDialog::SetNodeExpanded(const std::string& virtualPath, bool bExpanded)
+{
+    if (bExpanded)
+        m_ExpandedPaths.insert(virtualPath);
+    else
+        m_ExpandedPaths.erase(virtualPath);
+}
+
+void FolderPickerDialog::SyncPathInputToCurrentPath()
+{
+    m_PathInputBuffer = m_CurrentPath;
+}
+
+void FolderPickerDialog::ApplyPathInput()
+{
+    std::string normalized = UPath::Normalize(m_PathInputBuffer);
+    if (normalized.empty())
+        normalized = "/";
+
+    if (PathExistsInTree(normalized) || normalized == "/")
+    {
+        SetCurrentPath(normalized);
+        SyncPathInputToCurrentPath();
+    }
+    else
+    {
+        // Revert invalid manual entry
+        SyncPathInputToCurrentPath();
+    }
+}
+
+bool FolderPickerDialog::PathExistsInTree(const std::string& path) const
+{
+    return PathExistsInTreeRecursive(m_RootDirectories, path);
+}
+
+bool FolderPickerDialog::PathExistsInTreeRecursive(const std::vector<FDirectoryNode>& nodes,
+                                                   const std::string& path) const
+{
+    for (const FDirectoryNode& node : nodes)
+    {
+        if (node.virtualPath == path)
+            return true;
+
+        if (PathExistsInTreeRecursive(node.children, path))
+            return true;
+    }
+
+    return false;
 }

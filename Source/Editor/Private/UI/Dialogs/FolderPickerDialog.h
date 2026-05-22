@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "UI/IEditorDialog.h"
 
@@ -31,14 +32,23 @@ private:
         std::string virtualPath; // "/Project/Textures"
     };
 
-    std::vector<FDirectoryEntry> m_Directories;
+    struct FDirectoryNode
+    {
+        std::string name;
+        std::string virtualPath;
+        std::vector<FDirectoryNode> children;
+    };
 
-    // Selection is implicit: "currentPath" is the selected folder
+    std::vector<FDirectoryNode> m_RootDirectories;
+    std::unordered_set<std::string> m_ExpandedPaths;
+
+    std::string m_PathInputBuffer;
+
     FFolderPickerResult m_Result;
 
     // Layout
     float m_InitialWidth = 300.0f;
-    float m_InitialHeight = 400.0f;
+    float m_InitialHeight = 500.0f;
 
     float m_MinWidth = 400.0f;
     float m_MinHeight = 300.0f;
@@ -66,7 +76,6 @@ public:
 
 private:
     void RefreshIfDirty(EditorRuntime& runtime);
-    void BuildDirectories(EditorRuntime& runtime);
 
     void DrawContent(EditorHost& host, EditorRuntime& runtime);
     void DrawTopBar();
@@ -77,4 +86,21 @@ private:
     [[nodiscard]] std::string ComputeParentPath(const std::string& path) const;
 
     static bool IsRootPath(const std::string& path);
+
+    void BuildDirectoryTree(EditorRuntime& runtime);
+    void DrawDirectoryTree();
+    void DrawDirectoryNode(FDirectoryNode& node);
+    FDirectoryNode* FindOrAddChildNode(std::vector<FDirectoryNode>& children,
+                                       const std::string& name,
+                                       const std::string& virtualPath);
+
+    void ExpandAll();
+    void ExpandAllNodes(const std::vector<FDirectoryNode>& nodes);
+    void CollapseAll();
+    bool IsNodeExpanded(const std::string& virtualPath) const;
+    void SetNodeExpanded(const std::string& virtualPath, bool bExpanded);
+    void SyncPathInputToCurrentPath();
+    void ApplyPathInput();
+    bool PathExistsInTree(const std::string& path) const;
+    bool PathExistsInTreeRecursive(const std::vector<FDirectoryNode>& nodes, const std::string& path) const;
 };
