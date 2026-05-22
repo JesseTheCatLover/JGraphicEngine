@@ -5,16 +5,11 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <functional>
 #include "UI/IEditorDialog.h"
 
 class EditorHost;
 class EditorRuntime;
-
-struct FFolderPickerResult
-{
-    bool bAccepted = false;
-    std::string selectedPath;
-};
 
 class FolderPickerDialog final : public IEditorDialog
 {
@@ -44,7 +39,7 @@ private:
 
     std::string m_PathInputBuffer;
 
-    FFolderPickerResult m_Result;
+    std::function<void(const std::string&)> m_OnAccepted;
 
     // Layout
     float m_InitialWidth = 300.0f;
@@ -68,11 +63,11 @@ public:
     [[nodiscard]] const char* GetName() const override { return "FolderPickerDialog"; }
     [[nodiscard]] bool IsOpen() const override { return m_bIsOpen; }
 
-    [[nodiscard]] const FFolderPickerResult& GetResult() const { return m_Result; }
-
     // Optionally let caller override title
     void SetTitle(const std::string& title) { m_Title = title; }
     void SetInitialPath(const std::string& path) { SetCurrentPath(path); }
+    // Set callback on folder seleciton
+    void SetOnAccepted(std::function<void(const std::string&)> callback) { m_OnAccepted = std::move(callback); }
 
 private:
     void RefreshIfDirty(EditorRuntime& runtime);
@@ -97,10 +92,10 @@ private:
     void ExpandAll();
     void ExpandAllNodes(const std::vector<FDirectoryNode>& nodes);
     void CollapseAll();
-    bool IsNodeExpanded(const std::string& virtualPath) const;
+    [[nodiscard]] bool IsNodeExpanded(const std::string& virtualPath) const;
     void SetNodeExpanded(const std::string& virtualPath, bool bExpanded);
     void SyncPathInputToCurrentPath();
-    void ApplyPathInput();
-    bool PathExistsInTree(const std::string& path) const;
-    bool PathExistsInTreeRecursive(const std::vector<FDirectoryNode>& nodes, const std::string& path) const;
+    bool ApplyPathInput();
+    [[nodiscard]] bool PathExistsInTree(const std::string& path) const;
+    [[nodiscard]] bool PathExistsInTreeRecursive(const std::vector<FDirectoryNode>& nodes, const std::string& path) const;
 };

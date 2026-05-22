@@ -24,6 +24,7 @@ void AssetImporterDialog::OnDestroy(EditorHost& host, EditorRuntime& runtime)
     host.GetDialogManager().CloseDialog<FolderPickerDialog>();
     m_Items.clear();
     m_SelectedIndices.clear();
+
     m_bIsOpen = false;
 }
 
@@ -143,9 +144,6 @@ void AssetImporterDialog::Draw(EditorHost& host, EditorRuntime& runtime)
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     DrawRightPane(host, runtime);
     ImGui::EndChild();
-
-    // Tick the update
-    UpdateFolderPickerResult(host, runtime);
 
     ImGui::End(); // Window end
 }
@@ -435,10 +433,18 @@ void AssetImporterDialog::OnChooseDestinationForSelected(EditorHost& host, Edito
             initialPath = dest;
     }
 
-    picker->SetInitialPath(initialPath);
+    const std::vector<int> targetIndices = m_SelectedIndices;
 
-    // 2) We do NOT block/wait here. The user will interact with the dialog.
-    // The picker will set its result and close itself; we read it later.
+    picker->SetInitialPath(initialPath);
+    picker->SetOnAccepted(
+            [this, targetIndices](const std::string& selectedPath)
+            {
+                for (int idx : targetIndices)
+                {
+                    if (idx >= 0 && idx < static_cast<int>(m_Items.size()))
+                        m_Items[idx].destinationVirtualFolder = selectedPath;
+                }
+            });
 }
 
 void AssetImporterDialog::OnDeleteSelected()
@@ -523,34 +529,4 @@ void AssetImporterDialog::EnsureSelectionIsValid()
     m_SelectedIndices.erase(
         std::unique(m_SelectedIndices.begin(), m_SelectedIndices.end()),
         m_SelectedIndices.end());
-}
-
-void AssetImporterDialog::UpdateFolderPickerResult(EditorHost& host, EditorRuntime& runtime)
-{
-    (void)runtime;
-
-    auto* picker = host.GetDialogManager().FindDialogInstance<FolderPickerDialog>();
-    if (!picker)
-        return; // dialog not open / already destroyed
-
-    // We only care after the user has made a choice and the dialog closed
-    // or at least after they hit "Select".
-    const auto& result = picker->GetResult();
-    if (!result.bAccepted)
-        return;
-
-    const std::string& selectedPath = result.selectedPath;
-    if (selectedPath.empty())
-        return;
-
-    // Apply to currently selected items
-    EnsureSelectionIsValid();
-    if (m_SelectedIndices.empty())
-        return;
-
-    for (int idx : m_SelectedIndices)
-    {
-        if (idx >= 0 && idx < static_cast<int>(m_Items.size()))
-            m_Items[idx].destinationVirtualFolder = selectedPath;
-    }
 }

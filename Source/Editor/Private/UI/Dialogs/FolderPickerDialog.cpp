@@ -44,14 +44,16 @@ void FolderPickerDialog::OnCreate(EditorHost &host, EditorRuntime &runtime)
 
 void FolderPickerDialog::OnDestroy(EditorHost &host, EditorRuntime &runtime)
 {
-    m_Result = FFolderPickerResult{};
+    m_OnAccepted = nullptr;
 }
 
 void FolderPickerDialog::OnOpen(EditorHost& /*host*/, EditorRuntime& /*runtime*/)
 {
     m_bIsOpen = true;
     m_bJustOpened = true; // next Draw will SetNextWindowFocus()
-    m_Result = FFolderPickerResult{}; // reset result for this run
+
+    // Optional safety: clear stale callback for this run
+    m_OnAccepted = nullptr;
 
     m_bDirty = true;
 
@@ -187,8 +189,9 @@ void FolderPickerDialog::DrawBottomBar()
     ImGui::TextUnformatted("Destination:");
 
     ImGui::SameLine();
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f)); // smaller vertical padding
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f));
     ImGui::SetNextItemWidth(-1.f);
+
     if (ImGui::InputText("##FolderPickerDestination",
                          &m_PathInputBuffer,
                          ImGuiInputTextFlags_EnterReturnsTrue))
@@ -200,50 +203,59 @@ void FolderPickerDialog::DrawBottomBar()
     {
         ApplyPathInput();
     }
+
     ImGui::PopStyleVar();
 
     float fullWidth = ImGui::GetContentRegionAvail().x;
 
-    float buttonWidth   = 80.0f;
-    float spacing       = ImGui::GetStyle().ItemSpacing.x;
-    float totalRightButtonsW = buttonWidth * 2.0f + spacing;
+    const float buttonWidth = 80.0f;
+    const float spacing = ImGui::GetStyle().ItemSpacing.x;
+    const float totalRightButtonsW = buttonWidth * 2.0f + spacing;
 
-    // Left side: Create Folder
     if (ImGui::Button("Create Folder", ImVec2(0, 0)))
     {
         // TODO: Implement folder creation logic
     }
 
-    // Right side: Cancel / Select
-    // Move cursor to the right side of the bar for the other buttons
-    float rightButtonsX = ImGui::GetCursorPosX() + (fullWidth - totalRightButtonsW);
+    const float rightButtonsX = ImGui::GetCursorPosX() + (fullWidth - totalRightButtonsW);
     ImGui::SameLine();
     ImGui::SetCursorPosX(rightButtonsX);
 
+    bool bRequestClose = false;
+    bool bAccepted = false;
+
     if (ImGui::Button("Cancel", ImVec2(buttonWidth, 0)))
     {
-        m_Result.bAccepted = false;
-        m_Result.selectedPath.clear();
-        OnClose();
+        bRequestClose = true;
     }
 
     ImGui::SameLine();
 
-    const bool canSelect = !m_CurrentPath.empty();
-    if (!canSelect)
+    const bool bCanSelect = !m_CurrentPath.empty();
+    if (!bCanSelect)
         ImGui::BeginDisabled();
 
     if (ImGui::Button("Select", ImVec2(buttonWidth, 0)))
     {
-        ApplyPathInput();
-
-        m_Result.bAccepted = true;
-        m_Result.selectedPath = m_CurrentPath;
-        OnClose();
+        if (ApplyPathInput())
+        {
+            bAccepted = true;
+            bRequestClose = true;
+        }
     }
 
-    if (!canSelect)
+    if (!bCanSelect)
         ImGui::EndDisabled();
+
+    if (bAccepted && m_OnAccepted)
+    {
+        m_OnAccepted(m_CurrentPath);
+    }
+
+    if (bRequestClose)
+    {
+        OnClose();
+    }
 }
 
 void FolderPickerDialog::RefreshIfDirty(EditorRuntime& runtime)
@@ -467,7 +479,7 @@ void FolderPickerDialog::SyncPathInputToCurrentPath()
     m_PathInputBuffer = m_CurrentPath;
 }
 
-void FolderPickerDialog::ApplyPathInput()
+bool FolderPickerDialog::ApplyPathInput()
 {
     std::string normalized = UPath::Normalize(m_PathInputBuffer);
     if (normalized.empty())
@@ -477,12 +489,11 @@ void FolderPickerDialog::ApplyPathInput()
     {
         SetCurrentPath(normalized);
         SyncPathInputToCurrentPath();
+        return true;
     }
-    else
-    {
-        // Revert invalid manual entry
-        SyncPathInputToCurrentPath();
-    }
+
+    SyncPathInputToCurrentPath();
+    return false;
 }
 
 bool FolderPickerDialog::PathExistsInTree(const std::string& path) const
