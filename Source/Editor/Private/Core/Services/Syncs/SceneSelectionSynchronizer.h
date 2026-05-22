@@ -1,0 +1,24 @@
+//  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
+
+#pragma once
+
+#include <cstddef>
+
+#include "Core/IEditorService.h"
+
+class EditorRuntime;
+class EditorHost;
+
+class SceneSelectionSynchronizer : public IEditorService
+{
+private:
+    EditorRuntime& m_Runtime;
+    std::size_t m_ListenerID = 0;
+
+public:
+    explicit SceneSelectionSynchronizer(EditorRuntime& runtime);
+
+    void Bind(EditorHost& host);
+    void Unbind(EditorHost& host);
+    void SyncNow(EditorHost& host);
+};

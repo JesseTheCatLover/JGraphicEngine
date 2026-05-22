@@ -1,46 +1,28 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #pragma once
+
 #include <cstdint>
-#include <vector>
+#include <string>
 
 #include "Core/IEditorService.h"
-
-struct FSelectionModifiers;
-class EditorRuntime;
+#include "Models/TSelectionModel.h"
 
 class SelectionService : public IEditorService
 {
-private:
+public:
     using ActorID = uint64_t;
 
-    EditorRuntime& m_Runtime;
-    std::vector<ActorID> m_Selected;
-    ActorID m_Anchor = 0;
-    ActorID m_RevealRequest = 0;
-
-    void PushToRuntime();
-
-    void SelectSingle(ActorID id);
-
-    void Toggle(ActorID id);
-
-    void SelectRangeTo(ActorID id, const std::vector<ActorID>& order);
+private:
+    TSelectionModel<ActorID> m_SceneActorSelection;
+    TSelectionModel<std::string> m_AssetPathSelection;
 
 public:
-    explicit SelectionService(EditorRuntime& rt);
+    explicit SelectionService() = default;
 
-    [[nodiscard]] const std::vector<ActorID>& GetSelection() const { return m_Selected; }
-    [[nodiscard]] ActorID GetAnchor() const { return m_Anchor; }
+    TSelectionModel<ActorID>& GetSceneActorSelection() { return m_SceneActorSelection; }
+    [[nodiscard]] const TSelectionModel<ActorID>& GetSceneActorSelection() const { return m_SceneActorSelection; }
 
-    [[nodiscard]] bool IsSelected(ActorID id) const;
-
-    [[nodiscard]] bool IsSelectionEmpty() const;
-
-    void ApplyClick(ActorID id, const FSelectionModifiers& mods,
-                    const std::vector<ActorID>* visibleOrder /*nullable*/);
-
-    ActorID ConsumeRevealRequest();
-
-    void Clear();
+    TSelectionModel<std::string>& GetAssetPathSelection() { return m_AssetPathSelection; }
+    [[nodiscard]] const TSelectionModel<std::string>& GetAssetPathSelection() const { return m_AssetPathSelection; }
 };
