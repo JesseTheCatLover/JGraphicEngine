@@ -23,6 +23,9 @@ public:
     // Called when dialog is opened
     virtual void OnOpen(EditorHost& host, EditorRuntime& runtime) {}
 
+    // Called when dialog is closed
+    virtual void OnClose() {}
+
     // Called when the dialog is requested while already open
     virtual void OnRequestFocus(EditorHost& host, EditorRuntime& runtime) {}
 
