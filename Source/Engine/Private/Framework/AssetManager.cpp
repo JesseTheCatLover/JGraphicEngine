@@ -79,6 +79,7 @@ bool AssetManager::ImportAsset(const FAssetImportRequest& request, FAssetImportR
     }
 
     outResult.bSuccess = true;
+    m_Registry->Rebuild(*m_PathMounter);
     return true;
 }
 

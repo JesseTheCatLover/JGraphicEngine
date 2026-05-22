@@ -23,7 +23,7 @@ AssetBrowserController::AssetBrowserController(PanelID id, EditorHost& host, Edi
     m_Document.currentPath = "/Project";
 
     // Mark as dirty so first Refresh() builds it
-    m_Dirty = true;
+    m_bDirty = true;
 }
 
 AssetBrowserController::~AssetBrowserController()
@@ -62,7 +62,7 @@ void AssetBrowserController::Update(float /*deltaTime*/, const FAssetBrowserPane
     }
 
     if (input.bForceRefresh)
-        m_Dirty = true;
+        m_bDirty = true;
 
     // 2) Rebuild doc if needed
     Refresh();
@@ -84,12 +84,12 @@ void AssetBrowserController::SetCurrentPath(const std::string& path)
         return;
 
     m_Document.currentPath = normalized;
-    m_Dirty = true;
+    m_bDirty = true;
 }
 
 void AssetBrowserController::Refresh()
 {
-    if (!m_Dirty) return;
+    if (!m_bDirty) return;
 
     // Clear previous contents
     m_Document.directories.clear();
@@ -99,7 +99,7 @@ void AssetBrowserController::Refresh()
     BuildDirectories();
     BuildAssets();
 
-    m_Dirty = false;
+    m_bDirty = false;
 }
 
 void AssetBrowserController::BuildDirectories()

@@ -26,7 +26,7 @@ private:
 
     // --- Document / state ---
     FAssetBrowserDocument m_Document;
-    bool m_Dirty = true;
+    bool m_bDirty = true;
 
     // Internal helpers
     void BuildDirectories();
@@ -59,7 +59,7 @@ public:
     const FAssetBrowserDocument& GetDocument() const { return m_Document; }
 
     // For external invalidation (e.g. asset imported / registry changed)
-    void Invalidate() { m_Dirty = true; }
+    void Invalidate() { m_bDirty = true; }
 
     void Update(float deltaTime, const FAssetBrowserPanelInput& input, FAssetBrowserOutput& out);
     void OnPanelDestroyed();
