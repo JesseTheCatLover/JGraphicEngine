@@ -11,6 +11,7 @@ class AssetImporterDialog final : public IEditorDialog
 {
 private:
     bool m_bIsOpen = false;
+    bool m_bRequestFocus = false;
 
     float m_InitialWidth = 800.f;
     float m_InitialHeight = 500.f;
@@ -71,6 +72,8 @@ public:
 
     // Called every time user wants to open it
     void OnOpen(EditorHost& host, EditorRuntime& runtime) override;
+
+    void OnRequestFocus(EditorHost &host, EditorRuntime &runtime) override { m_bRequestFocus = true; }
 
     void Draw(EditorHost& host, EditorRuntime& runtime) override;
     [[nodiscard]] bool IsOpen() const override { return m_bIsOpen; }

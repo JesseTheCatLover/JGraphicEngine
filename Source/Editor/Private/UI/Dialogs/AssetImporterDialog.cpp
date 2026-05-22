@@ -42,6 +42,13 @@ void AssetImporterDialog::Draw(EditorHost& host, EditorRuntime& runtime)
     if (!m_bIsOpen)
         return;
 
+    // Request focus
+    if (m_bRequestFocus)
+    {
+        ImGui::SetNextWindowFocus();
+        m_bRequestFocus = false;
+    }
+
     // Initial size (first time)
     ImGui::SetNextWindowSize(ImVec2(m_InitialWidth, m_InitialHeight), ImGuiCond_FirstUseEver);
 

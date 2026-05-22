@@ -23,6 +23,9 @@ public:
     // Called when dialog is opened
     virtual void OnOpen(EditorHost& host, EditorRuntime& runtime) {}
 
+    // Called when the dialog is requested while already open
+    virtual void OnRequestFocus(EditorHost& host, EditorRuntime& runtime) {}
+
     // Called every frame while dialog is open
     virtual void Draw(EditorHost& host, EditorRuntime& runtime) = 0;
 

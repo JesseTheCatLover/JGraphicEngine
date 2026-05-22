@@ -27,10 +27,25 @@ public:
             instance = ptr.get();
             instance->OnCreate(m_Host, m_Runtime);
             m_Dialogs.emplace_back(std::move(ptr));
+
+            // First open
+            instance->OnOpen(m_Host, m_Runtime);
+            return instance;
         }
 
-        instance->OnOpen(m_Host, m_Runtime);
-        return instance;
+        // Is Instance already open?
+        const bool bIsOpen = instance->IsOpen();
+
+        if (!bIsOpen)
+        {
+            // Re-opening a closed dialog
+            instance->OnOpen(m_Host, m_Runtime);
+        }
+        else
+        {
+            // Dialog is already open: just focus it
+            instance->OnRequestFocus(m_Host, m_Runtime);
+        }
     }
 
     void DrawDialogs();
