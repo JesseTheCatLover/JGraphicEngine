@@ -16,7 +16,7 @@ SceneHierarchyController::SceneHierarchyController(PanelID id, EditorHost &host)
 void SceneHierarchyController::Update(float deltaTime, const FHierarchyPanelInput& input, FHierarchyOutput& out)
 {
     auto& hierarchy = m_Host.GetService<HierarchyService>();
-    auto& selection = m_Host.GetService<SelectionService>();
+    auto& selection = m_Host.GetService<SelectionService>().GetSceneActorSelection();
 
     const auto& snap = hierarchy.GetSnapshot();
     out.snapshot = &snap;

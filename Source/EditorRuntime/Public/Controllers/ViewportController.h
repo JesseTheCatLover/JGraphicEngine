@@ -11,8 +11,11 @@
 
 class ViewportSubsystem;
 class HierarchyService;
-class SelectionService;
 class ScenePickingService;
+template<typename T>
+class TSelectionModel;
+
+using ActorID = uint64_t;
 
 enum class EMouseCaptureKind : uint8_t
 {
@@ -39,10 +42,10 @@ private:
     EditorRuntime& m_Runtime;
     ToolService&   m_Tools;
 
-    // Service cashes
-    SelectionService& m_Selection;
-    ScenePickingService&   m_Picker;
-    HierarchyService&  m_Hierarchy;
+    // Service caches
+    TSelectionModel<ActorID>& m_SceneSelection;
+    ScenePickingService& m_Picker;
+    HierarchyService& m_Hierarchy;
     ViewportSubsystem& m_ViewportSubsystem;
 
     // One camera tool per panel
@@ -81,7 +84,7 @@ private:
         FVector3  basisX{1,0,0}, basisY{0,1,0}, basisZ{0,0,1};
 
         // Selection snapshot at capture begin
-        std::vector<uint64_t> actors;
+        std::vector<ActorID> actors;
         std::vector<FTransform> startXfs; // same order as actors
 
         void Reset() { *this = FGizmoEditSession{}; }
@@ -103,11 +106,11 @@ private:
     void SubmitView(const FRenderView& view);
 
     void HandleActorPicking(const FViewportPanelInput& input, CameraEditorTool* cam, const ScenePickingService& picker,
-                                                    SelectionService& selection, const HierarchyService& hierarchy);
+                            TSelectionModel<ActorID>& selection, const HierarchyService& hierarchy);
 
     void EnsureGizmoIDs();
     bool HandleGizmo(const FViewportPanelInput& input, const CameraEditorTool& cam, const FRenderView& view,
-                                                    const SelectionService& selection);
+                     const TSelectionModel<ActorID>& selection);
     bool TryBuildGizmoTransform(FTransform& outXf) const;
     void UpdateSharedGizmoModePolicy(const FViewportPanelInput& input); // shared mode hotkeys
 
@@ -124,14 +127,13 @@ private:
     void CancelGizmoCapture();
 
     // Gizmo edit session
-
-    void BeginGizmoEditSession(const SelectionService& selection, const FTransform& gizmoXf);
+    void BeginGizmoEditSession(const TSelectionModel<ActorID>& selection, const FTransform& gizmoXf);
     void UpdateGizmoEditSession(const GizmoEditorController::FGizmoTransformDelta& delta);
     void EndGizmoEditSession(bool bCommit);
 
     static FTransform ApplyDeltaToTransformWS(const FTransform& start,
-                                             const FGizmoEditSession& session,
-                                             const GizmoEditorController::FGizmoTransformDelta& delta);
+                                              const FGizmoEditSession& session,
+                                              const GizmoEditorController::FGizmoTransformDelta& delta);
 
 public:
     ViewportController(PanelID id, EditorHost& host, EditorRuntime& runtime, ToolService& tools);

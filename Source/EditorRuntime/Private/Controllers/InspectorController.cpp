@@ -24,7 +24,9 @@ void InspectorController::Update(float /*deltaTime*/, const FInspectorPanelInput
     auto& selection = m_Host.GetService<SelectionService>();
 
     out = {};
-    const auto& selected = selection.GetSelection();
+    const auto& sceneSelection = m_Host.GetService<SelectionService>().GetSceneActorSelection();
+    const auto& selected = sceneSelection.GetSelection();
+
 
     if (selected.empty())
     {

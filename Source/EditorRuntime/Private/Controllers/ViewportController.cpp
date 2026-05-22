@@ -28,7 +28,7 @@ ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRunti
     , m_Host(host)
     , m_Runtime(runtime)
     , m_Tools(tools)
-    , m_Selection(m_Host.GetService<SelectionService>())
+    , m_SceneSelection(m_Host.GetService<SelectionService>().GetSceneActorSelection())
     , m_Picker(m_Host.GetService<ScenePickingService>())
     , m_Hierarchy(m_Host.GetService<HierarchyService>())
     , m_ViewportSubsystem(m_Host.GetSubsystem<ViewportSubsystem>())
@@ -138,7 +138,7 @@ void ViewportController::CancelGizmoCapture()
     m_Gizmo.CancelCapture();
 }
 
-void ViewportController::BeginGizmoEditSession(const SelectionService &selection, const FTransform &gizmoXf)
+void ViewportController::BeginGizmoEditSession(const TSelectionModel<ActorID>& selection, const FTransform &gizmoXf)
 {
     m_GizmoSession.Reset();
     m_GizmoSession.bActive = true;
@@ -462,7 +462,7 @@ void ViewportController::UpdateSharedGizmoModePolicy(const FViewportPanelInput& 
 void ViewportController::HandleActorPicking(const FViewportPanelInput& input,
                                            CameraEditorTool* cam,
                                            const ScenePickingService& picker,
-                                           SelectionService& selection,
+                                           TSelectionModel<ActorID>& selection,
                                            const HierarchyService& hierarchy)
 {
     if (!CanConsumeInputThisFrame(input)) return;
@@ -495,7 +495,7 @@ void ViewportController::EnsureGizmoIDs()
 bool ViewportController::HandleGizmo(const FViewportPanelInput& input,
                                      const CameraEditorTool& cam,
                                      const FRenderView& view,
-                                     const SelectionService& selection)
+                                     const TSelectionModel<ActorID>& selection)
 {
     // Always apply shared mode/space to local gizmo (read-only)
     m_Gizmo.SetMode(m_ViewportSubsystem.GetGizmoMode());
@@ -566,7 +566,7 @@ bool ViewportController::HandleGizmo(const FViewportPanelInput& input,
 
 bool ViewportController::TryBuildGizmoTransform(FTransform& outXf) const // TODO: Add a cached gizmo pivot to SelectionService In Future (IMPORTANT FOR PERFORMANCE)
 {
-    auto& sel = m_Host.GetService<SelectionService>().GetSelection();
+    const auto& sel = m_SceneSelection.GetSelection();
     if (sel.empty())
         return false;
 
@@ -631,10 +631,10 @@ void ViewportController::Update(float deltaTime, const FViewportPanelInput& inpu
 
     bool bBlockPick = false;
     if (bHasView)
-        bBlockPick = HandleGizmo(input, *cam, view, m_Selection);
+        bBlockPick = HandleGizmo(input, *cam, view, m_SceneSelection);
 
     if (!bBlockPick)
-        HandleActorPicking(input, cam, m_Picker, m_Selection, m_Hierarchy);
+        HandleActorPicking(input, cam, m_Picker, m_SceneSelection, m_Hierarchy);
 
     // Tick camera
     TickCamera(deltaTime);

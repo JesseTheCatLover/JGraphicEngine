@@ -6,9 +6,16 @@
 #include "Core/Services/SelectionService.h"
 #include "EditorRuntime.h"
 
-SceneSelectionSynchronizer::SceneSelectionSynchronizer(EditorRuntime& runtime)
-    : m_Runtime(runtime)
+SceneSelectionSynchronizer::SceneSelectionSynchronizer(EditorHost& host, EditorRuntime& runtime)
+    : m_Host(host)
+    , m_Runtime(runtime)
 {
+    Bind(m_Host);
+}
+
+SceneSelectionSynchronizer::~SceneSelectionSynchronizer()
+{
+    Unbind(m_Host);
 }
 
 void SceneSelectionSynchronizer::Bind(EditorHost& host)

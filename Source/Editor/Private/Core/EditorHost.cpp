@@ -12,6 +12,7 @@
 #include "Services/SceneQueryService.h"
 #include "Services/SelectionService.h"
 #include "Services/ShellCommandService.h"
+#include "Services/Syncs/SceneSelectionSynchronizer.h"
 #include "Subsystems/AssetBrowserSubsystem.h"
 #include "Subsystems/InspectorSubsystem.h"
 #include "Subsystems/SceneHierarchySubsystem.h"
@@ -41,7 +42,8 @@ void EditorHost::RegisterCoreSubsystems()
 void EditorHost::RegisterCoreServices()
 {
     m_Services->Register<SceneQueryService>(m_EditorRuntime);
-    m_Services->Register<SelectionService>(m_EditorRuntime);
+    m_Services->Register<SelectionService>();
+    m_Services->Register<SceneSelectionSynchronizer>(*this, m_EditorRuntime);
     m_Services->Register<HierarchyService>(*this);
     m_Services->Register<ScenePickingService>(*this);
     m_Services->Register<EditTimelineService>(*this);

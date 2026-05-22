@@ -1,4 +1,5 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
+
 #include "SceneHierarchyPanel.h"
 
 #include "imgui.h"
@@ -42,9 +43,9 @@ void SceneHierarchyPanel::ApplyRevealRequest(const std::vector<FHierarchySnapsho
 }
 
 void SceneHierarchyPanel::DrawActorNode(const FHierarchySnapshot& node,
-                                       const std::vector<FHierarchySnapshot>& allActors,
-                                       FHierarchyPanelInput& ioInput,
-                                       const SelectionService& selection)
+                                        const std::vector<FHierarchySnapshot>& allActors,
+                                        FHierarchyPanelInput& ioInput,
+                                        const TSelectionModel<ActorID>& selection)
 {
     ImGuiTreeNodeFlags flags =
         ImGuiTreeNodeFlags_OpenOnArrow |
@@ -128,18 +129,17 @@ void SceneHierarchyPanel::Draw(EditorHost& host)
         return;
     }
 
-
     const auto& actors = *out->snapshot;
 
     // Apply reveal request
     ApplyRevealRequest(actors, out->revealActorID);
 
-    auto& selection = host.GetService<SelectionService>();
+    const auto& sceneSelection = host.GetService<SelectionService>().GetSceneActorSelection();
 
     // Draw tree roots
     for (const auto& actor : actors)
         if (actor.parentID == 0)
-            DrawActorNode(actor, actors, input, selection);
+            DrawActorNode(actor, actors, input, sceneSelection);
 
     // Background click clears selection
     if (ImGui::IsWindowHovered() &&

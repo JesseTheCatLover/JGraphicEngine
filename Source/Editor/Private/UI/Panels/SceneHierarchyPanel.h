@@ -1,5 +1,7 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
+
 #pragma once
+
 #include <unordered_set>
 #include <vector>
 #include <string>
@@ -8,7 +10,9 @@
 #include "UI/IEditorPanel.h"
 #include "Controllers/Inputs/FHierarchyPanelInput.h"
 
-class SelectionService;
+template<typename T>
+class TSelectionModel;
+
 using ActorID = uint64_t;
 struct FHierarchyOutput;
 struct FHierarchySnapshot;
@@ -26,7 +30,7 @@ class SceneHierarchyPanel : public IEditorPanel
     void DrawActorNode(const FHierarchySnapshot& node,
                        const std::vector<FHierarchySnapshot>& allActors,
                        FHierarchyPanelInput& ioInput,
-                       const SelectionService& selection);
+                       const TSelectionModel<ActorID>& selection);
 
 public:
     [[nodiscard]] const char* GetName() const override { return "Scene Hierarchy###SceneHierarchy"; }
