@@ -464,7 +464,7 @@ bool JEngine::InitialBuildAssetPipeline()
 #if JENGINE_WITH_SOURCE_ASSETS
     { // Bootstrap and compile source assets if engine is being built from source
         if (!EngineSourceAssetBootstrapper::Bootstrap(
-            *GetAssetManager(), *m_ProjectContext.get()))
+            *GetAssetImportSubsystem(), *GetProjectContext(), GetVirtualPathMounter()))
         {
             std::cerr << "[JEngine]: Failed to boot source assets\n";
             return false;
@@ -472,22 +472,7 @@ bool JEngine::InitialBuildAssetPipeline()
     }
 #endif
 
-    FAssetImportRequest request;
-    GetVirtualPathMounter().ResolveVirtualToPhysical("/Project/TheArmoury/model.obj", request.sourceFilePath);
-    request.destinationVirtualFolder = "/Project/TheArmoury/";
-
-    FAssetImportResult result;
-    GetAssetManager()->ImportAsset(request, result);
-
-    GetVirtualPathMounter().ResolveVirtualToPhysical("/Project/Tape/Tape.obj", request.sourceFilePath);
-    request.destinationVirtualFolder = "/Project/Tape/";
-
-    GetAssetManager()->ImportAsset(request, result);
-
-    GetVirtualPathMounter().ResolveVirtualToPhysical("/Project/DiningChair/DiningChair.obj", request.sourceFilePath);
-    request.destinationVirtualFolder = "/Project/DiningChair/";
-
-    GetAssetManager()->ImportAsset(request, result);
+    // Initial AssetRegistry population:
 
     if (m_ProjectContext->IsOpen() && m_AssetRegistrySubsystem)
     {

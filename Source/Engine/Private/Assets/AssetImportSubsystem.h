@@ -13,6 +13,9 @@ class VirtualPathMounter;
 
 class AssetImportSubsystem
 {
+private:
+    std::vector<TUniquePtr<IAssetImporter>> m_Importers;
+
 public:
     AssetImportSubsystem() = default;
     ~AssetImportSubsystem() = default;
@@ -28,7 +31,4 @@ public:
 
 private:
     [[nodiscard]] const IAssetImporter* FindImporterForExtension(const std::string& extension) const;
-
-private:
-    std::vector<TUniquePtr<IAssetImporter>> m_Importers;
 };

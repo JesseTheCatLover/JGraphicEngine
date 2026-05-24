@@ -188,6 +188,25 @@ bool UFileSystem::DeleteDirectory(const std::string& path, bool bRecursive)
     return fs::remove(fullPath, ec);
 }
 
+bool UFileSystem::MoveDirectory(const std::string& source, const std::string& destination)
+{
+    const std::string fullSrc = NormalizePhysicalPath(source);
+    const std::string fullDst = NormalizePhysicalPath(destination);
+
+    const std::string parent = UPath::GetParent(fullDst);
+    if (!parent.empty() && !CreateDirectory(parent))
+        return false;
+
+    std::error_code ec;
+    fs::rename(fullSrc, fullDst, ec);
+    return !ec;
+}
+
+bool UFileSystem::RenameDirectory(const std::string& source, const std::string& newName)
+{
+    return MoveDirectory(source, newName);
+}
+
 std::filesystem::path UFileSystem::GetExecutablePath()
 {
 #ifdef JENGINE_PLATFORM_WINDOWS

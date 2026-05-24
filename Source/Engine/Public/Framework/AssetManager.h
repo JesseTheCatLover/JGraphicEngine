@@ -20,6 +20,11 @@ class VirtualPathMounter;
  *
  * The AssetManager provides a unified interface for interacting with assets
  * within the engine.
+ *
+ * Ownership note (folder ops):
+ *  - AssetManager owns physical disk operations for asset storage (folders/files)
+ *  - AssetRegistrySubsystem remains an in-memory index that can be rebuilt from disk
+ *  - EditorFileAPI should be a thin facade that calls AssetManager
  **/
 class AssetManager
 {
@@ -47,11 +52,6 @@ public:
      * @brief Shuts down the asset manager.
      */
     void Shutdown();
-
-    /**
-     * @brief Rebuild the entire asset registry by scanning mounted roots.
-     */
-    bool RebuildRegistry();
 
     /**
      * @brief Import an asset into the project.
@@ -139,4 +139,68 @@ public:
     [[nodiscard]]
     std::vector<const FAssetRecord*> GetDependencies(
         const std::string& assetID) const;
+
+    // ---------------------------------------------------------------------
+    // Physical folder operations
+    // Strategy: perform disk operation first, then rebuild registry from disk.
+    // ---------------------------------------------------------------------
+
+    /**
+     * @brief List child folders under a virtual folder.
+     * Physical query, returned as virtual paths.
+     */
+    [[nodiscard]]
+    std::vector<std::string> ListFolders(const std::string& parentVirtualFolder, bool bRecursive) const;
+
+    /**
+     * @brief Create a folder on disk for a given virtual folder path.
+     *
+     * Policy: only allowed in writable mounts.
+     * No registry rebuild is needed because empty folders are not assets.
+     */
+    bool CreateFolder(const std::string& folderVirtualPath);
+
+    /**
+     * @brief Rename a folder (virtual path) on disk.
+     *
+     * If successful, triggers folder-scoped registry rebuilds for both
+     * the old and new virtual paths.
+     */
+    bool DeleteFolder(const std::string& folderVirtualPath, bool bRecursive);
+
+    /**
+     * @brief Rename a folder (virtual path) on disk.
+     *
+     * If successful, triggers folder-scoped registry rebuilds for both
+     * the old and new virtual paths.
+     */
+    bool RenameFolder(const std::string& oldVirtualPath, const std::string& newVirtualPath);
+
+    /**
+     * @brief Move a folder (virtual path) on disk.
+     */
+    bool MoveFolder(const std::string& sourceVirtualPath, const std::string& destVirtualPath);
+
+private:
+
+    // Internal Helpers:
+
+    /**
+     * @brief Delete all assets registered under a given virtual folder.
+     * Registry-only; physical files are not touched here.
+     */
+    bool DeleteAssetsInFolder(const std::string& folderVirtualPath);
+
+    /**
+     * @brief Move all assets in one virtual folder to another.
+     * Updates virtualPath in the registry. Physical files are not touched here.
+     */
+    bool MoveAssetsInFolder(const std::string& sourceFolderVirtualPath,
+                            const std::string& destFolderVirtualPath);
+
+    // Policy: only allow physical mutations within writable mounts (typically /Project).
+    [[nodiscard]] bool IsWritableVirtualPath(const std::string& virtualPath) const;
+
+    // Helper: resolve virtual->physical using m_PathMounter.
+    [[nodiscard]] bool ResolveVirtualToPhysical(const std::string& virtualPath, std::string& outPhysicalPath) const;
 };

@@ -4,16 +4,19 @@
 #include <string>
 
 class ProjectContext;
-class AssetManager;
+class VirtualPathMounter;
+class AssetImportSubsystem;
 
 class EngineSourceAssetBootstrapper
 {
 public:
-    static bool Bootstrap(AssetManager& assetManager,
-                          const ProjectContext& context);
+    static bool Bootstrap(AssetImportSubsystem& assetImporter,
+                          const ProjectContext& context,
+                          const VirtualPathMounter& pathMounter);
 
 private:
-    static bool ProcessSourceFile(AssetManager& assetManager,
+    static bool ProcessSourceFile(AssetImportSubsystem& assetImporter,
                                   const ProjectContext& context,
+                                  const VirtualPathMounter& pathMounter,
                                   const std::string& sourcePath);
 };

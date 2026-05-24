@@ -2,7 +2,7 @@
 
 #include "EngineSourceAssetBootstrapper.h"
 
-#include "Framework/AssetManager.h"
+#include "AssetImportSubsystem.h"
 #include "Assets/FAssetImportRequest.h"
 #include "Assets/FAssetImportResult.h"
 #include "Core/Project/ProjectContext.h"
@@ -10,8 +10,9 @@
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
-bool EngineSourceAssetBootstrapper::Bootstrap(AssetManager& assetManager,
-                                         const ProjectContext& context)
+bool EngineSourceAssetBootstrapper::Bootstrap(AssetImportSubsystem& assetImporter,
+                                         const ProjectContext& context,
+                                         const VirtualPathMounter& pathMounter)
 {
     const std::string sourceAssetPath = UPath::Join(context.GetEngineRoot(), "SourceAssets");
 
@@ -25,7 +26,7 @@ bool EngineSourceAssetBootstrapper::Bootstrap(AssetManager& assetManager,
 
     for (const std::string& file : files)
     {
-        if (!ProcessSourceFile(assetManager, context, file))
+        if (!ProcessSourceFile(assetImporter, context, pathMounter, file))
             bAllGood = false;
     }
 
@@ -33,8 +34,9 @@ bool EngineSourceAssetBootstrapper::Bootstrap(AssetManager& assetManager,
 }
 
 bool EngineSourceAssetBootstrapper::ProcessSourceFile(
-    AssetManager& assetManager,
+    AssetImportSubsystem& assetImporter,
     const ProjectContext& context,
+    const VirtualPathMounter& pathMounter,
     const std::string& sourcePath)
 {
     const std::string extension = UPath::GetExtension(sourcePath);
@@ -96,5 +98,5 @@ bool EngineSourceAssetBootstrapper::ProcessSourceFile(
     request.destinationVirtualFolder = destinationVirtualFolder;
 
     FAssetImportResult result;
-    return assetManager.ImportAsset(request, result);
+    return assetImporter.Import(request, pathMounter, result);
 }

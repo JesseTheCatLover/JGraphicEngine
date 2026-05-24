@@ -120,6 +120,26 @@ public:
     static bool DeleteDirectory(const std::string& path, bool bRecursive = false);
 
     /**
+     * @brief Move (or rename) a directory.
+     *
+     * Parent directories for the destination are created automatically if needed.
+     *
+     * @param source Physical source directory path.
+     * @param destination Physical destination directory path.
+     * @return True if successful, false otherwise.
+     */
+    static bool MoveDirectory(const std::string& source, const std::string& destination);
+
+    /**
+     * @brief Rename a directory.
+     *
+     * @param source Physical source directory path.
+     * @param newName New physical directory path or name.
+     * @return True if successful, false otherwise.
+     */
+    static bool RenameDirectory(const std::string& source, const std::string& newName);
+
+    /**
      * @brief Get the directory containing the currently running executable.
      *
      * @return Executable directory path, or empty path if unavailable.
