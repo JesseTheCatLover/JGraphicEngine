@@ -18,7 +18,7 @@ bool CpuResource::LoadAssetBinary(const std::string& assetID, FAssetHeader& outH
         return false;
     }
 
-    const FAssetRecord* record = m_AssetRegistry->FindByAssetID(assetID);
+    const FAssetRecord* record = m_AssetRegistry->FindAssetByAssetID(assetID);
     if (!record)
     {
         std::cerr << "[CpuResource]: Asset not found: " << assetID << "\n";

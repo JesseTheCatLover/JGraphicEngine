@@ -49,6 +49,19 @@ public:
                                  const std::vector<uint8_t>& payload);
 
     /**
+     * @brief Rewrites the assetID inside an existing .jasset file in-place.
+     *
+     * Supports both JSON-only and binary-container .jasset files.
+     * Payload bytes are preserved.
+     *
+     * @param filePath The .jasset file to patch.
+     * @param newAssetID The replacement unique ID to write into the header.
+     */
+    static bool RewriteAssetID(const std::string& filePath,
+                               const std::string& newAssetID);
+
+
+    /**
      * @brief Reads the asset header from a .jasset file.
      *
      * Supports both JSON-only asset files and binary-payload asset files.

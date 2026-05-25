@@ -302,7 +302,7 @@ std::string FolderPickerDialog::ComputeParentPath(const std::string& path) const
 
 void FolderPickerDialog::BuildDirectoryTree(EditorRuntime& runtime)
 {
-    std::vector<const FAssetRecord*> assets = runtime.GetFile().GetUserVisibleAssets();
+    std::vector<const FAssetRecord*> assets = runtime.GetFile().GetAllUserVisibleAssets();
 
     for (const FAssetRecord* record : assets)
     {

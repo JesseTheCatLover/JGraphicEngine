@@ -106,7 +106,7 @@ void AssetBrowserController::BuildDirectories()
 {
     // We base directories on user-visible assets, so hidden EnginePrivate assets
     // don’t create confusing folders in the UI.
-    std::vector<const FAssetRecord*> assets = m_FileAPI.GetUserVisibleAssets();
+    std::vector<const FAssetRecord*> assets = m_FileAPI.GetAllUserVisibleAssets();
 
     const std::string parentDir = UPath::Normalize(m_Document.currentPath);
 
@@ -146,7 +146,7 @@ void AssetBrowserController::BuildDirectories()
 void AssetBrowserController::BuildAssets()
 {
     // Same source as directories: user-visible only.
-    std::vector<const FAssetRecord*> assets = m_FileAPI.GetUserVisibleAssets();
+    std::vector<const FAssetRecord*> assets = m_FileAPI.GetAllUserVisibleAssets();
 
     const std::string parentDir = UPath::Normalize(m_Document.currentPath);
 

@@ -5,6 +5,7 @@
 #include <string>
 #include "Assets/AssetTypes.h"
 #include "Assets/EAssetDomain.h"
+#include "Assets/FAssetOpResult.h"
 #include "Rendering/RHandles.h"
 
 struct FAssetImportResult;
@@ -28,17 +29,32 @@ public:
 
     RTextureHandle LoadEditorTextureFromFile(const char* virtualFilePath, bool bSRGB = true);
 
+    [[nodiscard]] const FAssetRecord* FindAssetByAssetID(const std::string& assetID) const;
+    [[nodiscard]] const FAssetRecord* FindAssetByVirtualPath(const std::string& virtualPath) const;
+    [[nodiscard]] std::vector<const FAssetRecord*> FindAllAssetsByVirtualPathPrefix(const std::string& virtualPathPrefix) const;
+    [[nodiscard]] const FAssetRecord* FindAssetByPhysicalPath(const std::string& physicalPath) const;
+
     [[nodiscard]] const std::vector<FAssetRecord>* GetAllAssets() const;
-    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByPrefix(const std::string& virtualPrefix) const;
-    [[nodiscard]] std::vector<const FAssetRecord*> GetUserVisibleAssets() const;
-    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByType(EAssetType type) const;
-    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByDomain(EAssetDomain domain) const;
-    [[nodiscard]] std::vector<const FAssetRecord*> GetAssetsByVisibility(EAssetVisibility visibility) const;
-    [[nodiscard]] std::vector<const FAssetRecord*> GetDependencies(const std::string& assetID) const;
-    [[nodiscard]] const FAssetRecord* FindByAssetID(const std::string& assetID) const;
-    [[nodiscard]] const FAssetRecord* FindByVirtualPath(const std::string& virtualPath) const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAllUserVisibleAssets() const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAllAssetsByType(EAssetType type) const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAllAssetsByDomain(EAssetDomain domain) const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAllAssetsByVisibility(EAssetVisibility visibility) const;
+    [[nodiscard]] std::vector<const FAssetRecord*> GetAllDependenciesForAsset(const std::string& assetID) const;
 
     bool ImportAsset(const FAssetImportRequest& request, FAssetImportResult& outResult);
 
     std::vector<FAssetImportResult> ImportAssetsBatch(const std::vector<FAssetImportRequest>& requests);
+
+    [[nodiscard]] std::vector<std::string> ListFolders(const std::string& parentVirtualFolder,
+                                                       bool bRecursive = false) const;
+
+    [[nodiscard]] FAssetOpResult CreateFolder(const std::string& folderVirtualPath);
+    [[nodiscard]] FAssetOpResult DeleteFolder(const std::string& folderVirtualPath, bool bRecursive = true);
+    [[nodiscard]] FAssetOpResult RenameFolder(const std::string& oldVirtualPath, const std::string& newVirtualPath);
+    [[nodiscard]] FAssetOpResult MoveFolder(const std::string& sourceVirtualPath, const std::string& destVirtualPath);
+
+    [[nodiscard]] FAssetOpResult DeleteAsset(const std::string& virtualAssetPath);
+    [[nodiscard]] FAssetOpResult RenameAsset(const std::string& virtualAssetPath, const std::string& newName);
+    [[nodiscard]] FAssetOpResult MoveAsset(const std::string& sourceVirtualAssetPath, const std::string& destVirtualFolder);
+    [[nodiscard]] FAssetOpResult DuplicateAsset(const std::string& sourceVirtualAssetPath, const std::string& destVirtualAssetPath);
 };

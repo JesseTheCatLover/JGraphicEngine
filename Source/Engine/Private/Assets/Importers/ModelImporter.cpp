@@ -338,7 +338,6 @@ namespace
         // Asset header
         FAssetHeader assetHeader{};
         assetHeader.assetID          = UUUID::GenerateUUID();
-        assetHeader.assetName        = material.name;
         assetHeader.assetType        = EAssetType::Material;
         assetHeader.encoding         = EAssetEncoding::Binary;
         assetHeader.containerVersion = FAssetHeader::CurrentContainerVersion;
@@ -565,7 +564,6 @@ namespace
         // ----------------------------------------------------------
         FAssetHeader assetHeader{};
         assetHeader.assetID          = UUUID::GenerateUUID();
-        assetHeader.assetName        = assetBaseName;
         assetHeader.assetType        = EAssetType::StaticMesh;
         assetHeader.encoding         = EAssetEncoding::Binary;
         assetHeader.containerVersion = FAssetHeader::CurrentContainerVersion;

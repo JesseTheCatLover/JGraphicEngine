@@ -13,6 +13,7 @@
 
 namespace
 {
+    // Helper to lower-case strings safely
     static std::string ToLowerCopy(std::string s)
     {
         std::transform(s.begin(), s.end(), s.begin(),
@@ -52,14 +53,10 @@ bool AssetImportSubsystem::Import(const FAssetImportRequest& request,
                                   const VirtualPathMounter& pathMounter,
                                   FAssetImportResult& outResult) const
 {
+    // Reset output
     outResult = {};
 
-    if (!UFileSystem::FileExists(request.sourceFilePath))
-    {
-        outResult.errors.push_back("Source file does not exist: " + request.sourceFilePath);
-        return false;
-    }
-
+    // 1. Memory/String validations first
     if (request.sourceFilePath.empty())
     {
         outResult.errors.emplace_back("Source file path is empty.");
@@ -72,8 +69,15 @@ bool AssetImportSubsystem::Import(const FAssetImportRequest& request,
         return false;
     }
 
-    std::string extension = UPath::GetExtension(request.sourceFilePath);
+    // 2. Disk IO validations second (Prevents crashing OS functions with empty paths)
+    if (!UFileSystem::FileExists(request.sourceFilePath))
+    {
+        outResult.errors.push_back("Source file does not exist: " + request.sourceFilePath);
+        return false;
+    }
 
+    // 3. Extract and normalize extension
+    std::string extension = UPath::GetExtension(request.sourceFilePath);
     if (extension.empty())
     {
         outResult.errors.emplace_back("Source file has no extension.");
@@ -82,6 +86,7 @@ bool AssetImportSubsystem::Import(const FAssetImportRequest& request,
 
     extension = ToLowerCopy(extension);
 
+    // 4. Find importer and delegate
     const IAssetImporter* importer = FindImporterForExtension(extension);
     if (!importer)
     {
@@ -92,6 +97,7 @@ bool AssetImportSubsystem::Import(const FAssetImportRequest& request,
 
     const bool bSuccess = importer->Import(request, pathMounter, outResult);
     outResult.bSuccess = bSuccess;
+
     return bSuccess;
 }
 
@@ -100,18 +106,23 @@ const IAssetImporter* AssetImportSubsystem::FindImporterForExtension(const std::
     if (extension.empty())
         return nullptr;
 
-    const std::string normalizedExtension = ToLowerCopy(extension);
+    const std::string normalizedRequestExt = ToLowerCopy(extension);
 
     for (const TUniquePtr<IAssetImporter>& importer : m_Importers)
     {
         if (!importer)
             continue;
 
-        const std::vector<std::string> supported = importer->GetSupportedSourceExtensions();
-        for (const std::string& ext : supported)
+        // Note: GetSupportedSourceExtensions() returns by value.
+        // We bind to const auto& to extend lifetime without unnecessary copies
+        const auto& supportedExtensions = importer->GetSupportedSourceExtensions();
+
+        for (const std::string& ext : supportedExtensions)
         {
-            if (ToLowerCopy(ext) == normalizedExtension)
+            if (ToLowerCopy(ext) == normalizedRequestExt)
+            {
                 return importer.get();
+            }
         }
     }
 

@@ -7,6 +7,7 @@
 
 #include "Assets/FAssetRecord.h"
 #include "Assets/FAssetImportRequest.h"
+#include "Assets/FAssetOpResult.h"
 
 struct FAssetImportResult;
 class AssetRegistrySubsystem;
@@ -16,14 +17,15 @@ class VirtualPathMounter;
 /**
  * @class AssetManager
  *
- * @brief High‑level facade, responsible for coordinating the engine's asset system.
+ * @brief High-level facade, responsible for coordinating the engine's asset system.
  *
- * The AssetManager provides a unified interface for interacting with assets
+ * The AssetManager provides a unified interface for interacting with assets and folders
  * within the engine.
  *
  * Ownership note (folder ops):
  *  - AssetManager owns physical disk operations for asset storage (folders/files)
- *  - AssetRegistrySubsystem remains an in-memory index that can be rebuilt from disk
+ *  - Uses AssetRegistryScanner to read from disk
+ *  - AssetRegistrySubsystem remains a pure in-memory index
  *  - EditorFileAPI should be a thin facade that calls AssetManager
  **/
 class AssetManager
@@ -33,12 +35,34 @@ private:
     AssetImportSubsystem* m_Importer = nullptr;
     VirtualPathMounter* m_PathMounter = nullptr;
 
+    bool bInitialSynced = false;
+
 public:
     AssetManager() = default;
     ~AssetManager() = default;
 
     AssetManager(const AssetManager&) = delete;
     AssetManager& operator=(const AssetManager&) = delete;
+    AssetManager(AssetManager&&) = delete;
+    AssetManager& operator=(AssetManager&&) = delete;
+
+private:
+    friend class JEngine;
+    /**
+     * @brief Startup-time: scan mounted roots on disk and populate the in-memory registry.
+     *
+     * Responsibilities:
+     * - Enumerate mounted roots (Engine/Project/Plugins/ecs...).
+     * - Scan .jasset files under those roots (via AssetRegistryScanner).
+     * - Bulk replace registry contents per-root (ReplaceFolderContents).
+     *
+     * Notes:
+     * - Designed for engine/editor boot.
+     * - After this, normal mutations keep registry in sync via AssetManager ops/watchers.
+     */
+    [[nodiscard]] FAssetOpResult InitialSyncRegistryFromDisk();
+
+public:
 
     /**
      * @brief Initializes the AssetManager and binds subsystems to self.
@@ -67,22 +91,27 @@ public:
      * @brief Find an asset by its unique AssetID.
      */
     [[nodiscard]]
-    const FAssetRecord* FindByAssetID(const std::string& assetID) const;
+    const FAssetRecord* FindAssetByAssetID(const std::string& assetID) const;
 
     /**
      * @brief Find an asset by its virtual path.
-     *
-     * Example:
-     * /Project/Textures/Wood.jasset
+     * Example: /Project/Textures/Wood.jasset
      */
     [[nodiscard]]
-    const FAssetRecord* FindByVirtualPath(const std::string& virtualPath) const;
+    const FAssetRecord* FindAssetByVirtualPath(const std::string& virtualPath) const;
+
+    /**
+     * @brief Returns assets under a virtual path prefix.
+     * Example: /Project/Textures
+     */
+    [[nodiscard]]
+    std::vector<const FAssetRecord*> FindAllAssetsByVirtualPathPrefix(const std::string& virtualPathPrefix) const;
 
     /**
      * @brief Find an asset by its physical disk path.
      */
     [[nodiscard]]
-    const FAssetRecord* FindByPhysicalPath(const std::string& physicalPath) const;
+    const FAssetRecord* FindAssetByPhysicalPath(const std::string& physicalPath) const;
 
     /**
      * @brief Returns every asset registered in the system.
@@ -91,54 +120,34 @@ public:
     const std::vector<FAssetRecord>* GetAllAssets() const;
 
     /**
-     * @brief Returns assets under a virtual path prefix.
-     *
-     * Example:
-     * /Project/Textures
+     * @brief Returns all assets visible to the user (Filters out EnginePrivate).
      */
     [[nodiscard]]
-    std::vector<const FAssetRecord*> GetAssetsByPrefix(
-        const std::string& virtualPrefix) const;
-
-    /**
-     * @brief Returns all assets visible to the user.
-     *
-     * Filters out EnginePrivate assets.
-     */
-    [[nodiscard]]
-    std::vector<const FAssetRecord*> GetUserVisibleAssets() const;
+    std::vector<const FAssetRecord*> GetAllUserVisibleAssets() const;
 
     /**
      * @brief Returns assets of a specific asset type.
      */
     [[nodiscard]]
-    std::vector<const FAssetRecord*> GetAssetsByType(
-        EAssetType type) const;
+    std::vector<const FAssetRecord*> GetAllAssetsByType(EAssetType type) const;
 
     /**
-     * @brief Returns assets belonging to a specific domain.
-     *
-     * Domains:
-     *  - Engine
-     *  - Project
+     * @brief Returns assets belonging to a specific domain (Engine or Project).
      */
     [[nodiscard]]
-    std::vector<const FAssetRecord*> GetAssetsByDomain(
-        EAssetDomain domain) const;
+    std::vector<const FAssetRecord*> GetAllAssetsByDomain(EAssetDomain domain) const;
 
     /**
      * @brief Returns assets with a specific visibility classification.
      */
     [[nodiscard]]
-    std::vector<const FAssetRecord*> GetAssetsByVisibility(
-        EAssetVisibility visibility) const;
+    std::vector<const FAssetRecord*> GetAllAssetsByVisibility(EAssetVisibility visibility) const;
 
     /**
      * @brief Returns dependencies for a specific asset.
      */
     [[nodiscard]]
-    std::vector<const FAssetRecord*> GetDependencies(
-        const std::string& assetID) const;
+    std::vector<const FAssetRecord*> GetAllDependenciesForAsset(const std::string& assetID) const;
 
     // ---------------------------------------------------------------------
     // Physical folder operations
@@ -154,53 +163,84 @@ public:
 
     /**
      * @brief Create a folder on disk for a given virtual folder path.
-     *
-     * Policy: only allowed in writable mounts.
-     * No registry rebuild is needed because empty folders are not assets.
      */
-    bool CreateFolder(const std::string& folderVirtualPath);
+    FAssetOpResult CreateFolder(const std::string& folderVirtualPath);
+
+    /**
+     * @brief Delete a folder (virtual path) on disk.
+     */
+    FAssetOpResult DeleteFolder(const std::string& folderVirtualPath, bool bRecursive);
 
     /**
      * @brief Rename a folder (virtual path) on disk.
-     *
-     * If successful, triggers folder-scoped registry rebuilds for both
-     * the old and new virtual paths.
      */
-    bool DeleteFolder(const std::string& folderVirtualPath, bool bRecursive);
-
-    /**
-     * @brief Rename a folder (virtual path) on disk.
-     *
-     * If successful, triggers folder-scoped registry rebuilds for both
-     * the old and new virtual paths.
-     */
-    bool RenameFolder(const std::string& oldVirtualPath, const std::string& newVirtualPath);
+    FAssetOpResult RenameFolder(const std::string& oldVirtualPath, const std::string& newVirtualPath);
 
     /**
      * @brief Move a folder (virtual path) on disk.
      */
-    bool MoveFolder(const std::string& sourceVirtualPath, const std::string& destVirtualPath);
+    FAssetOpResult MoveFolder(const std::string& sourceVirtualPath, const std::string& destVirtualPath);
+
+    // ---------------------------------------------------------------------
+    // Physical Asset (File) operations
+    // Strategy: perform disk op on the .jasset file, then sync affected folders.
+    // ---------------------------------------------------------------------
+
+    /**
+     * @brief Deletes an asset file from disk and removes it from the registry.
+     */
+    FAssetOpResult DeleteAsset(const std::string& virtualAssetPath);
+
+    /**
+     * @brief Renames an asset file on disk. The AssetID remains unchanged.
+     */
+    FAssetOpResult RenameAsset(const std::string& virtualAssetPath, const std::string& newName);
+
+    /**
+     * @brief Moves an asset file to a new folder. The AssetID remains unchanged.
+     */
+    FAssetOpResult MoveAsset(const std::string& sourceVirtualAssetPath, const std::string& destVirtualFolder);
+
+    /**
+     * @brief Duplicates an asset file.
+     */
+    FAssetOpResult DuplicateAsset(const std::string& sourceVirtualAssetPath, const std::string& destVirtualAssetPath);
+
+    /**
+     * @brief Saves a newly authored in-engine asset (e.g., a Material or Schematic created in the editor).
+     * Unlike ImportAsset which reads external files (PNG/FBX), this serializes engine data directly.
+     */
+    // FAssetOpResult SaveNewAsset(const std::string& destVirtualAssetPath, ... /* payload/data */);
 
 private:
-
-    // Internal Helpers:
-
-    /**
-     * @brief Delete all assets registered under a given virtual folder.
-     * Registry-only; physical files are not touched here.
-     */
-    bool DeleteAssetsInFolder(const std::string& folderVirtualPath);
-
-    /**
-     * @brief Move all assets in one virtual folder to another.
-     * Updates virtualPath in the registry. Physical files are not touched here.
-     */
-    bool MoveAssetsInFolder(const std::string& sourceFolderVirtualPath,
-                            const std::string& destFolderVirtualPath);
+    // -------------------------
+    // Policy / Resolve
+    // -------------------------
 
     // Policy: only allow physical mutations within writable mounts (typically /Project).
     [[nodiscard]] bool IsWritableVirtualPath(const std::string& virtualPath) const;
-
-    // Helper: resolve virtual->physical using m_PathMounter.
     [[nodiscard]] bool ResolveVirtualToPhysical(const std::string& virtualPath, std::string& outPhysicalPath) const;
+
+    // -------------------------
+    // Validation / composition
+    // -------------------------
+    static std::string NormalizeVirtualPath(std::string v);
+    static std::string NormalizeVirtualFolder(std::string v);
+    static std::string GetParentFolder(const std::string& virtualPath);
+    static std::string GetLeafName(const std::string& virtualPath);
+    static std::string JoinVirtual(const std::string& parent, const std::string& leaf);
+    static bool EndsWith(const std::string& s, const std::string& suffix);
+    static bool IsSimpleName(const std::string& name);
+
+    // -------------------------
+    // Collision checks (one place)
+    // -------------------------
+    bool VirtualFolderExistsOnDisk(const std::string& virtualFolder, bool& outExists) const;
+    bool VirtualFileExistsOnDisk(const std::string& virtualFile, bool& outExists) const;
+
+    // -------------------------
+    // Sync (scan disk -> replace registry)
+    // -------------------------
+    FAssetOpResult SyncFolderToRegistry(const std::string& virtualFolder);
+    FAssetOpResult SyncRootToRegistry(const std::string& virtualRoot);
 };

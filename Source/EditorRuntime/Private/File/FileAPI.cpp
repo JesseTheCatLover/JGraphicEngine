@@ -26,7 +26,7 @@ RTextureHandle EditorFileAPI::LoadEditorTextureFromFile(const char* virtualFileP
 
     std::string virtualPath = virtualFilePath;
 
-    const FAssetRecord* record = m_AssetManager.FindByVirtualPath(virtualPath);
+    const FAssetRecord* record = m_AssetManager.FindAssetByVirtualPath(virtualPath);
 
     if (!record)
     {
@@ -48,7 +48,7 @@ RTextureHandle EditorFileAPI::LoadEditorTextureFromFile(const char* virtualFileP
             return {};
         }
 
-        record = m_AssetManager.FindByVirtualPath(virtualPath);
+        record = m_AssetManager.FindAssetByVirtualPath(virtualPath);
         if (!record)
             return {};
     }
@@ -64,49 +64,54 @@ RTextureHandle EditorFileAPI::LoadEditorTextureFromFile(const char* virtualFileP
     return res ? res->GetTexture() : RTextureHandle{};
 }
 
+const FAssetRecord* EditorFileAPI::FindAssetByAssetID(const std::string& assetID) const
+{
+    return m_AssetManager.FindAssetByAssetID(assetID);
+}
+
+const FAssetRecord* EditorFileAPI::FindAssetByVirtualPath(const std::string& virtualPath) const
+{
+    return m_AssetManager.FindAssetByVirtualPath(virtualPath);
+}
+
+std::vector<const FAssetRecord*> EditorFileAPI::FindAllAssetsByVirtualPathPrefix(const std::string& virtualPathPrefix) const
+{
+    return m_AssetManager.FindAllAssetsByVirtualPathPrefix(virtualPathPrefix);
+}
+
+const FAssetRecord* EditorFileAPI::FindAssetByPhysicalPath(const std::string& physicalPath) const
+{
+    return m_AssetManager.FindAssetByPhysicalPath(physicalPath);
+}
+
 const std::vector<FAssetRecord>* EditorFileAPI::GetAllAssets() const
 {
     return m_AssetManager.GetAllAssets();
 }
 
-std::vector<const FAssetRecord *> EditorFileAPI::GetAssetsByPrefix(const std::string &virtualPrefix) const
+std::vector<const FAssetRecord*> EditorFileAPI::GetAllUserVisibleAssets() const
 {
-    return m_AssetManager.GetAssetsByPrefix(virtualPrefix);
+    return m_AssetManager.GetAllUserVisibleAssets();
 }
 
-std::vector<const FAssetRecord*> EditorFileAPI::GetUserVisibleAssets() const
+std::vector<const FAssetRecord*> EditorFileAPI::GetAllAssetsByType(EAssetType type) const
 {
-    return m_AssetManager.GetUserVisibleAssets();
+    return m_AssetManager.GetAllAssetsByType(type);
 }
 
-std::vector<const FAssetRecord*> EditorFileAPI::GetAssetsByType(EAssetType type) const
+std::vector<const FAssetRecord*> EditorFileAPI::GetAllAssetsByDomain(EAssetDomain domain) const
 {
-    return m_AssetManager.GetAssetsByType(type);
+    return m_AssetManager.GetAllAssetsByDomain(domain);
 }
 
-std::vector<const FAssetRecord*> EditorFileAPI::GetAssetsByDomain(EAssetDomain domain) const
+std::vector<const FAssetRecord*> EditorFileAPI::GetAllAssetsByVisibility(EAssetVisibility visibility) const
 {
-    return m_AssetManager.GetAssetsByDomain(domain);
+    return m_AssetManager.GetAllAssetsByVisibility(visibility);
 }
 
-std::vector<const FAssetRecord*> EditorFileAPI::GetAssetsByVisibility(EAssetVisibility visibility) const
+std::vector<const FAssetRecord*> EditorFileAPI::GetAllDependenciesForAsset(const std::string& assetID) const
 {
-    return m_AssetManager.GetAssetsByVisibility(visibility);
-}
-
-std::vector<const FAssetRecord*> EditorFileAPI::GetDependencies(const std::string& assetID) const
-{
-    return m_AssetManager.GetDependencies(assetID);
-}
-
-const FAssetRecord* EditorFileAPI::FindByAssetID(const std::string& assetID) const
-{
-    return m_AssetManager.FindByAssetID(assetID);
-}
-
-const FAssetRecord* EditorFileAPI::FindByVirtualPath(const std::string& virtualPath) const
-{
-    return m_AssetManager.FindByVirtualPath(virtualPath);
+    return m_AssetManager.GetAllDependenciesForAsset(assetID);
 }
 
 bool EditorFileAPI::ImportAsset(const FAssetImportRequest &request, FAssetImportResult &outResult)
@@ -126,4 +131,49 @@ std::vector<FAssetImportResult> EditorFileAPI::ImportAssetsBatch(const std::vect
     }
 
     return results;
+}
+
+std::vector<std::string> EditorFileAPI::ListFolders(const std::string& parentVirtualFolder, bool bRecursive) const
+{
+    return m_AssetManager.ListFolders(parentVirtualFolder, bRecursive);
+}
+
+FAssetOpResult EditorFileAPI::CreateFolder(const std::string& folderVirtualPath)
+{
+    return m_AssetManager.CreateFolder(folderVirtualPath);
+}
+
+FAssetOpResult EditorFileAPI::DeleteFolder(const std::string& folderVirtualPath, bool bRecursive)
+{
+    return m_AssetManager.DeleteFolder(folderVirtualPath, bRecursive);
+}
+
+FAssetOpResult EditorFileAPI::RenameFolder(const std::string& oldVirtualPath, const std::string& newVirtualPath)
+{
+    return m_AssetManager.RenameFolder(oldVirtualPath, newVirtualPath);
+}
+
+FAssetOpResult EditorFileAPI::MoveFolder(const std::string& sourceVirtualPath, const std::string& destVirtualPath)
+{
+    return m_AssetManager.MoveFolder(sourceVirtualPath, destVirtualPath);
+}
+
+FAssetOpResult EditorFileAPI::DeleteAsset(const std::string& virtualAssetPath)
+{
+    return m_AssetManager.DeleteAsset(virtualAssetPath);
+}
+
+FAssetOpResult EditorFileAPI::RenameAsset(const std::string& virtualAssetPath, const std::string& newName)
+{
+    return m_AssetManager.RenameAsset(virtualAssetPath, newName);
+}
+
+FAssetOpResult EditorFileAPI::MoveAsset(const std::string& sourceVirtualAssetPath, const std::string& destVirtualFolder)
+{
+    return m_AssetManager.MoveAsset(sourceVirtualAssetPath, destVirtualFolder);
+}
+
+FAssetOpResult EditorFileAPI::DuplicateAsset(const std::string& sourceVirtualAssetPath, const std::string& destVirtualAssetPath)
+{
+    return m_AssetManager.DuplicateAsset(sourceVirtualAssetPath, destVirtualAssetPath);
 }

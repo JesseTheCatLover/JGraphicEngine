@@ -79,6 +79,18 @@ public:
     static bool DeleteFile(const std::string& path);
 
     /**
+     * @brief Copy a file.
+     *
+     * Parent directories for the destination are created automatically if needed.
+     *
+     * @param source Physical source file path.
+     * @param destination Physical destination file path.
+     * @param bOverwrite If true, overwrite destination if it exists.
+     * @return True if successful, false otherwise.
+     */
+    static bool CopyFile(const std::string& source, const std::string& destination, bool bOverwrite = false);
+
+    /**
      * @brief Move (or rename) a file.
      *
      * Parent directories for the destination are created automatically if needed.

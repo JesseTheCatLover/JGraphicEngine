@@ -18,7 +18,6 @@ struct FAssetHeader
     EAssetEncoding encoding = EAssetEncoding::Json;
 
     std::string assetID;
-    std::string assetName;
 
     std::string sourcePath;     // optional
     std::string importerName;   // optional

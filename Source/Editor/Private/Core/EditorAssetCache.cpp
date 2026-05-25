@@ -19,7 +19,7 @@ void EditorAssetCache::PreloadAll(EditorRuntime& runtime)
 void EditorAssetCache::ScanAndLoadTextures(EditorRuntime& runtime)
 {
     const std::string kTexturePathInEngine = "/Engine/Editor/Textures/";
-    auto assets = runtime.GetFile().GetAssetsByPrefix(kTexturePathInEngine);
+    auto assets = runtime.GetFile().FindAllAssetsByVirtualPathPrefix(kTexturePathInEngine);
 
     for (const FAssetRecord* asset : assets)
     {

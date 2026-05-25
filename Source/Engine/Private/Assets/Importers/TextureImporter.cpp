@@ -105,7 +105,6 @@ bool TextureImporter::OnImport(const FAssetImportRequest &request, const Virtual
     // ------------------------------------------------------------
     FAssetHeader header{};
     header.assetID = UUUID::GenerateUUID();
-    header.assetName = UPath::GetFileName(request.sourceFilePath, false);
     header.assetType = EAssetType::Texture2D;
     header.encoding = EAssetEncoding::Binary;
     header.containerVersion = FAssetHeader::CurrentContainerVersion;

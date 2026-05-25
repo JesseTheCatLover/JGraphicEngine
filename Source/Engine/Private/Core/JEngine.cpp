@@ -474,13 +474,25 @@ bool JEngine::InitialBuildAssetPipeline()
 
     // Initial AssetRegistry population:
 
-    if (m_ProjectContext->IsOpen() && m_AssetRegistrySubsystem)
+    if (m_ProjectContext->IsOpen())
     {
-        if (!m_AssetRegistrySubsystem->Rebuild(*m_VirtualPathMounter))
+        if (!GetAssetManager())
+            return false;
+
+        const FAssetOpResult sync = GetAssetManager()->InitialSyncRegistryFromDisk();
+        if (!sync.bSuccess)
         {
-            std::cerr << "[JEngine]: Asset registry rebuild completed with errors\n";
+            std::cerr << "[JEngine]: InitialSyncRegistryFromDisk failed ("
+                  << sync.errors.size() << " errors, "
+                  << sync.warnings.size() << " warnings)\n";
+
+            for (const auto& e : sync.errors)
+                std::cerr << "  - " << e << "\n";
             return false;
         }
+
+        for (const auto& w : sync.warnings)
+            std::cerr << "[JEngine]: InitialSyncRegistryFromDisk warning: " << w << "\n";
     }
     return true;
 }
@@ -827,7 +839,7 @@ void JEngine::CreateDefaultScene() // TODO: Very DEMO DEVELOP Stage Function. Wi
         return actor;
     };
 
-    auto* armouryAsset = GetAssetManager()->FindByVirtualPath("/Project/TheArmoury/model.jasset");
+    auto* armouryAsset = GetAssetManager()->FindAssetByVirtualPath("/Project/TheArmoury/model.jasset");
     if (!armouryAsset)
     {
         std::cerr << "[JEngine] CreateDefaultScene: Armoury asset not found.\n";
@@ -839,7 +851,7 @@ void JEngine::CreateDefaultScene() // TODO: Very DEMO DEVELOP Stage Function. Wi
                                                   "ArmouryStaticMesh");
 
 
-    auto* tapeAsset = GetAssetManager()->FindByVirtualPath("/Project/Tape/Tape.jasset");
+    auto* tapeAsset = GetAssetManager()->FindAssetByVirtualPath("/Project/Tape/Tape.jasset");
     if (!tapeAsset)
     {
         std::cerr << "[JEngine] CreateDefaultScene: Tape asset not found at "
@@ -870,7 +882,7 @@ void JEngine::CreateDefaultScene() // TODO: Very DEMO DEVELOP Stage Function. Wi
     cameraActor->AddRuntimeComponent<JCameraComponent>("CameraComponent");
     cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
 
-    auto* chairAsset = GetAssetManager()->FindByVirtualPath("/Project/DiningChair/DiningChair.jasset");
+    auto* chairAsset = GetAssetManager()->FindAssetByVirtualPath("/Project/DiningChair/DiningChair.jasset");
     if (!chairAsset)
     {
         std::cerr << "[JEngine] CreateDefaultScene: DiningChair asset not found at "

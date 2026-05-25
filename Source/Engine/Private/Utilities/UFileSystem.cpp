@@ -137,6 +137,36 @@ bool UFileSystem::DeleteFile(const std::string& path)
     return fs::remove(fullPath, ec);
 }
 
+bool UFileSystem::CopyFile(const std::string& source, const std::string& destination, bool bOverwrite)
+{
+    const std::string fullSrc = NormalizePhysicalPath(source);
+    const std::string fullDst = NormalizePhysicalPath(destination);
+
+    // Ensure destination parent exists
+    const std::string parent = UPath::GetParent(fullDst);
+    if (!parent.empty() && !CreateDirectory(parent))
+        return false;
+
+    try
+    {
+        if (!fs::exists(fullSrc) || !fs::is_regular_file(fullSrc))
+            return false;
+
+        std::error_code ec;
+
+        const fs::copy_options opts = bOverwrite
+            ? fs::copy_options::overwrite_existing
+            : fs::copy_options::none;
+
+        const bool ok = fs::copy_file(fullSrc, fullDst, opts, ec);
+        return ok && !ec;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
 bool UFileSystem::MoveFile(const std::string& source, const std::string& destination)
 {
     const std::string fullSrc = NormalizePhysicalPath(source);
