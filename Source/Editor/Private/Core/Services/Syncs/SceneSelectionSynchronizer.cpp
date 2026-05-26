@@ -10,39 +10,32 @@ SceneSelectionSynchronizer::SceneSelectionSynchronizer(EditorHost& host, EditorR
     : m_Host(host)
     , m_Runtime(runtime)
 {
-    Bind(m_Host);
+    Bind();
 }
 
-SceneSelectionSynchronizer::~SceneSelectionSynchronizer()
+void SceneSelectionSynchronizer::Bind()
 {
-    Unbind(m_Host);
-}
+    auto& model = m_Host.GetService<SelectionService>().GetSceneActorSelection();
 
-void SceneSelectionSynchronizer::Bind(EditorHost& host)
-{
-    auto& model = host.GetService<SelectionService>().GetSceneActorSelection();
-
-    if (m_ListenerID != 0)
-        return;
-
-    m_ListenerID = model.AddChangedListener([this, &host]()
+    auto* delegate = &model.OnChanged();
+    auto handle = delegate->AddLambda([this]()
     {
-        SyncNow(host);
+        SyncNow();
     });
+
+    m_SelectionChangedSub = TDelegateSubscription<TMulticastDelegate<>>(delegate, handle);
+
+    // Optional: sync immediately on bind so runtime reflects current editor selection
+    SyncNow();
 }
 
-void SceneSelectionSynchronizer::Unbind(EditorHost& host)
+void SceneSelectionSynchronizer::Unbind()
 {
-    if (m_ListenerID == 0)
-        return;
-
-    auto& model = host.GetService<SelectionService>().GetSceneActorSelection();
-    model.RemoveChangedListener(m_ListenerID);
-    m_ListenerID = 0;
+    m_SelectionChangedSub.Reset();
 }
 
-void SceneSelectionSynchronizer::SyncNow(EditorHost& host)
+void SceneSelectionSynchronizer::SyncNow()
 {
-    const auto& selected = host.GetService<SelectionService>().GetSceneActorSelection().GetSelection();
+    const auto& selected = m_Host.GetService<SelectionService>().GetSceneActorSelection().GetSelection();
     m_Runtime.GetScene().SetSelectedActors(selected);
 }

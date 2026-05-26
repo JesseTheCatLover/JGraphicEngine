@@ -7,6 +7,7 @@
 #include <functional>
 #include <vector>
 
+#include "Core/Delegates/TMulticastDelegate.h"
 #include "Scene/FSelectionModifiers.h"
 
 struct FSelectionModifiers;
@@ -15,41 +16,22 @@ template<typename T>
 class TSelectionModel
 {
 public:
-    using FListener = std::function<void()>;
-    using FListenerID = std::size_t;
+    using FOnChanged = TMulticastDelegate<>;
 
 private:
     std::vector<T> m_Selected;
     T m_Anchor{};
     T m_RevealRequest{};
 
-    struct FListenerEntry
-    {
-        FListenerID id = 0;
-        FListener callback;
-    };
-
-    std::vector<FListenerEntry> m_Listeners;
-    FListenerID m_NextListenerID = 1;
+    FOnChanged m_OnChanged;
 
 public:
     [[nodiscard]] const std::vector<T>& GetSelection() const { return m_Selected; }
     [[nodiscard]] const T& GetAnchor() const { return m_Anchor; }
 
-    FListenerID AddChangedListener(FListener listener)
-    {
-        const FListenerID id = m_NextListenerID++;
-        m_Listeners.push_back({ id, std::move(listener) });
-        return id;
-    }
-
-    void RemoveChangedListener(FListenerID id)
-    {
-        m_Listeners.erase(
-            std::remove_if(m_Listeners.begin(), m_Listeners.end(),
-                [id](const FListenerEntry& e) { return e.id == id; }),
-            m_Listeners.end());
-    }
+    // ---- Events ----
+    [[nodiscard]] FOnChanged& OnChanged() { return m_OnChanged; }
+    [[nodiscard]] const FOnChanged& OnChanged() const { return m_OnChanged; }
 
     [[nodiscard]] bool IsSelected(const T& value) const
     {
@@ -61,6 +43,7 @@ public:
         return m_Selected.empty();
     }
 
+    // ---- Commands ----
     bool ApplyClick(const T& value, const FSelectionModifiers& mods, const std::vector<T>* visibleOrder)
     {
         if (IsNullValue(value))
@@ -96,6 +79,7 @@ public:
         m_Selected.clear();
         m_Anchor = T{};
         m_RevealRequest = T{};
+
         NotifyChanged();
         return true;
     }
@@ -145,9 +129,11 @@ private:
             return SelectSingle(value);
 
         auto begin = std::min(itA, itB);
-        auto end = std::max(itA, itB);
+        auto end   = std::max(itA, itB);
 
         std::vector<T> newSelection;
+        newSelection.reserve(static_cast<std::size_t>((end - begin) + 1));
+
         for (auto it = begin; it != end + 1; ++it)
             newSelection.push_back(*it);
 
@@ -160,11 +146,7 @@ private:
 
     void NotifyChanged()
     {
-        for (const FListenerEntry& listener : m_Listeners)
-        {
-            if (listener.callback)
-                listener.callback();
-        }
+        m_OnChanged.Broadcast();
     }
 
     static bool IsNullValue(const T& value)

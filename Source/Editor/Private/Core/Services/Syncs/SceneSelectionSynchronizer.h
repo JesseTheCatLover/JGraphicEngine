@@ -5,6 +5,8 @@
 #include <cstddef>
 
 #include "Core/IEditorService.h"
+#include "Core/Delegates/TDelegateSubscription.h"
+#include "Core/Delegates/TMulticastDelegate.h"
 
 class EditorRuntime;
 class EditorHost;
@@ -14,13 +16,15 @@ class SceneSelectionSynchronizer : public IEditorService
 private:
     EditorHost& m_Host;
     EditorRuntime& m_Runtime;
-    std::size_t m_ListenerID = 0;
+
+    // Auto-unsubscribes in destructor
+    TDelegateSubscription<TMulticastDelegate<>> m_SelectionChangedSub;
 
 public:
     explicit SceneSelectionSynchronizer(EditorHost& host, EditorRuntime& runtime);
-    ~SceneSelectionSynchronizer();
+    ~SceneSelectionSynchronizer() override = default;
 
-    void Bind(EditorHost& host);
-    void Unbind(EditorHost& host);
-    void SyncNow(EditorHost& host);
+    void Bind();
+    void Unbind();
+    void SyncNow();
 };
