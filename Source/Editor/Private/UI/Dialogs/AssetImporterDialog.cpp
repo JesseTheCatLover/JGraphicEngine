@@ -85,10 +85,10 @@ void AssetImporterDialog::Draw(EditorHost& host, EditorRuntime& runtime)
     if (totalWidth < m_MinLeftPaneWidth + m_MinRightPaneWidth)
         totalWidth = m_MinLeftPaneWidth + m_MinRightPaneWidth;
 
-    // On first active frame, initialize splitter in the center with clamp
+    // On first active frame, initialize splitter in the center(almost) with clamp
     if (!m_bInitializedSplitter || m_LeftPaneWidth <= 0.0f)
     {
-        float defaultLeft = totalWidth * 0.5f; // center
+        float defaultLeft = totalWidth * 0.4f; // center
         float maxLeft = totalWidth - m_MinRightPaneWidth;
         if (maxLeft < m_MinLeftPaneWidth)
             maxLeft = m_MinLeftPaneWidth;
