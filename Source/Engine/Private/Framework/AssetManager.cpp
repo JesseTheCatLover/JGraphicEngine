@@ -125,7 +125,6 @@ bool AssetManager::ImportAsset(const FAssetImportRequest& request, FAssetImportR
 
     if (!foldersToSync.empty())
     {
-        // Fallback: if no createdAssets were returned, refresh /Project
         FAssetOpResult sync = SyncRootToRegistry("/Project");
         if (!sync.bSuccess)
             outResult.warnings.emplace_back("Import succeeded, but /Project registry sync had issues.");
