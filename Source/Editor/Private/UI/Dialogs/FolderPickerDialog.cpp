@@ -42,7 +42,7 @@ namespace
     {
         if (name.empty()) return false;
         if (name.find('/') != std::string::npos) return false;
-        // optionally forbid "." and ".." or OS-invalid chars, depending on your VFS rules
+        // optionally forbid "." and ".." or OS-invalid chars
         return true;
     }
 
@@ -121,6 +121,7 @@ void FolderPickerDialog::OnOpen(EditorHost& host, EditorRuntime& runtime)
 
 void FolderPickerDialog::OnClose()
 {
+    m_Pending = {};
     m_bIsOpen = false;
 }
 
@@ -172,7 +173,7 @@ void FolderPickerDialog::Draw(EditorHost& host, EditorRuntime& runtime)
     }
     m_bIsOpen = open;
 
-    RefreshIfDirty(host, runtime);
+    RefreshViewIfDirty(host, runtime);
     DrawContent(host, runtime);
 
     ImGui::End();
@@ -205,7 +206,7 @@ void FolderPickerDialog::DrawTopBar()
 
     if (ImGui::Button("Up"))
     {
-        const std::string parent = ComputeParentPath(m_CurrentPath);
+        const std::string parent = UPath::GetParent(m_CurrentPath);
         if (IsSameOrUnderPath("/Project", parent))
             SetCurrentPath(parent);
         else
@@ -281,12 +282,12 @@ void FolderPickerDialog::DrawBottomBar(EditorHost& host)
     {
         std::string created = OnCreateFolderClicked();
 
-        m_PendingRenameTarget = created;
-        m_PendingRenameBuffer = UPath::GetFileName(created);
-        m_bStartRenameFocus   = true;
+        m_Pending.renameTarget = created;
+        m_Pending.renameBuffer = UPath::GetFileName(created);
+        m_Pending.bStartRenameFocus   = true;
 
         // Also ensure it’s visible: open its parent chain
-        m_PendingExpanded.insert(UPath::GetParent(created));
+        m_Pending.expanded.insert(UPath::GetParent(created));
     }
 
     const float rightButtonsX = ImGui::GetCursorPosX() + (fullWidth - totalRightButtonsW);
@@ -333,7 +334,7 @@ void FolderPickerDialog::DrawBottomBar(EditorHost& host)
     }
 }
 
-void FolderPickerDialog::SetInitialPath(const std::string &path)
+void FolderPickerDialog::SetDestinationPathOnPicker(const std::string &path)
 {
     m_CurrentPath = UPath::Normalize(path.empty() ? m_CurrentPath : path);
     if (!IsSameOrUnderPath("/Project", m_CurrentPath))
@@ -348,7 +349,7 @@ void FolderPickerDialog::SetInitialPath(const std::string &path)
     }
 }
 
-void FolderPickerDialog::RefreshIfDirty(EditorHost& host, EditorRuntime& runtime)
+void FolderPickerDialog::RefreshViewIfDirty(EditorHost& host, EditorRuntime& runtime)
 {
     if (!m_bDirty) return;
 
@@ -356,7 +357,7 @@ void FolderPickerDialog::RefreshIfDirty(EditorHost& host, EditorRuntime& runtime
 
     m_View.projectionMode = EAssetBrowserProjectionMode::Tree;
     m_View.rootPath = "/Project";
-    m_View.currentPath = UPath::Normalize(m_CurrentPath.empty() ? "/Project" : m_CurrentPath);
+    m_View.currentPath = m_CurrentPath;
 
     abs.RefreshView(m_View);
 
@@ -392,21 +393,6 @@ void FolderPickerDialog::SetCurrentPath(const std::string& path)
     m_bDirty = true;
 }
 
-std::string FolderPickerDialog::ComputeParentPath(const std::string& normalizedPath) const
-{
-    std::string p = UPath::Normalize(normalizedPath);
-    if (IsRootPath(p))
-        return "/";
-
-    while (p.size() > 1 && p.back() == '/')
-        p.pop_back();
-
-    std::size_t lastSlash = p.find_last_of('/');
-    if (lastSlash == std::string::npos || lastSlash == 0)
-        return "/";
-
-    return p.substr(0, lastSlash);
-}
 void FolderPickerDialog::DrawDirectoryNodeByID(AssetBrowserNodeID id)
 {
     const auto itNode = m_View.nodeCache.find(id);
@@ -472,8 +458,8 @@ void FolderPickerDialog::DrawDirectoryNodeByID(AssetBrowserNodeID id)
         }
 
         // Draw pending children overlay
-        if (auto itP = m_PendingChildrenByParent.find(node.virtualPath);
-            itP != m_PendingChildrenByParent.end())
+        if (auto itP = m_Pending.childrenByParent.find(node.virtualPath);
+            itP != m_Pending.childrenByParent.end())
         {
             for (const std::string& pendingChildPath : itP->second)
             {
@@ -550,8 +536,8 @@ bool FolderPickerDialog::AddPendingFolderPath(const std::string& rawPath)
     // Ensure all parents are expanded so the new child is visible
     if (!parent.empty())
     {
-        m_PendingExpanded.insert(parent);
-        AddParentChain(m_PendingExpanded, parent);
+        m_Pending.expanded.insert(parent);
+        AddParentChain(m_Pending.expanded, parent);
     }
 
     // Add parents too (optional but recommended)
@@ -569,9 +555,9 @@ bool FolderPickerDialog::AddPendingFolderPath(const std::string& rawPath)
     bool bAnyAdded = false;
     for (const std::string& p : chain)
     {
-        if (m_PendingCreateSet.insert(p).second)
+        if (m_Pending.createSet.insert(p).second)
         {
-            m_PendingCreateOrder.push_back(p);
+            m_Pending.createOrder.push_back(p);
             bAnyAdded = true;
         }
     }
@@ -594,19 +580,19 @@ void FolderPickerDialog::RemovePendingFolderPathAndDescendants(const std::string
 
     // rebuild order vector
     std::vector<std::string> newOrder;
-    newOrder.reserve(m_PendingCreateOrder.size());
+    newOrder.reserve(m_Pending.createOrder.size());
 
-    m_PendingCreateSet.clear();
+    m_Pending.createSet.clear();
 
-    for (const std::string& p : m_PendingCreateOrder)
+    for (const std::string& p : m_Pending.createOrder)
     {
         if (isUnder(p))
             continue;
-        if (m_PendingCreateSet.insert(p).second)
+        if (m_Pending.createSet.insert(p).second)
             newOrder.push_back(p);
     }
 
-    m_PendingCreateOrder = std::move(newOrder);
+    m_Pending.createOrder = std::move(newOrder);
     RebuildPendingChildrenIndex();
 
     m_bDirty = true;
@@ -614,9 +600,9 @@ void FolderPickerDialog::RemovePendingFolderPathAndDescendants(const std::string
 
 void FolderPickerDialog::RebuildPendingChildrenIndex()
 {
-    m_PendingChildrenByParent.clear();
+    m_Pending.childrenByParent.clear();
 
-    for (const std::string& childPath : m_PendingCreateOrder)
+    for (const std::string& childPath : m_Pending.createOrder)
     {
         const std::string child = UPath::Normalize(childPath);
         if (child.empty() || child == "/Project") continue;
@@ -624,11 +610,11 @@ void FolderPickerDialog::RebuildPendingChildrenIndex()
         const std::string parent = UPath::GetParent(child);
         if (parent.empty()) continue;
 
-        m_PendingChildrenByParent[parent].push_back(child);
+        m_Pending.childrenByParent[parent].push_back(child);
     }
 
     // Optional: sort children by display name for stable UI
-    for (auto& [parent, kids] : m_PendingChildrenByParent)
+    for (auto& [parent, kids] : m_Pending.childrenByParent)
     {
         std::sort(kids.begin(), kids.end());
         kids.erase(std::unique(kids.begin(), kids.end()), kids.end());
@@ -640,7 +626,7 @@ bool FolderPickerDialog::CommitPendingFolders(EditorHost& host)
     auto& abs = host.GetService<AssetBrowserService>();
 
     // create in parent-first order:
-    std::vector<std::string> paths = m_PendingCreateOrder;
+    std::vector<std::string> paths = m_Pending.createOrder;
     std::sort(paths.begin(), paths.end(), [](auto& a, auto& b)
     {
         return std::count(a.begin(), a.end(), '/') < std::count(b.begin(), b.end(), '/');
@@ -655,11 +641,11 @@ bool FolderPickerDialog::CommitPendingFolders(EditorHost& host)
         auto r = abs.CreateFolder(m_View, p);
     }
 
-    m_PendingCreateOrder.clear();
-    m_PendingCreateSet.clear();
+    m_Pending.createOrder.clear();
+    m_Pending.createSet.clear();
 
     // also clear any pending-children mapping
-    m_PendingChildrenByParent.clear();
+    m_Pending.childrenByParent.clear();
 
     m_bDirty = true;
     return true;
@@ -682,7 +668,7 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
     {
         flags |= ImGuiTreeNodeFlags_OpenOnArrow;
 
-        const bool bDefaultOpen = m_PendingExpanded.contains(path);
+        const bool bDefaultOpen = m_Pending.expanded.contains(path);
         ImGui::SetNextItemOpen(bDefaultOpen, ImGuiCond_Once);
     }
     else
@@ -694,7 +680,7 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
     // Dim pending rows
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
 
-    const bool bIsRenaming = (m_PendingRenameTarget == path);
+    const bool bIsRenaming = (m_Pending.renameTarget == path);
 
     bool bOpened = false;
 
@@ -706,19 +692,19 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
         bool dbl = hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
         if (dbl)
         {
-            m_PendingRenameTarget = path;
-            m_PendingRenameBuffer = UPath::GetFileName(path);
-            m_bStartRenameFocus = true;
+            m_Pending.renameTarget = path;
+            m_Pending.renameBuffer = UPath::GetFileName(path);
+            m_Pending.bStartRenameFocus = true;
         }
     }
     else
     {
         bOpened = ImGui::TreeNodeEx("##PendingRow", flags, "%s", "");
 
-        if (m_bStartRenameFocus)
+        if (m_Pending.bStartRenameFocus)
         {
             ImGui::SetKeyboardFocusHere();
-            m_bStartRenameFocus = false;
+            m_Pending.bStartRenameFocus = false;
         }
 
         ImGui::PushStyleColor(ImGuiCol_FrameBg,        IM_COL32(0,0,0,0));
@@ -732,7 +718,7 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
         ImGui::SetNextItemWidth(220.0f);
         const bool bEnter =
             ImGui::InputText("##PendingRenameInput",
-                             &m_PendingRenameBuffer,
+                             &m_Pending.renameBuffer,
                              ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
         ImGui::PopStyleVar();
         ImGui::PopStyleColor(4);
@@ -751,7 +737,7 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
         const bool cancel = (!enterPressed) && deactivated && !deactivatedAfterEdit; // left focus without edits
 
         if (commit) {
-            CommitPendingRename(path, m_PendingRenameBuffer);
+            CommitPendingRename(path, m_Pending.renameBuffer);
             EndPendingRename(); // clear target/buffer
         }
         else if (cancel || clickAway)
@@ -765,8 +751,8 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
     // Persist expand/collapse for pending nodes
     if (bExpandable)
     {
-        if (bOpened) m_PendingExpanded.insert(path);
-        else         m_PendingExpanded.erase(path);
+        if (bOpened) m_Pending.expanded.insert(path);
+        else         m_Pending.expanded.erase(path);
     }
 
     // Selection click must be checked immediately after the TreeNodeEx item
@@ -778,9 +764,9 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
     {
         if (ImGui::MenuItem("Rename"))
         {
-            m_PendingRenameTarget = path;
-            m_PendingRenameBuffer = UPath::GetFileName(path);
-            m_bStartRenameFocus = true;
+            m_Pending.renameTarget = path;
+            m_Pending.renameBuffer = UPath::GetFileName(path);
+            m_Pending.bStartRenameFocus = true;
         }
         if (ImGui::MenuItem("Delete"))
         {
@@ -819,7 +805,7 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
     // Draw nested pending children if expanded
     if (bExpandable && bOpened)
     {
-        if (auto itP = m_PendingChildrenByParent.find(path); itP != m_PendingChildrenByParent.end())
+        if (auto itP = m_Pending.childrenByParent.find(path); itP != m_Pending.childrenByParent.end())
         {
             for (const std::string& child : itP->second)
                 DrawPendingChildRow(child);
@@ -836,9 +822,9 @@ bool FolderPickerDialog::CommitPendingRename(const std::string& oldPathRaw, cons
     std::string newName = newNameRaw;
     // trim? up to you
 
-    if (!m_PendingCreateSet.contains(oldPath))
+    if (!m_Pending.createSet.contains(oldPath))
     {
-        m_PendingRenameTarget.clear();
+        m_Pending.renameTarget.clear();
         return false;
     }
 
@@ -854,9 +840,9 @@ bool FolderPickerDialog::CommitPendingRename(const std::string& oldPathRaw, cons
 
     // Rewrite pending-expanded set entries under oldPath -> desiredNewPath
     std::unordered_set<std::string> newExpanded;
-    newExpanded.reserve(m_PendingExpanded.size());
+    newExpanded.reserve(m_Pending.expanded.size());
 
-    for (const auto& e0 : m_PendingExpanded)
+    for (const auto& e0 : m_Pending.expanded)
     {
         std::string e = UPath::Normalize(e0);
         if (e == oldPath || IsAncestorPath(oldPath, e))
@@ -864,7 +850,7 @@ bool FolderPickerDialog::CommitPendingRename(const std::string& oldPathRaw, cons
 
         newExpanded.insert(e);
     }
-    m_PendingExpanded = std::move(newExpanded);
+    m_Pending.expanded = std::move(newExpanded);
 
     // If collision (real or pending), choose numbered variant
     if (IsFolderPresentInUI(desiredNewPath) && desiredNewPath != oldPath)
@@ -875,17 +861,17 @@ bool FolderPickerDialog::CommitPendingRename(const std::string& oldPathRaw, cons
     desiredNewPath = UPath::Normalize(desiredNewPath);
     if (desiredNewPath == oldPath)
     {
-        m_PendingRenameTarget.clear();
+        m_Pending.renameTarget.clear();
         return true;
     }
 
     // Rewrite ALL pending paths in subtree oldPath/*
     std::vector<std::string> rewrittenOrder;
-    rewrittenOrder.reserve(m_PendingCreateOrder.size());
+    rewrittenOrder.reserve(m_Pending.createOrder.size());
     std::unordered_set<std::string> rewrittenSet;
-    rewrittenSet.reserve(m_PendingCreateSet.size());
+    rewrittenSet.reserve(m_Pending.createSet.size());
 
-    for (const std::string& p0 : m_PendingCreateOrder)
+    for (const std::string& p0 : m_Pending.createOrder)
     {
         const std::string p = UPath::Normalize(p0);
 
@@ -902,14 +888,14 @@ bool FolderPickerDialog::CommitPendingRename(const std::string& oldPathRaw, cons
             rewrittenOrder.push_back(out);
     }
 
-    m_PendingCreateOrder = std::move(rewrittenOrder);
-    m_PendingCreateSet = std::move(rewrittenSet);
+    m_Pending.createOrder = std::move(rewrittenOrder);
+    m_Pending.createSet = std::move(rewrittenSet);
 
     // Selection/currentPath rewrite too
     if (m_CurrentPath == oldPath || IsAncestorPath(oldPath, m_CurrentPath))
         SetCurrentPath(desiredNewPath + m_CurrentPath.substr(oldPath.size()));
 
-    m_PendingRenameTarget.clear();
+    m_Pending.renameTarget.clear();
     RebuildPendingChildrenIndex();
     m_bDirty = true;
     return true;
@@ -917,9 +903,9 @@ bool FolderPickerDialog::CommitPendingRename(const std::string& oldPathRaw, cons
 
 void FolderPickerDialog::EndPendingRename()
 {
-    m_PendingRenameTarget.clear();
-    m_PendingRenameBuffer.clear();
-    m_bStartRenameFocus = false;
+    m_Pending.renameTarget.clear();
+    m_Pending.renameBuffer.clear();
+    m_Pending.bStartRenameFocus = false;
 }
 
 void FolderPickerDialog::CancelPendingRename()
@@ -927,7 +913,6 @@ void FolderPickerDialog::CancelPendingRename()
     // If we want cancel to revert, just discard buffer:
     EndPendingRename();
 }
-
 
 std::string FolderPickerDialog::MakeUniqueChildPath(const std::string& parent, const std::string& baseName) const
 {
@@ -957,7 +942,7 @@ std::string FolderPickerDialog::OnCreateFolderClicked()
 
     // Ensure both real-tree base and pending-tree base open
     m_View.expandedFolderPaths.insert(base);
-    m_PendingExpanded.insert(base);
+    m_Pending.expanded.insert(base);
 
     return uniquePath;
 }
@@ -982,18 +967,18 @@ bool FolderPickerDialog::IsSameOrUnderPath(const std::string& normalizedAncestor
 
 bool FolderPickerDialog::IsFolderPresentInUI(const std::string& normalizedPath) const
 {
-    return (m_PendingCreateSet.contains(normalizedPath)) ||
+    return (m_Pending.createSet.contains(normalizedPath)) ||
         m_View.pathToID.contains(normalizedPath); // projection knows it exists
 }
 
 bool FolderPickerDialog::HasPendingChildFolder(const std::string& normalizedParent) const
 {
-    // if you build m_PendingChildrenByParent
-    auto it = m_PendingChildrenByParent.find(normalizedParent);
-    return it != m_PendingChildrenByParent.end() && !it->second.empty();
+    // if you build m_Pending.childrenByParent
+    auto it = m_Pending.childrenByParent.find(normalizedParent);
+    return it != m_Pending.childrenByParent.end() && !it->second.empty();
 }
 
-bool FolderPickerDialog::FolderHasChildren(const FAssetBrowserNode& node)
+bool FolderPickerDialog::FolderHasChildren(const FAssetBrowserNode& node) const
 {
     // STRICT: only show arrow if we *know* there are child folders
     return node.bChildFoldersKnown && node.bHasChildFolders;

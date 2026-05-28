@@ -435,7 +435,7 @@ void AssetImporterDialog::OnChooseDestinationForSelected(EditorHost& host, Edito
 
     const std::vector<int> targetIndices = m_SelectedIndices;
 
-    picker->SetInitialPath(initialPath);
+    picker->SetDestinationPathOnPicker(initialPath);
     picker->SetOnAccepted(
             [this, targetIndices](const std::string& selectedPath)
             {

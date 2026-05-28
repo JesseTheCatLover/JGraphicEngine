@@ -17,35 +17,43 @@ class EditorRuntime;
 class FolderPickerDialog final : public IEditorDialog
 {
 private:
+    // Lifetime
     bool m_bIsOpen = false;
     bool m_bJustOpened = false;  // for one-shot focus
     bool m_bDirty = true;
 
-    EditorHost* m_Host;
-
-    FAssetBrowserViewState m_View;
+    // Services
+    EditorHost* m_Host = nullptr;
     FDelegateHandle m_AssetsMutatedHandle;
 
-    std::string m_Title = "Select Destination Folder";
-    std::string m_CurrentPath = "/Project";  // default virtual folder path
+    // Asset browser projection
+    FAssetBrowserViewState m_View;
 
+    struct FPendingFolderState
+    {
+        std::vector<std::string> createOrder;
+        std::unordered_set<std::string> createSet;
+        std::unordered_map<std::string, std::vector<std::string>> childrenByParent;
+        std::unordered_set<std::string> expanded;
+        std::string renameTarget;
+        std::string renameBuffer;
+
+        bool bStartRenameFocus = false;
+    };
+
+    // Pending virtual folders
+    FPendingFolderState m_Pending;
+
+    // Current selection/path
+    std::string m_CurrentPath = "/Project"; // default virtual folder path
     std::string m_PathInputBuffer;
 
-    // Pending folder creations (virtual paths, normalized, under /Project)
-    std::vector<std::string> m_PendingCreateOrder;        // stable order for UI
-    std::unordered_set<std::string> m_PendingCreateSet;   // fast membership
-
-    // parentPath -> list of pending child paths
-    std::unordered_map<std::string, std::vector<std::string>> m_PendingChildrenByParent;
-
-    std::unordered_set<std::string> m_PendingExpanded;
-    std::string m_PendingRenameTarget;   // normalized path being renamed (pending)
-    std::string m_PendingRenameBuffer;   // editable folder name only (leaf)
-    bool m_bStartRenameFocus = false;    // one-shot focus
-
+    // Callbacks
     std::function<void(const std::string&)> m_OnAccepted;
 
     // Layout
+    std::string m_Title = "Select Destination Folder";
+
     float m_InitialWidth = 300.0f;
     float m_InitialHeight = 500.0f;
 
@@ -69,12 +77,15 @@ public:
 
     // Optionally let caller override title
     void SetTitle(const std::string& title) { m_Title = title; }
-    void SetInitialPath(const std::string& path);
+
+    // Let caller manipulate the destination path
+    void SetDestinationPathOnPicker(const std::string& path);
+
     // Set callback on folder selection
     void SetOnAccepted(std::function<void(const std::string&)> callback) { m_OnAccepted = std::move(callback); }
 
 private:
-    void RefreshIfDirty(EditorHost& host, EditorRuntime& runtime);
+    void RefreshViewIfDirty(EditorHost& host, EditorRuntime& runtime);
 
     void DrawContent(EditorHost& host, EditorRuntime& runtime);
     void DrawTopBar();
@@ -82,7 +93,6 @@ private:
     void DrawBottomBar(EditorHost& host);
 
     void SetCurrentPath(const std::string& path);
-    [[nodiscard]] std::string ComputeParentPath(const std::string& normalizedPath) const;
 
     void DrawDirectoryNodeByID(AssetBrowserNodeID id);
 
@@ -110,5 +120,5 @@ private:
     static bool IsSameOrUnderPath(const std::string& normalizedAncestor, const std::string& normalizedPath);
     [[nodiscard]] bool IsFolderPresentInUI(const std::string& normalizedPath) const;
     bool HasPendingChildFolder(const std::string& normalizedParent) const;
-    bool FolderHasChildren(const FAssetBrowserNode& node);
+    bool FolderHasChildren(const FAssetBrowserNode& node) const;
 };
