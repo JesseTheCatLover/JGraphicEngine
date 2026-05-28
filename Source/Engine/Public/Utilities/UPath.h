@@ -45,13 +45,25 @@ public:
     }
 
     /**
-     * @brief Lexically normalize a path.
+     * @brief Lexically normalizes a path into canonical virtual-path form.
      *
-     * Normalizes slashes and resolves "." and ".." lexically without consulting
-     * project-root state or requiring the path to exist on disk.
+     * The function:
      *
-     * @param path Relative or absolute path.
-     * @return Lexically normalized path string using forward slashes.
+     * - Converts all separators to forward slashes ('/')
+     * - Forces the path to begin with '/'
+     * - Collapses repeated slashes
+     * - Resolves "." and ".." path segments lexically
+     * - Removes trailing slashes except for the root path
+     *
+     * The returned path is always in normalized forward-slash form and is
+     * suitable for virtual asset paths and internal engine path handling.
+     *
+     * Examples:
+     * - "Textures\\UI//Button.png"
+     *      -> "/Textures/UI/Button.png"
+     *
+     * @param path Relative or absolute input path.
+     * @return Normalized virtual-style path using forward slashes.
      */
     static std::string Normalize(const std::string& path);
 

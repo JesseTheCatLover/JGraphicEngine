@@ -8,14 +8,50 @@ namespace
     {
         return path.generic_string();
     }
+
+    static inline void ReplaceAll(std::string& s, const std::string& a, const std::string& b)
+    {
+        size_t pos = 0;
+        while ((pos = s.find(a, pos)) != std::string::npos)
+        {
+            s.replace(pos, a.size(), b);
+            pos += b.size();
+        }
+    }
 }
 
 // ----------------- Path Manipulation -----------------
 
 std::string UPath::Normalize(const std::string& path)
 {
-    const std::filesystem::path p(path);
-    return ToGenericString(p.lexically_normal());
+    if (path.empty())
+        return {};
+
+    // Ensure generic separators first
+    std::string s = path;
+    std::replace(s.begin(), s.end(), '\\', '/');
+
+    // If you want to force absolute-virtual paths:
+    if (!s.empty() && s.front() != '/')
+        s.insert(s.begin(), '/');
+
+    // Collapse repeated slashes early
+    while (s.find("//") != std::string::npos)
+        ReplaceAll(s, "//", "/");
+
+    // Lexical normalize dot segments using filesystem (ok if we keep it purely lexical)
+    std::filesystem::path p(s);
+    s = ToGenericString(p.lexically_normal());
+
+    // Collapse slashes again (lexically_normal can reintroduce things in odd inputs)
+    while (s.find("//") != std::string::npos)
+        ReplaceAll(s, "//", "/");
+
+    // Remove trailing slash except root
+    while (s.size() > 1 && s.back() == '/')
+        s.pop_back();
+
+    return s;
 }
 
 std::string UPath::GetParent(const std::string& path)
