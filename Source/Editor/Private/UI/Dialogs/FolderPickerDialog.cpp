@@ -11,7 +11,7 @@
 #include "Utilities/UPath.h"
 #include "EditorRuntime.h"
 #include "Core/EditorHost.h"
-#include "Core/Services/AssetBrowserService.h"
+#include "Core/Services/AssetBrowser/AssetBrowserService.h"
 
 namespace
 {

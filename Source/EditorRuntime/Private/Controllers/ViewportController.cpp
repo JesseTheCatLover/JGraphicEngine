@@ -16,7 +16,7 @@
 #include "Core/Services/HierarchyService.h"
 #include "Core/Services/ScenePickingService.h"
 #include "Core/Services/SceneQueryService.h"
-#include "Core/Services/SelectionService.h"
+#include "Core/Services/Selection/SelectionService.h"
 #include "Framework/InputManager.h"
 #include "Rendering/EViewType.h"
 #include "Rendering/FRenderView.h"

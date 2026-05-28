@@ -6,7 +6,7 @@
 #include <unordered_set>
 
 #include "Core/EditorHost.h"
-#include "Core/Services/SelectionService.h"
+#include "../Selection/SelectionService.h"
 #include "Assets/FAssetRecord.h"
 #include "Utilities/UPath.h"
 

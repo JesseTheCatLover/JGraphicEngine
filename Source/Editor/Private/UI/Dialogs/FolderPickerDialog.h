@@ -8,7 +8,7 @@
 #include <functional>
 
 #include "Core/Delegates/FDelegateHandle.h"
-#include "Core/Services/Types/FAssetBrowserViewState.h"
+#include "Core/Services/AssetBrowser/FAssetBrowserViewState.h"
 #include "UI/IEditorDialog.h"
 
 class EditorHost;

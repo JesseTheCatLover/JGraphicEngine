@@ -5,7 +5,7 @@
 #include <functional>
 
 #include "SceneQueryService.h"
-#include "SelectionService.h"
+#include "Selection/SelectionService.h"
 #include "Controllers/Outputs/FHierarchyOutput.h"
 #include "Core/EditorHost.h"
 

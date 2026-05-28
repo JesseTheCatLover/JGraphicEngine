@@ -1,7 +1,7 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "FAssetBrowserViewState.h"
-#include "Core/Services/Models/TSelectionModel.h"
+#include "Core/Services/Selection/TSelectionModel.h"
 
 FAssetBrowserViewState::FAssetBrowserViewState() = default;
 FAssetBrowserViewState::~FAssetBrowserViewState() = default;

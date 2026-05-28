@@ -4,7 +4,7 @@
 
 #include "Core/EditorHost.h"
 #include "Core/Services/HierarchyService.h"
-#include "Core/Services/SelectionService.h"
+#include "Core/Services/Selection/SelectionService.h"
 #include "Controllers/Inputs/FHierarchyPanelInput.h"
 #include "Controllers/Outputs/FHierarchyOutput.h"
 #include "Scene/FSelectionModifiers.h"

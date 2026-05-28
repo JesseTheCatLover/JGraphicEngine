@@ -8,8 +8,8 @@
 
 #include "Core/IEditorService.h"
 #include "Core/Delegates/TMulticastDelegate.h"
-#include "Types/FAssetBrowserNode.h"
-#include "Types/FAssetBrowserViewState.h"
+#include "FAssetBrowserNode.h"
+#include "FAssetBrowserViewState.h"
 
 struct FAssetOpResult;
 class EditorFileAPI;

@@ -3,7 +3,7 @@
 #include "SceneSelectionSynchronizer.h"
 
 #include "Core/EditorHost.h"
-#include "Core/Services/SelectionService.h"
+#include "SelectionService.h"
 #include "EditorRuntime.h"
 
 SceneSelectionSynchronizer::SceneSelectionSynchronizer(EditorHost& host, EditorRuntime& runtime)

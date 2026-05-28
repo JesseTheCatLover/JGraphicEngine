@@ -6,7 +6,7 @@
 #include "Core/EditorHost.h"
 #include "Subsystems/SceneHierarchySubsystem.h"
 #include "Controllers/Outputs/FHierarchyOutput.h"
-#include "Core/Services/SelectionService.h"
+#include "Core/Services/Selection/SelectionService.h"
 
 // helpers
 static bool FindNodeById(const std::vector<FHierarchySnapshot>& actors, ActorID id, FHierarchySnapshot& outNode)

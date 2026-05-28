@@ -4,7 +4,7 @@
 #include "Controllers/Documents/ActorInspectorProvider.h"
 
 #include "Core/EditorHost.h"
-#include "Core/Services/SelectionService.h"
+#include "Core/Services/Selection/SelectionService.h"
 
 #include "Controllers/Inputs/FInspectorPanelInput.h"
 #include "Controllers/Outputs/FInspectorOutput.h"

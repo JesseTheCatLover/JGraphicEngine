@@ -6,7 +6,7 @@
 #include <string>
 
 #include "Core/IEditorService.h"
-#include "Models/TSelectionModel.h"
+#include "TSelectionModel.h"
 
 class SelectionService : public IEditorService
 {
