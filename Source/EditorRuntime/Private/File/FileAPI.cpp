@@ -138,6 +138,11 @@ std::vector<std::string> EditorFileAPI::ListFolders(const std::string& parentVir
     return m_AssetManager.ListFolders(parentVirtualFolder, bRecursive);
 }
 
+std::vector<FVirtualDirEntry> EditorFileAPI::ListDirectory(const std::string& parentVirtualFolder) const
+{
+    return m_AssetManager.ListDirectory(parentVirtualFolder);
+}
+
 FAssetOpResult EditorFileAPI::CreateFolder(const std::string& folderVirtualPath)
 {
     return m_AssetManager.CreateFolder(folderVirtualPath);

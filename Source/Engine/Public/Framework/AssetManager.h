@@ -8,6 +8,7 @@
 #include "Assets/FAssetRecord.h"
 #include "Assets/FAssetImportRequest.h"
 #include "Assets/FAssetOpResult.h"
+#include "Assets/FVirtualDirEntry.h"
 
 struct FAssetImportResult;
 class AssetRegistrySubsystem;
@@ -160,6 +161,13 @@ public:
      */
     [[nodiscard]]
     std::vector<std::string> ListFolders(const std::string& parentVirtualFolder, bool bRecursive) const;
+
+    /**
+     * @brief List immediate children (folders + assets) of a virtual folder.
+     * Non-recursive. Returned paths are normalized virtual paths.
+     */
+    [[nodiscard]]
+    std::vector<FVirtualDirEntry> ListDirectory(const std::string& parentVirtualFolder) const;
 
     /**
      * @brief Create a folder on disk for a given virtual folder path.

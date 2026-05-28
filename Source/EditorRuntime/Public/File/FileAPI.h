@@ -6,6 +6,7 @@
 #include "Assets/AssetTypes.h"
 #include "Assets/EAssetDomain.h"
 #include "Assets/FAssetOpResult.h"
+#include "Assets/FVirtualDirEntry.h"
 #include "Rendering/RHandles.h"
 
 struct FAssetImportResult;
@@ -47,6 +48,8 @@ public:
 
     [[nodiscard]] std::vector<std::string> ListFolders(const std::string& parentVirtualFolder,
                                                        bool bRecursive = false) const;
+
+    [[nodiscard]] std::vector<FVirtualDirEntry> ListDirectory(const std::string& parentVirtualFolder) const;
 
     [[nodiscard]] FAssetOpResult CreateFolder(const std::string& folderVirtualPath);
     [[nodiscard]] FAssetOpResult DeleteFolder(const std::string& folderVirtualPath, bool bRecursive = true);

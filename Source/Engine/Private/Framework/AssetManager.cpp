@@ -231,6 +231,68 @@ std::vector<std::string> AssetManager::ListFolders(const std::string& parentVirt
 
     return result;
 }
+
+std::vector<FVirtualDirEntry> AssetManager::ListDirectory(const std::string& parentVirtualFolder) const
+{
+    std::vector<FVirtualDirEntry> out;
+
+    if (!m_PathMounter || !m_Registry)
+        return out;
+
+    const std::string parentV = NormalizeVirtualFolder(parentVirtualFolder);
+
+    // 1) Child folders (disk truth)
+    {
+        std::vector<std::string> folders = ListFolders(parentV, /*bRecursive=*/false);
+        out.reserve(out.size() + folders.size());
+
+        for (const std::string& f : folders)
+        {
+            FVirtualDirEntry e;
+            e.type = FVirtualDirEntry::EType::Folder;
+            e.virtualPath = NormalizeVirtualFolder(f);
+            e.name = GetLeafName(e.virtualPath);
+            out.push_back(std::move(e));
+        }
+    }
+
+    // 2) Child assets (registry)
+    //
+    // We currently only have FindAllAssetsByVirtualPathPrefix
+    // We'll filter to *direct* children of parentV by checking parent folder
+    {
+        std::vector<const FAssetRecord*> assets = FindAllAssetsByVirtualPathPrefix(parentV);
+
+        // Heuristic: only keep assets whose parent folder == parentV
+        for (const FAssetRecord* a : assets)
+        {
+            if (!a) continue;
+
+            const std::string assetV = NormalizeVirtualPath(a->virtualPath);
+
+            if (NormalizeVirtualFolder(GetParentFolder(assetV)) != parentV)
+                continue;
+
+            FVirtualDirEntry e;
+            e.type = FVirtualDirEntry::EType::Asset;
+            e.virtualPath = assetV;
+            e.name = GetLeafName(assetV);
+            out.push_back(std::move(e));
+        }
+    }
+
+    // Optional: stable sort (folders first, then alphabetical)
+    std::sort(out.begin(), out.end(),
+        [](const FVirtualDirEntry& a, const FVirtualDirEntry& b)
+        {
+            if (a.type != b.type)
+                return a.type == FVirtualDirEntry::EType::Folder;
+            return a.name < b.name;
+        });
+
+    return out;
+}
+
 // =====================================================================
 // Folder operations (collision-safe)
 // =====================================================================
