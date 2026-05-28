@@ -6,6 +6,9 @@
 #include <unordered_set>
 #include <vector>
 #include <functional>
+
+#include "Core/Delegates/FDelegateHandle.h"
+#include "Core/Services/Types/FAssetBrowserViewState.h"
 #include "UI/IEditorDialog.h"
 
 class EditorHost;
@@ -18,26 +21,27 @@ private:
     bool m_bJustOpened = false;  // for one-shot focus
     bool m_bDirty = true;
 
+    EditorHost* m_Host;
+
+    FAssetBrowserViewState m_View;
+    FDelegateHandle m_AssetsMutatedHandle;
+
     std::string m_Title = "Select Destination Folder";
     std::string m_CurrentPath = "/Project";  // default virtual folder path
 
-    struct FDirectoryEntry
-    {
-        std::string name;        // "Textures"
-        std::string virtualPath; // "/Project/Textures"
-    };
-
-    struct FDirectoryNode
-    {
-        std::string name;
-        std::string virtualPath;
-        std::vector<FDirectoryNode> children;
-    };
-
-    std::vector<FDirectoryNode> m_RootDirectories;
-    std::unordered_set<std::string> m_ExpandedPaths;
-
     std::string m_PathInputBuffer;
+
+    // Pending folder creations (virtual paths, normalized, under /Project)
+    std::vector<std::string> m_PendingCreateOrder;        // stable order for UI
+    std::unordered_set<std::string> m_PendingCreateSet;   // fast membership
+
+    // parentPath -> list of pending child paths
+    std::unordered_map<std::string, std::vector<std::string>> m_PendingChildrenByParent;
+
+    std::unordered_set<std::string> m_PendingExpanded;
+    std::string m_PendingRenameTarget;   // normalized path being renamed (pending)
+    std::string m_PendingRenameBuffer;   // editable folder name only (leaf)
+    bool m_bStartRenameFocus = false;    // one-shot focus
 
     std::function<void(const std::string&)> m_OnAccepted;
 
@@ -65,37 +69,46 @@ public:
 
     // Optionally let caller override title
     void SetTitle(const std::string& title) { m_Title = title; }
-    void SetInitialPath(const std::string& path) { SetCurrentPath(path); }
-    // Set callback on folder seleciton
+    void SetInitialPath(const std::string& path);
+    // Set callback on folder selection
     void SetOnAccepted(std::function<void(const std::string&)> callback) { m_OnAccepted = std::move(callback); }
 
 private:
-    void RefreshIfDirty(EditorRuntime& runtime);
+    void RefreshIfDirty(EditorHost& host, EditorRuntime& runtime);
 
     void DrawContent(EditorHost& host, EditorRuntime& runtime);
     void DrawTopBar();
     void DrawDirectoryList();
-    void DrawBottomBar();
+    void DrawBottomBar(EditorHost& host);
 
     void SetCurrentPath(const std::string& path);
-    [[nodiscard]] std::string ComputeParentPath(const std::string& path) const;
+    [[nodiscard]] std::string ComputeParentPath(const std::string& normalizedPath) const;
 
-    static bool IsRootPath(const std::string& path);
-
-    void BuildDirectoryTree(EditorRuntime& runtime);
-    void DrawDirectoryTree();
-    void DrawDirectoryNode(FDirectoryNode& node);
-    FDirectoryNode* FindOrAddChildNode(std::vector<FDirectoryNode>& children,
-                                       const std::string& name,
-                                       const std::string& virtualPath);
+    void DrawDirectoryNodeByID(AssetBrowserNodeID id);
 
     void ExpandAll();
-    void ExpandAllNodes(const std::vector<FDirectoryNode>& nodes);
     void CollapseAll();
-    [[nodiscard]] bool IsNodeExpanded(const std::string& virtualPath) const;
-    void SetNodeExpanded(const std::string& virtualPath, bool bExpanded);
+
     void SyncPathInputToCurrentPath();
-    bool ApplyPathInput();
-    [[nodiscard]] bool PathExistsInTree(const std::string& path) const;
-    [[nodiscard]] bool PathExistsInTreeRecursive(const std::vector<FDirectoryNode>& nodes, const std::string& path) const;
+    bool ApplyPathInput(EditorHost& host);
+
+    bool AddPendingFolderPath(const std::string& rawPath);
+    void RemovePendingFolderPathAndDescendants(const std::string& normalizedPath);
+    void RebuildPendingChildrenIndex();
+    bool CommitPendingFolders(EditorHost& host);
+    void DrawPendingChildRow(const std::string& childPath);
+    bool CommitPendingRename(const std::string& oldPath, const std::string& newName);
+
+    void EndPendingRename();
+    void CancelPendingRename();
+
+    [[nodiscard]] std::string MakeUniqueChildPath(const std::string& parent, const std::string& baseName) const;
+
+    std::string OnCreateFolderClicked();
+
+    static bool IsRootPath(const std::string& path);
+    static bool IsSameOrUnderPath(const std::string& normalizedAncestor, const std::string& normalizedPath);
+    [[nodiscard]] bool IsFolderPresentInUI(const std::string& normalizedPath) const;
+    bool HasPendingChildFolder(const std::string& normalizedParent) const;
+    bool FolderHasChildren(const FAssetBrowserNode& node);
 };
