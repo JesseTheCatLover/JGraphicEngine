@@ -5,8 +5,9 @@
 #include <algorithm>
 #include <unordered_set>
 
+#include "AssetBrowserProjectionBuilder.h"
 #include "Core/EditorHost.h"
-#include "../Selection/SelectionService.h"
+#include "Core/Services/Selection/SelectionService.h"
 #include "Assets/FAssetRecord.h"
 #include "Utilities/UPath.h"
 
@@ -408,95 +409,9 @@ void AssetBrowserService::RefreshView(FAssetBrowserViewState& view)
     view.viewNodeIDs.clear();
     view.visibleVirtualPaths.clear();
 
-    std::unordered_set<AssetBrowserNodeID> projected;
-    projected.reserve(256);
+    AssetBrowserProjectionBuilder::Build(*this, view);
 
-    auto EnsureFolderLoaded = [&](AssetBrowserNodeID folderID)
-    {
-        if (folderID == 0) return;
-        if (m_Model.dirtyFolders.contains(folderID) || !m_Model.loadedFolders.contains(folderID))
-            RefreshFolderDirectChildrenByID(folderID);
-    };
-
-    auto Project = [&](AssetBrowserNodeID id) -> bool
-    {
-        if (!projected.insert(id).second)
-            return false;
-
-        const FAssetBrowserNode* n = TryGetModelNode(id);
-        if (!n) return false;
-
-        if (!view.bShowFolders && n->type == EAssetBrowserNodeType::Folder) return false;
-        if (!view.bShowAssets  && n->type == EAssetBrowserNodeType::Asset)  return false;
-
-        if (!view.searchFilter.empty() &&
-            n->displayName.find(view.searchFilter) == std::string::npos)
-        {
-            return false;
-        }
-
-        view.nodeCache[id] = *n;
-        view.pathToID[n->virtualPath] = id;
-        view.viewNodeIDs.push_back(id);
-        view.visibleVirtualPaths.push_back(n->virtualPath);
-        return true;
-    };
-
-    switch (view.projectionMode)
-    {
-        case EAssetBrowserProjectionMode::Flat:
-        {
-            const AssetBrowserNodeID folderID = EnsureFolder(view.currentPath);
-            EnsureFolderLoaded(folderID);
-
-            if (auto it = m_Model.children.find(folderID); it != m_Model.children.end())
-            {
-                for (AssetBrowserNodeID child : it->second)
-                    Project(child);
-            }
-
-            view.bDirty = false;
-            return;
-        }
-
-        case EAssetBrowserProjectionMode::Tree:
-        {
-            const AssetBrowserNodeID rootID = EnsureFolder(view.rootPath);
-            EnsureFolderLoaded(rootID);
-
-            Project(rootID);
-
-            if (auto it = m_Model.children.find(rootID); it != m_Model.children.end())
-            {
-                view.children[rootID] = it->second;
-                for (AssetBrowserNodeID child : it->second)
-                    Project(child);
-            }
-
-            // expanded folders (lazy)
-            for (const std::string& raw : view.expandedFolderPaths)
-            {
-                const std::string p = UPath::Normalize(raw);
-                const AssetBrowserNodeID fid = EnsureFolder(p);
-
-                EnsureFolderLoaded(fid);
-
-                auto cit = m_Model.children.find(fid);
-                if (cit == m_Model.children.end()) continue;
-
-                view.children[fid] = cit->second;
-                for (AssetBrowserNodeID cid : cit->second)
-                    Project(cid);
-            }
-
-            view.bDirty = false;
-            return;
-        }
-
-        default:
-            view.bDirty = false;
-            return;
-    }
+    view.bDirty = false;
 }
 
 // -------------------------

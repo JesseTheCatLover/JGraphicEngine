@@ -21,7 +21,9 @@ struct FSelectionModifiers;
 class AssetBrowserService final : public IEditorService
 {
 private:
-    EditorHost&   m_Host;
+    friend class AssetBrowserProjectionBuilder;
+
+    EditorHost& m_Host;
     EditorFileAPI& m_FileAPI;
 
     TMulticastDelegate<const FAssetOpResult&> m_OnAssetsMutated;
@@ -89,6 +91,7 @@ public:
     [[nodiscard]] FAssetOpResult MovePathsToFolder(FAssetBrowserViewState& view, const std::vector<std::string>& sourceVirtualPaths, const std::string& destVirtualFolder);
 
 private:
+    FModelGraph& GetModelGraph() { return m_Model; }
     TSelectionModel<std::string>& GetSelectionModel(FAssetBrowserViewState& view);
     [[nodiscard]] const TSelectionModel<std::string>& GetSelectionModel(const FAssetBrowserViewState& view) const;
 
