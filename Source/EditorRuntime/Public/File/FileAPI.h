@@ -51,6 +51,8 @@ public:
 
     [[nodiscard]] std::vector<FVirtualDirEntry> ListDirectory(const std::string& parentVirtualFolder) const;
 
+    [[nodiscard]] bool HasAnyChildFolder(const std::string& parentVirtualFolder) const;
+
     [[nodiscard]] FAssetOpResult CreateFolder(const std::string& folderVirtualPath);
     [[nodiscard]] FAssetOpResult DeleteFolder(const std::string& folderVirtualPath, bool bRecursive = true);
     [[nodiscard]] FAssetOpResult RenameFolder(const std::string& oldVirtualPath, const std::string& newVirtualPath);

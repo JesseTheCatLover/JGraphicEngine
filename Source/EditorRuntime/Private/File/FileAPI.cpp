@@ -9,6 +9,7 @@
 #include "Framework/AssetManager.h"
 #include "Resources/ResourceSubsystem.h"
 #include "Resources/GpuResources/Texture2DResource.h"
+#include "Utilities/UPath.h"
 
 EditorFileAPI::EditorFileAPI(EngineContext &ctx, ResourceSubsystem &resource, VirtualPathMounter& pathMounter,
                              AssetManager& assetManager):
@@ -141,6 +142,14 @@ std::vector<std::string> EditorFileAPI::ListFolders(const std::string& parentVir
 std::vector<FVirtualDirEntry> EditorFileAPI::ListDirectory(const std::string& parentVirtualFolder) const
 {
     return m_AssetManager.ListDirectory(parentVirtualFolder);
+}
+
+bool EditorFileAPI::HasAnyChildFolder(const std::string &parentVirtualFolder) const
+{
+    const std::string parentV = UPath::Normalize(parentVirtualFolder);
+
+    std::vector<std::string> folders = ListFolders(parentV, /*bRecursive=*/false);
+    return !folders.empty();
 }
 
 FAssetOpResult EditorFileAPI::CreateFolder(const std::string& folderVirtualPath)

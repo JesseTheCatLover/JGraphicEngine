@@ -5,6 +5,7 @@
 #include "TPanelContainer.h"
 #include "DialogManager.h"
 #include "ToolService.h"
+#include "Services/AssetBrowserService.h"
 #include "Services/EditTimelineService.h"
 #include "Services/HierarchyService.h"
 #include "Services/HotkeyService.h"
@@ -46,6 +47,7 @@ void EditorHost::RegisterCoreServices()
     m_Services->Register<SceneSelectionSynchronizer>(*this, m_EditorRuntime);
     m_Services->Register<HierarchyService>(*this);
     m_Services->Register<ScenePickingService>(*this);
+    m_Services->Register<AssetBrowserService>(*this, m_EditorRuntime.GetFile());
     m_Services->Register<EditTimelineService>(*this);
     m_EditorRuntime.SetEditSink(&GetService<EditTimelineService>());
     m_Services->Register<ShellCommandService>(*this);
