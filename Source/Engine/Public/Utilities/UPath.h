@@ -124,4 +124,66 @@ public:
      * @return true if the path is absolute, false otherwise.
      */
     static bool IsAbsolute(const std::string& path);
+
+    // ----------------- Name Validation -----------------
+
+    /**
+     * @brief Check whether a filesystem/asset name is valid.
+     *
+     * Validation is platform-safe and intended for engine asset/folder naming.
+     *
+     * Rules:
+     * - Rejects empty names
+     * - Rejects path separators
+     * - Rejects reserved filesystem characters
+     * - Rejects control characters
+     * - Rejects trailing spaces/dots
+     * - Rejects reserved Windows device names
+     *
+     * This validates a SINGLE path component only,
+     * not an entire path.
+     *
+     * Examples:
+     * - "Textures"      -> valid
+     * - "My Folder"     -> valid
+     * - "CON"           -> invalid
+     * - "File?.png"     -> invalid
+     * - "Folder/Sub"    -> invalid
+     *
+     * @param name Single filename/folder name.
+     * @return True if valid.
+     */
+    static bool IsValidFileSystemName(std::string_view name);
+
+    /**
+     * @brief Check whether a filesystem name is reserved.
+     *
+     * Reserved names include Windows device names such as:
+     * CON, PRN, AUX, NUL, COM1..COM9, LPT1..LPT9
+     *
+     * Comparison is case-insensitive.
+     *
+     * @param name Single filename/folder name.
+     * @return True if reserved.
+     */
+    static bool IsReservedFileSystemName(std::string_view name);
+
+    /**
+     * @brief Sanitize a filesystem name into a safe engine-compatible form.
+     *
+     * Invalid filesystem characters are removed or replaced,
+     * trailing spaces/dots are trimmed,
+     * and empty results fall back to a default safe name.
+     *
+     * This operates on a SINGLE path component only,
+     * not an entire path.
+     *
+     * Examples:
+     * - "My:Folder?" -> "MyFolder"
+     * - "  Test. "   -> "Test"
+     *
+     * @param name Input filename/folder name.
+     * @return Sanitized filesystem-safe name.
+     */
+    static std::string SanitizeFileSystemName(std::string_view name);
 };

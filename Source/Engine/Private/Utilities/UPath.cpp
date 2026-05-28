@@ -91,3 +91,177 @@ bool UPath::IsAbsolute(const std::string& path)
 {
     return std::filesystem::path(path).is_absolute();
 }
+
+bool UPath::IsValidFileSystemName(std::string_view name)
+{
+    if (name.empty())
+        return false;
+
+    // No leading/trailing spaces
+    if (name.front() == ' ' || name.back() == ' ')
+        return false;
+
+    // No trailing periods
+    if (name.back() == '.')
+        return false;
+
+    // Single component only
+    for (char c : name)
+    {
+        const unsigned char uc = static_cast<unsigned char>(c);
+
+        // Control chars
+        if (uc < 32)
+            return false;
+
+        switch (c)
+        {
+        case '/':
+        case '\\':
+        case ':':
+        case '*':
+        case '?':
+        case '"':
+        case '<':
+        case '>':
+        case '|':
+            return false;
+
+        default:
+            break;
+        }
+    }
+
+    if (IsReservedFileSystemName(name))
+        return false;
+
+    return true;
+}
+
+bool UPath::IsReservedFileSystemName(std::string_view name)
+{
+    if (name.empty())
+        return false;
+
+    // Windows treats "CON.txt" as reserved too,
+    // so compare stem only.
+    std::string stem =
+        std::filesystem::path(std::string(name))
+            .stem()
+            .string();
+
+    std::transform(stem.begin(), stem.end(), stem.begin(),
+        [](unsigned char c)
+        {
+            return static_cast<char>(std::toupper(c));
+        });
+
+    static constexpr std::string_view reserved[] =
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+
+        "COM1",
+        "COM2",
+        "COM3",
+        "COM4",
+        "COM5",
+        "COM6",
+        "COM7",
+        "COM8",
+        "COM9",
+
+        "LPT1",
+        "LPT2",
+        "LPT3",
+        "LPT4",
+        "LPT5",
+        "LPT6",
+        "LPT7",
+        "LPT8",
+        "LPT9"
+    };
+
+    for (std::string_view r : reserved)
+    {
+        if (stem == r)
+            return true;
+    }
+
+    return false;
+}
+
+std::string UPath::SanitizeFileSystemName(std::string_view name)
+{
+    std::string result;
+    result.reserve(name.size());
+
+    bool previousWasReplacement = false;
+
+    for (char c : name)
+    {
+        const unsigned char uc = static_cast<unsigned char>(c);
+
+        // Skip control chars
+        if (uc < 32)
+            continue;
+
+        bool invalid = false;
+
+        switch (c)
+        {
+        case '/':
+        case '\\':
+        case ':':
+        case '*':
+        case '?':
+        case '"':
+        case '<':
+        case '>':
+        case '|':
+            invalid = true;
+            break;
+
+        default:
+            break;
+        }
+
+        if (invalid)
+        {
+            // Replace with single underscore
+            if (!previousWasReplacement)
+            {
+                result.push_back('_');
+                previousWasReplacement = true;
+            }
+
+            continue;
+        }
+
+        previousWasReplacement = false;
+        result.push_back(c);
+    }
+
+    // Trim leading spaces
+    while (!result.empty() && result.front() == ' ')
+        result.erase(result.begin());
+
+    // Trim trailing spaces/dots
+    while (!result.empty() &&
+          (result.back() == ' ' || result.back() == '.'))
+    {
+        result.pop_back();
+    }
+
+    // Reserved names
+    if (IsReservedFileSystemName(result))
+        result.push_back('_');
+
+    // Empty fallback
+    if (result.empty())
+        result = "Unnamed";
+
+    return result;
+}
