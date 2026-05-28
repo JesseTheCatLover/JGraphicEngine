@@ -40,10 +40,7 @@ namespace
 
     static bool IsValidSingleFolderName(const std::string& name)
     {
-        if (name.empty()) return false;
-        if (name.find('/') != std::string::npos) return false;
-        // optionally forbid "." and ".." or OS-invalid chars
-        return true;
+        return UPath::IsValidFileSystemName(name);
     }
 
     static void AddParentChain(std::unordered_set<std::string>& set, const std::string& leaf)
@@ -422,30 +419,26 @@ void FolderPickerDialog::DrawDirectoryNodeByID(AssetBrowserNodeID id)
                  ImGuiTreeNodeFlags_NoTreePushOnOpen; // important: no TreePop needed
     }
 
-    const bool bExpandedByState =
-        m_View.expandedFolderPaths.contains(node.virtualPath) ||
-        IsAncestorPath(node.virtualPath, m_CurrentPath);
+    const bool bExpanded =
+    m_View.expandedFolderPaths.contains(node.virtualPath) ||
+    IsAncestorPath(node.virtualPath, m_CurrentPath);
 
-    // Only meaningful for expandable nodes
-    if (bExpandable)
-        ImGui::SetNextItemOpen(bExpandedByState, ImGuiCond_Once);
+    if (bExpanded)
+        flags |= ImGuiTreeNodeFlags_DefaultOpen;
 
-    const bool bOpened = ImGui::TreeNodeEx((void*)(intptr_t)id, flags, "%s", node.displayName.c_str());
+    const bool bOpened =
+        ImGui::TreeNodeEx((void*)(intptr_t)id, flags, "%s", node.displayName.c_str());
 
     if (ImGui::IsItemClicked())
         SetCurrentPath(node.virtualPath);
 
     // Track expand/collapse only if it can expand
-    const bool bWasExpanded = m_View.expandedFolderPaths.contains(node.virtualPath);
-
-    if (bExpandable)
+    if (bExpandable && ImGui::IsItemToggledOpen())
     {
-        if (bOpened) m_View.expandedFolderPaths.insert(node.virtualPath);
-        else         m_View.expandedFolderPaths.erase(node.virtualPath);
-
-        const bool bIsExpanded = m_View.expandedFolderPaths.contains(node.virtualPath);
-        if (bWasExpanded != bIsExpanded)
-            m_bDirty = true;
+        if (bOpened)
+            m_View.expandedFolderPaths.insert(node.virtualPath);
+        else
+            m_View.expandedFolderPaths.erase(node.virtualPath);
     }
 
     if (bExpandable && bOpened)
@@ -749,10 +742,12 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
     ImGui::PopStyleColor(); // text dim
 
     // Persist expand/collapse for pending nodes
-    if (bExpandable)
+    if (bExpandable && ImGui::IsItemToggledOpen())
     {
-        if (bOpened) m_Pending.expanded.insert(path);
-        else         m_Pending.expanded.erase(path);
+        if (bOpened)
+            m_Pending.expanded.insert(path);
+        else
+            m_Pending.expanded.erase(path);
     }
 
     // Selection click must be checked immediately after the TreeNodeEx item
@@ -819,8 +814,7 @@ void FolderPickerDialog::DrawPendingChildRow(const std::string& pendingPath)
 bool FolderPickerDialog::CommitPendingRename(const std::string& oldPathRaw, const std::string& newNameRaw)
 {
     const std::string oldPath = UPath::Normalize(oldPathRaw);
-    std::string newName = newNameRaw;
-    // trim? up to you
+    std::string newName = UPath::SanitizeFileSystemName(newNameRaw);
 
     if (!m_Pending.createSet.contains(oldPath))
     {
