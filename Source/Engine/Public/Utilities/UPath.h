@@ -65,7 +65,7 @@ public:
      * @param path Relative or absolute input path.
      * @return Normalized virtual-style path using forward slashes.
      */
-    static std::string Normalize(const std::string& path);
+    static std::string Normalize(std::string_view path);
 
     /**
      * @brief Get the parent directory of a path.

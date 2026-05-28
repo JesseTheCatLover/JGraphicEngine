@@ -8,50 +8,56 @@ namespace
     {
         return path.generic_string();
     }
-
-    static inline void ReplaceAll(std::string& s, const std::string& a, const std::string& b)
-    {
-        size_t pos = 0;
-        while ((pos = s.find(a, pos)) != std::string::npos)
-        {
-            s.replace(pos, a.size(), b);
-            pos += b.size();
-        }
-    }
 }
 
 // ----------------- Path Manipulation -----------------
 
-std::string UPath::Normalize(const std::string& path)
+std::string UPath::Normalize(std::string_view path)
 {
     if (path.empty())
         return {};
 
-    // Ensure generic separators first
-    std::string s = path;
-    std::replace(s.begin(), s.end(), '\\', '/');
+    std::string cleaned;
+    cleaned.reserve(path.size() + 1);
 
-    // If you want to force absolute-virtual paths:
-    if (!s.empty() && s.front() != '/')
-        s.insert(s.begin(), '/');
+    // Force virtual absolute path
+    if (path.front() != '/')
+        cleaned.push_back('/');
 
-    // Collapse repeated slashes early
-    while (s.find("//") != std::string::npos)
-        ReplaceAll(s, "//", "/");
+    bool previousWasSlash = false;
 
-    // Lexical normalize dot segments using filesystem (ok if we keep it purely lexical)
-    std::filesystem::path p(s);
-    s = ToGenericString(p.lexically_normal());
+    for (char c : path)
+    {
+        // Convert separators
+        if (c == '\\')
+            c = '/';
 
-    // Collapse slashes again (lexically_normal can reintroduce things in odd inputs)
-    while (s.find("//") != std::string::npos)
-        ReplaceAll(s, "//", "/");
+        // Collapse repeated slashes in one pass
+        if (c == '/')
+        {
+            if (previousWasSlash)
+                continue;
+
+            previousWasSlash = true;
+        }
+        else
+        {
+            previousWasSlash = false;
+        }
+
+        cleaned.push_back(c);
+    }
+
+    // Lexical normalization
+    cleaned = std::filesystem::path(cleaned)
+        .lexically_normal()
+        .generic_string();
 
     // Remove trailing slash except root
-    while (s.size() > 1 && s.back() == '/')
-        s.pop_back();
+    if (cleaned.size() > 1 && cleaned.back() == '/')
+        cleaned.pop_back();
 
-    return s;
+    return cleaned;
 }
 
 std::string UPath::GetParent(const std::string& path)
