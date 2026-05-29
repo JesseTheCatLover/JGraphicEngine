@@ -6,7 +6,7 @@
 #include "Core/JEngine.h"
 
 #include "Scene/SceneComponents/JCameraComponent.h"
-#include "Scene/SceneComponents/JModelComponent.h"
+#include "Scene/SceneComponents/JRenderableComponent.h"
 
 JActor::JActor() : m_VectorIndex(0)
 {

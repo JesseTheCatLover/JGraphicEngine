@@ -24,12 +24,9 @@
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/RendererSubsystem.h"
 #include "Resources/ResourceSubsystem.h"
-#include "Core/Math/FMath.h"
 #include "Core/Project/ProjectContext.h"
 #include "Core/Serialization/SerializationSubsystem.h"
 #include "Framework/DebugDrawFramework.h"
-#include "Scene/SceneComponents/JCameraComponent.h"
-#include "Scene/SceneComponents/JModelComponent.h"
 
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisStyle.h"
@@ -37,7 +34,7 @@
 #include "Framework/AssetManager.h"
 #include "Rendering/FRenderView.h"
 #include "Rendering/IPlatformWindow.h"
-#include "Scene/SceneComponents/JStaticMeshComponent.h"
+#include "Scene/SceneComponents/JCameraComponent.h"
 
 JEngine::JEngine()
     : m_Services(MakeUnique<TServiceContainer>()),
