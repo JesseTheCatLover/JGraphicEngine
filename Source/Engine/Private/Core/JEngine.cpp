@@ -777,7 +777,7 @@ void JEngine::RegisterServices()
     });
 }
 
-bool JEngine::BootstrapScene()
+bool JEngine::BootstrapScene() // TODO: Implement a proper scene bootstrapper logic
 {
     constexpr const char* kSceneVirtualPath = "/Project/Scenes/ScannedSceneVer2.jscene";
 
@@ -791,111 +791,6 @@ bool JEngine::BootstrapScene()
 
 void JEngine::CreateDefaultScene() // TODO: Very DEMO DEVELOP Stage Function. Will be replaced by a proper default scene creator
 {
-    constexpr const char* kSceneVirtualPath = "/Project/Scenes/ScannedSceneVer2.jscene";
-    constexpr const char* kSceneName = "ScannedSceneVer2";
-
-    if (!GetSceneManager())
-    {
-        std::cerr << "[JEngine] CreateStartupScene: SceneManager is null.\n";
-        return;
-    }
-
-    bool bCreatedNewScene = false;
-
-    auto* scene = GetSceneManager()->LoadSceneFile(kSceneVirtualPath);
-    if (!scene)
-    {
-        const bool created = GetSceneManager()->CreateSceneFile(kSceneName, kSceneVirtualPath, true);
-        if (!created)
-        {
-            std::cerr << "[JEngine] CreateStartupScene: failed to create scene file.\n";
-            return;
-        }
-
-        scene = GetSceneManager()->LoadSceneFile(kSceneVirtualPath);
-        if (!scene)
-        {
-            std::cerr << "[JEngine] CreateStartupScene: failed to load freshly created scene.\n";
-            return;
-        }
-
-        bCreatedNewScene = true;
-    }
-
-    // Only populate defaults the first time
-    if (!bCreatedNewScene)
-        return;
-
-    auto spawnActorWithStaticMeshComp = [&](const char* actorName, const char* assetID, const char* compName) -> JActor*
-    {
-        JActor* actor = GetSceneManager()->SpawnActor<JActor>();
-        if (!actor) return nullptr;
-
-        actor->SetActorName(actorName ? actorName : "ModelActor");
-
-        auto* StaticMeshComp = actor->AddRuntimeComponent<JStaticMeshComponent>(compName);
-        StaticMeshComp->SetStaticMesh(assetID);
-
-        return actor;
-    };
-
-    auto* armouryAsset = GetAssetManager()->FindAssetByVirtualPath("/Project/TheArmoury/model.jasset");
-    if (!armouryAsset)
-    {
-        std::cerr << "[JEngine] CreateDefaultScene: Armoury asset not found.\n";
-        return; // or skip creating this actor
-    }
-
-    JActor* actor1 = spawnActorWithStaticMeshComp("TheArmoury",
-                                                  armouryAsset->assetID.c_str(),
-                                                  "ArmouryStaticMesh");
-
-
-    auto* tapeAsset = GetAssetManager()->FindAssetByVirtualPath("/Project/Tape/Tape.jasset");
-    if (!tapeAsset)
-    {
-        std::cerr << "[JEngine] CreateDefaultScene: Tape asset not found at "
-                  << "/Project/Tape/Tape.jasset\n";
-    }
-
-    auto actor2 = spawnActorWithStaticMeshComp("Tape 1", tapeAsset->assetID.c_str(),
-        "TapeStaticMesh");
-    actor2->SetActorLocation(5.f, 0.f, 5.f);
-    actor2->SetActorScale(FVector3(0.5f));
-
-    auto actor3dup = spawnActorWithStaticMeshComp("Tape 2", tapeAsset->assetID.c_str(),
-        "TapeStaticMesh");
-    actor3dup->AttachToActor(actor2);
-    actor3dup->SetActorLocation(7.f, 3.f, 5.f);
-    actor3dup->SetActorRotation(70.f, 0.f, 20.f);
-    actor3dup->SetActorScale(FVector3(0.5f));
-
-    auto actor4dup = spawnActorWithStaticMeshComp("Tape 3", tapeAsset->assetID.c_str(),
-        "TapeStaticMesh");
-    actor4dup->AttachToActor(actor2);
-    actor4dup->SetActorLocation(5.f, 1.f, 5.f);
-    actor4dup->SetActorRotation(50.f, 10.f, 30.f);
-    actor4dup->SetActorScale(FVector3(0.5f));
-
-    JActor* cameraActor = GetSceneManager()->SpawnActor<JActor>();
-    cameraActor->SetActorName("CameraActor");
-    cameraActor->AddRuntimeComponent<JCameraComponent>("CameraComponent");
-    cameraActor->SetActorLocation(-20.f, 0.f, 15.f);
-
-    auto* chairAsset = GetAssetManager()->FindAssetByVirtualPath("/Project/DiningChair/DiningChair.jasset");
-    if (!chairAsset)
-    {
-        std::cerr << "[JEngine] CreateDefaultScene: DiningChair asset not found at "
-                  << "/Project/DiningChair/DiningChair.jasset\n";
-    }
-
-    auto chair = spawnActorWithStaticMeshComp("DiningChair", chairAsset->assetID.c_str(),
-        "DiningChairStaticMesh");
-    chair->SetActorLocation(0.f, 8.f, 1.2f);
-    chair->SetActorScale(FVector3(5.f));
-    chair->SetActorRotation(0.f, 100.f, 0.f);
-
-    GetSceneManager()->SaveSceneFile(scene, kSceneVirtualPath);
 }
 
 void JEngine::CalculateDeltaTime()
