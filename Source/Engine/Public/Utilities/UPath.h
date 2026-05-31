@@ -186,4 +186,35 @@ public:
      * @return Sanitized filesystem-safe name.
      */
     static std::string SanitizeFileSystemName(std::string_view name);
+
+    /**
+     * @brief Check whether a path is identical to or contained within another path.
+     *
+     * Performs a lexical hierarchy check after normalizing both paths.
+     *
+     * Returns true when:
+     * - path == ancestor
+     * - path is located somewhere under ancestor
+     *
+     * Returns false when:
+     * - path is outside ancestor
+     * - the match is only a string prefix
+     *
+     * Examples:
+     * - "/Project" + "/Project"                     -> true
+     * - "/Project" + "/Project/Textures"            -> true
+     * - "/Project" + "/Project/Textures/UI"         -> true
+     * - "/Project" + "/ProjectX"                    -> false
+     * - "/Project/Textures" + "/Project"            -> false
+     *
+     * The comparison is path-aware and enforces directory boundaries,
+     * preventing false positives caused by simple string prefix matching.
+     *
+     * Both paths are normalized internally before comparison.
+     *
+     * @param ancestor The candidate ancestor folder path.
+     * @param path The path being tested.
+     * @return True if path is the same as or located under ancestor.
+     */
+    static bool IsSameOrUnder(const std::string& ancestor, const std::string& path);
 };

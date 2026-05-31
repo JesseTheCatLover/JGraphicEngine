@@ -265,3 +265,26 @@ std::string UPath::SanitizeFileSystemName(std::string_view name)
 
     return result;
 }
+
+bool UPath::IsSameOrUnder(const std::string& ancestor, const std::string& path)
+{
+    const std::string a = Normalize(ancestor);
+    const std::string p = Normalize(path);
+
+    if (a.empty() || p.empty())
+        return false;
+
+    if (a == "/")
+        return true;
+
+    if (a == p)
+        return true;
+
+    if (p.size() <= a.size())
+        return false;
+
+    if (p.compare(0, a.size(), a) != 0)
+        return false;
+
+    return p[a.size()] == '/';
+}
