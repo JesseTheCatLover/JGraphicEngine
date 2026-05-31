@@ -47,6 +47,8 @@ struct FAssetBrowserViewState
     std::string rootPath = "/Project";      // tree root
     bool bIncludeRootNode = true;           // show "/Project" as a selectable node
 
+    uint64_t sourceGraphVersion = 0;
+
     // Projected cache for this view instance
     std::unordered_map<AssetBrowserNodeID, FAssetBrowserNode> nodeCache;
     std::unordered_map<AssetBrowserNodeID, std::vector<AssetBrowserNodeID>> children;
@@ -59,7 +61,7 @@ struct FAssetBrowserViewState
     std::unordered_map<std::string, AssetBrowserNodeID> pathToID;
 
     // Track expanded folders
-    std::unordered_set<std::string> expandedFolderPaths;
+    std::unordered_set<AssetBrowserNodeID> expandedFolderNodes;
 
     // Selection policy (per-view)
     EAssetBrowserSelectionPolicy selectionPolicy = EAssetBrowserSelectionPolicy::SharedGlobalSelection;

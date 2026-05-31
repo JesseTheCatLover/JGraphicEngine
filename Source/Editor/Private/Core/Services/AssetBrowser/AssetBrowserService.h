@@ -31,8 +31,8 @@ private:
     struct FModelGraph
     {
         // stable identity
-        std::unordered_map<std::string, AssetBrowserNodeID> pathToID;
         std::unordered_map<AssetBrowserNodeID, FAssetBrowserNode> nodes;
+        std::unordered_map<std::string, AssetBrowserNodeID> pathToID;
 
         // adjacency
         std::unordered_map<AssetBrowserNodeID, std::vector<AssetBrowserNodeID>> children;
@@ -56,12 +56,25 @@ public:
     void RegisterShellCommands(ShellCommandService& shell) override;
 
     // --- View refresh ---
-    void MarkDirty(FAssetBrowserViewState& view) { view.bDirty = true; }
+    static void MarkDirty(FAssetBrowserViewState& view) { view.bDirty = true; }
     void RefreshView(FAssetBrowserViewState& view);
 
     // --- Node access helpers (operate on a view) ---
     [[nodiscard]] const FAssetBrowserNode* GetNode(const FAssetBrowserViewState& view, AssetBrowserNodeID id) const;
     [[nodiscard]] const FAssetBrowserNode* GetNodeByPath(const FAssetBrowserViewState& view, const std::string& path) const;
+    AssetBrowserNodeID GetRootNodeID(const std::string& path);
+    FAssetBrowserNode* GetMutableNode(AssetBrowserNodeID id);
+    [[nodiscard]] const std::vector<AssetBrowserNodeID>& GetChildren(AssetBrowserNodeID id) const;
+
+    void PurgeNodeSubtree(AssetBrowserNodeID rootID);
+
+    void ExpandFolderNode(FAssetBrowserViewState& view, AssetBrowserNodeID id);
+    void CollapseFolderNode(FAssetBrowserViewState& view, AssetBrowserNodeID id);
+    [[nodiscard]] bool IsFolderExpanded(const FAssetBrowserViewState& view, AssetBrowserNodeID id) const;
+    void ExpandAllFolders(FAssetBrowserViewState& view);
+    void CollapseAllFolders(FAssetBrowserViewState& view);
+
+    void ProbeFolderChildStates(AssetBrowserNodeID folderID);
 
     // --- Selection helpers (respect view.selectionPolicy) ---
     void SelectPath(FAssetBrowserViewState& view, const std::string& virtualPath, bool bToggle = false, bool bRange = false);
@@ -100,6 +113,8 @@ private:
     AssetBrowserNodeID EnsureNode(const std::string& virtualPath, EAssetBrowserNodeType type);
     AssetBrowserNodeID EnsureFolder(const std::string& folderVirtualPath);
 
+    void SyncFolderNode(AssetBrowserNodeID folderID);
+
     void LinkChild(AssetBrowserNodeID parent, AssetBrowserNodeID child);
     void UnlinkChild(AssetBrowserNodeID parent, AssetBrowserNodeID child);
 
@@ -107,8 +122,8 @@ private:
     [[nodiscard]] AssetBrowserNodeID TryGetID(const std::string& virtualPath) const;
 
     void MarkFolderDirtyByPath(const std::string& folderVirtualPath);
-    void RefreshFolderDirectChildren(const std::string& folderVirtualPath);
-    void RefreshFolderDirectChildrenByID(AssetBrowserNodeID folderID);
+
+    std::string RemapPath(const std::string& path, const std::unordered_map<std::string,std::string>& remaps);
 
     void ApplyMutationToModelGraph(const FAssetOpResult& result);
 
@@ -116,6 +131,4 @@ private:
     void PostMutation(FAssetBrowserViewState& initiatingView, const FAssetOpResult& result);
 
     static void MergeOpResult(FAssetOpResult& ioAgg, const FAssetOpResult& r);
-
-    bool IsSameOrUnder(const std::string& folder, const std::string& candidate);
 };

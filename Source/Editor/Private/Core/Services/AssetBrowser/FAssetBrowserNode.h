@@ -15,28 +15,57 @@ enum class EAssetBrowserNodeType
     Asset
 };
 
+enum class EAssetBrowserChildState : uint8_t
+{
+    Unknown,
+    Present,
+    None
+};
+
 // Typedef for fast lookup hashes
 using AssetBrowserNodeID = uint64_t;
 
 struct FAssetBrowserNode
 {
-    AssetBrowserNodeID nodeID = 0;    // Hash of VirtualPath
-    AssetBrowserNodeID parentID = 0;  // Hash of parent folder (0 if root/unknown)
+    AssetBrowserNodeID nodeID = 0;    // Stable graph node ID
+    AssetBrowserNodeID parentID = 0;  // Parent node ID (0 = none)
 
     EAssetBrowserNodeType type = EAssetBrowserNodeType::Folder;
 
     std::string displayName; // e.g. "Textures" or "Sword_BaseColor"
     std::string virtualPath; // e.g. "/Project/Textures/Sword_BaseColor"
 
-    // Folder-only hints for UI tree rendering
-    bool bChildFoldersKnown = false;
-    bool bHasChildFolders = false;
+    EAssetBrowserChildState childFolderState = EAssetBrowserChildState::Unknown;
+    EAssetBrowserChildState childAssetState = EAssetBrowserChildState::Unknown;
 
-    bool bChildAssetsKnown = false;
-    bool bHasChildAssets = false;
+    [[nodiscard]] bool HasFolderChildren() const
+    {
+        return childFolderState == EAssetBrowserChildState::Present;
+    }
+
+    [[nodiscard]] bool HasAssetChildren() const
+    {
+        return childAssetState == EAssetBrowserChildState::Present;
+    }
+
+    [[nodiscard]] bool HasAnyChildren() const
+    {
+        return childFolderState == EAssetBrowserChildState::Present ||
+               childAssetState == EAssetBrowserChildState::Present;
+    }
+
+    [[nodiscard]] bool FolderChildrenKnown() const
+    {
+        return childFolderState != EAssetBrowserChildState::Unknown;
+    }
+
+    [[nodiscard]] bool AssetChildrenKnown() const
+    {
+        return childAssetState != EAssetBrowserChildState::Unknown;
+    }
 
     // Asset-only
-    std::string assetID;              // registry UUID
+    std::string assetID; // registry UUID
     EAssetType assetType = EAssetType::Unknown;
     EAssetDomain domain = EAssetDomain::Project;
 };

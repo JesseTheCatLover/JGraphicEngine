@@ -3,6 +3,7 @@
 #include "AssetBrowserService.h"
 
 #include <algorithm>
+#include <iostream>
 #include <unordered_set>
 
 #include "AssetBrowserProjectionBuilder.h"
@@ -28,28 +29,6 @@ void AssetBrowserService::Shutdown()
 
 void AssetBrowserService::RegisterShellCommands(ShellCommandService& /*shell*/)
 {
-}
-
-// -------------------------
-// Path helpers
-// -------------------------
-
-bool AssetBrowserService::IsSameOrUnder(const std::string& folder, const std::string& candidate)
-{
-    const std::string f = UPath::Normalize(folder);
-    const std::string c = UPath::Normalize(candidate);
-
-    if (f == c)
-        return true;
-
-    // Ensure "/Project" matches "/Project/..." but not "/ProjectX"
-    if (c.size() <= f.size())
-        return false;
-
-    if (c.compare(0, f.size(), f) != 0)
-        return false;
-
-    return c[f.size()] == '/';
 }
 
 FAssetOpResult AssetBrowserService::CreateFolder(FAssetBrowserViewState& view, const std::string& folderVirtualPath)
@@ -158,7 +137,7 @@ FAssetOpResult AssetBrowserService::MovePathsToFolder(FAssetBrowserViewState& vi
             const std::string name = UPath::GetFileName(src);
             const std::string dstFolderPath = UPath::Join(dstFolder, name);
 
-            if (IsSameOrUnder(src, dstFolderPath))
+            if (UPath::IsSameOrUnder(src, dstFolderPath))
             {
                 FAssetOpResult err;
                 err.bSuccess = false;
@@ -261,110 +240,156 @@ AssetBrowserNodeID AssetBrowserService::TryGetID(const std::string& virtualPath)
 void AssetBrowserService::MarkFolderDirtyByPath(const std::string& folderVirtualPath)
 {
     const std::string f = UPath::Normalize(folderVirtualPath);
-    if (f.empty()) return;
+
+    if (f.empty())
+        return;
 
     AssetBrowserNodeID id = EnsureFolder(f);
     m_Model.dirtyFolders.insert(id);
 }
 
-void AssetBrowserService::RefreshFolderDirectChildren(const std::string& folderVirtualPath)
-{
-    const std::string folder = UPath::Normalize(folderVirtualPath);
-    AssetBrowserNodeID folderID = EnsureFolder(folder);
-    RefreshFolderDirectChildrenByID(folderID);
-}
-
-void AssetBrowserService::RefreshFolderDirectChildrenByID(AssetBrowserNodeID folderID)
+void AssetBrowserService::SyncFolderNode(AssetBrowserNodeID folderID)
 {
     const FAssetBrowserNode* folderNode = TryGetModelNode(folderID);
-    if (!folderNode) return;
-    if (folderNode->type != EAssetBrowserNodeType::Folder) return;
+    if (!folderNode)
+        return;
+
+    if (folderNode->type != EAssetBrowserNodeType::Folder)
+        return;
+
+    const bool bLoaded = m_Model.loadedFolders.contains(folderID);
+    const bool bDirty = m_Model.dirtyFolders.contains(folderID);
+
+    if (bLoaded && !bDirty)
+    {
+        return;
+    }
 
     const std::string folderPath = folderNode->virtualPath;
+    std::cout
+    << "SyncFolderNode: "
+    << folderPath
+    << std::endl;
+
+    bool bCurrentFolderHasFolderChildren = false;
+    bool bCurrentFolderHasAssetChildren = false;
 
     // 1) Ask backend for immediate children
     const auto entries = m_FileAPI.ListDirectory(folderPath);
 
-    bool bHasChildFolders = false;
-    bool bHasChildAssets  = false;
+    // Preserve previous child list so we can detect removals
+    const auto oldChildrenIt = m_Model.children.find(folderID);
+
+    const std::vector<AssetBrowserNodeID>* oldChildren = nullptr;
+
+    if (oldChildrenIt != m_Model.children.end())
+    {
+        oldChildren = &oldChildrenIt->second;
+    }
 
     // 2) Rebuild direct children vector
     std::vector<AssetBrowserNodeID> newChildren;
     newChildren.reserve(entries.size());
 
-    for (const auto& e : entries)
+    for (const auto& entry : entries)
     {
-        if (e.type == FVirtualDirEntry::EType::Folder)
+        if (entry.type == FVirtualDirEntry::EType::Folder)
         {
-            bHasChildFolders = true;
+            bCurrentFolderHasFolderChildren = true;
+            AssetBrowserNodeID childID = EnsureNode(entry.virtualPath, EAssetBrowserNodeType::Folder);
 
-            AssetBrowserNodeID cid = EnsureNode(e.virtualPath, EAssetBrowserNodeType::Folder);
-            auto& child = m_Model.nodes[cid];
+            auto& child = m_Model.nodes[childID];
+
             child.parentID = folderID;
-            child.displayName = e.name;
+            child.displayName = entry.name;
 
-            if (!child.bChildFoldersKnown)
+            if (child.childFolderState == EAssetBrowserChildState::Unknown ||
+                child.childAssetState == EAssetBrowserChildState::Unknown)
             {
-                const auto subEntries = m_FileAPI.ListDirectory(e.virtualPath);
-
-                bool bChildHasFolders = false;
-                for (const auto& sub : subEntries)
-                {
-                    if (sub.type == FVirtualDirEntry::EType::Folder)
-                    {
-                        bChildHasFolders = true;
-                        break;
-                    }
-                }
-
-                child.bChildFoldersKnown = true;
-                child.bHasChildFolders   = bChildHasFolders;
+                ProbeFolderChildStates(childID); // Checks the children folder states too
             }
 
-            newChildren.push_back(cid);
+            newChildren.push_back(childID);
         }
         else
         {
-            bHasChildAssets = true;
+            bCurrentFolderHasAssetChildren = true;
+            AssetBrowserNodeID AssetID = EnsureNode(entry.virtualPath, EAssetBrowserNodeType::Asset);
 
-            AssetBrowserNodeID aid = EnsureNode(e.virtualPath, EAssetBrowserNodeType::Asset);
-            auto& n = m_Model.nodes[aid];
+            auto& n = m_Model.nodes[AssetID];
             n.parentID = folderID;
-            n.displayName = e.name;
+            n.displayName = entry.name;
+            n.childFolderState = EAssetBrowserChildState::None; // Assets have no children
+            n.childAssetState = EAssetBrowserChildState::None;
 
-            if (const FAssetRecord* rec = m_FileAPI.FindAssetByVirtualPath(e.virtualPath))
+            if (const FAssetRecord* rec = m_FileAPI.FindAssetByVirtualPath(entry.virtualPath))
             {
-                n.assetID   = rec->assetID;
+                n.assetID = rec->assetID;
                 n.assetType = rec->assetType;
-                n.domain    = rec->domain;
+                n.domain = rec->domain;
             }
 
-            newChildren.push_back(aid);
+            newChildren.push_back(AssetID);
+        }
+    }
+
+    // Detect nodes that disappeared from the directory
+    std::unordered_set<AssetBrowserNodeID> newChildSet;
+    newChildSet.reserve(newChildren.size());
+
+    for (AssetBrowserNodeID id : newChildren)
+    {
+        newChildSet.insert(id);
+    }
+
+    std::vector<AssetBrowserNodeID> removedChildren;
+
+    if (oldChildren)
+    {
+        for (AssetBrowserNodeID oldID : *oldChildren)
+        {
+            if (!newChildSet.contains(oldID))
+            {
+                removedChildren.push_back(oldID);
+            }
         }
     }
 
     // 3) Replace children list
-    m_Model.children[folderID] = std::move(newChildren);
+    for (AssetBrowserNodeID removedID : removedChildren)
+    {
+        PurgeNodeSubtree(removedID);
+    }
 
     // 4) Sort (folders first, then name)
     auto& vec = m_Model.children[folderID];
-    std::sort(vec.begin(), vec.end(), [&](AssetBrowserNodeID a, AssetBrowserNodeID b)
-    {
-        const FAssetBrowserNode& A = m_Model.nodes.at(a);
-        const FAssetBrowserNode& B = m_Model.nodes.at(b);
+    vec = std::move(newChildren);
 
-        if (A.type != B.type) return A.type == EAssetBrowserNodeType::Folder;
-        return A.displayName < B.displayName;
+    std::sort(vec.begin(), vec.end(),
+        [&](AssetBrowserNodeID a, AssetBrowserNodeID b)
+    {
+        const FAssetBrowserNode* A = TryGetModelNode(a);
+        const FAssetBrowserNode* B = TryGetModelNode(b);
+
+        if (A->type != B->type)
+        {
+            return A->type == EAssetBrowserNodeType::Folder;
+        }
+
+        return A->displayName < B->displayName;
     });
 
-    // 5) Mark folder node authoritative state
+    // 5) Mark the current folder node with children states
     {
         auto& self = m_Model.nodes[folderID];
-        self.bChildFoldersKnown = true;
-        self.bHasChildFolders = bHasChildFolders;
 
-        self.bChildAssetsKnown = true;
-        self.bHasChildAssets = bHasChildAssets;
+        self.childFolderState = bCurrentFolderHasFolderChildren
+                ? EAssetBrowserChildState::Present
+                : EAssetBrowserChildState::None;
+
+        self.childAssetState = bCurrentFolderHasAssetChildren
+                ? EAssetBrowserChildState::Present
+                : EAssetBrowserChildState::None;
     }
 
     m_Model.loadedFolders.insert(folderID);
@@ -373,25 +398,83 @@ void AssetBrowserService::RefreshFolderDirectChildrenByID(AssetBrowserNodeID fol
     ++m_GraphVersion;
 }
 
+std::string AssetBrowserService::RemapPath(
+    const std::string& path,
+    const std::unordered_map<std::string,std::string>& remaps)
+{
+    const std::string normalized = UPath::Normalize(path);
+
+    const std::string* bestOld = nullptr;
+    const std::string* bestNew = nullptr;
+
+    size_t bestLength = 0;
+
+    for (const auto& [oldRoot,newRoot] : remaps)
+    {
+        if (!UPath::IsSameOrUnder(oldRoot, normalized))
+            continue;
+
+        if (oldRoot.size() > bestLength)
+        {
+            bestLength = oldRoot.size();
+            bestOld = &oldRoot;
+            bestNew = &newRoot;
+        }
+    }
+
+    if (!bestOld)
+        return normalized;
+
+    if (normalized == *bestOld)
+        return UPath::Normalize(*bestNew);
+
+    const std::string suffix =
+        normalized.substr(bestOld->size());
+
+    return UPath::Normalize(*bestNew + suffix);
+}
+
 void AssetBrowserService::ApplyMutationToModelGraph(const FAssetOpResult& result)
 {
+    bool bGraphMutated = false;
+
     // Mark affected folders dirty
     for (const auto& f : result.affectedVirtualFolders)
+    {
         MarkFolderDirtyByPath(f);
+        bGraphMutated = true;
+    }
 
     // Deleted paths: mark their parent dirty (and optionally purge nodes)
     for (const auto& p : result.deletedPaths)
     {
         const std::string np = UPath::Normalize(p);
+
         MarkFolderDirtyByPath(UPath::GetParent(np));
+
+        if (AssetBrowserNodeID id = TryGetID(p))
+        {
+            PurgeNodeSubtree(id);
+            bGraphMutated = true;
+        }
     }
 
     // Remaps: old parent + new parent dirty
     for (const auto& [oldP, newP] : result.pathRemappings)
     {
-        MarkFolderDirtyByPath(UPath::GetParent(UPath::Normalize(oldP)));
-        MarkFolderDirtyByPath(UPath::GetParent(UPath::Normalize(newP)));
+        MarkFolderDirtyByPath(UPath::GetParent(oldP));
+        MarkFolderDirtyByPath(UPath::GetParent(newP));
+
+        if (AssetBrowserNodeID id = TryGetID(oldP)) // Treat remap as delete
+        {
+            PurgeNodeSubtree(id);
+        }
+
+        bGraphMutated = true;
     }
+
+    if (bGraphMutated)
+        ++m_GraphVersion;
 }
 
 // -------------------------
@@ -400,6 +483,11 @@ void AssetBrowserService::ApplyMutationToModelGraph(const FAssetOpResult& result
 
 void AssetBrowserService::RefreshView(FAssetBrowserViewState& view)
 {
+    const bool bGraphChanged = view.sourceGraphVersion != m_GraphVersion;
+
+    if (!view.bDirty && !bGraphChanged)
+        return;
+
     view.currentPath = UPath::Normalize(view.currentPath);
     view.rootPath = UPath::Normalize(view.rootPath);
 
@@ -410,7 +498,13 @@ void AssetBrowserService::RefreshView(FAssetBrowserViewState& view)
     view.visibleVirtualPaths.clear();
 
     AssetBrowserProjectionBuilder::Build(*this, view);
-
+    for (auto& [id,node] : view.nodeCache)
+    {
+        std::cout
+            << node.virtualPath
+            << std::endl;
+    }
+    view.sourceGraphVersion = m_GraphVersion;
     view.bDirty = false;
 }
 
@@ -432,6 +526,156 @@ const FAssetBrowserNode* AssetBrowserService::GetNodeByPath(const FAssetBrowserV
     if (it == view.pathToID.end())
         return nullptr;
     return GetNode(view, it->second);
+}
+
+AssetBrowserNodeID AssetBrowserService::GetRootNodeID(const std::string& path)
+{
+    return EnsureFolder(path);
+}
+
+FAssetBrowserNode* AssetBrowserService::GetMutableNode(AssetBrowserNodeID id)
+{
+    auto it = m_Model.nodes.find(id);
+    return (it != m_Model.nodes.end())
+        ? &it->second
+        : nullptr;
+}
+
+const std::vector<AssetBrowserNodeID>& AssetBrowserService::GetChildren(AssetBrowserNodeID id) const
+{
+    static constexpr std::vector<AssetBrowserNodeID> empty;
+
+    auto it = m_Model.children.find(id);
+    return (it != m_Model.children.end())
+        ? it->second
+        : empty;
+}
+
+void AssetBrowserService::PurgeNodeSubtree(AssetBrowserNodeID rootID)
+{
+    auto childIt = m_Model.children.find(rootID);
+
+    if (childIt != m_Model.children.end())
+    {
+        auto children = childIt->second;
+
+        for (AssetBrowserNodeID child : children)
+            PurgeNodeSubtree(child);
+    }
+
+    auto nodeIt = m_Model.nodes.find(rootID);
+
+    if (nodeIt != m_Model.nodes.end())
+    {
+        const auto& node = nodeIt->second;
+
+        if (node.parentID != 0)
+        {
+            UnlinkChild(node.parentID, rootID);
+
+            m_Model.dirtyFolders.insert(node.parentID);
+        }
+
+        m_Model.pathToID.erase(node.virtualPath);
+        m_Model.loadedFolders.erase(rootID);
+        m_Model.dirtyFolders.erase(rootID);
+    }
+
+    m_Model.children.erase(rootID);
+    m_Model.nodes.erase(rootID);
+}
+
+void AssetBrowserService::ExpandFolderNode(FAssetBrowserViewState& view, AssetBrowserNodeID id)
+{
+    const FAssetBrowserNode* node =
+
+        TryGetModelNode(id);
+
+    if (!node)
+        return;
+
+    if (node->type != EAssetBrowserNodeType::Folder)
+        return;
+
+    if (view.expandedFolderNodes.insert(id).second)
+    {
+        view.bDirty = true;
+    }
+}
+
+void AssetBrowserService::CollapseFolderNode( FAssetBrowserViewState& view, AssetBrowserNodeID id)
+{
+    if (view.expandedFolderNodes.erase(id) > 0)
+    {
+        view.bDirty = true;
+    }
+}
+
+bool AssetBrowserService::IsFolderExpanded(const FAssetBrowserViewState& view, AssetBrowserNodeID id) const
+{
+    return view.expandedFolderNodes.contains(id);
+}
+
+void AssetBrowserService::ExpandAllFolders(FAssetBrowserViewState& view)
+{
+    const auto& model = m_Model.nodes;
+
+    bool bChanged = false;
+
+    for (const auto& [id, node] : model)
+    {
+        if (node.type != EAssetBrowserNodeType::Folder)
+            continue;
+
+        bChanged |= view.expandedFolderNodes.insert(id).second;
+    }
+
+    if (bChanged)
+        view.bDirty = true;
+}
+
+void AssetBrowserService::CollapseAllFolders(FAssetBrowserViewState& view)
+{
+    if (view.expandedFolderNodes.empty())
+        return;
+
+    view.expandedFolderNodes.clear();
+    view.bDirty = true;
+}
+
+void AssetBrowserService::ProbeFolderChildStates(AssetBrowserNodeID folderID)
+{
+    FAssetBrowserNode* node = GetMutableNode(folderID);
+
+    if (!node)
+        return;
+
+    if (node->type != EAssetBrowserNodeType::Folder)
+        return;
+
+    const auto entries = m_FileAPI.ListDirectory(node->virtualPath);
+
+    bool bHasFolders = false;
+    bool bHasAssets = false;
+
+    for (const auto& e : entries)
+    {
+        if (e.type == FVirtualDirEntry::EType::Folder)
+            bHasFolders = true;
+        else
+            bHasAssets = true;
+
+        if (bHasFolders && bHasAssets)
+            break;
+    }
+
+    node->childFolderState = bHasFolders
+            ? EAssetBrowserChildState::Present
+            : EAssetBrowserChildState::None;
+
+    node->childAssetState = bHasAssets
+            ? EAssetBrowserChildState::Present
+            : EAssetBrowserChildState::None;
 }
 
 // -------------------------
@@ -519,13 +763,12 @@ void AssetBrowserService::PostMutation(FAssetBrowserViewState& initiatingView, c
         {
             const std::string p = UPath::Normalize(item);
 
-            if (deleted.find(p) != deleted.end())
+            if (deleted.contains(p))
                 continue;
 
-            if (auto it = result.pathRemappings.find(p); it != result.pathRemappings.end())
-                next.push_back(UPath::Normalize(it->second));
-            else
-                next.push_back(p);
+            next.push_back(
+                RemapPath(p, result.pathRemappings)
+            );
         }
 
         model.SetSelection(std::move(next));
