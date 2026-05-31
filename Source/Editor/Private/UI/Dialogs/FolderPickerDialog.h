@@ -4,7 +4,6 @@
 
 #include <string>
 #include <unordered_set>
-#include <vector>
 #include <functional>
 
 #include "Core/Delegates/FDelegateHandle.h"
@@ -31,11 +30,9 @@ private:
 
     struct FPendingFolderState
     {
-        std::vector<std::string> createOrder;
-        std::unordered_set<std::string> createSet;
-        std::unordered_map<std::string, std::vector<std::string>> childrenByParent;
-        std::unordered_set<std::string> expanded;
-        std::string renameTarget;
+        std::unordered_set<std::string> pendingPaths;
+
+        AssetBrowserNodeID renameTargetID = 0;
         std::string renameBuffer;
 
         bool bStartRenameFocus = false;
@@ -43,6 +40,9 @@ private:
 
     // Pending virtual folders
     FPendingFolderState m_Pending;
+    static constexpr AssetBrowserNodeID PendingNodeMask = 0x8000000000000000ULL;
+    static constexpr AssetBrowserNodeID InvalidNodeID = 0;
+    std::unordered_set<std::string> m_ExpandedPendingNodes;
 
     // Current selection/path
     std::string m_CurrentPath = "/Project"; // default virtual folder path
@@ -86,6 +86,7 @@ public:
 
 private:
     void RefreshViewIfDirty(EditorHost& host, EditorRuntime& runtime);
+    void ApplyExpansionRequests();
 
     void DrawContent(EditorHost& host, EditorRuntime& runtime);
     void DrawTopBar();
@@ -94,7 +95,15 @@ private:
 
     void SetCurrentPath(const std::string& path);
 
-    void DrawDirectoryNodeByID(AssetBrowserNodeID id);
+    void DrawNodeByID(AssetBrowserNodeID id);
+    [[nodiscard]] std::string BuildNodeLabel( AssetBrowserNodeID id, const FAssetBrowserNode& node) const;
+    void DrawPendingRenameWidget(AssetBrowserNodeID id);
+
+    void PushPendingNodeStyle();
+    void PopPendingNodeStyle();
+
+    void HandlePendingNodeInteractions( AssetBrowserNodeID id, const FAssetBrowserNode& node);
+    bool HandlePendingDeleteButton(const std::string& nodePath);
 
     void ExpandAll();
     void CollapseAll();
@@ -104,10 +113,8 @@ private:
 
     bool AddPendingFolderPath(const std::string& rawPath);
     void RemovePendingFolderPathAndDescendants(const std::string& normalizedPath);
-    void RebuildPendingChildrenIndex();
     bool CommitPendingFolders(EditorHost& host);
-    void DrawPendingChildRow(const std::string& childPath);
-    bool CommitPendingRename(const std::string& oldPath, const std::string& newName);
+    bool CommitPendingRename(AssetBrowserNodeID nodeID, const std::string& newName);
 
     void EndPendingRename();
     void CancelPendingRename();
@@ -117,8 +124,12 @@ private:
     std::string OnCreateFolderClicked();
 
     static bool IsRootPath(const std::string& path);
-    static bool IsSameOrUnderPath(const std::string& normalizedAncestor, const std::string& normalizedPath);
     [[nodiscard]] bool IsFolderPresentInUI(const std::string& normalizedPath) const;
-    bool HasPendingChildFolder(const std::string& normalizedParent) const;
-    bool FolderHasChildren(const FAssetBrowserNode& node) const;
+    bool FolderHasChildren(AssetBrowserNodeID id) const;
+
+    void InjectPendingFoldersIntoProjection();
+    static AssetBrowserNodeID MakePendingNodeID(const std::string& path);
+    static bool IsPendingNodeID(AssetBrowserNodeID id);
+
+    AssetBrowserNodeID GetRootNodeID(EditorHost& host) const;
 };
