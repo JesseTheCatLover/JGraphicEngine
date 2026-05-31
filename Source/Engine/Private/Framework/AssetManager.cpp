@@ -11,6 +11,7 @@
 #include "Assets/AssetRegistryScanner.h"
 #include "Core/Project/VirtualPathMounter.h"
 #include "Utilities/UFileSystem.h"
+#include "Utilities/UPath.h"
 #include "Utilities/UUUID.h"
 
 namespace
@@ -339,6 +340,9 @@ FAssetOpResult AssetManager::CreateFolder(const std::string& folderVirtualPath)
         r.errors.emplace_back("Failed to create directory: " + physicalPath);
         return r;
     }
+
+    r.affectedVirtualFolders.push_back(UPath::GetParent(v));
+    r.affectedVirtualFolders.push_back(v);
 
     r.bSuccess = true;
     return r;
