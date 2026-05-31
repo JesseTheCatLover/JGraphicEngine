@@ -2,127 +2,130 @@
 
 #include "AssetBrowserProjectionBuilder.h"
 
+#include <iostream>
 #include <unordered_set>
 
 #include "AssetBrowserService.h"
-#include "Utilities/UPath.h"
 
-void AssetBrowserProjectionBuilder::Build(AssetBrowserService& service, FAssetBrowserViewState& view)
+void AssetBrowserProjectionBuilder::Build(
+    AssetBrowserService& service,
+    FAssetBrowserViewState& view)
 {
-    auto& model = service.GetModelGraph();
-
-    std::unordered_set<AssetBrowserNodeID> projected;
-    projected.reserve(256);
-
-    auto EnsureFolderLoaded = [&](AssetBrowserNodeID folderID)
-    {
-        if (folderID == 0)
-            return;
-
-        if (model.dirtyFolders.contains(folderID) ||
-            !model.loadedFolders.contains(folderID))
-        {
-            service.RefreshFolderDirectChildrenByID(folderID);
-        }
-    };
-
-    auto TryProjectNode = [&](AssetBrowserNodeID id) -> bool
-    {
-        if (!projected.insert(id).second)
-            return false;
-
-        const FAssetBrowserNode* n = service.TryGetModelNode(id);
-        if (!n)
-            return false;
-
-        if (!view.bShowFolders &&
-            n->type == EAssetBrowserNodeType::Folder)
-        {
-            return false;
-        }
-
-        if (!view.bShowAssets &&
-            n->type == EAssetBrowserNodeType::Asset)
-        {
-            return false;
-        }
-
-        if (!view.searchFilter.empty() &&
-            n->displayName.find(view.searchFilter) == std::string::npos)
-        {
-            return false;
-        }
-
-        view.nodeCache[id] = *n;
-        view.pathToID[n->virtualPath] = id;
-        view.viewNodeIDs.push_back(id);
-        view.visibleVirtualPaths.push_back(n->virtualPath);
-
-        return true;
-    };
-
     switch (view.projectionMode)
     {
         case EAssetBrowserProjectionMode::Flat:
-        {
-            const AssetBrowserNodeID folderID =
-                service.EnsureFolder(view.currentPath);
-
-            EnsureFolderLoaded(folderID);
-
-            if (auto it = model.children.find(folderID);
-                it != model.children.end())
-            {
-                for (AssetBrowserNodeID child : it->second)
-                {
-                    TryProjectNode(child);
-                }
-            }
-
-            return;
-        }
+            BuildFlat(service, view);
+            break;
 
         case EAssetBrowserProjectionMode::Tree:
+            BuildTree(service, view);
+            break;
+    }
+}
+
+void AssetBrowserProjectionBuilder::BuildFlat(
+    AssetBrowserService& service,
+    FAssetBrowserViewState& view)
+{
+    const AssetBrowserNodeID rootID = service.GetRootNodeID(view.currentPath);
+
+    service.SyncFolderNode(rootID);
+
+    const auto* rootNode = service.TryGetModelNode(rootID);
+
+    if (!rootNode)
+        return;
+
+    view.nodeCache[rootID] = *rootNode;
+    view.pathToID[rootNode->virtualPath] = rootID;
+
+    const auto& children = service.GetChildren(rootID);
+
+    for (AssetBrowserNodeID childID : children)
+    {
+        const auto* child = service.TryGetModelNode(childID);
+
+        if (!child)
+            continue;
+
+        if (child->type == EAssetBrowserNodeType::Folder && !view.bShowFolders)
+            continue;
+
+        if (child->type == EAssetBrowserNodeType::Asset && !view.bShowAssets)
+            continue;
+
+        view.nodeCache[childID] = *child;
+        view.pathToID[child->virtualPath] = childID;
+        view.viewNodeIDs.push_back(childID);
+        view.visibleVirtualPaths.push_back(child->virtualPath);
+    }
+}
+
+void AssetBrowserProjectionBuilder::BuildTree(AssetBrowserService &service, FAssetBrowserViewState &view)
+{
+    const AssetBrowserNodeID rootID = service.GetRootNodeID(view.rootPath);
+
+    service.SyncFolderNode(rootID);
+
+    BuildTreeRecursive(service, view, rootID);
+}
+
+void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &service, FAssetBrowserViewState &view,
+    AssetBrowserNodeID nodeID)
+{
+    const FAssetBrowserNode* node = service.TryGetModelNode(nodeID);
+
+    if (!node)
+        return;
+
+    const bool bIsFolder = node->type == EAssetBrowserNodeType::Folder;
+    const bool bExpanded = bIsFolder && view.expandedFolderNodes.contains(nodeID);
+    std::cout
+        << "Node: " << node->virtualPath
+        << " Expanded=" << bExpanded
+        << std::endl;
+    if (bExpanded)
+    {
+        service.SyncFolderNode(nodeID); // Sync the model first then copy
+        node = service.TryGetModelNode(nodeID); // Reacquire the pointer
+
+        if (!node)
+            return;
+    }
+
+    view.nodeCache[nodeID] = *node;
+    view.pathToID[node->virtualPath] = nodeID;
+    view.viewNodeIDs.push_back(nodeID);
+    view.visibleVirtualPaths.push_back(node->virtualPath);
+
+    if (!bIsFolder)
+        return; // Assets don't have children, we quit
+
+    if (!bExpanded)
+        return; // We don't care about collapsed folder's children
+
+
+    const auto& children = service.GetChildren(nodeID);
+    view.children[nodeID] = children;
+
+    for (AssetBrowserNodeID childID : children)
+    {
+        const FAssetBrowserNode* child = service.TryGetModelNode(childID);
+
+        if (!child)
+            continue;
+
+        if (child->type == EAssetBrowserNodeType::Folder && !view.bShowFolders)
         {
-            const AssetBrowserNodeID rootID =
-                service.EnsureFolder(view.rootPath);
-
-            EnsureFolderLoaded(rootID);
-
-            TryProjectNode(rootID);
-
-            if (auto it = model.children.find(rootID);
-                it != model.children.end())
-            {
-                view.children[rootID] = it->second;
-
-                for (AssetBrowserNodeID child : it->second)
-                {
-                    TryProjectNode(child);
-                }
-            }
-
-            // Expanded folders (lazy)
-            for (const std::string& raw : view.expandedFolderPaths)
-            {
-                const std::string p = UPath::Normalize(raw);
-
-                const AssetBrowserNodeID fid =
-                    service.EnsureFolder(p);
-
-                EnsureFolderLoaded(fid);
-
-                auto cit = model.children.find(fid);
-                if (cit == model.children.end())
-                    continue;
-
-                view.children[fid] = cit->second;
-
-                for (AssetBrowserNodeID cid : cit->second)
-                {
-                    TryProjectNode(cid);
-                }
-            }
+            continue;
         }
+
+        if (child->type == EAssetBrowserNodeType::Asset &&
+            !view.bShowAssets)
+        {
+            continue;
+        }
+
+        BuildTreeRecursive(service, view, childID);
     }
 }
