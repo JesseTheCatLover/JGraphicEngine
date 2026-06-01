@@ -8,7 +8,7 @@
 
 #include "FAssetBrowserNode.h"
 
-struct FAssetBrowserViewState
+struct FAssetBrowserViewProjection
 {
     uint64_t sourceGraphVersion = 0;
 

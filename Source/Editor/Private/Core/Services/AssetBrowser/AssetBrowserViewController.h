@@ -5,7 +5,7 @@
 #include <optional>
 #include <vector>
 
-#include "FAssetBrowserViewState.h"
+#include "FAssetBrowserViewProjection.h"
 #include "AssetBrowserService.h"
 #include "Core/Memory/SmartPointers.h"
 
@@ -48,30 +48,29 @@ class AssetBrowserViewController
 {
 private:
     FAssetBrowserViewSettings m_Settings;
-    bool m_bDirt = false;
+    bool m_bProjectionDirty = false;
 
     // Only used if selectionPolicy == LocalSelection
-    TUniquePtr< TSelectionModel<std::string>> m_LocalSelectionModel;
+    TUniquePtr<TSelectionModel<std::string>> m_LocalSelectionModel;
 
     std::optional<std::string> m_PendingCurrentPath;
     std::optional<std::string> m_PendingRootPath;
+
+    std::optional<bool> m_PendingIncludeRootNode;
 
     std::optional<std::string> m_PendingSearchFilter;
 
     std::optional<bool> m_PendingShowFolders;
     std::optional<bool> m_PendingShowAssets;
 
-    std::optional<EAssetBrowserProjectionMode>
-        m_PendingProjectionMode;
+    std::optional<EAssetBrowserProjectionMode> m_PendingProjectionMode;
 
     bool m_bExpandAll = false;
     bool m_bCollapseAll = false;
 
-    std::unordered_set<AssetBrowserNodeID>
-        m_PendingExpand;
+    std::unordered_set<AssetBrowserNodeID> m_PendingExpand;
 
-    std::unordered_set<AssetBrowserNodeID>
-        m_PendingCollapse;
+    std::unordered_set<AssetBrowserNodeID> m_PendingCollapse;
 
     struct FSelectionRequest
     {
@@ -93,9 +92,13 @@ public:
     AssetBrowserViewController(const AssetBrowserViewController&) = delete;
     AssetBrowserViewController& operator=(const AssetBrowserViewController&) = delete;
 
+    [[nodiscard]] const FAssetBrowserViewSettings& GetSettings() const { return m_Settings; }
+
     // Navigation
     void RequestNavigateTo(const std::string& path);
     void RequestSetRoot(const std::string& path);
+
+    void RequestIncludeRootNode(bool value);
 
     // Expansion
     void RequestExpand(AssetBrowserNodeID id);
@@ -122,7 +125,19 @@ public:
     // Refresh
     void RequestRefresh();
 
-    void Flush(AssetBrowserService& service, FAssetBrowserViewState& view);
+    void Flush(AssetBrowserService& service, FAssetBrowserViewProjection& view);
 
     void Clear();
+
+private:
+    [[nodiscard]] TSelectionModel<std::string>& GetSelectionModel(AssetBrowserService& service);
+    [[nodiscard]] const TSelectionModel<std::string>& GetSelectionModel(const AssetBrowserService& service) const;
+
+    void ApplyPendingSettings();
+
+    void ApplyPendingExpansion(const AssetBrowserService& service);
+
+    void ApplyPendingSelection(AssetBrowserService& service, const FAssetBrowserViewProjection& view);
+
+    void ClearPendingCommands();
 };
