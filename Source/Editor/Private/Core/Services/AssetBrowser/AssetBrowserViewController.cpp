@@ -2,6 +2,7 @@
 
 #include "AssetBrowserViewController.h"
 #include "Core/Services/Selection/TSelectionModel.h"
+#include "Utilities/UPath.h"
 
 AssetBrowserViewController::AssetBrowserViewController() = default;
 AssetBrowserViewController::~AssetBrowserViewController() = default;
@@ -10,12 +11,12 @@ AssetBrowserViewController& AssetBrowserViewController::operator=(AssetBrowserVi
 
 void AssetBrowserViewController::RequestNavigateTo(const std::string& path)
 {
-    m_PendingCurrentPath = path;
+    m_PendingCurrentPath = UPath::Normalize(path);
 }
 
 void AssetBrowserViewController::RequestSetRoot(const std::string &path)
 {
-    m_PendingRootPath = path;
+    m_PendingRootPath = UPath::Normalize(path);
 }
 
 void AssetBrowserViewController::RequestIncludeRootNode(bool value)
