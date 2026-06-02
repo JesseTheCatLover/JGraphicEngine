@@ -4,21 +4,22 @@
 #include "FAssetBrowserNode.h"
 
 struct FAssetBrowserViewSettings;
+class AssetBrowserViewController;
 class AssetBrowserService;
 struct FAssetBrowserViewProjection;
 
 class AssetBrowserProjectionBuilder
 {
 public:
-    static void Build(AssetBrowserService& service, const FAssetBrowserViewSettings& settings, FAssetBrowserViewProjection& view);
+    static void Build(AssetBrowserService& service, const AssetBrowserViewController& controller, FAssetBrowserViewProjection& view);
 
 private:
-    static void BuildFlat(AssetBrowserService& service, const FAssetBrowserViewSettings& settings, FAssetBrowserViewProjection& view);
+    static void BuildFlat(AssetBrowserService& service, const AssetBrowserViewController& controller, FAssetBrowserViewProjection& view);
 
-    static void BuildTree(AssetBrowserService& service, const FAssetBrowserViewSettings& settings, FAssetBrowserViewProjection& view);
-    static void BuildTreeRecursive(AssetBrowserService& service,const FAssetBrowserViewSettings& settings,
+    static void BuildTree(AssetBrowserService& service, const AssetBrowserViewController& controller, FAssetBrowserViewProjection& view);
+    static void BuildTreeRecursive(AssetBrowserService& service,const AssetBrowserViewController& controller,
         FAssetBrowserViewProjection& view, AssetBrowserNodeID nodeID);
 
     static void AddNodeToView(FAssetBrowserViewProjection& view, const FAssetBrowserNode& node);
-    static bool ShouldIncludeNode(const FAssetBrowserNode& node, const FAssetBrowserViewSettings& settings);
+    static bool ShouldIncludeNode(const FAssetBrowserNode& node, const FAssetBrowserViewSettings &settings);
 };

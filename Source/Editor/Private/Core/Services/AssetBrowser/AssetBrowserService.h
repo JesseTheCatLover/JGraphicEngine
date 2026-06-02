@@ -11,7 +11,7 @@
 #include "FAssetBrowserNode.h"
 #include "FAssetBrowserViewProjection.h"
 
-struct FAssetBrowserViewSettings;
+class AssetBrowserViewController;
 struct FAssetOpResult;
 class EditorFileAPI;
 class SelectionService;
@@ -58,7 +58,7 @@ public:
     void RegisterShellCommands(ShellCommandService& shell) override;
 
     // --- View refresh ---
-    void RefreshView(const FAssetBrowserViewSettings& settings, FAssetBrowserViewProjection& view);
+    void RefreshView(const AssetBrowserViewController& controller, FAssetBrowserViewProjection& view);
 
     // --- Node access helpers (operate on a view) ---
     [[nodiscard]] const FAssetBrowserNode* GetNode(const FAssetBrowserViewProjection& view, AssetBrowserNodeID id) const;

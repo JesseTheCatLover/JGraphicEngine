@@ -1,31 +1,29 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "AssetBrowserProjectionBuilder.h"
-
-#include <iostream>
-
 #include "AssetBrowserService.h"
+#include "AssetBrowserViewController.h"
 #include "FAssetBrowserViewSettings.h"
 
-void AssetBrowserProjectionBuilder::Build(AssetBrowserService& service, const FAssetBrowserViewSettings& settings,
-    FAssetBrowserViewProjection& view)
+void AssetBrowserProjectionBuilder::Build(AssetBrowserService& service, const AssetBrowserViewController& controller,
+                                          FAssetBrowserViewProjection& view)
 {
-    switch (settings.projectionMode)
+    switch (controller.GetSettings().projectionMode)
     {
         case EAssetBrowserProjectionMode::Flat:
-            BuildFlat(service, settings, view);
+            BuildFlat(service, controller, view);
             break;
 
         case EAssetBrowserProjectionMode::Tree:
-            BuildTree(service, settings, view);
+            BuildTree(service, controller, view);
             break;
     }
 }
 
-void AssetBrowserProjectionBuilder::BuildFlat(AssetBrowserService& service, const FAssetBrowserViewSettings& settings,
+void AssetBrowserProjectionBuilder::BuildFlat(AssetBrowserService& service, const AssetBrowserViewController& controller,
     FAssetBrowserViewProjection& view)
 {
-    const AssetBrowserNodeID rootID = service.GetRootNodeID(settings.currentPath);
+    const AssetBrowserNodeID rootID = service.GetRootNodeID(controller.GetSettings().currentPath);
 
     service.EnsureFolderLoaded(rootID);
 
@@ -46,7 +44,7 @@ void AssetBrowserProjectionBuilder::BuildFlat(AssetBrowserService& service, cons
         if (!child)
             continue;
 
-        if (!ShouldIncludeNode(*child, settings))
+        if (!ShouldIncludeNode(*child, controller.GetSettings()))
             continue;
 
         AddNodeToView(view, *child);
@@ -54,15 +52,15 @@ void AssetBrowserProjectionBuilder::BuildFlat(AssetBrowserService& service, cons
 }
 
 void AssetBrowserProjectionBuilder::BuildTree(AssetBrowserService& service,
-    const FAssetBrowserViewSettings& settings, FAssetBrowserViewProjection& view)
+    const AssetBrowserViewController& controller, FAssetBrowserViewProjection& view)
 {
-    const AssetBrowserNodeID rootID = service.GetRootNodeID(settings.rootPath);
+    const AssetBrowserNodeID rootID = service.GetRootNodeID(controller.GetSettings().rootPath);
 
     service.EnsureFolderLoaded(rootID);
 
-    if (settings.bIncludeRootNode) // If root should be included we include it
+    if (controller.GetSettings().bIncludeRootNode) // If root should be included we include it
     {
-        BuildTreeRecursive(service, settings, view, rootID);
+        BuildTreeRecursive(service, controller, view, rootID);
         return;
     }
 
@@ -75,14 +73,14 @@ void AssetBrowserProjectionBuilder::BuildTree(AssetBrowserService& service,
         if (!child)
             continue;
 
-        if (!ShouldIncludeNode(*child, settings))
+        if (!ShouldIncludeNode(*child, controller.GetSettings()))
             continue;
 
-        BuildTreeRecursive(service, settings, view, childID);
+        BuildTreeRecursive(service, controller, view, childID);
     }
 }
 
-void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &service, const FAssetBrowserViewSettings& settings,
+void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &service, const AssetBrowserViewController& controller,
     FAssetBrowserViewProjection &view, AssetBrowserNodeID nodeID)
 {
     const FAssetBrowserNode* node = service.TryGetModelNode(nodeID);
@@ -91,11 +89,8 @@ void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &serv
         return;
 
     const bool bIsFolder = node->type == EAssetBrowserNodeType::Folder;
-    const bool bExpanded = bIsFolder && settings.expandedFolderNodes.contains(nodeID);
-    std::cout
-        << "Node: " << node->virtualPath
-        << " Expanded=" << bExpanded
-        << std::endl;
+    const bool bExpanded = bIsFolder && controller.IsFolderExpanded(nodeID);
+
     if (bExpanded)
     {
         service.EnsureFolderLoaded(nodeID); // Load the folder and children for model first then copy
@@ -113,21 +108,23 @@ void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &serv
     if (!bExpanded)
         return; // We don't care about collapsed folder's children
 
+    const auto& modelChildren = service.GetChildren(nodeID);
 
-    const auto& children = service.GetChildren(nodeID);
-    view.children[nodeID] = children;
+    auto& projectedChildren = view.children[nodeID];
 
-    for (AssetBrowserNodeID childID : children)
+    for (AssetBrowserNodeID childID : modelChildren)
     {
         const FAssetBrowserNode* child = service.TryGetModelNode(childID);
 
         if (!child)
             continue;
 
-        if (!ShouldIncludeNode(*child, settings))
+        if (!ShouldIncludeNode(*child, controller.GetSettings()))
             continue;
 
-        BuildTreeRecursive(service, settings, view, childID);
+        projectedChildren.push_back(childID);
+
+        BuildTreeRecursive(service, controller, view, childID);
     }
 }
 

@@ -3,7 +3,6 @@
 #include "AssetBrowserService.h"
 
 #include <algorithm>
-#include <iostream>
 #include <unordered_set>
 
 #include "Core/Services/Selection/TSelectionModel.h"
@@ -264,10 +263,6 @@ void AssetBrowserService::EnsureFolderLoaded(AssetBrowserNodeID folderID)
     }
 
     const std::string folderPath = folderNode->virtualPath;
-    std::cout
-    << "SyncFolderNode: "
-    << folderPath
-    << std::endl;
 
     bool bCurrentFolderHasFolderChildren = false;
     bool bCurrentFolderHasAssetChildren = false;
@@ -468,10 +463,10 @@ void AssetBrowserService::ApplyMutationToModelGraph(const FAssetOpResult& result
 // View projection
 // -------------------------
 
-void AssetBrowserService::RefreshView(const FAssetBrowserViewSettings& settings, FAssetBrowserViewProjection& view)
+void AssetBrowserService::RefreshView(const AssetBrowserViewController& controller, FAssetBrowserViewProjection& view)
 {
     view.Clear();
-    AssetBrowserProjectionBuilder::Build(*this, settings, view);
+    AssetBrowserProjectionBuilder::Build(*this, controller, view);
 }
 
 // -------------------------
