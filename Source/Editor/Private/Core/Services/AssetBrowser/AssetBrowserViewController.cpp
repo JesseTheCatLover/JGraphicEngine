@@ -1,13 +1,62 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "AssetBrowserViewController.h"
+
+#include <utility>
 #include "Core/Services/Selection/TSelectionModel.h"
 #include "Utilities/UPath.h"
 
-AssetBrowserViewController::AssetBrowserViewController() = default;
+AssetBrowserViewController::AssetBrowserViewController(FAssetBrowserViewSettings initialSettings)
+{
+    m_Settings = std::move(initialSettings);
+
+    if (m_Settings.selectionPolicy == EAssetBrowserSelectionPolicy::LocalSelection)
+    {
+        m_LocalSelectionModel = MakeUnique<TSelectionModel<std::string>>();
+    }
+
+    m_bControllerDirty = true;
+}
+
 AssetBrowserViewController::~AssetBrowserViewController() = default;
-AssetBrowserViewController::AssetBrowserViewController(AssetBrowserViewController&&) noexcept = default;
-AssetBrowserViewController& AssetBrowserViewController::operator=(AssetBrowserViewController&&) noexcept = default;
+
+FDelegateHandle AssetBrowserViewController::AddProjectionModifier(FProjectionModifier modifier)
+{
+    const FDelegateHandle handle{m_ModifierIDGenerator.Allocate()};
+    m_ProjectionModifiers.push_back({handle, std::move(modifier)});
+
+    m_bControllerDirty = true;
+    return handle;
+}
+
+bool AssetBrowserViewController::RemoveProjectionModifier(FDelegateHandle modifierHandle)
+{
+    const auto it = std::ranges::find_if(m_ProjectionModifiers,
+                                   [&](const FProjectionModifierEntry& slot)
+                                   {
+                                       return slot.handle == modifierHandle;
+                                   });
+
+    if (it == m_ProjectionModifiers.end())
+        return false;
+
+    m_ModifierIDGenerator.Free(modifierHandle.id);
+    m_ProjectionModifiers.erase(it);
+
+    m_bControllerDirty = true;
+    return true;
+}
+
+void AssetBrowserViewController::ClearAllProjectionModifiers()
+{
+    if (m_ProjectionModifiers.empty())
+        return;
+
+    m_ProjectionModifiers.clear();
+    m_ModifierIDGenerator.Reset();
+
+    m_bControllerDirty = true;
+}
 
 void AssetBrowserViewController::RequestNavigateTo(const std::string& path)
 {
@@ -22,6 +71,16 @@ void AssetBrowserViewController::RequestSetRoot(const std::string &path)
 void AssetBrowserViewController::RequestIncludeRootNode(bool value)
 {
     m_PendingIncludeRootNode = value;
+}
+
+void AssetBrowserViewController::RequestExpandRoot(AssetBrowserService &service)
+{
+    RequestExpand(service.GetRootNodeID(m_Settings.rootPath));
+}
+
+void AssetBrowserViewController::RequestCollapseRoot(AssetBrowserService &service)
+{
+    RequestCollapse(service.GetRootNodeID(m_Settings.rootPath));
 }
 
 void AssetBrowserViewController::RequestExpandAll()
@@ -68,7 +127,7 @@ void AssetBrowserViewController::RequestClearSelection()
 
 void AssetBrowserViewController::RequestRefresh()
 {
-    m_bProjectionDirty = true;
+    m_bControllerDirty = true;
 }
 
 void AssetBrowserViewController::RequestExpand(AssetBrowserNodeID id)
@@ -83,18 +142,20 @@ void AssetBrowserViewController::RequestCollapse(AssetBrowserNodeID id)
     m_PendingExpand.erase(id);
 }
 
-void AssetBrowserViewController::Flush(AssetBrowserService& service, FAssetBrowserViewProjection& view)
+void AssetBrowserViewController::Refresh(AssetBrowserService& service)
 {
     ApplyPendingSettings();
     ApplyPendingExpansion(service);
 
-    if (m_bProjectionDirty)
+    if (m_bControllerDirty)
     {
-        service.RefreshView(m_Settings, view);
-        m_bProjectionDirty = false;
+        service.RefreshView(m_Settings, m_View);
+        m_bControllerDirty = false;
     }
 
-    ApplyPendingSelection(service, view);
+    ApplyPendingSelection(service, m_View);
+
+    ApplyProjectionModifiers();
 
     ClearPendingCommands();
 }
@@ -102,13 +163,14 @@ void AssetBrowserViewController::Flush(AssetBrowserService& service, FAssetBrows
 void AssetBrowserViewController::Clear()
 {
     m_Settings.expandedFolderNodes.clear();
+    ClearAllProjectionModifiers();
 
     if (m_LocalSelectionModel)
         m_LocalSelectionModel->Clear();
 
     ClearPendingCommands();
 
-    m_bProjectionDirty = true;
+    m_bControllerDirty = true;
 }
 
 TSelectionModel<std::string> & AssetBrowserViewController::GetSelectionModel(AssetBrowserService &service)
@@ -136,48 +198,57 @@ const TSelectionModel<std::string> & AssetBrowserViewController::GetSelectionMod
     return m_LocalSelectionModel ? *m_LocalSelectionModel : s_Empty;
 }
 
+void AssetBrowserViewController::ApplyProjectionModifiers()
+{
+    for (const FProjectionModifierEntry& entry : m_ProjectionModifiers)
+    {
+        if (entry.modifier)
+            entry.modifier(m_View);
+    }
+}
+
 void AssetBrowserViewController::ApplyPendingSettings()
 {
     if (m_PendingCurrentPath)
     {
         m_Settings.currentPath = *m_PendingCurrentPath;
-        m_bProjectionDirty = true;
+        m_bControllerDirty = true;
     }
 
     if (m_PendingRootPath)
     {
         m_Settings.rootPath = *m_PendingRootPath;
-        m_bProjectionDirty = true;
+        m_bControllerDirty = true;
     }
 
     if (m_PendingIncludeRootNode)
     {
         m_Settings.bIncludeRootNode = *m_PendingIncludeRootNode;
-        m_bProjectionDirty = true;
+        m_bControllerDirty = true;
     }
 
     if (m_PendingSearchFilter)
     {
         m_Settings.searchFilter = std::move(*m_PendingSearchFilter);
-        m_bProjectionDirty = true;
+        m_bControllerDirty = true;
     }
 
     if (m_PendingShowFolders)
     {
         m_Settings.bShowFolders = *m_PendingShowFolders;
-        m_bProjectionDirty = true;
+        m_bControllerDirty = true;
     }
 
     if (m_PendingShowAssets)
     {
         m_Settings.bShowAssets = *m_PendingShowAssets;
-        m_bProjectionDirty = true;
+        m_bControllerDirty = true;
     }
 
     if (m_PendingProjectionMode)
     {
         m_Settings.projectionMode = *m_PendingProjectionMode;
-        m_bProjectionDirty = true;
+        m_bControllerDirty = true;
     }
 }
 
@@ -188,7 +259,7 @@ void AssetBrowserViewController::ApplyPendingExpansion(const AssetBrowserService
         if (!m_Settings.expandedFolderNodes.empty())
         {
             m_Settings.expandedFolderNodes.clear();
-            m_bProjectionDirty = true;
+            m_bControllerDirty = true;
         }
     }
 
@@ -202,14 +273,14 @@ void AssetBrowserViewController::ApplyPendingExpansion(const AssetBrowserService
         }
 
         if (bChanged)
-            m_bProjectionDirty = true;
+            m_bControllerDirty = true;
     }
 
     for (AssetBrowserNodeID id : m_PendingExpand)
     {
         if (m_Settings.expandedFolderNodes.insert(id).second)
         {
-            m_bProjectionDirty = true;
+            m_bControllerDirty = true;
         }
     }
 
@@ -217,7 +288,7 @@ void AssetBrowserViewController::ApplyPendingExpansion(const AssetBrowserService
     {
         if (m_Settings.expandedFolderNodes.erase(id) > 0)
         {
-            m_bProjectionDirty = true;
+            m_bControllerDirty = true;
         }
     }
 }

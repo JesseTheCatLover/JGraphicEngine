@@ -3,52 +3,38 @@
 
 #include <unordered_set>
 #include <optional>
+#include <functional>
 #include <vector>
 
 #include "FAssetBrowserViewProjection.h"
 #include "AssetBrowserService.h"
+#include "FAssetBrowserViewSettings.h"
 #include "Core/Memory/SmartPointers.h"
+#include "Core/Delegates/FDelegateHandle.h"
+#include "Utilities/UDynamicID.h"
 
 // Forward decl
 template <typename T> class TSelectionModel;
 
-enum class EAssetBrowserSelectionPolicy
-{
-    SharedGlobalSelection, // uses SelectionService asset-path selection
-    LocalSelection         // controller owns its own TSelectionModel<std::string>
-};
-
-enum class EAssetBrowserProjectionMode : uint8_t
-{
-    Flat,   // only immediate children of currentPath
-    Tree    // recursive tree from a rootPath
-};
-
-struct FAssetBrowserViewSettings
-{
-    // Selection policy (per-controller)
-    EAssetBrowserSelectionPolicy selectionPolicy = EAssetBrowserSelectionPolicy::SharedGlobalSelection;
-
-    std::string currentPath = "/Project";
-    std::string rootPath = "/Project";
-
-    std::string searchFilter;
-
-    bool bShowFolders = true;
-    bool bShowAssets = true;
-
-    bool bIncludeRootNode = true;
-
-    EAssetBrowserProjectionMode projectionMode = EAssetBrowserProjectionMode::Flat;
-
-    std::unordered_set<AssetBrowserNodeID> expandedFolderNodes;
-};
-
 class AssetBrowserViewController
 {
+public:
+    using FProjectionModifier = std::function<void(FAssetBrowserViewProjection&)>;
+
+    struct FProjectionModifierEntry
+    {
+        FDelegateHandle handle;
+        FProjectionModifier modifier;
+    };
+
 private:
     FAssetBrowserViewSettings m_Settings;
-    bool m_bProjectionDirty = false;
+    FAssetBrowserViewProjection m_View;
+
+    bool m_bControllerDirty = false;
+
+    UDynamicID m_ModifierIDGenerator;
+    std::vector<FProjectionModifierEntry> m_ProjectionModifiers;
 
     // Only used if selectionPolicy == LocalSelection
     TUniquePtr<TSelectionModel<std::string>> m_LocalSelectionModel;
@@ -85,14 +71,15 @@ private:
 
 public:
     // For compilation of unique pointer TClass
-    AssetBrowserViewController();
+    explicit AssetBrowserViewController(FAssetBrowserViewSettings initialSettings);
     ~AssetBrowserViewController();
-    AssetBrowserViewController(AssetBrowserViewController&&) noexcept;
-    AssetBrowserViewController& operator=(AssetBrowserViewController&&) noexcept;
-    AssetBrowserViewController(const AssetBrowserViewController&) = delete;
-    AssetBrowserViewController& operator=(const AssetBrowserViewController&) = delete;
 
     [[nodiscard]] const FAssetBrowserViewSettings& GetSettings() const { return m_Settings; }
+    [[nodiscard]] const FAssetBrowserViewProjection& GetProjection() const {return m_View; }
+
+    FDelegateHandle AddProjectionModifier(FProjectionModifier modifier);
+    bool RemoveProjectionModifier(FDelegateHandle modifierHandle);
+    void ClearAllProjectionModifiers();
 
     // Navigation
     void RequestNavigateTo(const std::string& path);
@@ -101,6 +88,9 @@ public:
     void RequestIncludeRootNode(bool value);
 
     // Expansion
+    void RequestExpandRoot(AssetBrowserService& service);
+    void RequestCollapseRoot(AssetBrowserService& service);
+
     void RequestExpand(AssetBrowserNodeID id);
     void RequestCollapse(AssetBrowserNodeID id);
 
@@ -125,13 +115,15 @@ public:
     // Refresh
     void RequestRefresh();
 
-    void Flush(AssetBrowserService& service, FAssetBrowserViewProjection& view);
+    void Refresh(AssetBrowserService& service);
 
     void Clear();
 
 private:
     [[nodiscard]] TSelectionModel<std::string>& GetSelectionModel(AssetBrowserService& service);
     [[nodiscard]] const TSelectionModel<std::string>& GetSelectionModel(const AssetBrowserService& service) const;
+
+    void ApplyProjectionModifiers();
 
     void ApplyPendingSettings();
 
