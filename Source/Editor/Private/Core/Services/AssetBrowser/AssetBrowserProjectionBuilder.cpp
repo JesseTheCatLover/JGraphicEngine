@@ -3,33 +3,31 @@
 #include "AssetBrowserProjectionBuilder.h"
 
 #include <iostream>
-#include <unordered_set>
 
 #include "AssetBrowserService.h"
+#include "FAssetBrowserViewSettings.h"
 
-void AssetBrowserProjectionBuilder::Build(
-    AssetBrowserService& service,
-    FAssetBrowserViewState& view)
+void AssetBrowserProjectionBuilder::Build(AssetBrowserService& service, const FAssetBrowserViewSettings& settings,
+    FAssetBrowserViewProjection& view)
 {
-    switch (view.projectionMode)
+    switch (settings.projectionMode)
     {
         case EAssetBrowserProjectionMode::Flat:
-            BuildFlat(service, view);
+            BuildFlat(service, settings, view);
             break;
 
         case EAssetBrowserProjectionMode::Tree:
-            BuildTree(service, view);
+            BuildTree(service, settings, view);
             break;
     }
 }
 
-void AssetBrowserProjectionBuilder::BuildFlat(
-    AssetBrowserService& service,
-    FAssetBrowserViewState& view)
+void AssetBrowserProjectionBuilder::BuildFlat(AssetBrowserService& service, const FAssetBrowserViewSettings& settings,
+    FAssetBrowserViewProjection& view)
 {
-    const AssetBrowserNodeID rootID = service.GetRootNodeID(view.currentPath);
+    const AssetBrowserNodeID rootID = service.GetRootNodeID(settings.currentPath);
 
-    service.SyncFolderNode(rootID);
+    service.EnsureFolderLoaded(rootID);
 
     const auto* rootNode = service.TryGetModelNode(rootID);
 
@@ -48,30 +46,44 @@ void AssetBrowserProjectionBuilder::BuildFlat(
         if (!child)
             continue;
 
-        if (child->type == EAssetBrowserNodeType::Folder && !view.bShowFolders)
+        if (!ShouldIncludeNode(*child, settings))
             continue;
 
-        if (child->type == EAssetBrowserNodeType::Asset && !view.bShowAssets)
-            continue;
-
-        view.nodeCache[childID] = *child;
-        view.pathToID[child->virtualPath] = childID;
-        view.viewNodeIDs.push_back(childID);
-        view.visibleVirtualPaths.push_back(child->virtualPath);
+        AddNodeToView(view, *child);
     }
 }
 
-void AssetBrowserProjectionBuilder::BuildTree(AssetBrowserService &service, FAssetBrowserViewState &view)
+void AssetBrowserProjectionBuilder::BuildTree(AssetBrowserService& service,
+    const FAssetBrowserViewSettings& settings, FAssetBrowserViewProjection& view)
 {
-    const AssetBrowserNodeID rootID = service.GetRootNodeID(view.rootPath);
+    const AssetBrowserNodeID rootID = service.GetRootNodeID(settings.rootPath);
 
-    service.SyncFolderNode(rootID);
+    service.EnsureFolderLoaded(rootID);
 
-    BuildTreeRecursive(service, view, rootID);
+    if (settings.bIncludeRootNode) // If root should be included we include it
+    {
+        BuildTreeRecursive(service, settings, view, rootID);
+        return;
+    }
+
+    const auto& children = service.GetChildren(rootID); // If not we start from its children
+
+    for (AssetBrowserNodeID childID : children)
+    {
+        const FAssetBrowserNode* child = service.TryGetModelNode(childID);
+
+        if (!child)
+            continue;
+
+        if (!ShouldIncludeNode(*child, settings))
+            continue;
+
+        BuildTreeRecursive(service, settings, view, childID);
+    }
 }
 
-void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &service, FAssetBrowserViewState &view,
-    AssetBrowserNodeID nodeID)
+void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &service, const FAssetBrowserViewSettings& settings,
+    FAssetBrowserViewProjection &view, AssetBrowserNodeID nodeID)
 {
     const FAssetBrowserNode* node = service.TryGetModelNode(nodeID);
 
@@ -79,24 +91,21 @@ void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &serv
         return;
 
     const bool bIsFolder = node->type == EAssetBrowserNodeType::Folder;
-    const bool bExpanded = bIsFolder && view.expandedFolderNodes.contains(nodeID);
+    const bool bExpanded = bIsFolder && settings.expandedFolderNodes.contains(nodeID);
     std::cout
         << "Node: " << node->virtualPath
         << " Expanded=" << bExpanded
         << std::endl;
     if (bExpanded)
     {
-        service.SyncFolderNode(nodeID); // Sync the model first then copy
+        service.EnsureFolderLoaded(nodeID); // Load the folder and children for model first then copy
         node = service.TryGetModelNode(nodeID); // Reacquire the pointer
 
         if (!node)
             return;
     }
 
-    view.nodeCache[nodeID] = *node;
-    view.pathToID[node->virtualPath] = nodeID;
-    view.viewNodeIDs.push_back(nodeID);
-    view.visibleVirtualPaths.push_back(node->virtualPath);
+    AddNodeToView(view, *node);
 
     if (!bIsFolder)
         return; // Assets don't have children, we quit
@@ -115,17 +124,29 @@ void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &serv
         if (!child)
             continue;
 
-        if (child->type == EAssetBrowserNodeType::Folder && !view.bShowFolders)
-        {
+        if (!ShouldIncludeNode(*child, settings))
             continue;
-        }
 
-        if (child->type == EAssetBrowserNodeType::Asset &&
-            !view.bShowAssets)
-        {
-            continue;
-        }
-
-        BuildTreeRecursive(service, view, childID);
+        BuildTreeRecursive(service, settings, view, childID);
     }
+}
+
+void AssetBrowserProjectionBuilder::AddNodeToView(FAssetBrowserViewProjection &view, const FAssetBrowserNode &node)
+{
+    view.nodeCache[node.nodeID] = node;
+    view.pathToID[node.virtualPath] = node.nodeID;
+    view.viewNodeIDs.push_back(node.nodeID);
+    view.visibleVirtualPaths.push_back(node.virtualPath);
+}
+
+bool AssetBrowserProjectionBuilder::ShouldIncludeNode(const FAssetBrowserNode &node,
+    const FAssetBrowserViewSettings &settings)
+{
+    if (node.type == EAssetBrowserNodeType::Folder)
+        return settings.bShowFolders;
+
+    if (node.type == EAssetBrowserNodeType::Asset)
+        return settings.bShowAssets;
+
+    return true;
 }

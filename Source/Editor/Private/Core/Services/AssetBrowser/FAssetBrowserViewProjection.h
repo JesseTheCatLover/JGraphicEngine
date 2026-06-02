@@ -10,8 +10,6 @@
 
 struct FAssetBrowserViewProjection
 {
-    uint64_t sourceGraphVersion = 0;
-
     // Projected cache for this view instance
     std::unordered_map<AssetBrowserNodeID, FAssetBrowserNode> nodeCache;
     std::unordered_map<AssetBrowserNodeID, std::vector<AssetBrowserNodeID>> children;
@@ -22,4 +20,13 @@ struct FAssetBrowserViewProjection
 
     // Path -> ID mapping for reverse lookups (per-view)
     std::unordered_map<std::string, AssetBrowserNodeID> pathToID;
+
+void Clear()
+    {
+        nodeCache.clear();
+        pathToID.clear();
+        children.clear();
+        viewNodeIDs.clear();
+        visibleVirtualPaths.clear();
+    }
 };

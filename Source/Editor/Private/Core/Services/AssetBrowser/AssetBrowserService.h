@@ -9,14 +9,17 @@
 #include "Core/IEditorService.h"
 #include "Core/Delegates/TMulticastDelegate.h"
 #include "FAssetBrowserNode.h"
-#include "FAssetBrowserViewState.h"
+#include "FAssetBrowserViewProjection.h"
 
+struct FAssetBrowserViewSettings;
 struct FAssetOpResult;
 class EditorFileAPI;
 class SelectionService;
 class EditorHost;
 
 struct FSelectionModifiers;
+
+template <typename T> class TSelectionModel;
 
 class AssetBrowserService final : public IEditorService
 {
@@ -45,7 +48,6 @@ private:
     };
 
     FModelGraph m_Model;
-    uint64_t m_GraphVersion = 1; // increments on changes
 
 public:
     explicit AssetBrowserService(EditorHost& host, EditorFileAPI& fileAPI);
@@ -56,64 +58,51 @@ public:
     void RegisterShellCommands(ShellCommandService& shell) override;
 
     // --- View refresh ---
-    static void MarkDirty(FAssetBrowserViewState& view) { view.bDirty = true; }
-    void RefreshView(FAssetBrowserViewState& view);
+    void RefreshView(const FAssetBrowserViewSettings& settings, FAssetBrowserViewProjection& view);
 
     // --- Node access helpers (operate on a view) ---
-    [[nodiscard]] const FAssetBrowserNode* GetNode(const FAssetBrowserViewState& view, AssetBrowserNodeID id) const;
-    [[nodiscard]] const FAssetBrowserNode* GetNodeByPath(const FAssetBrowserViewState& view, const std::string& path) const;
+    [[nodiscard]] const FAssetBrowserNode* GetNode(const FAssetBrowserViewProjection& view, AssetBrowserNodeID id) const;
+    [[nodiscard]] const FAssetBrowserNode* GetNodeByPath(const FAssetBrowserViewProjection& view, const std::string& path) const;
     AssetBrowserNodeID GetRootNodeID(const std::string& path);
     FAssetBrowserNode* GetMutableNode(AssetBrowserNodeID id);
     [[nodiscard]] const std::vector<AssetBrowserNodeID>& GetChildren(AssetBrowserNodeID id) const;
 
+    [[nodiscard]] std::vector<AssetBrowserNodeID>GetAllFolderIDs() const;
+
     void PurgeNodeSubtree(AssetBrowserNodeID rootID);
 
-    void ExpandFolderNode(FAssetBrowserViewState& view, AssetBrowserNodeID id);
-    void CollapseFolderNode(FAssetBrowserViewState& view, AssetBrowserNodeID id);
-    [[nodiscard]] bool IsFolderExpanded(const FAssetBrowserViewState& view, AssetBrowserNodeID id) const;
-    void ExpandAllFolders(FAssetBrowserViewState& view);
-    void CollapseAllFolders(FAssetBrowserViewState& view);
-
     void ProbeFolderChildStates(AssetBrowserNodeID folderID);
-
-    // --- Selection helpers (respect view.selectionPolicy) ---
-    void SelectPath(FAssetBrowserViewState& view, const std::string& virtualPath, bool bToggle = false, bool bRange = false);
-    void SelectNode(FAssetBrowserViewState& view, const FAssetBrowserNode& node, bool bToggle = false, bool bRange = false);
-
-    [[nodiscard]] bool IsPathSelected(const FAssetBrowserViewState& view, const std::string& virtualPath) const;
-    [[nodiscard]] bool IsNodeSelected(const FAssetBrowserViewState& view, const FAssetBrowserNode& node) const;
-
-    void ClearSelection(FAssetBrowserViewState& view);
 
     // Broadcast after mutations so open panels can refresh.
     TMulticastDelegate<const FAssetOpResult&>& OnAssetsMutated() { return m_OnAssetsMutated; }
 
-    // --- Mutation Ops ---
-    [[nodiscard]] FAssetOpResult CreateFolder(FAssetBrowserViewState& view, const std::string& folderVirtualPath);
-    [[nodiscard]] FAssetOpResult DeleteFolder(FAssetBrowserViewState& view, const std::string& folderVirtualPath, bool bRecursive = true);
-    [[nodiscard]] FAssetOpResult RenameFolder(FAssetBrowserViewState& view, const std::string& oldVirtualPath, const std::string& newVirtualPath);
-    [[nodiscard]] FAssetOpResult MoveFolder(FAssetBrowserViewState& view, const std::string& sourceVirtualPath, const std::string& destVirtualPath);
+    // --- Global Selection ---
 
-    [[nodiscard]] FAssetOpResult DeleteAsset(FAssetBrowserViewState& view, const std::string& virtualAssetPath);
-    [[nodiscard]] FAssetOpResult RenameAsset(FAssetBrowserViewState& view, const std::string& virtualAssetPath, const std::string& newName);
-    [[nodiscard]] FAssetOpResult MoveAsset(FAssetBrowserViewState& view, const std::string& sourceVirtualAssetPath, const std::string& destVirtualFolder);
-    [[nodiscard]] FAssetOpResult DuplicateAsset(FAssetBrowserViewState& view, const std::string& sourceVirtualAssetPath, const std::string& destVirtualAssetPath);
+    [[nodiscard]] TSelectionModel<std::string>& GetGlobalSelectionModel();
+    [[nodiscard]] const TSelectionModel<std::string>& GetGlobalSelectionModel() const;
+
+    // --- Mutation Ops ---
+    [[nodiscard]] FAssetOpResult CreateFolder(const std::string& folderVirtualPath);
+    [[nodiscard]] FAssetOpResult DeleteFolder(const std::string& folderVirtualPath, bool bRecursive = true);
+    [[nodiscard]] FAssetOpResult RenameFolder(const std::string& oldVirtualPath, const std::string& newVirtualPath);
+    [[nodiscard]] FAssetOpResult MoveFolder(const std::string& sourceVirtualPath, const std::string& destVirtualPath);
+
+    [[nodiscard]] FAssetOpResult DeleteAsset(const std::string& virtualAssetPath);
+    [[nodiscard]] FAssetOpResult RenameAsset(const std::string& virtualAssetPath, const std::string& newName);
+    [[nodiscard]] FAssetOpResult MoveAsset(const std::string& sourceVirtualAssetPath, const std::string& destVirtualFolder);
+    [[nodiscard]] FAssetOpResult DuplicateAsset(const std::string& sourceVirtualAssetPath, const std::string& destVirtualAssetPath);
 
     // Multi-selection helpers (service-level convenience)
-    [[nodiscard]] FAssetOpResult DeletePaths(FAssetBrowserViewState& view, const std::vector<std::string>& virtualPaths, bool bRecursiveFolders = true);
-    [[nodiscard]] FAssetOpResult MovePathsToFolder(FAssetBrowserViewState& view, const std::vector<std::string>& sourceVirtualPaths, const std::string& destVirtualFolder);
+    [[nodiscard]] FAssetOpResult DeletePaths(const std::vector<std::string>& virtualPaths, bool bRecursiveFolders = true);
+    [[nodiscard]] FAssetOpResult MovePathsToFolder(const std::vector<std::string>& sourceVirtualPaths, const std::string& destVirtualFolder);
 
 private:
     FModelGraph& GetModelGraph() { return m_Model; }
-    TSelectionModel<std::string>& GetSelectionModel(FAssetBrowserViewState& view);
-    [[nodiscard]] const TSelectionModel<std::string>& GetSelectionModel(const FAssetBrowserViewState& view) const;
-
-    [[nodiscard]] uint64_t GetGraphVersion() const { return m_GraphVersion; }
 
     AssetBrowserNodeID EnsureNode(const std::string& virtualPath, EAssetBrowserNodeType type);
     AssetBrowserNodeID EnsureFolder(const std::string& folderVirtualPath);
 
-    void SyncFolderNode(AssetBrowserNodeID folderID);
+    void EnsureFolderLoaded(AssetBrowserNodeID folderID);
 
     void LinkChild(AssetBrowserNodeID parent, AssetBrowserNodeID child);
     void UnlinkChild(AssetBrowserNodeID parent, AssetBrowserNodeID child);
@@ -128,7 +117,7 @@ private:
     void ApplyMutationToModelGraph(const FAssetOpResult& result);
 
     // Post-mutation UI reconciliation (selection translation + invalidation + broadcast)
-    void PostMutation(FAssetBrowserViewState& initiatingView, const FAssetOpResult& result);
+    void PostMutation(const FAssetOpResult& result);
 
     static void MergeOpResult(FAssetOpResult& ioAgg, const FAssetOpResult& r);
 };

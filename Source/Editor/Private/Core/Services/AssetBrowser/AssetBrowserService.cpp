@@ -6,6 +6,7 @@
 #include <iostream>
 #include <unordered_set>
 
+#include "Core/Services/Selection/TSelectionModel.h"
 #include "AssetBrowserProjectionBuilder.h"
 #include "Core/EditorHost.h"
 #include "Core/Services/Selection/SelectionService.h"
@@ -31,66 +32,64 @@ void AssetBrowserService::RegisterShellCommands(ShellCommandService& /*shell*/)
 {
 }
 
-FAssetOpResult AssetBrowserService::CreateFolder(FAssetBrowserViewState& view, const std::string& folderVirtualPath)
+FAssetOpResult AssetBrowserService::CreateFolder(const std::string& folderVirtualPath)
 {
     FAssetOpResult r = m_FileAPI.CreateFolder(folderVirtualPath);
-    PostMutation(view, r);
+    PostMutation(r);
     return r;
 }
 
-FAssetOpResult AssetBrowserService::DeleteFolder(FAssetBrowserViewState& view, const std::string& folderVirtualPath, bool bRecursive)
+FAssetOpResult AssetBrowserService::DeleteFolder(const std::string& folderVirtualPath, bool bRecursive)
 {
     FAssetOpResult r = m_FileAPI.DeleteFolder(folderVirtualPath, bRecursive);
-    PostMutation(view, r);
+    PostMutation(r);
     return r;
 }
 
-FAssetOpResult AssetBrowserService::RenameFolder(FAssetBrowserViewState& view, const std::string& oldVirtualPath, const std::string& newVirtualPath)
+FAssetOpResult AssetBrowserService::RenameFolder(const std::string& oldVirtualPath, const std::string& newVirtualPath)
 {
     FAssetOpResult r = m_FileAPI.RenameFolder(oldVirtualPath, newVirtualPath);
-    PostMutation(view, r);
+    PostMutation(r);
     return r;
 }
 
-FAssetOpResult AssetBrowserService::MoveFolder(FAssetBrowserViewState& view, const std::string& sourceVirtualPath, const std::string& destVirtualPath)
+FAssetOpResult AssetBrowserService::MoveFolder(const std::string& sourceVirtualPath, const std::string& destVirtualPath)
 {
     FAssetOpResult r = m_FileAPI.MoveFolder(sourceVirtualPath, destVirtualPath);
-    PostMutation(view, r);
+    PostMutation(r);
     return r;
 }
 
-FAssetOpResult AssetBrowserService::DeleteAsset(FAssetBrowserViewState& view, const std::string& virtualAssetPath)
+FAssetOpResult AssetBrowserService::DeleteAsset(const std::string& virtualAssetPath)
 {
     FAssetOpResult r = m_FileAPI.DeleteAsset(virtualAssetPath);
-    PostMutation(view, r);
+    PostMutation(r);
     return r;
 }
 
-FAssetOpResult AssetBrowserService::RenameAsset(FAssetBrowserViewState& view, const std::string& virtualAssetPath, const std::string& newName)
+FAssetOpResult AssetBrowserService::RenameAsset(const std::string& virtualAssetPath, const std::string& newName)
 {
     FAssetOpResult r = m_FileAPI.RenameAsset(virtualAssetPath, newName);
-    PostMutation(view, r);
+    PostMutation(r);
     return r;
 }
 
-FAssetOpResult AssetBrowserService::MoveAsset(FAssetBrowserViewState& view,
-                                             const std::string& sourceVirtualAssetPath,
+FAssetOpResult AssetBrowserService::MoveAsset(const std::string& sourceVirtualAssetPath,
                                              const std::string& destVirtualFolder)
 {
     FAssetOpResult r = m_FileAPI.MoveAsset(sourceVirtualAssetPath, destVirtualFolder);
-    PostMutation(view, r);
+    PostMutation(r);
     return r;
 }
 
-FAssetOpResult AssetBrowserService::DuplicateAsset(FAssetBrowserViewState& view, const std::string& sourceVirtualAssetPath, const std::string& destVirtualAssetPath)
+FAssetOpResult AssetBrowserService::DuplicateAsset(const std::string& sourceVirtualAssetPath, const std::string& destVirtualAssetPath)
 {
     FAssetOpResult r = m_FileAPI.DuplicateAsset(sourceVirtualAssetPath, destVirtualAssetPath);
-    PostMutation(view, r);
+    PostMutation(r);
     return r;
 }
 
-FAssetOpResult AssetBrowserService::DeletePaths(FAssetBrowserViewState& view,
-                                               const std::vector<std::string>& virtualPaths,
+FAssetOpResult AssetBrowserService::DeletePaths(const std::vector<std::string>& virtualPaths,
                                                bool bRecursiveFolders)
 {
     FAssetOpResult agg;
@@ -111,12 +110,11 @@ FAssetOpResult AssetBrowserService::DeletePaths(FAssetBrowserViewState& view,
         }
     }
 
-    PostMutation(view, agg);
+    PostMutation(agg);
     return agg;
 }
 
-FAssetOpResult AssetBrowserService::MovePathsToFolder(FAssetBrowserViewState& view,
-                                                     const std::vector<std::string>& sourceVirtualPaths,
+FAssetOpResult AssetBrowserService::MovePathsToFolder(const std::vector<std::string>& sourceVirtualPaths,
                                                      const std::string& destVirtualFolder)
 {
     FAssetOpResult agg;
@@ -150,7 +148,7 @@ FAssetOpResult AssetBrowserService::MovePathsToFolder(FAssetBrowserViewState& vi
         }
     }
 
-    PostMutation(view, agg);
+    PostMutation(agg);
     return agg;
 }
 
@@ -248,7 +246,7 @@ void AssetBrowserService::MarkFolderDirtyByPath(const std::string& folderVirtual
     m_Model.dirtyFolders.insert(id);
 }
 
-void AssetBrowserService::SyncFolderNode(AssetBrowserNodeID folderID)
+void AssetBrowserService::EnsureFolderLoaded(AssetBrowserNodeID folderID)
 {
     const FAssetBrowserNode* folderNode = TryGetModelNode(folderID);
     if (!folderNode)
@@ -394,8 +392,6 @@ void AssetBrowserService::SyncFolderNode(AssetBrowserNodeID folderID)
 
     m_Model.loadedFolders.insert(folderID);
     m_Model.dirtyFolders.erase(folderID);
-
-    ++m_GraphVersion;
 }
 
 std::string AssetBrowserService::RemapPath(
@@ -436,13 +432,10 @@ std::string AssetBrowserService::RemapPath(
 
 void AssetBrowserService::ApplyMutationToModelGraph(const FAssetOpResult& result)
 {
-    bool bGraphMutated = false;
-
     // Mark affected folders dirty
     for (const auto& f : result.affectedVirtualFolders)
     {
         MarkFolderDirtyByPath(f);
-        bGraphMutated = true;
     }
 
     // Deleted paths: mark their parent dirty (and optionally purge nodes)
@@ -455,7 +448,6 @@ void AssetBrowserService::ApplyMutationToModelGraph(const FAssetOpResult& result
         if (AssetBrowserNodeID id = TryGetID(p))
         {
             PurgeNodeSubtree(id);
-            bGraphMutated = true;
         }
     }
 
@@ -469,56 +461,30 @@ void AssetBrowserService::ApplyMutationToModelGraph(const FAssetOpResult& result
         {
             PurgeNodeSubtree(id);
         }
-
-        bGraphMutated = true;
     }
-
-    if (bGraphMutated)
-        ++m_GraphVersion;
 }
 
 // -------------------------
 // View projection
 // -------------------------
 
-void AssetBrowserService::RefreshView(FAssetBrowserViewState& view)
+void AssetBrowserService::RefreshView(const FAssetBrowserViewSettings& settings, FAssetBrowserViewProjection& view)
 {
-    const bool bGraphChanged = view.sourceGraphVersion != m_GraphVersion;
-
-    if (!view.bDirty && !bGraphChanged)
-        return;
-
-    view.currentPath = UPath::Normalize(view.currentPath);
-    view.rootPath = UPath::Normalize(view.rootPath);
-
-    view.nodeCache.clear();
-    view.pathToID.clear();
-    view.children.clear();
-    view.viewNodeIDs.clear();
-    view.visibleVirtualPaths.clear();
-
-    AssetBrowserProjectionBuilder::Build(*this, view);
-    for (auto& [id,node] : view.nodeCache)
-    {
-        std::cout
-            << node.virtualPath
-            << std::endl;
-    }
-    view.sourceGraphVersion = m_GraphVersion;
-    view.bDirty = false;
+    view.Clear();
+    AssetBrowserProjectionBuilder::Build(*this, settings, view);
 }
 
 // -------------------------
 // Node access
 // -------------------------
 
-const FAssetBrowserNode* AssetBrowserService::GetNode(const FAssetBrowserViewState& view, AssetBrowserNodeID id) const
+const FAssetBrowserNode* AssetBrowserService::GetNode(const FAssetBrowserViewProjection& view, AssetBrowserNodeID id) const
 {
     auto it = view.nodeCache.find(id);
     return (it != view.nodeCache.end()) ? &it->second : nullptr;
 }
 
-const FAssetBrowserNode* AssetBrowserService::GetNodeByPath(const FAssetBrowserViewState& view, const std::string& path) const
+const FAssetBrowserNode* AssetBrowserService::GetNodeByPath(const FAssetBrowserViewProjection& view, const std::string& path) const
 {
     const std::string normalized = UPath::Normalize(path);
 
@@ -549,6 +515,20 @@ const std::vector<AssetBrowserNodeID>& AssetBrowserService::GetChildren(AssetBro
     return (it != m_Model.children.end())
         ? it->second
         : empty;
+}
+
+std::vector<AssetBrowserNodeID> AssetBrowserService::GetAllFolderIDs() const
+{
+    std::vector<AssetBrowserNodeID> result;
+    result.reserve(m_Model.nodes.size());
+
+    for (const auto& [id, node] : m_Model.nodes)
+    {
+        if (node.type == EAssetBrowserNodeType::Folder)
+            result.push_back(id);
+    }
+
+    return result;
 }
 
 void AssetBrowserService::PurgeNodeSubtree(AssetBrowserNodeID rootID)
@@ -583,64 +563,6 @@ void AssetBrowserService::PurgeNodeSubtree(AssetBrowserNodeID rootID)
 
     m_Model.children.erase(rootID);
     m_Model.nodes.erase(rootID);
-}
-
-void AssetBrowserService::ExpandFolderNode(FAssetBrowserViewState& view, AssetBrowserNodeID id)
-{
-    const FAssetBrowserNode* node =
-
-        TryGetModelNode(id);
-
-    if (!node)
-        return;
-
-    if (node->type != EAssetBrowserNodeType::Folder)
-        return;
-
-    if (view.expandedFolderNodes.insert(id).second)
-    {
-        view.bDirty = true;
-    }
-}
-
-void AssetBrowserService::CollapseFolderNode( FAssetBrowserViewState& view, AssetBrowserNodeID id)
-{
-    if (view.expandedFolderNodes.erase(id) > 0)
-    {
-        view.bDirty = true;
-    }
-}
-
-bool AssetBrowserService::IsFolderExpanded(const FAssetBrowserViewState& view, AssetBrowserNodeID id) const
-{
-    return view.expandedFolderNodes.contains(id);
-}
-
-void AssetBrowserService::ExpandAllFolders(FAssetBrowserViewState& view)
-{
-    const auto& model = m_Model.nodes;
-
-    bool bChanged = false;
-
-    for (const auto& [id, node] : model)
-    {
-        if (node.type != EAssetBrowserNodeType::Folder)
-            continue;
-
-        bChanged |= view.expandedFolderNodes.insert(id).second;
-    }
-
-    if (bChanged)
-        view.bDirty = true;
-}
-
-void AssetBrowserService::CollapseAllFolders(FAssetBrowserViewState& view)
-{
-    if (view.expandedFolderNodes.empty())
-        return;
-
-    view.expandedFolderNodes.clear();
-    view.bDirty = true;
 }
 
 void AssetBrowserService::ProbeFolderChildStates(AssetBrowserNodeID folderID)
@@ -679,65 +601,20 @@ void AssetBrowserService::ProbeFolderChildStates(AssetBrowserNodeID folderID)
 }
 
 // -------------------------
-// Selection model routing
+// Global Selection model routing
 // -------------------------
 
-TSelectionModel<std::string>& AssetBrowserService::GetSelectionModel(FAssetBrowserViewState& view)
+TSelectionModel<std::string> & AssetBrowserService::GetGlobalSelectionModel()
 {
-    if (view.selectionPolicy == EAssetBrowserSelectionPolicy::SharedGlobalSelection)
-        return m_Host.GetService<SelectionService>().GetAssetPathSelection();
-
-    if (!view.localSelectionModel)
-        view.localSelectionModel = MakeUnique<TSelectionModel<std::string>>();
-
-    return *view.localSelectionModel;
+    return m_Host.GetService<SelectionService>().GetAssetPathSelection();
 }
 
-const TSelectionModel<std::string>& AssetBrowserService::GetSelectionModel(const FAssetBrowserViewState& view) const
+const TSelectionModel<std::string> & AssetBrowserService::GetGlobalSelectionModel() const
 {
-    if (view.selectionPolicy == EAssetBrowserSelectionPolicy::SharedGlobalSelection)
-        return m_Host.GetService<SelectionService>().GetAssetPathSelection();
-
-    static TSelectionModel<std::string> s_Empty;
-    return view.localSelectionModel ? *view.localSelectionModel : s_Empty;
+    return m_Host.GetService<SelectionService>().GetAssetPathSelection();
 }
 
-// -------------------------
-// Selection helpers
-// -------------------------
-
-void AssetBrowserService::SelectPath(FAssetBrowserViewState& view, const std::string& virtualPath, bool bToggle, bool bRange)
-{
-    auto& model = GetSelectionModel(view);
-
-    FSelectionModifiers mods;
-    mods.bToggle = bToggle;
-    mods.bRange  = bRange;
-
-    model.ApplyClick(UPath::Normalize(virtualPath), mods, &view.visibleVirtualPaths);
-}
-
-void AssetBrowserService::SelectNode(FAssetBrowserViewState& view, const FAssetBrowserNode& node, bool bToggle, bool bRange)
-{
-    SelectPath(view, node.virtualPath, bToggle, bRange);
-}
-
-bool AssetBrowserService::IsPathSelected(const FAssetBrowserViewState& view, const std::string& virtualPath) const
-{
-    return GetSelectionModel(view).IsSelected(UPath::Normalize(virtualPath));
-}
-
-bool AssetBrowserService::IsNodeSelected(const FAssetBrowserViewState& view, const FAssetBrowserNode& node) const
-{
-    return IsPathSelected(view, node.virtualPath);
-}
-
-void AssetBrowserService::ClearSelection(FAssetBrowserViewState& view)
-{
-    GetSelectionModel(view).Clear();
-}
-
-void AssetBrowserService::PostMutation(FAssetBrowserViewState& initiatingView, const FAssetOpResult& result)
+void AssetBrowserService::PostMutation(const FAssetOpResult& result)
 {
     const bool bAnyChange =
         !result.deletedPaths.empty() ||
@@ -748,31 +625,30 @@ void AssetBrowserService::PostMutation(FAssetBrowserViewState& initiatingView, c
     {
         ApplyMutationToModelGraph(result);
 
-        auto& model = GetSelectionModel(initiatingView);
+        auto& selection =GetGlobalSelectionModel();
 
-        const auto& cur = model.GetSelection();
+        const auto& currentSelection = selection.GetSelection();
+
         std::vector<std::string> next;
-        next.reserve(cur.size());
+        next.reserve(currentSelection.size());
 
         std::unordered_set<std::string> deleted;
         deleted.reserve(result.deletedPaths.size());
+
         for (const auto& del : result.deletedPaths)
             deleted.insert(UPath::Normalize(del));
 
-        for (const std::string& item : cur)
+        for (const std::string& item : currentSelection)
         {
             const std::string p = UPath::Normalize(item);
 
             if (deleted.contains(p))
                 continue;
 
-            next.push_back(
-                RemapPath(p, result.pathRemappings)
-            );
+            next.push_back(RemapPath(p, result.pathRemappings));
         }
 
-        model.SetSelection(std::move(next));
-        initiatingView.bDirty = true;
+        selection.SetSelection(std::move(next));
     }
 
     m_OnAssetsMutated.Broadcast(result);
