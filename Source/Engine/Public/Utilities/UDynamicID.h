@@ -70,7 +70,16 @@ public:
      */
     void Free(IDType id)
     {
+        if (id == InvalidID)
+            return;
+
         m_FreeIDs.push_back(id);
+    }
+
+    void Reset()
+    {
+        m_NextID = 0;
+        m_FreeIDs.clear();
     }
 
 private:
