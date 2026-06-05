@@ -58,6 +58,11 @@ void AssetBrowserViewController::ClearAllProjectionModifiers()
     m_bControllerDirty = true;
 }
 
+const std::string& AssetBrowserViewController::GetCurrentNavigationPath()
+{
+    return m_Settings.currentPath;
+}
+
 void AssetBrowserViewController::RequestNavigateTo(const std::string& path)
 {
     m_PendingCurrentPath = UPath::Normalize(path);
@@ -93,6 +98,11 @@ void AssetBrowserViewController::RequestCollapseAll()
 {
     m_bCollapseAll = true;
     m_bExpandAll = false;
+}
+
+bool AssetBrowserViewController::IsFolderExpanded(AssetBrowserNodeID id) const
+{
+    return m_ExpandedNodes.contains(id);
 }
 
 void AssetBrowserViewController::RequestSetSearchFilter(std::string filter)
@@ -142,27 +152,28 @@ void AssetBrowserViewController::RequestCollapse(AssetBrowserNodeID id)
     m_PendingExpand.erase(id);
 }
 
-void AssetBrowserViewController::Refresh(AssetBrowserService& service)
+void AssetBrowserViewController::Update(AssetBrowserService& service)
 {
     ApplyPendingSettings();
-    ApplyPendingExpansion(service);
 
     if (m_bControllerDirty)
     {
-        service.RefreshView(m_Settings, m_View);
+        service.RefreshView(*this, m_View);
         m_bControllerDirty = false;
     }
 
-    ApplyPendingSelection(service, m_View);
-
     ApplyProjectionModifiers();
+
+    ApplyPendingExpansion(service);
+
+    ApplyPendingSelection(service, m_View);
 
     ClearPendingCommands();
 }
 
 void AssetBrowserViewController::Clear()
 {
-    m_Settings.expandedFolderNodes.clear();
+    m_ExpandedNodes.clear();
     ClearAllProjectionModifiers();
 
     if (m_LocalSelectionModel)
@@ -256,9 +267,9 @@ void AssetBrowserViewController::ApplyPendingExpansion(const AssetBrowserService
 {
     if (m_bCollapseAll)
     {
-        if (!m_Settings.expandedFolderNodes.empty())
+        if (!m_ExpandedNodes.empty())
         {
-            m_Settings.expandedFolderNodes.clear();
+            m_ExpandedNodes.clear();
             m_bControllerDirty = true;
         }
     }
@@ -267,9 +278,13 @@ void AssetBrowserViewController::ApplyPendingExpansion(const AssetBrowserService
     {
         bool bChanged = false;
 
-        for (AssetBrowserNodeID id : service.GetAllFolderIDs())
+        for (auto& [id, node] : m_View.nodeCache)
         {
-            bChanged |= m_Settings.expandedFolderNodes.insert(id).second;
+            if (node.type == EAssetBrowserNodeType::Folder)
+            {
+                m_ExpandedNodes.insert(id);
+                bChanged = true;
+            }
         }
 
         if (bChanged)
@@ -278,7 +293,7 @@ void AssetBrowserViewController::ApplyPendingExpansion(const AssetBrowserService
 
     for (AssetBrowserNodeID id : m_PendingExpand)
     {
-        if (m_Settings.expandedFolderNodes.insert(id).second)
+        if (m_ExpandedNodes.insert(id).second)
         {
             m_bControllerDirty = true;
         }
@@ -286,7 +301,7 @@ void AssetBrowserViewController::ApplyPendingExpansion(const AssetBrowserService
 
     for (AssetBrowserNodeID id : m_PendingCollapse)
     {
-        if (m_Settings.expandedFolderNodes.erase(id) > 0)
+        if (m_ExpandedNodes.erase(id) > 0)
         {
             m_bControllerDirty = true;
         }

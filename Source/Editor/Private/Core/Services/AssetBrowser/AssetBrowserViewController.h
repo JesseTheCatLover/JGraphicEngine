@@ -36,6 +36,8 @@ private:
     UDynamicID m_ModifierIDGenerator;
     std::vector<FProjectionModifierEntry> m_ProjectionModifiers;
 
+    std::unordered_set<AssetBrowserNodeID> m_ExpandedNodes;
+
     // Only used if selectionPolicy == LocalSelection
     TUniquePtr<TSelectionModel<std::string>> m_LocalSelectionModel;
 
@@ -82,6 +84,7 @@ public:
     void ClearAllProjectionModifiers();
 
     // Navigation
+    [[nodiscard]] const std::string& GetCurrentNavigationPath();
     void RequestNavigateTo(const std::string& path);
     void RequestSetRoot(const std::string& path);
 
@@ -96,6 +99,8 @@ public:
 
     void RequestExpandAll();
     void RequestCollapseAll();
+
+    [[nodiscard]] bool IsFolderExpanded(AssetBrowserNodeID id) const;
 
     // Filtering
     void RequestSetSearchFilter(std::string filter);
@@ -115,7 +120,7 @@ public:
     // Refresh
     void RequestRefresh();
 
-    void Refresh(AssetBrowserService& service);
+    void Update(AssetBrowserService& service);
 
     void Clear();
 

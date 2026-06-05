@@ -5,7 +5,6 @@
 #include <unordered_set>
 #include <algorithm>
 #include <functional>
-#include <iostream>
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -13,6 +12,7 @@
 #include "EditorRuntime.h"
 #include "Core/EditorHost.h"
 #include "Core/Services/AssetBrowser/AssetBrowserService.h"
+#include "Core/Services/AssetBrowser/AssetBrowserViewController.h"
 
 namespace
 {
@@ -45,8 +45,33 @@ namespace
     }
 }
 
+FolderPickerDialog::FolderPickerDialog() = default;
+FolderPickerDialog::~FolderPickerDialog() = default;
+
 void FolderPickerDialog::OnCreate(EditorHost &host, EditorRuntime &runtime)
 {
+    m_Service = &host.GetService<AssetBrowserService>();
+
+    FAssetBrowserViewSettings settings;
+    settings.bShowFolders = true;
+    settings.bShowAssets  = false;
+    settings.selectionPolicy = EAssetBrowserSelectionPolicy::LocalSelection;
+    settings.projectionMode = EAssetBrowserProjectionMode::Tree;
+    settings.rootPath = "/Project";
+    settings.currentPath = "/Project";
+
+    m_Controller = MakeUnique<AssetBrowserViewController>(settings);
+
+    m_AssetsMutatedHandle = m_Service->OnAssetsMutated().Add([this](const FAssetOpResult&)
+    {
+        m_Controller->RequestRefresh();
+    });
+
+    m_PendingFoldersModifierHandle = m_Controller->AddProjectionModifier(
+        [this](FAssetBrowserViewProjection& projection)
+        {
+            ApplyPendingFolderModifier(projection);
+        });
 }
 
 void FolderPickerDialog::OnDestroy(EditorHost &host, EditorRuntime &runtime)
@@ -57,51 +82,36 @@ void FolderPickerDialog::OnDestroy(EditorHost &host, EditorRuntime &runtime)
         m_AssetsMutatedHandle = {};
     }
 
+    if (m_PendingFoldersModifierHandle.IsValid())
+    {
+        m_Controller->RemoveProjectionModifier(m_PendingFoldersModifierHandle);
+
+        m_PendingFoldersModifierHandle = {};
+    }
+
+    m_Controller->Clear();
+
     m_OnAccepted = nullptr;
 }
 
 void FolderPickerDialog::OnOpen(EditorHost& host, EditorRuntime& runtime)
 {
-    m_Host = &host;
     m_bIsOpen = true;
     m_bJustOpened = true;
 
-    m_bDirty = true;
-
-    m_View.bShowFolders = true;
-    m_View.bShowAssets  = false;
-
-    m_View.projectionMode = EAssetBrowserProjectionMode::Tree;
-    m_View.rootPath = "/Project";
-
-    m_CurrentPath = "/Project";
-
     // dialog-specific expansion state is stored in the view:
-    m_Host->GetService<AssetBrowserService>().CollapseAllFolders(m_View);
-    m_Host->GetService<AssetBrowserService>().ExpandFolderNode(m_View, GetRootNodeID(host)); // ensure root opens
-
-    m_View.selectionPolicy = EAssetBrowserSelectionPolicy::LocalSelection;
-
-    // Make input buffer match
-    SyncPathInputToCurrentPath();
-
-    // subscribe to mutations so dialog refreshes when file tree changes
-    auto& browserService = host.GetService<AssetBrowserService>();
-    m_AssetsMutatedHandle = browserService.OnAssetsMutated().AddLambda([this](const FAssetOpResult& r)
-    {
-        // simplest safe policy: refresh on any changes
-        const bool bAnyChange =
-            !r.deletedPaths.empty() ||
-            !r.pathRemappings.empty() ||
-            !r.affectedVirtualFolders.empty();
-        if (bAnyChange)
-            m_bDirty = true;
-    });
+    m_Controller->RequestCollapseAll();
+    m_Controller->RequestExpandRoot(*m_Service); // ensure root opens
 }
 
 void FolderPickerDialog::OnClose()
 {
-    m_Pending = {};
+    m_PendingFolders = {};
+
+    m_NextPendingNodeID = -1;
+    m_PendingNodeIDs.clear();
+    m_PendingNodeIDsByPath.clear();
+
     m_bIsOpen = false;
 }
 
@@ -143,23 +153,23 @@ void FolderPickerDialog::Draw(EditorHost& host, EditorRuntime& runtime)
         | ImGuiWindowFlags_NoCollapse;
 
 
-    bool open = m_bIsOpen;
+    bool bOpen = m_bIsOpen;
     const std::string windowTitle = m_Title.empty() ? "Folder Picker" : "Folder Picker - " + m_Title;
-    if (!ImGui::Begin(windowTitle.c_str(), &open, windowFlags))
+    if (!ImGui::Begin(windowTitle.c_str(), &bOpen, windowFlags))
     {
-        m_bIsOpen = open;
+        m_bIsOpen = bOpen;
         ImGui::End();
         return;
     }
-    m_bIsOpen = open;
+    m_bIsOpen = bOpen;
 
-    RefreshViewIfDirty(host, runtime);
-    DrawContent(host, runtime);
+    RefreshView(host, runtime);
+    DrawContent(host.GetService<AssetBrowserService>());
 
     ImGui::End();
 }
 
-void FolderPickerDialog::DrawContent(EditorHost& host, EditorRuntime& runtime)
+void FolderPickerDialog::DrawContent(AssetBrowserService& service)
 {
     // Top bar: Up, Home, current path
     DrawTopBar();
@@ -172,25 +182,25 @@ void FolderPickerDialog::DrawContent(EditorHost& host, EditorRuntime& runtime)
     ImGui::Separator();
 
     // Bottom bar: Create Folder / Cancel / Select
-    DrawBottomBar(host);
+    DrawBottomBar(service);
 }
 
 void FolderPickerDialog::DrawTopBar()
 {
     if (ImGui::Button("Home"))
     {
-        SetCurrentPath("/Project");
+        SetNavigationToPath("/Project");
     }
 
     ImGui::SameLine();
 
     if (ImGui::Button("Up"))
     {
-        const std::string parent = UPath::GetParent(m_CurrentPath);
+        const std::string parent = UPath::GetParent(GetCurrentNavigationPath());
         if (UPath::IsSameOrUnder("/Project", parent))
-            SetCurrentPath(parent);
+            SetNavigationToPath(parent);
         else
-            SetCurrentPath("/Project");
+            SetNavigationToPath("/Project");
     }
 
     ImGui::SameLine();
@@ -217,20 +227,20 @@ void FolderPickerDialog::DrawDirectoryList()
                       ImGuiWindowFlags_HorizontalScrollbar);
 
     // Ensure we have something projected
-    auto itRoot = m_View.pathToID.find(UPath::Normalize(m_View.rootPath));
-    if (itRoot == m_View.pathToID.end())
+    auto itRoot = GetProjection().pathToID.find(UPath::Normalize(GetSettings().rootPath));
+    if (itRoot == GetProjection().pathToID.end())
     {
         ImGui::TextDisabled("No folders available.");
         ImGui::EndChild();
         return;
     }
 
-    DrawNodeByID(itRoot->second);
+    DrawNode(itRoot->second);
 
     ImGui::EndChild();
 }
 
-void FolderPickerDialog::DrawBottomBar(EditorHost& host)
+void FolderPickerDialog::DrawBottomBar(AssetBrowserService& service)
 {
     ImGui::TextUnformatted("Destination:");
 
@@ -242,12 +252,12 @@ void FolderPickerDialog::DrawBottomBar(EditorHost& host)
                          &m_PathInputBuffer,
                          ImGuiInputTextFlags_EnterReturnsTrue))
     {
-        ApplyPathInput(host);
+        ApplyPathInput(service);
     }
 
     if (ImGui::IsItemDeactivatedAfterEdit())
     {
-        ApplyPathInput(host);
+        ApplyPathInput(service);
     }
 
     ImGui::PopStyleVar();
@@ -262,9 +272,9 @@ void FolderPickerDialog::DrawBottomBar(EditorHost& host)
     {
         std::string created = OnCreateFolderClicked();
 
-        m_Pending.renameTargetID = MakePendingNodeID(created);
-        m_Pending.renameBuffer = UPath::GetFileName(created);
-        m_Pending.bStartRenameFocus = true;
+        m_PendingFolders.renameTargetPath = created;
+        m_PendingFolders.renameBuffer = UPath::GetFileName(created);
+        m_PendingFolders.bStartRenameFocus = true;
     }
 
     const float rightButtonsX = ImGui::GetCursorPosX() + (fullWidth - totalRightButtonsW);
@@ -281,15 +291,15 @@ void FolderPickerDialog::DrawBottomBar(EditorHost& host)
 
     ImGui::SameLine();
 
-    const bool bCanSelect = !m_CurrentPath.empty();
+    const bool bCanSelect = !GetCurrentNavigationPath().empty();
     if (!bCanSelect)
         ImGui::BeginDisabled();
 
     if (ImGui::Button("Select", ImVec2(buttonWidth, 0)))
     {
-        if (ApplyPathInput(host))
+        if (ApplyPathInput(service))
         {
-            if (CommitPendingFolders(host))
+            if (CommitPendingFolders(service))
             {
                 bAccepted = true;
                 bRequestClose = true;
@@ -302,7 +312,7 @@ void FolderPickerDialog::DrawBottomBar(EditorHost& host)
 
     if (bAccepted && m_OnAccepted)
     {
-        m_OnAccepted(m_CurrentPath);
+        m_OnAccepted(GetCurrentNavigationPath());
     }
 
     if (bRequestClose)
@@ -313,122 +323,193 @@ void FolderPickerDialog::DrawBottomBar(EditorHost& host)
 
 void FolderPickerDialog::SetDestinationPathOnPicker(const std::string &path)
 {
-    m_CurrentPath = UPath::Normalize(path.empty() ? m_CurrentPath : path);
-    if (!UPath::IsSameOrUnder("/Project", m_CurrentPath))
-        m_CurrentPath = "/Project";
+    auto normalizedPath = UPath::Normalize(path);
+    if (!UPath::IsSameOrUnder("/Project", normalizedPath))
+        normalizedPath = "/Project";
 
-    // Make input buffer match
-    SyncPathInputToCurrentPath();
+    m_PathInputBuffer = normalizedPath;
+    m_Controller->RequestNavigateTo(normalizedPath);
 
-    if (m_Host)
+    if (m_Service)
     {
-        ApplyPathInput(*m_Host); // will AddPendingFolderPath if missing, expand parents, etc.
+        ApplyPathInput(*m_Service); // will AddPendingFolderPath if missing, expand parents, etc.
     }
 }
 
-void FolderPickerDialog::RefreshViewIfDirty(EditorHost& host, EditorRuntime& runtime)
+void FolderPickerDialog::RefreshView(EditorHost& host, EditorRuntime& runtime)
 {
-    if (!m_bDirty) return;
+    if (!m_Service)
+        m_Service = &host.GetService<AssetBrowserService>();
 
-    auto& abs = host.GetService<AssetBrowserService>();
-
-    m_View.projectionMode = EAssetBrowserProjectionMode::Tree;
-    m_View.rootPath = "/Project";
-    m_View.currentPath = m_CurrentPath;
-
-    abs.RefreshView(m_View);
-
-    InjectPendingFoldersIntoProjection();
-
-    ApplyExpansionRequests();
-
-    m_bDirty = false;
+    m_Controller->Update(*m_Service);
 }
 
-void FolderPickerDialog::ApplyExpansionRequests()
+void FolderPickerDialog::ApplyPendingFolderModifier(FAssetBrowserViewProjection& projection)
 {
-    if (m_ExpandedPendingNodes.empty())
+    for (auto& [parentID, children] : projection.children)
+    {
+        children.erase(
+            std::remove_if(
+                children.begin(),
+                children.end(),
+                [this](AssetBrowserNodeID childID)
+                {
+                    return IsPendingNodeID(childID);
+                }),
+            children.end());
+    }
+
+    for (auto it = projection.children.begin();
+     it != projection.children.end();)
+    {
+        if (IsPendingNodeID(it->first))
+            it = projection.children.erase(it);
+        else
+            ++it;
+    }
+
+    if (m_PendingFolders.pendingPaths.empty())
         return;
 
-    for (const std::string& path : m_ExpandedPendingNodes)
-    {
-        // Walk upward: leaf -> root
-        std::string cur = path;
+    // Sort by depth so parents are created before children
 
-        while (true)
+    std::vector<std::string> paths(
+        m_PendingFolders.pendingPaths.begin(),
+        m_PendingFolders.pendingPaths.end());
+
+    std::sort(
+        paths.begin(),
+        paths.end(),
+        [](const std::string& a, const std::string& b)
         {
-            auto it = m_View.pathToID.find(cur);
-            if (it != m_View.pathToID.end())
-            {
-                m_Host->GetService<AssetBrowserService>().ExpandFolderNode(m_View, it->second);
-            }
+            return std::count(a.begin(), a.end(), '/') <
+                   std::count(b.begin(), b.end(), '/');
+        });
 
-            if (cur == "/Project")
-                break;
+    // Create pending nodes
 
-            std::string parent = UPath::GetParent(cur);
-            if (parent.empty() || parent == cur)
-                break;
+    for (const std::string& path : paths)
+    {
+        if (projection.pathToID.contains(path))
+            continue;
 
-            cur = parent;
-        }
+        const AssetBrowserNodeID id = GetOrCreatePendingNodeID(path);
+
+        FAssetBrowserNode node;
+        node.nodeID = id;
+        node.type = EAssetBrowserNodeType::Folder;
+        node.virtualPath = path;
+        node.displayName = UPath::GetFileName(path);
+
+        node.childFolderState = EAssetBrowserChildState::Unknown;
+
+        projection.nodeCache[id] = std::move(node);
+        projection.pathToID[path] = id;
     }
 
-    m_ExpandedPendingNodes.clear();
+    // Build hierarchy
+
+    for (const std::string& path : paths)
+    {
+        auto itChild = projection.pathToID.find(path);
+        if (itChild == projection.pathToID.end())
+            continue;
+
+        const AssetBrowserNodeID childID = itChild->second;
+
+        const std::string parentPath = UPath::GetParent(path);
+
+        auto itParent = projection.pathToID.find(parentPath);
+
+        if (itParent == projection.pathToID.end())
+            continue;
+
+        const AssetBrowserNodeID parentID = itParent->second;
+
+        auto& children = projection.children[parentID];
+
+        if (std::ranges::find(children, childID) == children.end())
+        {
+            children.push_back(childID);
+        }
+
+        std::ranges::sort(children, [&](AssetBrowserNodeID a, AssetBrowserNodeID b)
+           {
+           const auto& na = projection.nodeCache[a];
+           const auto& nb = projection.nodeCache[b];
+
+           return na.displayName < nb.displayName;
+           });
+
+        auto& childNode = projection.nodeCache[childID];
+
+        childNode.parentID = parentID;
+
+        auto& parentNode = projection.nodeCache[parentID];
+
+        parentNode.childFolderState = EAssetBrowserChildState::Present;
+    }
 }
 
-void FolderPickerDialog::SetCurrentPath(const std::string& path)
+void FolderPickerDialog::SetNavigationToPath(const std::string& rawPath)
 {
-    std::string normalizedPath = UPath::Normalize(path);
+    NavigateToPath(*m_Service, rawPath, false);
+}
+
+bool FolderPickerDialog::NavigateToPath(AssetBrowserService& service,const std::string& rawPath,
+    bool bAllowCreatePending)
+{
+    std::string normalizedPath = UPath::Normalize(rawPath);
 
     if (normalizedPath.empty())
         normalizedPath = "/Project";
 
     if (!UPath::IsSameOrUnder("/Project", normalizedPath))
-        normalizedPath = "/Project";
+        return false;
 
-    m_CurrentPath = normalizedPath;
-    m_PathInputBuffer = m_CurrentPath;
+    if (bAllowCreatePending)
+    {
+        if (!PathExistsInPicker(normalizedPath))
+            AddPendingFolderPath(normalizedPath);
+    }
 
-    // Defer expansion
-    m_ExpandedPendingNodes.insert(normalizedPath);
+    m_PathInputBuffer = normalizedPath;
+    m_Controller->RequestNavigateTo(normalizedPath);
 
-    m_bDirty = true;
+    EnsurePathVisible(service, normalizedPath);
+
+    return true;
 }
 
-void FolderPickerDialog::DrawNodeByID(AssetBrowserNodeID id)
+void FolderPickerDialog::DrawNode(AssetBrowserNodeID id)
 {
-    const auto itNode = m_View.nodeCache.find(id);
-    if (itNode == m_View.nodeCache.end())
+    const auto itNode = GetProjection().nodeCache.find(id);
+    if (itNode == GetProjection().nodeCache.end())
         return;
 
     const FAssetBrowserNode& node = itNode->second;
 
+    const std::string& nodePath = node.virtualPath;
+
     if (node.type != EAssetBrowserNodeType::Folder)
         return;
 
-    const bool bIsPending =
-        IsPendingNodeID(id);
+    const bool bIsPending = IsPendingNode(nodePath);
 
-    const bool bIsRenaming =
-        bIsPending &&
-        m_Pending.renameTargetID == id;
+    const bool bIsRenaming = bIsPending && IsRenaming(nodePath);
 
-    const std::string nodePath = UPath::Normalize(node.virtualPath);
+    const bool bIsSelected = (GetCurrentNavigationPath() == nodePath);
 
-    const bool bIsSelected = (m_CurrentPath == nodePath);
+    const bool bAllowExpansionArrow = FolderHasChildren(id);
 
-    const bool bExpandable = FolderHasChildren(id);
-
-    ImGuiTreeNodeFlags flags =
-        ImGuiTreeNodeFlags_SpanAvailWidth;
+    ImGuiTreeNodeFlags flags = 0;
 
     if (bIsSelected)
         flags |= ImGuiTreeNodeFlags_Selected;
 
-    if (bExpandable)
+    if (bAllowExpansionArrow)
     {
-        flags |=
+        flags |= bIsPending ? ImGuiTreeNodeFlags_OpenOnArrow :
             ImGuiTreeNodeFlags_OpenOnArrow |
             ImGuiTreeNodeFlags_OpenOnDoubleClick;
     }
@@ -439,12 +520,9 @@ void FolderPickerDialog::DrawNodeByID(AssetBrowserNodeID id)
             ImGuiTreeNodeFlags_NoTreePushOnOpen;
     }
 
-    const bool bExpanded = bIsPending ? m_ExpandedPendingNodes.count(nodePath) :
-    m_Host->GetService<AssetBrowserService>().IsFolderExpanded(m_View, id) || IsAncestorPath(nodePath, m_CurrentPath);
+    ImGui::SetNextItemOpen(m_Controller->IsFolderExpanded(id), ImGuiCond_Once);
 
-    ImGui::SetNextItemOpen(bExpanded, ImGuiCond_Once);
-
-    const std::string label = BuildNodeLabel(id, node);
+    const std::string label = BuildNodeLabel(node);
 
     if (bIsPending)
         PushPendingNodeStyle();
@@ -459,83 +537,63 @@ void FolderPickerDialog::DrawNodeByID(AssetBrowserNodeID id)
     {
         bOpened = ImGui::TreeNodeEx((void*)(intptr_t)id, flags, "%s", "");
 
-        DrawPendingRenameWidget(id);
+        DrawPendingRenameWidget();
     }
 
     if (bIsPending)
         PopPendingNodeStyle();
 
     if (ImGui::IsItemClicked())
-        SetCurrentPath(nodePath);
+        SetNavigationToPath(nodePath);
+
+    bool bDeleted = false;
 
     if (bIsPending && !bIsRenaming)
     {
         HandlePendingNodeInteractions(id, node);
-
-        if (HandlePendingDeleteButton(nodePath))
-            return;
+        bDeleted = HandlePendingDeleteButton(nodePath, static_cast<int>(id));
     }
 
-    if (bExpandable && ImGui::IsItemToggledOpen())
+    if (bAllowExpansionArrow && ImGui::IsItemToggledOpen())
     {
-        std::cout
-    << "Toggled "
-    << node.virtualPath
-    << std::endl;
-        if (bIsPending)
-        {
-            if (bOpened)
-            {
-                if (!m_ExpandedPendingNodes.count(nodePath))
-                {
-                    m_ExpandedPendingNodes.insert(nodePath);
-                }
-            }
-            else
-            {
-                m_ExpandedPendingNodes.erase(nodePath);
-            }
-        }
+        if (bOpened)
+            m_Controller->RequestExpand(id);
         else
-        {
-            if (bOpened)
-                m_Host->GetService<AssetBrowserService>().ExpandFolderNode(m_View, id);
-            else
-                m_Host->GetService<AssetBrowserService>().CollapseFolderNode(m_View, id);
-        }
-
-        m_bDirty = true;
+            m_Controller->RequestCollapse(id);
     }
 
-    if (bExpandable && bOpened)
+    if (bAllowExpansionArrow && bOpened)
     {
-        if (auto it = m_View.children.find(id);
-            it != m_View.children.end())
+        if (auto it = GetProjection().children.find(id);
+            it != GetProjection().children.end())
         {
             for (AssetBrowserNodeID childID : it->second)
             {
-                DrawNodeByID(childID);
+                DrawNode(childID);
             }
         }
 
         ImGui::TreePop();
+
+        if (bDeleted)
+            return;
     }
 }
 
-std::string FolderPickerDialog::BuildNodeLabel(AssetBrowserNodeID id, const FAssetBrowserNode& node) const
+std::string FolderPickerDialog::BuildNodeLabel(const FAssetBrowserNode& node) const
 {
-    if (IsPendingNodeID(id))
+    if (IsPendingNode(node.virtualPath))
         return node.displayName + " *";
 
     return node.displayName;
 }
 
-void FolderPickerDialog::DrawPendingRenameWidget(AssetBrowserNodeID id)
+void FolderPickerDialog::DrawPendingRenameWidget()
 {
-    if (m_Pending.bStartRenameFocus)
+    if (m_PendingFolders.bStartRenameFocus)
     {
         ImGui::SetKeyboardFocusHere();
-        m_Pending.bStartRenameFocus = false;
+        m_PendingFolders.bStartRenameFocus = false;
     }
 
     ImGui::PushStyleColor(ImGuiCol_FrameBg,        IM_COL32(0,0,0,0));
@@ -554,7 +612,7 @@ void FolderPickerDialog::DrawPendingRenameWidget(AssetBrowserNodeID id)
     const bool bEnter =
         ImGui::InputText(
             "##PendingRenameInput",
-            &m_Pending.renameBuffer,
+            &m_PendingFolders.renameBuffer,
             ImGuiInputTextFlags_EnterReturnsTrue |
             ImGuiInputTextFlags_AutoSelectAll);
 
@@ -580,7 +638,7 @@ void FolderPickerDialog::DrawPendingRenameWidget(AssetBrowserNodeID id)
 
     if (commit)
     {
-        CommitPendingRename(id, m_Pending.renameBuffer);
+        CommitPendingRename(m_PendingFolders.renameTargetPath, m_PendingFolders.renameBuffer);
         EndPendingRename();
     }
     else if (cancel || clickAway)
@@ -589,7 +647,7 @@ void FolderPickerDialog::DrawPendingRenameWidget(AssetBrowserNodeID id)
     }
 }
 
-bool FolderPickerDialog::HandlePendingDeleteButton(const std::string &nodePath)
+bool FolderPickerDialog::HandlePendingDeleteButton(const std::string &nodePath, const int id)
 {
     ImGui::SameLine();
 
@@ -607,11 +665,14 @@ bool FolderPickerDialog::HandlePendingDeleteButton(const std::string &nodePath)
 
     ImGui::SetItemAllowOverlap();
 
+    ImGui::PushID(id);
     if (ImGui::SmallButton("X"))
     {
         RemovePendingFolderPathAndDescendants(nodePath);
+        ImGui::PopID();
         return true;
     }
+    ImGui::PopID();
     return false;
 }
 
@@ -636,18 +697,18 @@ void FolderPickerDialog::HandlePendingNodeInteractions(AssetBrowserNodeID id, co
 
     if (dbl)
     {
-        m_Pending.renameTargetID = id;
-        m_Pending.renameBuffer = node.displayName;
-        m_Pending.bStartRenameFocus = true;
+        m_PendingFolders.renameTargetPath = node.virtualPath;
+        m_PendingFolders.renameBuffer = node.displayName;
+        m_PendingFolders.bStartRenameFocus = true;
     }
 
     if (ImGui::BeginPopupContextItem())
     {
         if (ImGui::MenuItem("Rename"))
         {
-            m_Pending.renameTargetID = id;
-            m_Pending.renameBuffer = node.displayName;
-            m_Pending.bStartRenameFocus = true;
+            m_PendingFolders.renameTargetPath = node.virtualPath;
+            m_PendingFolders.renameBuffer = node.displayName;
+            m_PendingFolders.bStartRenameFocus = true;
         }
 
         if (ImGui::MenuItem("Delete"))
@@ -662,63 +723,77 @@ void FolderPickerDialog::HandlePendingNodeInteractions(AssetBrowserNodeID id, co
 
 void FolderPickerDialog::ExpandAll()
 {
-    m_Host->GetService<AssetBrowserService>().ExpandAllFolders(m_View);
-
-    // also ensure pending roots
-    for (const auto& path : m_Pending.pendingPaths)
-    {
-        m_ExpandedPendingNodes.insert(path);
-    }
-
-    m_bDirty = true;
+    m_Controller->RequestExpandAll();
 }
 
 void FolderPickerDialog::CollapseAll()
 {
-    m_Host->GetService<AssetBrowserService>().CollapseAllFolders(m_View);
+    m_Controller->RequestCollapseAll();
 
-    if (m_Host)
-        m_Host->GetService<AssetBrowserService>().ExpandFolderNode(m_View, GetRootNodeID(*m_Host)); // Keep root open
-
-    m_bDirty = true;
+    if (m_Service)
+        m_Controller->RequestExpandRoot(*m_Service); // Keep root open
 }
 
-void FolderPickerDialog::SyncPathInputToCurrentPath()
+AssetBrowserNodeID FolderPickerDialog::GetOrCreatePendingNodeID(const std::string& path)
 {
-    m_PathInputBuffer = m_CurrentPath;
+    auto it = m_PendingNodeIDsByPath.find(path);
+    if (it != m_PendingNodeIDsByPath.end())
+        return it->second;
+
+    const AssetBrowserNodeID id = m_NextPendingNodeID--;
+
+    m_PendingNodeIDs.insert(id);
+    m_PendingNodeIDsByPath.emplace(path, id);
+
+    return id;
 }
 
-bool FolderPickerDialog::ApplyPathInput(EditorHost& host)
+void FolderPickerDialog::RemovePendingNodeID(const std::string& path)
 {
-    std::string normalized = UPath::Normalize(m_PathInputBuffer);
-    if (normalized.empty())
-        normalized = "/";
+    auto it = m_PendingNodeIDsByPath.find(path);
+    if (it == m_PendingNodeIDsByPath.end())
+        return;
 
-    if (!UPath::IsSameOrUnder("/Project", normalized))
+    m_PendingNodeIDs.erase(it->second);
+    m_PendingNodeIDsByPath.erase(it);
+}
+
+void FolderPickerDialog::SyncInputBufferWithCurrentNavigation()
+{
+    m_PathInputBuffer = GetCurrentNavigationPath();
+}
+
+bool FolderPickerDialog::ApplyPathInput(AssetBrowserService& service)
+{
+    return NavigateToPath(service, m_PathInputBuffer, true);
+}
+
+void FolderPickerDialog::EnsurePathVisible(AssetBrowserService& service, const std::string& path)
+{
+    std::vector<std::string> chain;
+
+    std::string cur = path;
+
+    while (!cur.empty() && cur != "/")
     {
-        SyncPathInputToCurrentPath();
-        return false;
+        chain.push_back(cur);
+
+        if (cur == "/Project")
+            break;
+
+        cur = UPath::GetParent(cur);
     }
 
-    // If it doesn't exist yet, queue it for creation
-    if (!IsFolderPresentInUI(normalized))
-        AddPendingFolderPath(normalized);
+    std::reverse(chain.begin(), chain.end());
 
-    auto& browser = host.GetService<AssetBrowserService>();
-
-    // Expand parent
-    std::string parentPath = UPath::GetParent(normalized);
-
-    if (!parentPath.empty())
+    for (const std::string& p : chain)
     {
-        AssetBrowserNodeID parentID = browser.GetRootNodeID(parentPath);
-        m_Host->GetService<AssetBrowserService>().ExpandFolderNode(m_View, parentID);
-    }
+        auto* node = service.GetNodeByPath(GetProjection(), p);
+        if (!node)
+            continue;
 
-    m_CurrentPath = normalized;
-    SyncPathInputToCurrentPath();
-    m_bDirty = true;
-    return true;
+        m_Controller->RequestExpand(node->nodeID);
+    }
 }
 
 bool FolderPickerDialog::AddPendingFolderPath(const std::string& rawPath)
@@ -733,6 +808,8 @@ bool FolderPickerDialog::AddPendingFolderPath(const std::string& rawPath)
     if (path == "/Project")
         return false;
 
+    bool bAdded = false;
+
     // Build full chain (parents -> leaf)
     std::vector<std::string> chain;
 
@@ -745,51 +822,79 @@ bool FolderPickerDialog::AddPendingFolderPath(const std::string& rawPath)
 
     std::reverse(chain.begin(), chain.end());
 
-    bool bAdded = false;
-
-    for (const std::string& p : chain)
+    for (const std::string& folder : chain)
     {
-        if (m_Pending.pendingPaths.insert(p).second)
+        std::string normalized = UPath::Normalize(folder);
+
+        if (normalized.empty())
+            continue;
+
+        if (!UPath::IsSameOrUnder("/Project", normalized))
+            continue;
+
+        const std::string parent = UPath::GetParent(normalized);
+        const std::string name   = UPath::GetFileName(normalized);
+
+        std::string safeName = UPath::SanitizeFileSystemName(name);
+
+        if (!IsValidSingleFolderName(safeName))
+            continue;
+
+        const std::string safePath = UPath::Normalize(UPath::Join(parent, safeName));
+
+        const std::string siblingPath = UPath::Normalize(UPath::Join(parent, safeName));
+
+        if (PathExistsInPicker(siblingPath))
+            continue;
+
+        const bool bRealExists = m_Service->GetNodeByPath(GetProjection(), safePath);
+
+        if (bRealExists)
+            continue;
+
+        if (!m_PendingFolders.pendingPaths.contains(safePath))
         {
+            m_PendingFolders.pendingPaths.insert(safePath);
             bAdded = true;
         }
     }
 
-    if (bAdded)
-    {
-        m_bDirty = true;
-    }
-
-    return true;
+    return bAdded;
 }
 
 void FolderPickerDialog::RemovePendingFolderPathAndDescendants(const std::string& path)
 {
-    std::vector<std::string> remaining;
-    remaining.reserve(m_Pending.pendingPaths.size());
+    if (m_PendingFolders.renameTargetPath == path || IsAncestorPath(path, m_PendingFolders.renameTargetPath))
+    {
+        EndPendingRename();
+    }
 
-    for (const auto& p : m_Pending.pendingPaths)
+    std::vector<std::string> remaining;
+    remaining.reserve(m_PendingFolders.pendingPaths.size());
+
+    for (const auto& p : m_PendingFolders.pendingPaths)
     {
         if (p == path || IsAncestorPath(path, p))
+        {
+            RemovePendingNodeID(p);
             continue;
+        }
 
         remaining.push_back(p);
     }
 
-    m_Pending.pendingPaths.clear();
+    m_PendingFolders.pendingPaths.clear();
     for (auto& p : remaining)
-        m_Pending.pendingPaths.insert(std::move(p));
+        m_PendingFolders.pendingPaths.insert(std::move(p));
 
-    m_bDirty = true;
+    m_Controller->RequestRefresh();
 }
 
-bool FolderPickerDialog::CommitPendingFolders(EditorHost& host)
+bool FolderPickerDialog::CommitPendingFolders(AssetBrowserService& service)
 {
-    auto& abs = host.GetService<AssetBrowserService>();
-
     std::vector<std::string> paths(
-        m_Pending.pendingPaths.begin(),
-        m_Pending.pendingPaths.end());
+        m_PendingFolders.pendingPaths.begin(),
+        m_PendingFolders.pendingPaths.end());
 
     std::sort(paths.begin(), paths.end(),
         [](const std::string& a, const std::string& b)
@@ -800,35 +905,35 @@ bool FolderPickerDialog::CommitPendingFolders(EditorHost& host)
 
     for (const std::string& path : paths)
     {
-        if (auto* node = abs.GetNodeByPath(m_View, path))
+        if (auto* node = service.GetNodeByPath(GetProjection(), path))
         {
-            if (!IsPendingNodeID(node->nodeID))
+            if (!IsPendingNode(node->virtualPath))
                 continue; // already real folder
         }
 
-        auto result = abs.CreateFolder(m_View, path);
+        auto result = service.CreateFolder(path);
 
         if (!result.bSuccess)
             return false;
     }
 
-    m_Pending.pendingPaths.clear();
-    m_bDirty = true;
+    m_PendingFolders.pendingPaths.clear();
+
+    m_PendingNodeIDs.clear();
+    m_PendingNodeIDsByPath.clear();
 
     return true;
 }
 
-bool FolderPickerDialog::CommitPendingRename(AssetBrowserNodeID nodeID, const std::string& newNameRaw)
+bool FolderPickerDialog::CommitPendingRename(const std::string& targetPath, const std::string& newNameRaw)
 {
-    auto it = m_View.nodeCache.find(nodeID);
-    if (it == m_View.nodeCache.end())
+    const std::string oldPath = UPath::Normalize(targetPath);
+
+    if (!m_PendingFolders.pendingPaths.contains(oldPath))
         return false;
 
-    const std::string oldPath =
-        UPath::Normalize(it->second.virtualPath);
-
     // Only pending folders are renameable
-    if (!IsPendingNodeID(nodeID))
+    if (!IsPendingNode(oldPath))
         return false;
 
     std::string newName =
@@ -841,7 +946,7 @@ bool FolderPickerDialog::CommitPendingRename(AssetBrowserNodeID nodeID, const st
 
     std::string desiredNewPath = UPath::Normalize(UPath::Join(parent, newName));
 
-    if (desiredNewPath != oldPath && IsFolderPresentInUI(desiredNewPath))
+    if (desiredNewPath != oldPath && PathExistsInPicker(desiredNewPath))
     {
         desiredNewPath = MakeUniqueChildPath(parent, newName);
     }
@@ -851,39 +956,44 @@ bool FolderPickerDialog::CommitPendingRename(AssetBrowserNodeID nodeID, const st
 
     std::unordered_set<std::string> rewritten;
 
-    rewritten.reserve(m_Pending.pendingPaths.size());
+    rewritten.reserve(m_PendingFolders.pendingPaths.size());
 
-    for (const std::string& path : m_Pending.pendingPaths)
+    std::unordered_map<std::string, AssetBrowserNodeID> remappedIDs;
+
+    for (const auto& [path, id] : m_PendingNodeIDsByPath)
     {
-        std::string out = path;
+        std::string newPath = path;
 
         if (path == oldPath || IsAncestorPath(oldPath, path))
         {
-            out = desiredNewPath + path.substr(oldPath.size());
+            newPath = desiredNewPath + path.substr(oldPath.size());
         }
 
-        rewritten.insert(std::move(out));
+        rewritten.insert(newPath);
+        remappedIDs.emplace(std::move(newPath), id);
     }
 
-    m_Pending.pendingPaths = std::move(rewritten);
+    m_PendingNodeIDsByPath = std::move(remappedIDs);
+    m_PendingFolders.pendingPaths = std::move(rewritten);
 
-    if (m_CurrentPath == oldPath ||IsAncestorPath(oldPath, m_CurrentPath))
+    if (GetCurrentNavigationPath() == oldPath ||IsAncestorPath(oldPath, GetCurrentNavigationPath()))
     {
-        SetCurrentPath(desiredNewPath + m_CurrentPath.substr(oldPath.size()));
+        SetNavigationToPath(desiredNewPath + GetCurrentNavigationPath().substr(oldPath.size()));
     }
 
-    EndPendingRename();
-
-    m_bDirty = true;
+    if (m_PendingFolders.renameTargetPath == oldPath)
+    {
+        m_PendingFolders.renameTargetPath = desiredNewPath;
+    }
 
     return true;
 }
 
 void FolderPickerDialog::EndPendingRename()
 {
-    m_Pending.renameTargetID = InvalidNodeID;
-    m_Pending.renameBuffer.clear();
-    m_Pending.bStartRenameFocus = false;
+    m_PendingFolders.renameTargetPath.clear();
+    m_PendingFolders.renameBuffer.clear();
+    m_PendingFolders.bStartRenameFocus = false;
 }
 
 void FolderPickerDialog::CancelPendingRename()
@@ -900,7 +1010,7 @@ std::string FolderPickerDialog::MakeUniqueChildPath(const std::string& parent, c
     {
         const std::string name = MakeNumberedName(baseName, n);
         const std::string candidate = UPath::Join(p, name);
-        if (!IsFolderPresentInUI(candidate))
+        if (!PathExistsInPicker(candidate))
             return candidate;
     }
 
@@ -910,13 +1020,13 @@ std::string FolderPickerDialog::MakeUniqueChildPath(const std::string& parent, c
 
 std::string FolderPickerDialog::OnCreateFolderClicked()
 {
-    std::string base = UPath::Normalize(m_CurrentPath.empty() ? "/Project" : m_CurrentPath);
+    std::string base = GetCurrentNavigationPath();
     if (!UPath::IsSameOrUnder("/Project", base)) base = "/Project";
 
     const std::string uniquePath = MakeUniqueChildPath(base, "NewFolder");
 
     AddPendingFolderPath(uniquePath);
-    SetCurrentPath(uniquePath);
+    SetNavigationToPath(uniquePath);
 
     return uniquePath;
 }
@@ -927,160 +1037,58 @@ bool FolderPickerDialog::IsRootPath(const std::string& path)
     return p == "/" || p.empty();
 }
 
-bool FolderPickerDialog::IsFolderPresentInUI(const std::string& path) const
+bool FolderPickerDialog::IsRenaming(const std::string& path) const
 {
-    return m_View.pathToID.contains(path);
+    return path == m_PendingFolders.renameTargetPath;
+}
+
+bool FolderPickerDialog::IsPendingNode(const std::string& path) const
+{
+    return m_PendingFolders.pendingPaths.contains(path);
+}
+
+bool FolderPickerDialog::IsPendingNodeID(AssetBrowserNodeID id) const
+{
+    return m_PendingNodeIDs.contains(id);
+}
+
+bool FolderPickerDialog::IsRealFolderPresent(const std::string& path) const
+{
+    auto* node = m_Service->GetNodeByPath(GetProjection(), path);
+    return node && !IsPendingNode(path);
+}
+
+bool FolderPickerDialog::PathExistsInPicker(const std::string& path) const
+{
+    return IsRealFolderPresent(path) || IsPendingNode(path);
 }
 
 bool FolderPickerDialog::FolderHasChildren(AssetBrowserNodeID id) const
 {
-    auto it = m_View.nodeCache.find(id);
+    auto it = GetProjection().nodeCache.find(id);
 
-    if (it == m_View.nodeCache.end())
+    if (it == GetProjection().nodeCache.end())
         return false; // node not found in the view
 
     return it->second.HasFolderChildren();
 }
 
-void FolderPickerDialog::InjectPendingFoldersIntoProjection()
+const FAssetBrowserViewProjection & FolderPickerDialog::GetProjection() const
 {
-    for (auto it = m_View.nodeCache.begin();
-     it != m_View.nodeCache.end();)
-    {
-        if (IsPendingNodeID(it->first))
-            it = m_View.nodeCache.erase(it);
-        else
-            ++it;
-    }
-    for (auto it = m_View.pathToID.begin();
-     it != m_View.pathToID.end();)
-    {
-        if (IsPendingNodeID(it->second))
-            it = m_View.pathToID.erase(it);
-        else
-            ++it;
-    }
-
-    for (auto& [id, children] : m_View.children)
-    {
-        children.erase(
-            std::remove_if(
-                children.begin(),
-                children.end(),
-                [](AssetBrowserNodeID child)
-                {
-                    return IsPendingNodeID(child);
-                }),
-            children.end());
-    }
-        for (auto& [id, children] : m_View.children)
-    {
-        children.erase(
-            std::remove_if(
-                children.begin(),
-                children.end(),
-                [](AssetBrowserNodeID child)
-                {
-                    return IsPendingNodeID(child);
-                }),
-            children.end());
-    }
-
-    std::cout
-    << "pendingPaths="
-    << m_Pending.pendingPaths.size()
-    << std::endl;
-
-    std::cout
-        << "nodeCache="
-        << m_View.nodeCache.size()
-        << std::endl;
-
-    // IMPORTANT: deterministic order for hierarchy correctness
-    std::vector<std::string> paths(
-        m_Pending.pendingPaths.begin(),
-        m_Pending.pendingPaths.end());
-
-    std::sort(paths.begin(), paths.end(),
-        [](const std::string& a, const std::string& b)
-        {
-            return std::count(a.begin(), a.end(), '/') <
-                   std::count(b.begin(), b.end(), '/');
-        });
-
-    // 1. Create nodes
-    for (const std::string& path : paths)
-    {
-        if (m_View.pathToID.contains(path))
-            continue;
-
-        AssetBrowserNodeID id = MakePendingNodeID(path);
-
-        FAssetBrowserNode node;
-        node.nodeID = id;
-        node.type = EAssetBrowserNodeType::Folder;
-        node.virtualPath = path;
-        node.displayName = UPath::GetFileName(path);
-
-        node.childFolderState = EAssetBrowserChildState::Unknown;
-
-        m_View.nodeCache[id] = node;
-        m_View.pathToID[path] = id;
-    }
-
-    // 2. Link hierarchy (safe because sorted by depth)
-    for (const std::string& path : paths)
-    {
-        auto itChild = m_View.pathToID.find(path);
-        if (itChild == m_View.pathToID.end())
-            continue;
-
-        AssetBrowserNodeID childID = itChild->second;
-
-        std::string parentPath = UPath::GetParent(path);
-        auto itParent = m_View.pathToID.find(parentPath);
-
-        if (itParent == m_View.pathToID.end())
-            continue;
-
-        AssetBrowserNodeID parentID = itParent->second;
-
-        m_View.children[parentID].push_back(childID);
-
-        auto& childNode = m_View.nodeCache[childID];
-        childNode.parentID = parentID;
-
-        auto& parentNode = m_View.nodeCache[parentID];
-        parentNode.childFolderState = EAssetBrowserChildState::Present;
-    }
-
-    size_t pendingCount = 0;
-
-    for (auto& [id,node] : m_View.nodeCache)
-    {
-        if (IsPendingNodeID(id))
-            ++pendingCount;
-    }
-
-    std::cout
-        << "pendingNodes="
-        << pendingCount
-        << std::endl;
+    return m_Controller->GetProjection();
 }
 
-AssetBrowserNodeID FolderPickerDialog::MakePendingNodeID(const std::string& path)
+const FAssetBrowserViewSettings & FolderPickerDialog::GetSettings() const
 {
-    std::hash<std::string> hasher;
-
-    return PendingNodeMask | static_cast<AssetBrowserNodeID>(hasher(path));
+    return m_Controller->GetSettings();
 }
 
-bool FolderPickerDialog::IsPendingNodeID(AssetBrowserNodeID id)
+const std::string & FolderPickerDialog::GetCurrentNavigationPath() const
 {
-    return (id & PendingNodeMask) != 0;
+    return m_Controller->GetCurrentNavigationPath();
 }
 
 AssetBrowserNodeID FolderPickerDialog::GetRootNodeID(EditorHost &host) const
 {
-    return host.GetService<AssetBrowserService>().GetRootNodeID(m_View.rootPath);
+    return host.GetService<AssetBrowserService>().GetRootNodeID(m_Controller->GetSettings().rootPath);
 }

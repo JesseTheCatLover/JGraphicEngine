@@ -3,7 +3,6 @@
 #pragma once
 #include <cstdint>
 #include <string>
-#include <unordered_set>
 
 using AssetBrowserNodeID = uint64_t;
 
@@ -35,6 +34,4 @@ struct FAssetBrowserViewSettings
     bool bIncludeRootNode = true;
 
     EAssetBrowserProjectionMode projectionMode = EAssetBrowserProjectionMode::Flat;
-
-    std::unordered_set<AssetBrowserNodeID> expandedFolderNodes;
 };
