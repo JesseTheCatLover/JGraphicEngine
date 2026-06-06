@@ -16,6 +16,24 @@
 // Forward decl
 template <typename T> class TSelectionModel;
 
+/**
+ * Controller responsible for managing the state and projection of a
+ * single asset browser view.
+ *
+ * The controller owns view-local concerns such as navigation,
+ * filtering, expansion state, projection mode, and selection policy.
+ * UI interactions are accumulated as pending commands and applied
+ * during Update().
+ *
+ * AssetBrowserService remains the source of truth for asset hierarchy
+ * data. The controller requests projection rebuilds from the service
+ * and maintains the resulting FAssetBrowserViewProjection used by UI
+ * panels.
+ *
+ * Projection modifiers may be registered to perform additional
+ * view-specific transformations without mutating the underlying asset
+ * browser model.
+ */
 class AssetBrowserViewController
 {
 public:
