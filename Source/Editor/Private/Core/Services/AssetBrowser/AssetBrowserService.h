@@ -21,6 +21,29 @@ struct FSelectionModifiers;
 
 template <typename T> class TSelectionModel;
 
+/**
+ * Central asset browser backend service.
+ *
+ * Owns and maintains the persistent asset browser model graph used by all
+ * asset browser views. The service provides:
+ *
+ * - Stable node identities independent of view projections.
+ * - Lazy folder discovery and directory caching.
+ * - Folder dirty tracking and incremental refresh.
+ * - Asset and folder mutation operations.
+ * - Global asset-path selection integration.
+ * - Mutation reconciliation (selection remapping, cache invalidation,
+ *   and refresh notifications).
+ *
+ * The service does not own UI state or view lifetimes. Panels construct
+ * transient view projections through RefreshView(), while the service
+ * maintains the authoritative asset hierarchy model.
+ *
+ * After successful asset or folder mutations, the service updates the
+ * internal model graph, translates affected selections, invalidates
+ * impacted folders, and broadcasts OnAssetsMutated() so interested
+ * editor systems can refresh.
+ */
 class AssetBrowserService final : public IEditorService
 {
 private:
