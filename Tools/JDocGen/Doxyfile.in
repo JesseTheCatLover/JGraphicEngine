@@ -1,0 +1,74 @@
+PROJECT_NAME = RedleafEngine
+
+OUTPUT_DIRECTORY = @JDOCGEN_OUTPUT_DIR@
+
+GENERATE_HTML = NO
+GENERATE_XML  = YES
+
+XML_OUTPUT = xml
+
+RECURSIVE = YES
+
+INPUT = \
+@CMAKE_SOURCE_DIR@/Source/Engine/Public \
+@CMAKE_SOURCE_DIR@/Source/EditorRuntime/Public \
+@CMAKE_SOURCE_DIR@/Source/Editor/Public \
+@CMAKE_SOURCE_DIR@/Source/Launch/Public
+
+# -----------------------------
+# CORE EXTRACTION (balanced)
+# -----------------------------
+EXTRACT_ALL    = NO
+EXTRACT_PRIVATE = YES
+EXTRACT_STATIC  = YES
+
+# Keep public API clean but still usable for engine introspection
+HIDE_UNDOC_MEMBERS = YES
+HIDE_UNDOC_CLASSES = NO
+
+# -----------------------------
+# SOURCE VISIBILITY (needed for editor-style docs)
+# -----------------------------
+SOURCE_BROWSER = YES
+INLINE_SOURCES = YES
+
+# -----------------------------
+# RELATION GRAPH DATA (critical for UI later)
+# -----------------------------
+REFERENCES_RELATION     = YES
+REFERENCED_BY_RELATION  = YES
+
+INCLUDE_GRAPH           = YES
+INCLUDED_BY_GRAPH       = YES
+
+CALL_GRAPH              = YES
+CALLER_GRAPH            = YES
+
+CLASS_GRAPH             = YES
+COLLABORATION_GRAPH     = YES
+
+# -----------------------------
+# GRAPHVIZ (dependency engine)
+# -----------------------------
+HAVE_DOT = YES
+DOT_GRAPH_MAX_NODES = 100
+MAX_DOT_GRAPH_DEPTH = 4
+
+# Prevent graph explosion (VERY important for engine scale)
+DOT_MULTI_TARGETS = YES
+DOT_CLEANUP = YES
+
+# -----------------------------
+# CLEAN OUTPUT (important for pipeline)
+# -----------------------------
+EXCLUDE_PATTERNS = \
+*.generated.h \
+*/generated/* \
+*/Private/ThirdParty/*
+
+# -----------------------------
+# PERFORMANCE / STABILITY
+# -----------------------------
+QUIET = YES
+WARN_IF_UNDOCUMENTED = NO
+WARN_IF_UNDOC_ENUM_VAL = NO
