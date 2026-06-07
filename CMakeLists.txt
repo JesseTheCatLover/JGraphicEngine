@@ -18,7 +18,10 @@ endif()
 
 # Engine development features
 option(JENGINE_WITH_SOURCE_ASSETS "Enable source asset pipeline" ON)
-option(JENGINE_BUILD_DOCS "Enable documentation generation" OFF)
+option(REDLEAF_BUILD_DOCS_SYNC "Enable JSymbolCompiler" OFF)
+if(DEFINED ENV{CI})
+    set(REDLEAF_BUILD_DOCS_SYNC ON CACHE BOOL "" FORCE)
+endif()
 
 # Fetch Dependencies
 FetchContent_Declare(
@@ -56,24 +59,8 @@ add_subdirectory(ThirdParty)
 
 # --- Tools ---
 add_subdirectory(Tools/JReflectGen) # (must come BEFORE Engine so JREFLECTGEN_EXE is exported)
-
-if (JENGINE_BUILD_DOCS)
-    find_package(Doxygen)
-
-    if (DOXYGEN_FOUND)
-
-        if (DOXYGEN_DOT_FOUND)
-            message(STATUS "Documentation graphs enabled.")
-        else()
-            message(STATUS "Documentation graphs disabled: Graphviz was not found. Install Graphviz to enable it")
-        endif()
-
-        add_subdirectory(Tools/JDocGen)
-
-    else()
-        message(STATUS "Documentation disabled: Doxygen was not found. Install Doxygen to enable API documentation generation")
-
-    endif()
+if (REDLEAF_BUILD_DOCS_SYNC)
+    add_subdirectory(Tools/JSymbolCompiler)
 endif()
 
 # --- Engine modules ---

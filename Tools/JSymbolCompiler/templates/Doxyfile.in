@@ -27,6 +27,13 @@ HIDE_UNDOC_MEMBERS = YES
 HIDE_UNDOC_CLASSES = NO
 
 # -----------------------------
+# PATH STRIP
+# -----------------------------
+FULL_PATH_NAMES = NO
+STRIP_FROM_PATH = @CMAKE_SOURCE_DIR@
+STRIP_FROM_INC_PATH = @CMAKE_SOURCE_DIR@
+
+# -----------------------------
 # SOURCE VISIBILITY (needed for editor-style docs)
 # -----------------------------
 SOURCE_BROWSER = YES
