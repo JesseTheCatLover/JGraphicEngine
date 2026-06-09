@@ -18,10 +18,6 @@ endif()
 
 # Engine development features
 option(JENGINE_WITH_SOURCE_ASSETS "Enable source asset pipeline" ON)
-option(REDLEAF_BUILD_DOCS_SYNC "Enable JSymbolCompiler" OFF)
-if(DEFINED ENV{CI})
-    set(REDLEAF_BUILD_DOCS_SYNC ON CACHE BOOL "" FORCE)
-endif()
 
 # Fetch Dependencies
 FetchContent_Declare(
@@ -59,9 +55,6 @@ add_subdirectory(ThirdParty)
 
 # --- Tools ---
 add_subdirectory(Tools/JReflectGen) # (must come BEFORE Engine so JREFLECTGEN_EXE is exported)
-if (REDLEAF_BUILD_DOCS_SYNC)
-    add_subdirectory(Tools/JSymbolCompiler)
-endif()
 
 # --- Engine modules ---
 add_subdirectory(Source/Engine)
