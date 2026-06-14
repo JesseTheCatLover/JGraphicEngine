@@ -49,7 +49,8 @@ jobs:
         id: meta
         run: |
           VERSION=$(find artifacts -name metadata.json | head -n 1 | xargs jq -r '.documentationVersion')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=${{ needs.compile.outputs.version }}" >> $GITHUB_ENV
+          echo "BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
 
       - name: Upload Symbols
         uses: actions/upload-artifact@v4
@@ -85,12 +86,14 @@ jobs:
 
       - name: Sync API Data
         run: |
-          TARGET="website/src/static/api-data/${VERSION}"
-
+          VERSION="${{ needs.compile.outputs.version }}"
+  
+          TARGET="website/static/api-data/${VERSION}"
+          
           rm -rf "$TARGET"
           mkdir -p "$TARGET"
-
-          cp -r symbols/* "$TARGET/"
+          
+          cp -r symbols/${VERSION}/* "$TARGET/"
 
       - name: Commit & Push
         run: |
@@ -99,7 +102,7 @@ jobs:
           git config user.name "JSymbolCompiler"
           git config user.email "bot@redleaf.dev"
 
-          git add src/static/api-data/${VERSION}
+          git add static/api-data/${VERSION}
 
           git commit -m "Update API data (${VERSION}) from ${BRANCH}" || echo "No changes"
 
