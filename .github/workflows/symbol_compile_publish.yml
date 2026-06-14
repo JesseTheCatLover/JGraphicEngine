@@ -1,0 +1,107 @@
+name: Compile & Publish Symbols
+
+on:
+  push:
+    branches:
+      - develop
+      - stable
+
+jobs:
+
+  compile:
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout Engine
+        uses: actions/checkout@v4
+
+      - name: Install Doxygen
+        run: |
+          sudo apt update
+          sudo apt install -y doxygen graphviz
+
+      - name: Checkout JSymbolCompiler
+        uses: actions/checkout@v4
+        with:
+          repository: JesseTheCatLover/JSymbolCompiler
+          path: JSymbolCompiler
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install JSymbolCompiler
+        run: |
+          cd JSymbolCompiler
+          pip install -e .
+
+      - name: Generate Symbols
+        run: |
+          jsymbolcompiler \
+            --engine-root $GITHUB_WORKSPACE \
+            --output artifacts
+
+      - name: Read Version
+        id: meta
+        run: |
+          VERSION=$(find artifacts -name metadata.json | head -n 1 | xargs jq -r '.documentationVersion')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Upload Symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: symbols
+          path: artifacts
+
+
+  publish:
+    needs: compile
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Download Symbols
+        uses: actions/download-artifact@v4
+        with:
+          name: symbols
+          path: symbols
+
+      - name: Checkout Website
+        uses: actions/checkout@v4
+        with:
+          repository: JesseTheCatLover/Redleaf-Website
+          token: ${{ secrets.REDLEAF_WEBSITE_TOKEN }}
+          path: website
+          ref: ${{ github.ref_name }}
+
+      - name: Set Environment
+        run: |
+          echo "VERSION=${{ needs.compile.outputs.version }}" >> $GITHUB_ENV
+          echo "BRANCH=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+      - name: Sync API Data
+        run: |
+          TARGET="website/src/static/api-data/${VERSION}"
+
+          rm -rf "$TARGET"
+          mkdir -p "$TARGET"
+
+          cp -r symbols/* "$TARGET/"
+
+      - name: Commit & Push
+        run: |
+          cd website
+
+          git config user.name "JSymbolCompiler"
+          git config user.email "bot@redleaf.dev"
+
+          git add src/static/api-data/${VERSION}
+
+          git commit -m "Update API data (${VERSION}) from ${BRANCH}" || echo "No changes"
+
+          git pull --rebase
+          git push
