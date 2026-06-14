@@ -3,7 +3,6 @@ name: Compile & Publish Symbols
 on:
   push:
     branches:
-      - develop
       - stable
 
 jobs:
@@ -72,6 +71,10 @@ jobs:
     needs: compile
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        target_branch: [ develop, stable ]
+
     steps:
 
       - name: Download Symbols
@@ -86,16 +89,15 @@ jobs:
           repository: JesseTheCatLover/Redleaf-Website
           token: ${{ secrets.REDLEAF_WEBSITE_TOKEN }}
           path: website
-          ref: ${{ github.ref_name }}
+          ref: ${{ matrix.target_branch }}
 
       - name: Sync API Data
         run: |
           TARGET="website/static/api-data"
-
-          rm -rf "$TARGET"
+          
           mkdir -p "$TARGET"
 
-          cp -r symbols/. "$TARGET/"
+          rsync -a symbols/ "$TARGET/"
 
       - name: Commit & Push
         run: |
@@ -106,9 +108,9 @@ jobs:
           git config user.name "JSymbolCompiler"
           git config user.email "bot@redleaf.dev"
 
-          git add "static/api-data"
+          git add static/api-data
 
-          git commit -m "Update API data (${VERSION}) from ${GITHUB_REF_NAME}" || echo "No changes"
+          git commit -m "Update API data (${VERSION}) from stable engine" || echo "No changes"
 
-          git pull --rebase
-          git push
+          git pull --rebase origin ${{ matrix.target_branch }}
+          git push origin HEAD:${{ matrix.target_branch }}
