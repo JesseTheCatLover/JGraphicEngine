@@ -15,6 +15,7 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
 
     steps:
+
       - name: Checkout Engine
         uses: actions/checkout@v4
 
@@ -49,14 +50,22 @@ jobs:
         id: meta
         run: |
           VERSION=$(find artifacts -name metadata.json | head -n 1 | xargs jq -r '.documentationVersion')
-          echo "VERSION=${{ needs.compile.outputs.version }}" >> $GITHUB_ENV
-          echo "BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Prepare Deployment Artifact
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+
+          mkdir -p deploy
+
+          cp -r "artifacts/${VERSION}" deploy/
 
       - name: Upload Symbols
         uses: actions/upload-artifact@v4
         with:
           name: symbols
-          path: artifacts
+          path: deploy
 
 
   publish:
@@ -79,32 +88,27 @@ jobs:
           path: website
           ref: ${{ github.ref_name }}
 
-      - name: Set Environment
-        run: |
-          echo "VERSION=${{ needs.compile.outputs.version }}" >> $GITHUB_ENV
-          echo "BRANCH=${GITHUB_REF_NAME}" >> $GITHUB_ENV
-
       - name: Sync API Data
         run: |
-          VERSION="${{ needs.compile.outputs.version }}"
-  
-          TARGET="website/static/api-data/${VERSION}"
-          
+          TARGET="website/static/api-data"
+
           rm -rf "$TARGET"
           mkdir -p "$TARGET"
-          
-          cp -r symbols/${VERSION}/* "$TARGET/"
+
+          cp -r symbols/. "$TARGET/"
 
       - name: Commit & Push
         run: |
+          VERSION="${{ needs.compile.outputs.version }}"
+
           cd website
 
           git config user.name "JSymbolCompiler"
           git config user.email "bot@redleaf.dev"
 
-          git add static/api-data/${VERSION}
+          git add "static/api-data"
 
-          git commit -m "Update API data (${VERSION}) from ${BRANCH}" || echo "No changes"
+          git commit -m "Update API data (${VERSION}) from ${GITHUB_REF_NAME}" || echo "No changes"
 
           git pull --rebase
           git push
