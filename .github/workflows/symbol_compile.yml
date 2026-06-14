@@ -1,0 +1,49 @@
+name: Compile Symbols
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  compile:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Engine
+        uses: actions/checkout@v4
+
+      - name: Install Doxygen
+        run: |
+          sudo apt update
+          sudo apt install -y doxygen graphviz
+
+      - name: Checkout JSymbolCompiler
+        uses: actions/checkout@v4
+        with:
+          repository: JesseTheCatLover/JSymbolCompiler
+          path: JSymbolCompiler
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install JSymbolCompiler
+        run: |
+          cd JSymbolCompiler
+          pip install -e .
+
+      - name: Generate Symbols
+        run: |
+          jsymbolcompiler \
+            --engine-root $GITHUB_WORKSPACE \
+            --output artifacts
+
+      - name: Upload Symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: symbols
+          path: artifacts
