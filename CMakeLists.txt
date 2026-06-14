@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
-project(JGraphicEngine LANGUAGES C CXX)
+project(RedleafEngine VERSION 0.1 LANGUAGES C CXX)
+
+set(REDLEAF_DOC_VERSION "Alpha")
 
 include(FetchContent)
 
