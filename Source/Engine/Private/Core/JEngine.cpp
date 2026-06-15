@@ -193,7 +193,7 @@ bool JEngine::SurfaceInitialize()
     surfaceState.width = m_Context->GetFramebufferWidth();
     surfaceState.height = m_Context->GetFramebufferHeight();
     surfaceState.windowState = EWindowState::Maximized;
-    surfaceState.title = "JGraphicEngine";
+    surfaceState.title = "RedleafEngine Alpha1 - JEditor (Prototype)";
 
     ESurfaceAPI surfaceAPI = ESurfaceAPI::GLFW;
     m_PlatformSurface = BackendFactory::MakeSurfaceBackend(surfaceAPI);

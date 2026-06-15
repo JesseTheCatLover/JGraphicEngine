@@ -43,13 +43,13 @@ add_executable(JGame
 target_link_libraries(JGame PRIVATE JApplication)
 
 # Universal launcher
-add_executable(JEngine
+add_executable(RedleafEngine
         ApplicationEntry.cpp
 )
-target_link_libraries(JEngine PRIVATE JApplication)
+target_link_libraries(RedleafEngine PRIVATE JApplication)
 
 # Apply output directory to all executables
-set(JENGINE_EXECUTABLES JEditor JGame JEngine)
+set(JENGINE_EXECUTABLES JEditor JGame RedleafEngine)
 
 foreach(tgt IN LISTS JENGINE_EXECUTABLES)
     set_target_properties(${tgt} PROPERTIES
@@ -72,4 +72,4 @@ foreach(tgt IN LISTS JENGINE_EXECUTABLES)
 endforeach()
 
 # Executables folder (these should show in the IDE)
-set_property(TARGET JEditor JGame JEngine PROPERTY FOLDER "Executables")
+set_property(TARGET JEditor JGame RedleafEngine PROPERTY FOLDER "Executables")
