@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "Controllers/Inputs/FViewportPanelInput.h"
+#include "Panels/Controllers/Inputs/FViewportPanelInput.h"
 #include "Core/Math/FIntersection.h"
 #include "Core/Math/FViewportMath.h"
 #include "Rendering/FRenderView.h"

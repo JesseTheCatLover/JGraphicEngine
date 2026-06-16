@@ -7,7 +7,7 @@
 #include "Core/Math/FVector3.h"
 #include "Core/Math/FVector4.h"
 #include "Core/Math/FMatrix4.h"
-#include "Scene/FRaycast.h"
+#include "EditorAPI/Scene/FRaycast.h"
 #include "Rendering/ICameraViewSource.h"
 
 namespace FViewportMath

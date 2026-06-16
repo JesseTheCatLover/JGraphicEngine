@@ -6,12 +6,12 @@
 #include <Renderer/Backends/ImGuiBackend.h>
 #include <iostream>
 
-#include "Core/EditorAssetCache.h"
-#include "Core/EditorHost.h"
-#include "Core/EditorPanelTracker.h"
-#include "Core/Services/ShellCommandService.h"
+#include "EditorCore/EditorAssetCache.h"
+#include "EditorCore/EditorHost.h"
+#include "Renderer/EditorPanelTracker.h"
+#include "EditorCore/Services/ShellCommandService.h"
 #include "Renderer/ImGuiRenderer.h"
-#include "Layout/EditorLayoutModel.h"
+#include "EditorLayout/EditorLayoutModel.h"
 #include "Rendering/IPlatformWindow.h"
 
 EditorApp::EditorApp()

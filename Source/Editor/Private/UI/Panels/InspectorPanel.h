@@ -8,9 +8,9 @@
 #include <unordered_set>
 #include <vector>
 
-#include "UI/IEditorPanel.h"
-#include "Controllers/Inputs/FInspectorPanelInput.h"
-#include "Controllers/Documents/FInspectorDocument.h"
+#include "EditorCore/IEditorPanel.h"
+#include "Panels/Controllers/Inputs/FInspectorPanelInput.h"
+#include "Panels/Controllers/Documents/FInspectorDocument.h"
 
 class EditorHost;
 

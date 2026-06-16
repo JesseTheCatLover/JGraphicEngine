@@ -4,10 +4,10 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "Controllers/Outputs/FViewportOutput.h"
-#include "Core/EditorHost.h"
-#include "Core/EngineGlobals.h"
-#include "Subsystems/ViewportSubsystem.h"
+#include "Panels/Controllers/Outputs/FViewportOutput.h"
+#include "EditorCore/EditorHost.h"
+#include "Panels/Subsystems/ViewportSubsystem.h"
+#include "Tools/Controllers/GizmoEditorController.h"
 
 void ViewportPanel::OnCreate(EditorHost&) {}
 

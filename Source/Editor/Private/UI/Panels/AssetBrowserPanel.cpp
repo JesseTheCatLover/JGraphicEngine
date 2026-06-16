@@ -8,12 +8,12 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
-#include "Controllers/Documents/FAssetBrowserDocument.h"
-#include "Controllers/Inputs/FAssetBrowserPanelInput.h"
-#include "Controllers/Outputs/FAssetBrowserOutput.h"
+#include "Panels/Controllers/Documents/FAssetBrowserDocument.h"
+#include "Panels/Controllers/Inputs/FAssetBrowserPanelInput.h"
+#include "Panels/Controllers/Outputs/FAssetBrowserOutput.h"
 
-#include "Core/EditorHost.h"
-#include "Subsystems/AssetBrowserSubsystem.h"
+#include "EditorCore/EditorHost.h"
+#include "Panels/Subsystems/AssetBrowserSubsystem.h"
 #include "UI/Dialogs/AssetImporterDialog.h"
 
 namespace

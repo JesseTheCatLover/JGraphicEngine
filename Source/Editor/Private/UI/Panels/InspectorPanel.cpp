@@ -11,9 +11,9 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
-#include "Core/EditorHost.h"
-#include "Subsystems/InspectorSubsystem.h"
-#include "Controllers/Outputs/FInspectorOutput.h"
+#include "EditorCore/EditorHost.h"
+#include "Panels/Subsystems/InspectorSubsystem.h"
+#include "Panels/Controllers/Outputs/FInspectorOutput.h"
 
 // ------------------------------- small UI helpers -------------------------------
 

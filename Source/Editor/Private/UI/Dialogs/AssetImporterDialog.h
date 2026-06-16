@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "UI/IEditorDialog.h"
+#include "EditorCore/IEditorDialog.h"
 
 class AssetImporterDialog final : public IEditorDialog
 {

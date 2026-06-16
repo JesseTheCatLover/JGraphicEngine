@@ -10,9 +10,9 @@
 #include "misc/cpp/imgui_stdlib.h"
 #include "Utilities/UPath.h"
 #include "EditorRuntime.h"
-#include "Core/EditorHost.h"
-#include "Core/Services/AssetBrowser/AssetBrowserService.h"
-#include "Core/Services/AssetBrowser/AssetBrowserViewController.h"
+#include "EditorCore/EditorHost.h"
+#include "EditorCore/Services/AssetBrowser/AssetBrowserService.h"
+#include "EditorCore/Services/AssetBrowser/AssetBrowserViewController.h"
 
 namespace
 {

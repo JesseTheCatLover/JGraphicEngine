@@ -4,7 +4,7 @@
 #include <string>
 #include <cstdint>
 
-#include "UI/IEditorPanel.h"
+#include "EditorCore/IEditorPanel.h"
 
 class AssetBrowserPanel final : public IEditorPanel
 {

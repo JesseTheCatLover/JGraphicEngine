@@ -9,15 +9,14 @@
 
 #include "Core/Delegates/FDelegateHandle.h"
 #include "Core/Memory/SmartPointers.h"
-#include "Core/Services/AssetBrowser/FAssetBrowserViewProjection.h"
-#include "UI/IEditorDialog.h"
+#include "EditorCore/Services/AssetBrowser/FAssetBrowserViewProjection.h"
+#include "EditorCore/IEditorDialog.h"
 
 struct FAssetBrowserViewSettings;
 class AssetBrowserService;
 class AssetBrowserViewController;
 class EditorHost;
 class EditorRuntime;
-
 
 class FolderPickerDialog final : public IEditorDialog
 // Note: After many wasted time on this, i finally

@@ -2,11 +2,11 @@
 
 #pragma once
 
-#include "Edits/IEditActionSink.h"
-#include "File/FileAPI.h"
-#include "Scene/SceneAPI.h"
-#include "Surface/SurfaceAPI.h"
-#include "Viewport/ViewportAPI.h"
+#include "EditorEdits/IEditActionSink.h"
+#include "EditorAPI/File/FileAPI.h"
+#include "EditorAPI/Scene/SceneAPI.h"
+#include "EditorAPI/Surface/SurfaceAPI.h"
+#include "EditorAPI/Viewport/ViewportAPI.h"
 
 class InputSubsystem;
 class ICameraViewSource;

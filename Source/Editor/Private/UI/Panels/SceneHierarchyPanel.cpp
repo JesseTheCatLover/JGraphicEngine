@@ -3,10 +3,10 @@
 #include "SceneHierarchyPanel.h"
 
 #include "imgui.h"
-#include "Core/EditorHost.h"
-#include "Subsystems/SceneHierarchySubsystem.h"
-#include "Controllers/Outputs/FHierarchyOutput.h"
-#include "Core/Services/Selection/SelectionService.h"
+#include "EditorCore/EditorHost.h"
+#include "Panels/Subsystems/SceneHierarchySubsystem.h"
+#include "Panels/Controllers/Outputs/FHierarchyOutput.h"
+#include "EditorCore/Services/Selection/SelectionService.h"
 
 // helpers
 static bool FindNodeById(const std::vector<FHierarchySnapshot>& actors, ActorID id, FHierarchySnapshot& outNode)

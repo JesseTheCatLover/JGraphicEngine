@@ -1,7 +1,7 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
 #include "AssetImporterDialog.h"
-#include "Core/EditorHost.h"
+#include "EditorCore/EditorHost.h"
 #include "EditorRuntime.h"
 #include "Assets/FAssetImportRequest.h"
 #include "Assets/FAssetImportResult.h"

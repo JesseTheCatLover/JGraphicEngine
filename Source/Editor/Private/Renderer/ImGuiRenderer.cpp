@@ -5,14 +5,14 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
-#include "Core/EditorHost.h"
+#include "EditorCore/EditorHost.h"
 #include "EditorRuntime.h"
-#include "Layout/EditorLayoutModel.h"
-#include "Core/EditorAssetCache.h"
-#include "Core/Services/EditTimelineService.h"
-#include "Core/Services/HotkeyService.h"
-#include "Core/Services/ShellCommandService.h"
-#include "UI/IEditorPanel.h"
+#include "EditorLayout/EditorLayoutModel.h"
+#include "EditorCore/EditorAssetCache.h"
+#include "EditorCore/Services/EditTimelineService.h"
+#include "EditorCore/Services/HotkeyService.h"
+#include "EditorCore/Services/ShellCommandService.h"
+#include "EditorCore/IEditorPanel.h"
 
 static bool IsViewportKey(const char *key)
 {

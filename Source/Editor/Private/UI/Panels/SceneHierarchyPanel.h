@@ -7,8 +7,8 @@
 #include <string>
 #include <cstdint>
 
-#include "UI/IEditorPanel.h"
-#include "Controllers/Inputs/FHierarchyPanelInput.h"
+#include "EditorCore/IEditorPanel.h"
+#include "Panels/Controllers/Inputs/FHierarchyPanelInput.h"
 
 template<typename T>
 class TSelectionModel;
