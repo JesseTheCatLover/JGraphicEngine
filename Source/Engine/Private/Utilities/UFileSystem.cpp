@@ -23,6 +23,7 @@
     #undef CreateDirectory
     #undef DeleteFile
     #undef MoveFile
+    #undef CopyFile
 #endif
 
 #ifdef JENGINE_PLATFORM_MACOS
@@ -38,11 +39,6 @@ namespace fs = std::filesystem;
 
 namespace
 {
-    static std::string NormalizePhysicalPath(const std::string& path)
-    {
-        return UPath::Normalize(path);
-    }
-
     static std::string ToLowerCopy(std::string s)
     {
         std::transform(s.begin(), s.end(), s.begin(),

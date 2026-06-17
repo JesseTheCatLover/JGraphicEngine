@@ -11,16 +11,18 @@
 
 namespace
 {
-    std::vector<nfdnfilteritem_t> BuildNfdFilter(const char* filterList,
-                                                 std::vector<std::string>& backingStrings)
+    std::vector<nfdu8filteritem_t> BuildNfdFilter(
+        const char* filterList,
+        std::vector<std::string>& backingStrings)
     {
-        std::vector<nfdnfilteritem_t> result;
+        std::vector<nfdu8filteritem_t> result;
+
         if (!filterList || *filterList == '\0')
             return result;
 
-        // We'll store name/spec strings in backingStrings so their memory stays valid.
         std::stringstream ss(filterList);
         std::string group;
+
         while (std::getline(ss, group, ';'))
         {
             if (group.empty())
@@ -37,37 +39,30 @@ namespace
             }
             else
             {
-                // If no name, use spec as both name and spec.
                 name = group;
                 spec = group;
             }
 
-            // --- Sanitize the spec string for NFD ---
-            // Remove wildcards (*), dots (.), and spaces.
-            // Example: "*.png, *.jpg" becomes "png,jpg"
             std::string cleanSpec;
             for (char c : spec)
             {
                 if (c != '*' && c != '.' && c != ' ')
-                {
                     cleanSpec += c;
-                }
             }
 
-            // If the spec becomes entirely empty (e.g., from "*.*"),
-            // (If we want "All Files", we just pass no filter to NFD at all).
             if (cleanSpec.empty())
-            {
                 continue;
-            }
 
-            // Store in backingStrings so c_str() is stable
             backingStrings.push_back(name);
             backingStrings.push_back(cleanSpec);
 
-            nfdnfilteritem_t item{};
-            item.name = backingStrings[backingStrings.size() - 2].c_str();
-            item.spec = backingStrings[backingStrings.size() - 1].c_str();
+            nfdu8filteritem_t item{};
+            item.name = reinterpret_cast<nfdu8char_t*>(
+                backingStrings[backingStrings.size() - 2].data());
+
+            item.spec = reinterpret_cast<nfdu8char_t*>(
+                backingStrings[backingStrings.size() - 1].data());
+
             result.push_back(item);
         }
 
@@ -102,6 +97,8 @@ bool GLFWSurface::Initialize()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
+    NFD_Init();
+
     return true;
 }
 
@@ -121,6 +118,8 @@ void GLFWSurface::Shutdown()
 
     m_Windows.clear();
     m_PrimaryWindow.reset();
+
+    NFD_Quit();
 
     glfwTerminate();
     std::cout << "[GLFWSurface]: Shutdown completed\n";
@@ -314,67 +313,78 @@ IPlatformSurface::GetProcAddressFunc GLFWSurface::GetProcAddressFunction() const
 
 std::string GLFWSurface::OpenFileDialog(const char* filterList, const char* defaultPath)
 {
-    nfdnchar_t* outPath = nullptr;
+    nfdu8char_t* outPath = nullptr;
 
     std::vector<std::string> filterBacking;
     auto filters = BuildNfdFilter(filterList, filterBacking);
-    const nfdnfilteritem_t* filterPtr = filters.empty() ? nullptr : filters.data();
-    nfdfiltersize_t filterCount = static_cast<nfdfiltersize_t>(filters.size());
 
-    nfdresult_t result = NFD_OpenDialogN(
-        &outPath,       // outPath
-        filterPtr,      // filterList
-        filterCount,    // filterCount
-        defaultPath     // defaultPath
+    const nfdu8filteritem_t* filterPtr =
+        filters.empty() ? nullptr : filters.data();
+
+    nfdfiltersize_t filterCount =
+        static_cast<nfdfiltersize_t>(filters.size());
+
+    nfdresult_t result = NFD_OpenDialogU8(
+        &outPath,
+        filterPtr,
+        filterCount,
+        reinterpret_cast<const nfdu8char_t*>(defaultPath)
     );
 
     std::string path;
+
     if (result == NFD_OKAY && outPath)
     {
-        path = outPath;
-        NFD_FreePathN(outPath);
+        path = reinterpret_cast<char*>(outPath);
+        NFD_FreePathU8(outPath);
     }
 
     return path;
 }
 
-std::vector<std::string> GLFWSurface::OpenFileDialogMultiple(const char* filterList, const char* defaultPath)
+std::vector<std::string> GLFWSurface::OpenFileDialogMultiple(
+    const char* filterList,
+    const char* defaultPath)
 {
     const nfdpathset_t* outPaths = nullptr;
 
     std::vector<std::string> filterBacking;
     auto filters = BuildNfdFilter(filterList, filterBacking);
-    const nfdnfilteritem_t* filterPtr = filters.empty() ? nullptr : filters.data();
-    nfdfiltersize_t filterCount = static_cast<nfdfiltersize_t>(filters.size());
 
-    nfdresult_t result = NFD_OpenDialogMultipleN(
-        &outPaths,      // outPaths
-        filterPtr,      // filterList
-        filterCount,    // filterCount
-        defaultPath     // defaultPath
-    );
+    const nfdu8filteritem_t* filterPtr =
+        filters.empty() ? nullptr : filters.data();
+
+    nfdfiltersize_t filterCount =
+        static_cast<nfdfiltersize_t>(filters.size());
 
     std::vector<std::string> paths;
+
+    nfdresult_t result = NFD_OpenDialogMultipleU8(
+        &outPaths,
+        filterPtr,
+        filterCount,
+        reinterpret_cast<const nfdu8char_t*>(defaultPath)
+    );
+
     if (result == NFD_OKAY && outPaths)
     {
-        // 1) Get count via out parameter
         nfdpathsetsize_t count = 0;
-        nfdresult_t countResult = NFD_PathSet_GetCount(outPaths, &count);
-        if (countResult == NFD_OKAY && count > 0)
+
+        if (NFD_PathSet_GetCount(outPaths, &count) == NFD_OKAY)
         {
             paths.reserve(static_cast<size_t>(count));
 
-            // 2) Iterate and get each path via out parameter
             for (nfdpathsetsize_t i = 0; i < count; ++i)
             {
-                nfdnchar_t* p = nullptr;
-                nfdresult_t pathResult = NFD_PathSet_GetPathN(outPaths, i, &p);
-                if (pathResult == NFD_OKAY && p)
-                    paths.emplace_back(p);
+                nfdu8char_t* p = nullptr;
+
+                if (NFD_PathSet_GetPathU8(outPaths, i, &p) == NFD_OKAY && p)
+                {
+                    paths.emplace_back(reinterpret_cast<char*>(p));
+                }
             }
         }
 
-        // 3) Free the path set
         NFD_PathSet_Free(outPaths);
     }
 
@@ -383,46 +393,54 @@ std::vector<std::string> GLFWSurface::OpenFileDialogMultiple(const char* filterL
 
 std::string GLFWSurface::OpenFolderDialog(const char* defaultPath)
 {
-    nfdnchar_t* outPath = nullptr;
+    nfdu8char_t* outPath = nullptr;
 
-    nfdresult_t result = NFD_PickFolderN(
-        &outPath,       // outPath
-        defaultPath     // defaultPath
+    nfdresult_t result = NFD_PickFolderU8(
+        &outPath,
+        defaultPath
     );
 
     std::string path;
+
     if (result == NFD_OKAY && outPath)
     {
-        path = outPath;
-        NFD_FreePathN(outPath);
+        path = reinterpret_cast<char*>(outPath);
+        NFD_FreePathU8(outPath);
     }
 
     return path;
 }
 
-std::string GLFWSurface::SaveFileDialog(const char* filterList, const char* defaultPath, const char* defaultName)
+std::string GLFWSurface::SaveFileDialog(
+    const char* filterList,
+    const char* defaultPath,
+    const char* defaultName)
 {
-    nfdchar_t* outPath = nullptr;
+    nfdu8char_t* outPath = nullptr;
 
     std::vector<std::string> filterBacking;
     auto filters = BuildNfdFilter(filterList, filterBacking);
-    const nfdfilteritem_t* filterPtr = filters.empty() ? nullptr : filters.data();
-    nfdfiltersize_t filterCount = static_cast<nfdfiltersize_t>(filters.size());
 
+    const nfdu8filteritem_t* filterPtr =
+        filters.empty() ? nullptr : filters.data();
 
-    nfdresult_t result = NFD_SaveDialogN(
-        &outPath,           // outPath
-        filterPtr,          // filterList
-        filterCount,        // filterCount
-        defaultPath,        // defaultPath
-        defaultName         // defaultName
+    nfdfiltersize_t filterCount =
+        static_cast<nfdfiltersize_t>(filters.size());
+
+    nfdresult_t result = NFD_SaveDialogU8(
+        &outPath,
+        filterPtr,
+        filterCount,
+        defaultPath,
+        defaultName
     );
 
     std::string path;
+
     if (result == NFD_OKAY && outPath)
     {
         path = outPath;
-        NFD_FreePathN(outPath);
+        NFD_FreePathU8(outPath);
     }
 
     return path;

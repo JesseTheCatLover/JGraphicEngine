@@ -33,7 +33,7 @@ std::string EditorSurfaceAPI::SaveFileDialog(const char *filterList, const char 
 
 TSharedPtr<IPlatformWindow> EditorSurfaceAPI::CreateWindow(const FWindowDesc &desc)
 {
-    m_PlatformSurface.CreateWindow(desc, false);
+    return m_PlatformSurface.CreateWindow(desc, false);
 }
 
 void EditorSurfaceAPI::DestroyWindow(const TSharedPtr<IPlatformWindow> &window)
