@@ -602,7 +602,7 @@ std::string ModelImporter::ImportTextureIfNeeded(const std::string &texturePath,
         return "";
 
     // Resolve to an absolute path
-    const std::string absolutePath = UPath::Normalize(UPath::Join(modelSourceDir, texturePath));
+    const std::string absolutePath = UPath::NormalizeVirtual(UPath::Join(modelSourceDir, texturePath));
 
     // Check cache first
     auto it = m_TextureCache.find(absolutePath);
@@ -657,7 +657,7 @@ bool ModelImporter::OnImport(const FAssetImportRequest& request,
         return false;
     }
 
-    const std::string normalizedSourcePath = UPath::Normalize(request.sourceFilePath);
+    const std::string normalizedSourcePath = UPath::NormalizeVirtual(request.sourceFilePath);
     const std::string modelSourceDir = UPath::GetParent(normalizedSourcePath);
     const std::string assetBaseName = UPath::GetFileName(normalizedSourcePath, false);
 

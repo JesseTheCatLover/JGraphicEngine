@@ -41,31 +41,84 @@ public:
     {
         std::filesystem::path p;
         ((p /= std::filesystem::path(args)), ...);
-        return Normalize(p.string());
+        return NormalizeVirtual(p.string());
     }
 
     /**
-     * @brief Lexically normalizes a path into canonical virtual-path form.
+     * @brief Lexically normalizes a virtual engine path.
+     *
+     * Virtual paths are engine-defined paths such as:
+     *
+     *     /Project/Textures/Diffuse.jasset
+     *     /Engine/Materials/Default.jasset
      *
      * The function:
      *
      * - Converts all separators to forward slashes ('/')
      * - Forces the path to begin with '/'
      * - Collapses repeated slashes
-     * - Resolves "." and ".." path segments lexically
-     * - Removes trailing slashes except for the root path
+     * - Resolves "." and ".." segments lexically
+     * - Removes trailing slashes except for the virtual root ('/')
      *
-     * The returned path is always in normalized forward-slash form and is
-     * suitable for virtual asset paths and internal engine path handling.
+     * The returned path is always in canonical virtual-path form and should
+     * be used for asset references, mount points, registry paths, and other
+     * engine-facing path systems.
+     *
+     * This function must NOT be used for operating-system filesystem paths
+     * such as:
+     *
+     *     C:\Projects\MyGame
+     *     /home/user/MyGame
      *
      * Examples:
-     * - "Textures\\UI//Button.png"
-     *      -> "/Textures/UI/Button.png"
      *
-     * @param path Relative or absolute input path.
-     * @return Normalized virtual-style path using forward slashes.
+     *     "Textures\\UI//Button.png"
+     *         -> "/Textures/UI/Button.png"
+     *
+     *     "/Project/Textures/../Materials/Default.jasset"
+     *         -> "/Project/Materials/Default.jasset"
+     *
+     * @param path Virtual path to normalize.
+     * @return Canonical virtual path using forward slashes.
      */
-    static std::string Normalize(std::string_view path);
+    static std::string NormalizeVirtual(std::string_view path);
+
+    /**
+     * @brief Lexically normalizes a physical filesystem path.
+     *
+     * Physical paths are operating-system paths such as:
+     *
+     *     - C:\Projects\MyGame
+     *     - D:\RedleafEngine
+     *     - /home/user/MyGame
+     *
+     * The function performs lexical normalization and preserves the path's
+     * filesystem semantics.
+     *
+     * The function:
+     *
+     * - Resolves "." and ".." segments lexically
+     * - Removes redundant separators where possible
+     * - Preserves drive letters, root names, and absolute/relative state
+     * - Does NOT prepend a virtual root slash
+     * - Does NOT convert a filesystem path into a virtual engine path
+     *
+     * This function should be used whenever working with files, directories,
+     * project locations, engine installations, or any path passed to the
+     * operating system.
+     *
+     * Examples:
+     *
+     *     "C:\\Projects\\..\\MyGame\\Assets"
+     *         -> "C:\\MyGame\\Assets"
+     *
+     *     "./Projects/MyGame/../Config"
+     *         -> "Projects/Config"
+     *
+     * @param path Physical filesystem path.
+     * @return Lexically normalized filesystem path.
+     */
+    static std::string NormalizePhysical(std::string_view path);
 
     /**
      * @brief Get the parent directory of a path.
@@ -109,8 +162,8 @@ public:
      * project or engine root.
      *
      * Examples:
-     * - "/Project/Textures/icon.png" → "/Project/Textures/icon"
-     * - "file.txt" → "file"
+     * - "/Project/Textures/icon.png" -> "/Project/Textures/icon"
+     * - "file.txt" -> "file"
      *
      * @param path Relative or absolute path.
      * @return Path string with the file extension removed.

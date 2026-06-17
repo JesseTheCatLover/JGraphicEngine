@@ -14,8 +14,8 @@ bool ProjectContext::OpenProject(const FProjectOpenRequest& request)
 {
     Reset();
 
-    const std::string normalizedProjectFile = UPath::Normalize(request.projectFilePath);
-    const std::string normalizedEngineRoot  = UPath::Normalize(request.engineRootPath);
+    const std::string normalizedProjectFile = UPath::NormalizePhysical(request.projectFilePath);
+    const std::string normalizedEngineRoot  = UPath::NormalizePhysical(request.engineRootPath);
 
     if (!UFileSystem::FileExists(normalizedProjectFile))
     {
@@ -70,8 +70,8 @@ bool ProjectContext::CreateProject(const FProjectCreateRequest &request, FProjec
         return false;
     }
 
-    const std::string normalizedParentDir  = UPath::Normalize(request.parentDirectory);
-    const std::string normalizedEngineRoot = UPath::Normalize(request.engineRootPath);
+    const std::string normalizedParentDir  = UPath::NormalizePhysical(request.parentDirectory);
+    const std::string normalizedEngineRoot = UPath::NormalizePhysical(request.engineRootPath);
 
     if (!UFileSystem::DirectoryExists(normalizedParentDir))
     {
@@ -88,12 +88,12 @@ bool ProjectContext::CreateProject(const FProjectCreateRequest &request, FProjec
         return false;
     }
 
-    const std::string projectRootPath   = UPath::Normalize(UPath::Join(normalizedParentDir, request.projectName));
-    const std::string assetsDir         = UPath::Normalize(UPath::Join(projectRootPath, "Assets"));
-    const std::string savedDir          = UPath::Normalize(UPath::Join(projectRootPath, "Saved"));
-    const std::string intermediateDir   = UPath::Normalize(UPath::Join(projectRootPath, "Intermediate"));
-    const std::string configDir         = UPath::Normalize(UPath::Join(projectRootPath, "Configs"));
-    const std::string projectFilePath   = UPath::Normalize(UPath::Join(projectRootPath, request.projectName + ".jproject"));
+    const std::string projectRootPath   = UPath::NormalizePhysical(UPath::Join(normalizedParentDir, request.projectName));
+    const std::string assetsDir         = UPath::NormalizePhysical(UPath::Join(projectRootPath, "Assets"));
+    const std::string savedDir          = UPath::NormalizePhysical(UPath::Join(projectRootPath, "Saved"));
+    const std::string intermediateDir   = UPath::NormalizePhysical(UPath::Join(projectRootPath, "Intermediate"));
+    const std::string configDir         = UPath::NormalizePhysical(UPath::Join(projectRootPath, "Configs"));
+    const std::string projectFilePath   = UPath::NormalizePhysical(UPath::Join(projectRootPath, request.projectName + ".jproject"));
 
     if (UFileSystem::DirectoryExists(projectRootPath) || UFileSystem::FileExists(projectFilePath))
     {
@@ -260,10 +260,10 @@ bool ProjectContext::ValidateDescriptor(const FProjectDescriptor& descriptor) co
 
 void ProjectContext::BuildResolvedPaths()
 {
-    m_ProjectAssetsRoot       = UPath::Normalize(UPath::Join(m_ProjectRoot, m_Descriptor.folders.assets));
-    m_ProjectSavedRoot        = UPath::Normalize(UPath::Join(m_ProjectRoot, m_Descriptor.folders.saved));
-    m_ProjectIntermediateRoot = UPath::Normalize(UPath::Join(m_ProjectRoot, m_Descriptor.folders.intermediate));
-    m_ProjectConfigRoot       = UPath::Normalize(UPath::Join(m_ProjectRoot, m_Descriptor.folders.config));
+    m_ProjectAssetsRoot       = UPath::NormalizePhysical(UPath::Join(m_ProjectRoot, m_Descriptor.folders.assets));
+    m_ProjectSavedRoot        = UPath::NormalizePhysical(UPath::Join(m_ProjectRoot, m_Descriptor.folders.saved));
+    m_ProjectIntermediateRoot = UPath::NormalizePhysical(UPath::Join(m_ProjectRoot, m_Descriptor.folders.intermediate));
+    m_ProjectConfigRoot       = UPath::NormalizePhysical(UPath::Join(m_ProjectRoot, m_Descriptor.folders.config));
 
-    m_EngineAssetsRoot        = UPath::Normalize(UPath::Join(m_EngineRoot, "Assets"));
+    m_EngineAssetsRoot        = UPath::NormalizePhysical(UPath::Join(m_EngineRoot, "Assets"));
 }

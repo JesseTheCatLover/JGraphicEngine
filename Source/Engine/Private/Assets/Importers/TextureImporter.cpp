@@ -109,7 +109,7 @@ bool TextureImporter::OnImport(const FAssetImportRequest &request, const Virtual
     header.encoding = EAssetEncoding::Binary;
     header.containerVersion = FAssetHeader::CurrentContainerVersion;
     header.payloadVersion = 1;
-    header.sourcePath = UPath::Normalize(request.sourceFilePath);
+    header.sourcePath = UPath::NormalizeVirtual(request.sourceFilePath);
     header.importerName = GetImporterName();
     header.dependencyAssetIDs.clear();
 

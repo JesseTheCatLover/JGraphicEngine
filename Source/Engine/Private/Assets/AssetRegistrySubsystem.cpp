@@ -52,7 +52,7 @@ std::vector<const FAssetRecord*> AssetRegistrySubsystem::FindAllAssetsByVirtualP
 
 const FAssetRecord* AssetRegistrySubsystem::FindAssetByPhysicalPath(const std::string& physicalPath) const
 {
-    auto it = m_ByPhysicalPath.find(UPath::Normalize(physicalPath));
+    auto it = m_ByPhysicalPath.find(UPath::NormalizeVirtual(physicalPath));
     if (it == m_ByPhysicalPath.end())
         return nullptr;
 
@@ -155,7 +155,7 @@ bool AssetRegistrySubsystem::RegisterAsset(const FAssetRecord& record)
         return false;
 
     // Normalize physical path on ingest so FindAssetByPhysicalPath works reliably.
-    const std::string normalizedPhysical = UPath::Normalize(record.physicalPath);
+    const std::string normalizedPhysical = UPath::NormalizeVirtual(record.physicalPath);
 
     if (m_ByPhysicalPath.contains(normalizedPhysical))
         return false;
@@ -240,7 +240,7 @@ bool AssetRegistrySubsystem::UpdateAssetPhysicalPathByAssetID(const std::string&
     if (it == m_ByAssetID.end())
         return false;
 
-    const std::string normalized = UPath::Normalize(newPhysicalPath);
+    const std::string normalized = UPath::NormalizeVirtual(newPhysicalPath);
 
     // If another asset already uses this physical path, reject.
     auto itPhys = m_ByPhysicalPath.find(normalized);

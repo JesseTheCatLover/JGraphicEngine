@@ -44,12 +44,12 @@ bool EngineSourceAssetBootstrapper::ProcessSourceFile(
         return true;
 
     const std::string engineSourceRoot =
-        UPath::Normalize(UPath::Join(context.GetEngineRoot(), "SourceAssets"));
+        UPath::NormalizeVirtual(UPath::Join(context.GetEngineRoot(), "SourceAssets"));
 
     const std::string engineAssetsRoot =
-        UPath::Normalize(UPath::Join(context.GetEngineRoot(), "Assets"));
+        UPath::NormalizeVirtual(UPath::Join(context.GetEngineRoot(), "Assets"));
 
-    const std::string normalizedSource = UPath::Normalize(sourcePath);
+    const std::string normalizedSource = UPath::NormalizeVirtual(sourcePath);
 
     // Ensure file is inside Engine/SourceAssets
     if (!normalizedSource.starts_with(engineSourceRoot))

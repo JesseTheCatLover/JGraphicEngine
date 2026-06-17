@@ -78,7 +78,7 @@ void AssetBrowserController::OnPanelDestroyed()
 
 void AssetBrowserController::SetCurrentPath(const std::string& path)
 {
-    std::string normalized = UPath::Normalize(path);
+    std::string normalized = UPath::NormalizeVirtual(path);
 
     if (m_Document.currentPath == normalized)
         return;
@@ -108,7 +108,7 @@ void AssetBrowserController::BuildDirectories()
     // don’t create confusing folders in the UI.
     std::vector<const FAssetRecord*> assets = m_FileAPI.GetAllUserVisibleAssets();
 
-    const std::string parentDir = UPath::Normalize(m_Document.currentPath);
+    const std::string parentDir = UPath::NormalizeVirtual(m_Document.currentPath);
 
     // Use a set to avoid duplicate directory entries.
     std::unordered_set<std::string> seenDirVirtualPaths;
@@ -148,14 +148,14 @@ void AssetBrowserController::BuildAssets()
     // Same source as directories: user-visible only.
     std::vector<const FAssetRecord*> assets = m_FileAPI.GetAllUserVisibleAssets();
 
-    const std::string parentDir = UPath::Normalize(m_Document.currentPath);
+    const std::string parentDir = UPath::NormalizeVirtual(m_Document.currentPath);
 
     for (const FAssetRecord* record : assets)
     {
         if (!record)
             continue;
 
-        const std::string virtualPath = UPath::Normalize(record->virtualPath);
+        const std::string virtualPath = UPath::NormalizeVirtual(record->virtualPath);
 
         if (!IsDirectChildAsset(parentDir, virtualPath))
             continue;
@@ -202,11 +202,11 @@ bool AssetBrowserController::IsDirectChildDirectory(
     if (assetVirtualPathRaw.empty())
         return false;
 
-    const std::string assetVirtualPath = UPath::Normalize(assetVirtualPathRaw);
+    const std::string assetVirtualPath = UPath::NormalizeVirtual(assetVirtualPathRaw);
     if (assetVirtualPath.empty() || assetVirtualPath[0] != '/')
         return false;
 
-    std::string normalizedParent = UPath::Normalize(parentDir);
+    std::string normalizedParent = UPath::NormalizeVirtual(parentDir);
 
     // If parent is "/", we accept anything starting with "/"
     if (normalizedParent == "/")
@@ -278,10 +278,10 @@ bool AssetBrowserController::IsDirectChildAsset(
     if (assetVirtualPathRaw.empty())
         return false;
 
-    const std::string assetVirtualPath = UPath::Normalize(assetVirtualPathRaw);
+    const std::string assetVirtualPath = UPath::NormalizeVirtual(assetVirtualPathRaw);
 
     // Normalize parentDir.
-    std::string normalizedParent = UPath::Normalize(parentDir);
+    std::string normalizedParent = UPath::NormalizeVirtual(parentDir);
 
     // If parent is "/", then direct child assets are like "/Foo.jasset"
     if (normalizedParent == "/")
@@ -318,7 +318,7 @@ bool AssetBrowserController::IsDirectChildAsset(
 
 std::string AssetBrowserController::ComputeParentPath(const std::string& path)
 {
-    std::string p = UPath::Normalize(path);
+    std::string p = UPath::NormalizeVirtual(path);
     if (IsRootPath(p))
         return "/";
 

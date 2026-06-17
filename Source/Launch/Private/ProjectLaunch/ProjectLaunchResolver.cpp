@@ -31,8 +31,8 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
         }
 
         outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
-        outRequest.projectFilePath = UPath::Normalize(preferredProjectFilePath);
-        outRequest.engineRootPath  = UPath::Normalize(currentEngineRoot);
+        outRequest.projectFilePath = UPath::NormalizePhysical(preferredProjectFilePath);
+        outRequest.engineRootPath  = UPath::NormalizePhysical(currentEngineRoot);
         return true;
     }
 
@@ -45,8 +45,8 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
             if (!lastProject.empty() && UFileSystem::FileExists(lastProject))
             {
                 outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
-                outRequest.projectFilePath = UPath::Normalize(lastProject);
-                outRequest.engineRootPath  = UPath::Normalize(currentEngineRoot);
+                outRequest.projectFilePath = UPath::NormalizePhysical(lastProject);
+                outRequest.engineRootPath  = UPath::NormalizePhysical(currentEngineRoot);
                 return true;
             }
         }
@@ -70,8 +70,8 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
         }
 
         outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
-        outRequest.projectFilePath = UPath::Normalize(projectFilePath);
-        outRequest.engineRootPath  = UPath::Normalize(currentEngineRoot);
+        outRequest.projectFilePath = UPath::NormalizePhysical(projectFilePath);
+        outRequest.engineRootPath  = UPath::NormalizePhysical(currentEngineRoot);
         return true;
     }
 
@@ -95,8 +95,8 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
         }
 
         outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
-        outRequest.projectFilePath = UPath::Normalize(createResult.projectFilePath);
-        outRequest.engineRootPath  = UPath::Normalize(currentEngineRoot);
+        outRequest.projectFilePath = UPath::NormalizePhysical(createResult.projectFilePath);
+        outRequest.engineRootPath  = UPath::NormalizePhysical(currentEngineRoot);
         return true;
     }
 
@@ -108,7 +108,7 @@ bool ProjectLaunchResolver::ResolveProjectFileLaunch(const std::string& projectF
 {
     outRequest = {};
 
-    const std::string normalizedProjectFile = UPath::Normalize(projectFilePath);
+    const std::string normalizedProjectFile = UPath::NormalizePhysical(projectFilePath);
     if (!UFileSystem::FileExists(normalizedProjectFile))
     {
         m_UI.ShowError("Launch", ".jproject file does not exist.");
@@ -150,7 +150,7 @@ bool ProjectLaunchResolver::ResolveLauncherLaunch(const std::string& projectFile
     }
 
     outRequest.launchSource    = EProjectLaunchSource::Launcher;
-    outRequest.projectFilePath = UPath::Normalize(projectFilePath);
+    outRequest.projectFilePath = UPath::NormalizePhysical(projectFilePath);
     outRequest.engineRootPath  = resolved.engineRootPath;
     return true;
 }

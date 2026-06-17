@@ -227,7 +227,7 @@ void FolderPickerDialog::DrawDirectoryList()
                       ImGuiWindowFlags_HorizontalScrollbar);
 
     // Ensure we have something projected
-    auto itRoot = GetProjection().pathToID.find(UPath::Normalize(GetSettings().rootPath));
+    auto itRoot = GetProjection().pathToID.find(UPath::NormalizeVirtual(GetSettings().rootPath));
     if (itRoot == GetProjection().pathToID.end())
     {
         ImGui::TextDisabled("No folders available.");
@@ -323,7 +323,7 @@ void FolderPickerDialog::DrawBottomBar(AssetBrowserService& service)
 
 void FolderPickerDialog::SetDestinationPathOnPicker(const std::string &path)
 {
-    auto normalizedPath = UPath::Normalize(path);
+    auto normalizedPath = UPath::NormalizeVirtual(path);
     if (!UPath::IsSameOrUnder("/Project", normalizedPath))
         normalizedPath = "/Project";
 
@@ -459,7 +459,7 @@ void FolderPickerDialog::SetNavigationToPath(const std::string& rawPath)
 bool FolderPickerDialog::NavigateToPath(AssetBrowserService& service,const std::string& rawPath,
     bool bAllowCreatePending)
 {
-    std::string normalizedPath = UPath::Normalize(rawPath);
+    std::string normalizedPath = UPath::NormalizeVirtual(rawPath);
 
     if (normalizedPath.empty())
         normalizedPath = "/Project";
@@ -798,7 +798,7 @@ void FolderPickerDialog::EnsurePathVisible(AssetBrowserService& service, const s
 
 bool FolderPickerDialog::AddPendingFolderPath(const std::string& rawPath)
 {
-    std::string path = UPath::Normalize(rawPath);
+    std::string path = UPath::NormalizeVirtual(rawPath);
     if (path.empty())
         return false;
 
@@ -824,7 +824,7 @@ bool FolderPickerDialog::AddPendingFolderPath(const std::string& rawPath)
 
     for (const std::string& folder : chain)
     {
-        std::string normalized = UPath::Normalize(folder);
+        std::string normalized = UPath::NormalizeVirtual(folder);
 
         if (normalized.empty())
             continue;
@@ -840,9 +840,9 @@ bool FolderPickerDialog::AddPendingFolderPath(const std::string& rawPath)
         if (!IsValidSingleFolderName(safeName))
             continue;
 
-        const std::string safePath = UPath::Normalize(UPath::Join(parent, safeName));
+        const std::string safePath = UPath::NormalizeVirtual(UPath::Join(parent, safeName));
 
-        const std::string siblingPath = UPath::Normalize(UPath::Join(parent, safeName));
+        const std::string siblingPath = UPath::NormalizeVirtual(UPath::Join(parent, safeName));
 
         if (PathExistsInPicker(siblingPath))
             continue;
@@ -927,7 +927,7 @@ bool FolderPickerDialog::CommitPendingFolders(AssetBrowserService& service)
 
 bool FolderPickerDialog::CommitPendingRename(const std::string& targetPath, const std::string& newNameRaw)
 {
-    const std::string oldPath = UPath::Normalize(targetPath);
+    const std::string oldPath = UPath::NormalizeVirtual(targetPath);
 
     if (!m_PendingFolders.pendingPaths.contains(oldPath))
         return false;
@@ -944,7 +944,7 @@ bool FolderPickerDialog::CommitPendingRename(const std::string& targetPath, cons
 
     const std::string parent = UPath::GetParent(oldPath);
 
-    std::string desiredNewPath = UPath::Normalize(UPath::Join(parent, newName));
+    std::string desiredNewPath = UPath::NormalizeVirtual(UPath::Join(parent, newName));
 
     if (desiredNewPath != oldPath && PathExistsInPicker(desiredNewPath))
     {
@@ -1004,7 +1004,7 @@ void FolderPickerDialog::CancelPendingRename()
 
 std::string FolderPickerDialog::MakeUniqueChildPath(const std::string& parent, const std::string& baseName) const
 {
-    const std::string p = UPath::Normalize(parent);
+    const std::string p = UPath::NormalizeVirtual(parent);
 
     for (int n = 1; n < 10000; ++n)
     {
@@ -1033,7 +1033,7 @@ std::string FolderPickerDialog::OnCreateFolderClicked()
 
 bool FolderPickerDialog::IsRootPath(const std::string& path)
 {
-    std::string p = UPath::Normalize(path);
+    std::string p = UPath::NormalizeVirtual(path);
     return p == "/" || p.empty();
 }
 

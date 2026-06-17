@@ -54,7 +54,7 @@ namespace
 
 std::optional<std::string> UFileSystem::ReadTextFile(const std::string& path)
 {
-    const std::string fullPath = NormalizePhysicalPath(path);
+    const std::string fullPath = UPath::NormalizePhysical(path);
 
     std::ifstream file(fullPath, std::ios::in | std::ios::binary);
     if (!file.is_open())
@@ -67,7 +67,7 @@ std::optional<std::string> UFileSystem::ReadTextFile(const std::string& path)
 
 std::optional<std::vector<uint8_t>> UFileSystem::ReadBinaryFile(const std::string& path)
 {
-    const std::string fullPath = NormalizePhysicalPath(path);
+    const std::string fullPath = UPath::NormalizePhysical(path);
 
     std::ifstream file(fullPath, std::ios::binary);
     if (!file.is_open())
@@ -91,7 +91,7 @@ std::optional<std::vector<uint8_t>> UFileSystem::ReadBinaryFile(const std::strin
 
 bool UFileSystem::WriteTextFile(const std::string& path, const std::string& data, bool bAppend)
 {
-    const std::string fullPath = NormalizePhysicalPath(path);
+    const std::string fullPath = UPath::NormalizePhysical(path);
 
     const std::string parent = UPath::GetParent(fullPath);
     if (!parent.empty() && !CreateDirectory(parent))
@@ -107,7 +107,7 @@ bool UFileSystem::WriteTextFile(const std::string& path, const std::string& data
 
 bool UFileSystem::WriteBinaryFile(const std::string& path, const std::vector<uint8_t>& data, bool bAppend)
 {
-    const std::string fullPath = NormalizePhysicalPath(path);
+    const std::string fullPath = UPath::NormalizePhysical(path);
 
     const std::string parent = UPath::GetParent(fullPath);
     if (!parent.empty() && !CreateDirectory(parent))
@@ -127,7 +127,7 @@ bool UFileSystem::WriteBinaryFile(const std::string& path, const std::vector<uin
 
 bool UFileSystem::DeleteFile(const std::string& path)
 {
-    const std::string fullPath = NormalizePhysicalPath(path);
+    const std::string fullPath = UPath::NormalizePhysical(path);
 
     std::error_code ec;
     return fs::remove(fullPath, ec);
@@ -135,8 +135,8 @@ bool UFileSystem::DeleteFile(const std::string& path)
 
 bool UFileSystem::CopyFile(const std::string& source, const std::string& destination, bool bOverwrite)
 {
-    const std::string fullSrc = NormalizePhysicalPath(source);
-    const std::string fullDst = NormalizePhysicalPath(destination);
+    const std::string fullSrc = UPath::NormalizePhysical(source);
+    const std::string fullDst = UPath::NormalizePhysical(destination);
 
     // Ensure destination parent exists
     const std::string parent = UPath::GetParent(fullDst);
@@ -165,8 +165,8 @@ bool UFileSystem::CopyFile(const std::string& source, const std::string& destina
 
 bool UFileSystem::MoveFile(const std::string& source, const std::string& destination)
 {
-    const std::string fullSrc = NormalizePhysicalPath(source);
-    const std::string fullDst = NormalizePhysicalPath(destination);
+    const std::string fullSrc = UPath::NormalizePhysical(source);
+    const std::string fullDst = UPath::NormalizePhysical(destination);
 
     const std::string parent = UPath::GetParent(fullDst);
     if (!parent.empty() && !CreateDirectory(parent))
@@ -186,7 +186,7 @@ bool UFileSystem::RenameFile(const std::string& source, const std::string& newNa
 
 bool UFileSystem::CreateDirectory(const std::string& path)
 {
-    const std::string fullPath = NormalizePhysicalPath(path);
+    const std::string fullPath = UPath::NormalizePhysical(path);
 
     try
     {
@@ -204,7 +204,7 @@ bool UFileSystem::CreateDirectory(const std::string& path)
 
 bool UFileSystem::DeleteDirectory(const std::string& path, bool bRecursive)
 {
-    const std::string fullPath = NormalizePhysicalPath(path);
+    const std::string fullPath = UPath::NormalizePhysical(path);
 
     std::error_code ec;
 
@@ -216,8 +216,8 @@ bool UFileSystem::DeleteDirectory(const std::string& path, bool bRecursive)
 
 bool UFileSystem::MoveDirectory(const std::string& source, const std::string& destination)
 {
-    const std::string fullSrc = NormalizePhysicalPath(source);
-    const std::string fullDst = NormalizePhysicalPath(destination);
+    const std::string fullSrc = UPath::NormalizePhysical(source);
+    const std::string fullDst = UPath::NormalizePhysical(destination);
 
     const std::string parent = UPath::GetParent(fullDst);
     if (!parent.empty() && !CreateDirectory(parent))
@@ -275,7 +275,7 @@ std::filesystem::path UFileSystem::GetExecutablePath()
 
 bool UFileSystem::FileExists(const std::string& path)
 {
-    const std::string fullPath = NormalizePhysicalPath(path);
+    const std::string fullPath = UPath::NormalizePhysical(path);
 
     try
     {
@@ -289,7 +289,7 @@ bool UFileSystem::FileExists(const std::string& path)
 
 bool UFileSystem::DirectoryExists(const std::string& path)
 {
-    const std::string fullPath = NormalizePhysicalPath(path);
+    const std::string fullPath = UPath::NormalizePhysical(path);
 
     try
     {
@@ -334,7 +334,7 @@ std::vector<std::string> UFileSystem::ListFiles(
 {
     std::vector<std::string> files;
 
-    const std::string fullDirectory = NormalizePhysicalPath(directory);
+    const std::string fullDirectory = UPath::NormalizePhysical(directory);
 
     try
     {
@@ -370,7 +370,7 @@ std::vector<std::string> UFileSystem::ListFiles(
                 if (!matchesExtension(entry.path()))
                     continue;
 
-                files.push_back(NormalizePhysicalPath(entry.path().string()));
+                files.push_back(UPath::NormalizePhysical(entry.path().string()));
             }
         }
         else
@@ -383,7 +383,7 @@ std::vector<std::string> UFileSystem::ListFiles(
                 if (!matchesExtension(entry.path()))
                     continue;
 
-                files.push_back(NormalizePhysicalPath(entry.path().string()));
+                files.push_back(UPath::NormalizePhysical(entry.path().string()));
             }
         }
     }
@@ -399,7 +399,7 @@ std::vector<std::string> UFileSystem::ListDirectories(const std::string& directo
 {
     std::vector<std::string> dirs;
 
-    const std::string fullDirectory = NormalizePhysicalPath(directory);
+    const std::string fullDirectory = UPath::NormalizePhysical(directory);
 
     try
     {
@@ -411,7 +411,7 @@ std::vector<std::string> UFileSystem::ListDirectories(const std::string& directo
             for (const auto& entry : fs::recursive_directory_iterator(fullDirectory))
             {
                 if (entry.is_directory())
-                    dirs.push_back(NormalizePhysicalPath(entry.path().string()));
+                    dirs.push_back(UPath::NormalizePhysical(entry.path().string()));
             }
         }
         else
@@ -419,7 +419,7 @@ std::vector<std::string> UFileSystem::ListDirectories(const std::string& directo
             for (const auto& entry : fs::directory_iterator(fullDirectory))
             {
                 if (entry.is_directory())
-                    dirs.push_back(NormalizePhysicalPath(entry.path().string()));
+                    dirs.push_back(UPath::NormalizePhysical(entry.path().string()));
             }
         }
     }

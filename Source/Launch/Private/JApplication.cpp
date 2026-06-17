@@ -69,13 +69,12 @@ namespace
 
     static std::string GuessCurrentEngineRoot()
     {
-        const std::filesystem::path exePath = UFileSystem::GetExecutablePath();
+        std::filesystem::path exePath = UFileSystem::GetExecutablePath();
 
-        // expected layout: <EngineRoot>/Binaries/<Executable>
-        const std::string binariesDir = UPath::Normalize(exePath.string());
-        const std::string engineRoot  = UPath::GetParent(binariesDir);
+        // <EngineRoot>/Binaries/<exe>
+        std::filesystem::path engineRoot = exePath.parent_path();
 
-        return UPath::Normalize(engineRoot);
+        return UPath::NormalizePhysical(engineRoot.string());
     }
 }
 

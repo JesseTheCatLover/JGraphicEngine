@@ -25,12 +25,19 @@ namespace
             s.pop_back();
         return s;
     }
+
+    static std::string JoinPhysical(const std::string& a, const std::string& b)
+    {
+        std::filesystem::path p(a);
+        p /= b;
+        return UPath::NormalizePhysical(p.string());
+    }
 }
 
 bool VirtualPathMounter::Mount(const std::string& virtualRoot, const std::string& physicalRoot)
 {
-    const std::string normalizedVirtualRoot = NormalizeVirtualPath(virtualRoot);
-    const std::string normalizedPhysicalRoot = UPath::Normalize(physicalRoot);
+    const std::string normalizedVirtualRoot = UPath::NormalizeVirtual(virtualRoot);
+    const std::string normalizedPhysicalRoot = UPath::NormalizePhysical(physicalRoot);
 
     if (!IsValidVirtualRoot(normalizedVirtualRoot))
         return false;
@@ -57,7 +64,7 @@ bool VirtualPathMounter::Mount(const std::string& virtualRoot, const std::string
 
 bool VirtualPathMounter::Unmount(const std::string& virtualRoot)
 {
-    const std::string normalizedVirtualRoot = NormalizeVirtualPath(virtualRoot);
+    const std::string normalizedVirtualRoot = UPath::NormalizeVirtual(virtualRoot);
 
     auto it = std::remove_if(
         m_Mounts.begin(),
@@ -84,7 +91,7 @@ bool VirtualPathMounter::IsMounted(const std::string& virtualRoot) const
 
 const FVirtualMountPoint* VirtualPathMounter::FindMount(const std::string& virtualRoot) const
 {
-    const std::string normalizedVirtualRoot = NormalizeVirtualPath(virtualRoot);
+    const std::string normalizedVirtualRoot = UPath::NormalizeVirtual(virtualRoot);
 
     for (const FVirtualMountPoint& mount : m_Mounts)
     {
@@ -99,7 +106,7 @@ bool VirtualPathMounter::ResolveVirtualToPhysical(const std::string& virtualPath
 {
     outPhysicalPath.clear();
 
-    const std::string normalizedVirtualPath = NormalizeVirtualPath(virtualPath);
+    const std::string normalizedVirtualPath = UPath::NormalizeVirtual(virtualPath);
     if (normalizedVirtualPath.empty() || normalizedVirtualPath[0] != '/')
         return false;
 
@@ -114,7 +121,7 @@ bool VirtualPathMounter::ResolveVirtualToPhysical(const std::string& virtualPath
 
         outPhysicalPath = relative.empty()
             ? mount.physicalRoot
-            : UPath::Normalize(UPath::Join(mount.physicalRoot, relative));
+            : UPath::NormalizePhysical(JoinPhysical(mount.physicalRoot, relative));
 
         return true;
     }
@@ -126,7 +133,7 @@ bool VirtualPathMounter::ResolvePhysicalToVirtual(const std::string& physicalPat
 {
     outVirtualPath.clear();
 
-    const std::string normalizedPhysicalPath = UPath::Normalize(physicalPath);
+    const std::string normalizedPhysicalPath = UPath::NormalizePhysical(physicalPath);
 
     // Prefer longest matching root first in case nested mounts ever exist later.
     const FVirtualMountPoint* bestMount = nullptr;
@@ -154,25 +161,8 @@ bool VirtualPathMounter::ResolvePhysicalToVirtual(const std::string& physicalPat
         suffix.insert(suffix.begin(), '/');
 
     outVirtualPath = bestMount->virtualRoot + suffix;
-    outVirtualPath = NormalizeVirtualPath(outVirtualPath);
+    outVirtualPath = UPath::NormalizeVirtual(outVirtualPath);
     return true;
-}
-
-std::string VirtualPathMounter::NormalizeVirtualPath(const std::string& path)
-{
-    if (path.empty())
-        return {};
-
-    std::string result = NormalizeSlashes(path);
-
-    if (result.front() != '/')
-        result.insert(result.begin(), '/');
-
-    while (result.find("//") != std::string::npos)
-        result.replace(result.find("//"), 2, "/");
-
-    result = TrimTrailingSlashes(result);
-    return result;
 }
 
 bool VirtualPathMounter::IsValidVirtualRoot(const std::string& virtualRoot)
@@ -191,8 +181,8 @@ bool VirtualPathMounter::IsValidVirtualRoot(const std::string& virtualRoot)
 
 bool VirtualPathMounter::IsPathUnderPhysicalRoot(const std::string& physicalPath, const std::string& rootPath)
 {
-    const std::string normalizedPath = NormalizeSlashes(UPath::Normalize(physicalPath));
-    const std::string normalizedRoot = NormalizeSlashes(UPath::Normalize(rootPath));
+    const std::string normalizedPath = NormalizeSlashes(UPath::NormalizePhysical(physicalPath));
+    const std::string normalizedRoot = NormalizeSlashes(UPath::NormalizePhysical(rootPath));
 
     if (normalizedPath == normalizedRoot)
         return true;

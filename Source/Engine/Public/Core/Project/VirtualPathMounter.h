@@ -35,7 +35,6 @@ public:
     [[nodiscard]] const std::vector<FVirtualMountPoint>& GetMounts() const { return m_Mounts; }
 
 private:
-    [[nodiscard]] static std::string NormalizeVirtualPath(const std::string& path);
     [[nodiscard]] static bool IsValidVirtualRoot(const std::string& virtualRoot);
     [[nodiscard]] static bool IsPathUnderPhysicalRoot(const std::string& physicalPath, const std::string& rootPath);
     [[nodiscard]] static bool StartsWithPathSegment(const std::string& text, const std::string& prefix);

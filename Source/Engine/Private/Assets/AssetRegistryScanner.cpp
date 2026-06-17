@@ -60,7 +60,7 @@ FAssetScanResult AssetRegistryScanner::ScanRoot(const VirtualPathMounter& mounte
         record.containerVersion = header.containerVersion;
         record.payloadVersion = header.payloadVersion;
         record.virtualPath = virtualPath;
-        record.physicalPath = UPath::Normalize(physicalPath);
+        record.physicalPath = UPath::NormalizeVirtual(physicalPath);
         record.sourcePath = header.sourcePath;
         record.importerName = header.importerName;
         record.dependencyAssetIDs = header.dependencyAssetIDs;
@@ -121,7 +121,7 @@ FAssetScanResult AssetRegistryScanner::ScanFolder(const VirtualPathMounter& moun
         record.containerVersion = header.containerVersion;
         record.payloadVersion = header.payloadVersion;
         record.virtualPath = virtualPath;
-        record.physicalPath = UPath::Normalize(physicalPath);
+        record.physicalPath = UPath::NormalizeVirtual(physicalPath);
         record.sourcePath = header.sourcePath;
         record.importerName = header.importerName;
         record.dependencyAssetIDs = header.dependencyAssetIDs;

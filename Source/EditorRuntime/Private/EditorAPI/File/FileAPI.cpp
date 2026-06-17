@@ -146,7 +146,7 @@ std::vector<FVirtualDirEntry> EditorFileAPI::ListDirectory(const std::string& pa
 
 bool EditorFileAPI::HasAnyChildFolder(const std::string &parentVirtualFolder) const
 {
-    const std::string parentV = UPath::Normalize(parentVirtualFolder);
+    const std::string parentV = UPath::NormalizeVirtual(parentVirtualFolder);
 
     std::vector<std::string> folders = ListFolders(parentV, /*bRecursive=*/false);
     return !folders.empty();

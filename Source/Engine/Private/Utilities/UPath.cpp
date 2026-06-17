@@ -12,7 +12,7 @@ namespace
 
 // ----------------- Path Manipulation -----------------
 
-std::string UPath::Normalize(std::string_view path)
+std::string UPath::NormalizeVirtual(std::string_view path)
 {
     if (path.empty())
         return {};
@@ -58,6 +58,39 @@ std::string UPath::Normalize(std::string_view path)
         cleaned.pop_back();
 
     return cleaned;
+}
+
+std::string UPath::NormalizePhysical(std::string_view path)
+{
+    if (path.empty())
+        return {};
+
+    std::string s(path);
+
+    // 1. unify slashes
+    for (char& c : s)
+    {
+        if (c == '\\')
+            c = '/';
+    }
+
+    // 2. remove leading junk
+    while (!s.empty() && (s[0] == '/' || s[0] == '\\'))
+        s.erase(s.begin());
+
+    // 3. let filesystem normalize structure safely
+    std::filesystem::path p(s);
+
+    std::string result = p.lexically_normal().string();
+
+#ifdef JENGINE_PLATFORM_WINDOWS
+    // 4. enforce Windows style output
+    for (char& c : result)
+        if (c == '/')
+            c = '\\';
+#endif
+
+    return result;
 }
 
 std::string UPath::GetParent(const std::string& path)
@@ -268,8 +301,8 @@ std::string UPath::SanitizeFileSystemName(std::string_view name)
 
 bool UPath::IsSameOrUnder(const std::string& ancestor, const std::string& path)
 {
-    const std::string a = Normalize(ancestor);
-    const std::string p = Normalize(path);
+    const std::string a = NormalizeVirtual(ancestor);
+    const std::string p = NormalizeVirtual(path);
 
     if (a.empty() || p.empty())
         return false;

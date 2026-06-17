@@ -24,7 +24,7 @@ bool EngineInstallResolver::Resolve(const std::string& inputPath, FResolvedEngin
     if (inputPath.empty())
         return false;
 
-    const std::string normalized = UPath::Normalize(inputPath);
+    const std::string normalized = UPath::NormalizeVirtual(inputPath);
 
     if (UFileSystem::FileExists(normalized))
     {
@@ -90,13 +90,13 @@ bool EngineInstallResolver::FindExecutableUnderRoot(const std::string& engineRoo
 
     if (UFileSystem::FileExists(editorCandidate))
     {
-        outExecutablePath = UPath::Normalize(editorCandidate);
+        outExecutablePath = UPath::NormalizeVirtual(editorCandidate);
         return true;
     }
 
     if (UFileSystem::FileExists(gameCandidate))
     {
-        outExecutablePath = UPath::Normalize(gameCandidate);
+        outExecutablePath = UPath::NormalizeVirtual(gameCandidate);
         return true;
     }
 
@@ -110,7 +110,7 @@ bool EngineInstallResolver::FindExecutableUnderRoot(const std::string& engineRoo
         const std::string fileName = ToLowerCopy(UPath::GetFileName(file, true));
         if (LooksLikeExecutableName(fileName))
         {
-            outExecutablePath = UPath::Normalize(file);
+            outExecutablePath = UPath::NormalizeVirtual(file);
             return true;
         }
     }
@@ -131,7 +131,7 @@ bool EngineInstallResolver::TryGetRootFromExecutable(const std::string& executab
     if (!UFileSystem::DirectoryExists(rootDir))
         return false;
 
-    outEngineRootPath = UPath::Normalize(rootDir);
+    outEngineRootPath = UPath::NormalizeVirtual(rootDir);
     return true;
 }
 

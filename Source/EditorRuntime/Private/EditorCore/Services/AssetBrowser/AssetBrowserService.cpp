@@ -96,7 +96,7 @@ FAssetOpResult AssetBrowserService::DeletePaths(const std::vector<std::string>& 
 
     for (const auto& raw : virtualPaths)
     {
-        const std::string p = UPath::Normalize(raw);
+        const std::string p = UPath::NormalizeVirtual(raw);
 
         // Decide asset vs folder using registry (best available signal here)
         if (m_FileAPI.FindAssetByVirtualPath(p))
@@ -119,11 +119,11 @@ FAssetOpResult AssetBrowserService::MovePathsToFolder(const std::vector<std::str
     FAssetOpResult agg;
     agg.bSuccess = true;
 
-    const std::string dstFolder = UPath::Normalize(destVirtualFolder);
+    const std::string dstFolder = UPath::NormalizeVirtual(destVirtualFolder);
 
     for (const auto& raw : sourceVirtualPaths)
     {
-        const std::string src = UPath::Normalize(raw);
+        const std::string src = UPath::NormalizeVirtual(raw);
 
         if (m_FileAPI.FindAssetByVirtualPath(src))
         {
@@ -153,7 +153,7 @@ FAssetOpResult AssetBrowserService::MovePathsToFolder(const std::vector<std::str
 
 AssetBrowserNodeID AssetBrowserService::EnsureNode(const std::string& rawPath, EAssetBrowserNodeType type)
 {
-    const std::string path = UPath::Normalize(rawPath);
+    const std::string path = UPath::NormalizeVirtual(rawPath);
 
     auto it = m_Model.pathToID.find(path);
     if (it != m_Model.pathToID.end())
@@ -229,14 +229,14 @@ const FAssetBrowserNode* AssetBrowserService::TryGetModelNode(AssetBrowserNodeID
 
 AssetBrowserNodeID AssetBrowserService::TryGetID(const std::string& virtualPath) const
 {
-    const std::string p = UPath::Normalize(virtualPath);
+    const std::string p = UPath::NormalizeVirtual(virtualPath);
     auto it = m_Model.pathToID.find(p);
     return (it != m_Model.pathToID.end()) ? it->second : 0;
 }
 
 void AssetBrowserService::MarkFolderDirtyByPath(const std::string& folderVirtualPath)
 {
-    const std::string f = UPath::Normalize(folderVirtualPath);
+    const std::string f = UPath::NormalizeVirtual(folderVirtualPath);
 
     if (f.empty())
         return;
@@ -393,7 +393,7 @@ std::string AssetBrowserService::RemapPath(
     const std::string& path,
     const std::unordered_map<std::string,std::string>& remaps)
 {
-    const std::string normalized = UPath::Normalize(path);
+    const std::string normalized = UPath::NormalizeVirtual(path);
 
     const std::string* bestOld = nullptr;
     const std::string* bestNew = nullptr;
@@ -417,12 +417,12 @@ std::string AssetBrowserService::RemapPath(
         return normalized;
 
     if (normalized == *bestOld)
-        return UPath::Normalize(*bestNew);
+        return UPath::NormalizeVirtual(*bestNew);
 
     const std::string suffix =
         normalized.substr(bestOld->size());
 
-    return UPath::Normalize(*bestNew + suffix);
+    return UPath::NormalizeVirtual(*bestNew + suffix);
 }
 
 void AssetBrowserService::ApplyMutationToModelGraph(const FAssetOpResult& result)
@@ -436,7 +436,7 @@ void AssetBrowserService::ApplyMutationToModelGraph(const FAssetOpResult& result
     // Deleted paths: mark their parent dirty (and optionally purge nodes)
     for (const auto& p : result.deletedPaths)
     {
-        const std::string np = UPath::Normalize(p);
+        const std::string np = UPath::NormalizeVirtual(p);
 
         MarkFolderDirtyByPath(UPath::GetParent(np));
 
@@ -481,7 +481,7 @@ const FAssetBrowserNode* AssetBrowserService::GetNode(const FAssetBrowserViewPro
 
 const FAssetBrowserNode* AssetBrowserService::GetNodeByPath(const FAssetBrowserViewProjection& view, const std::string& path) const
 {
-    const std::string normalized = UPath::Normalize(path);
+    const std::string normalized = UPath::NormalizeVirtual(path);
 
     auto it = view.pathToID.find(normalized);
     if (it == view.pathToID.end())
@@ -504,7 +504,7 @@ FAssetBrowserNode* AssetBrowserService::GetMutableNode(AssetBrowserNodeID id)
 
 const std::vector<AssetBrowserNodeID>& AssetBrowserService::GetChildren(AssetBrowserNodeID id) const
 {
-    static constexpr std::vector<AssetBrowserNodeID> empty;
+    static const std::vector<AssetBrowserNodeID> empty;
 
     auto it = m_Model.children.find(id);
     return (it != m_Model.children.end())
@@ -631,11 +631,11 @@ void AssetBrowserService::PostMutation(const FAssetOpResult& result)
         deleted.reserve(result.deletedPaths.size());
 
         for (const auto& del : result.deletedPaths)
-            deleted.insert(UPath::Normalize(del));
+            deleted.insert(UPath::NormalizeVirtual(del));
 
         for (const std::string& item : currentSelection)
         {
-            const std::string p = UPath::Normalize(item);
+            const std::string p = UPath::NormalizeVirtual(item);
 
             if (deleted.contains(p))
                 continue;
@@ -660,16 +660,16 @@ void AssetBrowserService::MergeOpResult(FAssetOpResult& ioAgg, const FAssetOpRes
         r.affectedVirtualFolders.begin(), r.affectedVirtualFolders.end());
 
     for (const auto& [oldP, newP] : r.pathRemappings)
-        ioAgg.pathRemappings[UPath::Normalize(oldP)] = UPath::Normalize(newP);
+        ioAgg.pathRemappings[UPath::NormalizeVirtual(oldP)] = UPath::NormalizeVirtual(newP);
 
     // De-dupe deleted paths to keep results tidy
     std::unordered_set<std::string> seen;
     seen.reserve(ioAgg.deletedPaths.size() + r.deletedPaths.size());
 
-    for (const auto& d : ioAgg.deletedPaths) seen.insert(UPath::Normalize(d));
+    for (const auto& d : ioAgg.deletedPaths) seen.insert(UPath::NormalizeVirtual(d));
     for (const auto& d : r.deletedPaths)
     {
-        const std::string nd = UPath::Normalize(d);
+        const std::string nd = UPath::NormalizeVirtual(d);
         if (seen.insert(nd).second)
             ioAgg.deletedPaths.push_back(nd);
     }

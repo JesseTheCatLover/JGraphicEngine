@@ -14,11 +14,11 @@ void LaunchSettings::Reset()
 
 std::string LaunchSettings::GetSettingsFilePath(const std::string& engineRootPath)
 {
-    const std::string normalizedEngineRoot = UPath::Normalize(engineRootPath);
-    const std::string settingsDir = UPath::Normalize(UPath::Join(normalizedEngineRoot, "Saved", "Launch"));
+    const std::string normalizedEngineRoot = UPath::NormalizeVirtual(engineRootPath);
+    const std::string settingsDir = UPath::NormalizeVirtual(UPath::Join(normalizedEngineRoot, "Saved", "Launch"));
 
     UFileSystem::CreateDirectory(settingsDir);
-    return UPath::Normalize(UPath::Join(settingsDir, "LaunchSettings.json"));
+    return UPath::NormalizeVirtual(UPath::Join(settingsDir, "LaunchSettings.json"));
 }
 
 bool LaunchSettings::Load(const std::string& engineRootPath)

@@ -65,12 +65,12 @@ const std::string& AssetBrowserViewController::GetCurrentNavigationPath()
 
 void AssetBrowserViewController::RequestNavigateTo(const std::string& path)
 {
-    m_PendingCurrentPath = UPath::Normalize(path);
+    m_PendingCurrentPath = UPath::NormalizeVirtual(path);
 }
 
 void AssetBrowserViewController::RequestSetRoot(const std::string &path)
 {
-    m_PendingRootPath = UPath::Normalize(path);
+    m_PendingRootPath = UPath::NormalizeVirtual(path);
 }
 
 void AssetBrowserViewController::RequestIncludeRootNode(bool value)
