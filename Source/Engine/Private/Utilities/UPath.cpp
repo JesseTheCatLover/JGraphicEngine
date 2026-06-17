@@ -65,26 +65,13 @@ std::string UPath::NormalizePhysical(std::string_view path)
     if (path.empty())
         return {};
 
-    std::string s(path);
+    std::filesystem::path p(path);
 
-    // 1. unify slashes
-    for (char& c : s)
-    {
-        if (c == '\\')
-            c = '/';
-    }
+    p = p.lexically_normal();
 
-    // 2. remove leading junk
-    while (!s.empty() && (s[0] == '/' || s[0] == '\\'))
-        s.erase(s.begin());
-
-    // 3. let filesystem normalize structure safely
-    std::filesystem::path p(s);
-
-    std::string result = p.lexically_normal().string();
+    std::string result = p.string();
 
 #ifdef JENGINE_PLATFORM_WINDOWS
-    // 4. enforce Windows style output
     for (char& c : result)
         if (c == '/')
             c = '\\';

@@ -9,13 +9,10 @@
 
 namespace
 {
-    static std::string NormalizeSlashes(std::string s)
+    static std::string CanonicalSlashes(std::string s)
     {
         for (char& c : s)
-        {
-            if (c == '\\')
-                c = '/';
-        }
+            if (c == '\\') c = '/';
         return s;
     }
 
@@ -30,7 +27,8 @@ namespace
     {
         std::filesystem::path p(a);
         p /= b;
-        return UPath::NormalizePhysical(p.string());
+
+        return CanonicalSlashes(p.lexically_normal().generic_string());
     }
 }
 
@@ -133,35 +131,40 @@ bool VirtualPathMounter::ResolvePhysicalToVirtual(const std::string& physicalPat
 {
     outVirtualPath.clear();
 
-    const std::string normalizedPhysicalPath = UPath::NormalizePhysical(physicalPath);
+    const std::string normalizedPhysicalPath = CanonicalSlashes(UPath::NormalizePhysical(physicalPath));
 
-    // Prefer longest matching root first in case nested mounts ever exist later.
     const FVirtualMountPoint* bestMount = nullptr;
     size_t bestLength = 0;
 
     for (const FVirtualMountPoint& mount : m_Mounts)
     {
-        if (!IsPathUnderPhysicalRoot(normalizedPhysicalPath, mount.physicalRoot))
+        const std::string mountRoot = CanonicalSlashes(mount.physicalRoot);
+
+        if (!IsPathUnderPhysicalRoot(normalizedPhysicalPath, mountRoot))
             continue;
 
-        if (mount.physicalRoot.size() > bestLength)
+        if (mountRoot.size() > bestLength)
         {
             bestMount = &mount;
-            bestLength = mount.physicalRoot.size();
+            bestLength = mountRoot.size();
         }
     }
 
     if (!bestMount)
         return false;
 
-    std::string suffix = normalizedPhysicalPath.substr(bestMount->physicalRoot.size());
-    suffix = NormalizeSlashes(suffix);
+    const std::string bestRoot = CanonicalSlashes(bestMount->physicalRoot);
+
+    std::string suffix = normalizedPhysicalPath.substr(bestRoot.size());
+
+    suffix = CanonicalSlashes(suffix);
 
     if (!suffix.empty() && suffix[0] != '/')
         suffix.insert(suffix.begin(), '/');
 
     outVirtualPath = bestMount->virtualRoot + suffix;
     outVirtualPath = UPath::NormalizeVirtual(outVirtualPath);
+
     return true;
 }
 
@@ -181,8 +184,8 @@ bool VirtualPathMounter::IsValidVirtualRoot(const std::string& virtualRoot)
 
 bool VirtualPathMounter::IsPathUnderPhysicalRoot(const std::string& physicalPath, const std::string& rootPath)
 {
-    const std::string normalizedPath = NormalizeSlashes(UPath::NormalizePhysical(physicalPath));
-    const std::string normalizedRoot = NormalizeSlashes(UPath::NormalizePhysical(rootPath));
+    const std::string normalizedPath = CanonicalSlashes(UPath::NormalizePhysical(physicalPath));
+    const std::string normalizedRoot = CanonicalSlashes(UPath::NormalizePhysical(rootPath));
 
     if (normalizedPath == normalizedRoot)
         return true;
@@ -195,7 +198,6 @@ bool VirtualPathMounter::IsPathUnderPhysicalRoot(const std::string& physicalPath
 
     return normalizedPath[normalizedRoot.size()] == '/';
 }
-
 bool VirtualPathMounter::StartsWithPathSegment(const std::string& text, const std::string& prefix)
 {
     if (text.size() < prefix.size())
