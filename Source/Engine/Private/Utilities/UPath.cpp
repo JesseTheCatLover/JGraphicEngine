@@ -2,8 +2,6 @@
 
 #include "Utilities/UPath.h"
 
-#include <iostream>
-
 namespace
 {
     static std::string ToGenericString(const std::filesystem::path& path)
@@ -79,7 +77,6 @@ std::string UPath::NormalizePhysical(std::string_view path)
             c = '\\';
 #endif
 
-    std::cerr << "result: " << result << std::endl;
     return result;
 }
 
