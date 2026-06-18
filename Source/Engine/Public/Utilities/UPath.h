@@ -60,7 +60,7 @@ public:
      * - Resolves "." and ".." segments lexically
      * - Removes trailing slashes except for the virtual root ('/')
      *
-     * The returned path is always in canonical virtual-path form and should
+     * The returned path is always in lexically normalized virtual-path form and should
      * be used for asset references, mount points, registry paths, and other
      * engine-facing path systems.
      *
@@ -92,31 +92,27 @@ public:
      *     - D:\RedleafEngine
      *     - /home/user/MyGame
      *
-     * The function performs lexical normalization and preserves the path's
-     * filesystem semantics.
+     * This function performs lexical normalization using std::filesystem::path.
      *
      * The function:
      *
      * - Resolves "." and ".." segments lexically
-     * - Removes redundant separators where possible
-     * - Preserves drive letters, root names, and absolute/relative state
-     * - Does NOT prepend a virtual root slash
-     * - Does NOT convert a filesystem path into a virtual engine path
+     * - Reduces redundant separators according to std::filesystem rules
+     * - Preserves drive letters, root prefixes, and relative/absolute structure
+     * - Does NOT resolve symlinks or query the actual filesystem
+     * - Does NOT convert paths into virtual engine format
      *
-     * This function should be used whenever working with files, directories,
-     * project locations, engine installations, or any path passed to the
-     * operating system.
+     * Platform behavior:
+     * - Windows output uses backslashes ('\\')
+     * - Other platforms use forward slashes ('/')
+     * - String encoding follows std::filesystem::path::string() semantics
      *
-     * Examples:
-     *
-     *     "C:\\Projects\\..\\MyGame\\Assets"
-     *         -> "C:\\MyGame\\Assets"
-     *
-     *     "./Projects/MyGame/../Config"
-     *         -> "Projects/Config"
+     * Note:
+     * This function performs syntactic normalization only and does not guarantee
+     * full filesystem canonicalization.
      *
      * @param path Physical filesystem path.
-     * @return Lexically normalized filesystem path.
+     * @return Lexically normalized filesystem path string.
      */
     static std::string NormalizePhysical(std::string_view path);
 
@@ -271,5 +267,64 @@ public:
      */
     static bool IsSameOrUnder(const std::string& ancestor, const std::string& path);
 
+    /**
+     * @brief Determine whether a path is a physical filesystem path.
+     *
+     * This function is used to distinguish between:
+     *
+     * - Physical OS paths (filesystem paths handled by the operating system)
+     * - Virtual engine paths (engine-defined asset paths starting with '/')
+     *
+     * Physical paths typically include:
+     *
+     * - Windows drive letters:
+     *     C:\Projects\MyGame
+     *     D:\RedleafEngine\Assets
+     *
+     * - POSIX absolute paths:
+     *     /home/user/MyGame
+     *     /usr/local/bin
+     *
+     * - Relative filesystem paths:
+     *     ./Assets/Textures
+     *     ../Config/settings.json
+     *
+     * Virtual paths are NOT considered physical:
+     *
+     *     /Project/Textures/Diffuse.jasset
+     *     /Engine/Materials/Default.jasset
+     *
+     * ### Detection rules:
+     * The function classifies a path as physical if:
+     *
+     * - It contains a Windows drive letter (e.g. "C:", "D:")
+     * - OR it is a POSIX-style filesystem path NOT following engine virtual conventions
+     * - OR it does NOT start with a recognized engine virtual root (e.g. "/Project", "/Engine")
+     *
+     * It returns false for engine virtual paths, which are expected to:
+     * - Always use forward slashes
+     * - Always begin with '/'
+     * - Represent mounted engine namespaces rather than OS locations
+     *
+     * ### Examples:
+     *
+     *     "C:\\Projects\\Game"
+     *         -> true
+     *
+     *     "/home/user/Game"
+     *         -> true
+     *
+     *     "./Assets/Textures"
+     *         -> true
+     *
+     *     "/Project/Textures/UI"
+     *         -> false
+     *
+     *     "/Engine/Core/Default"
+     *         -> false
+     *
+     * @param p Input path string to evaluate.
+     * @return True if the path is a physical filesystem path, false if it is a virtual engine path.
+     */
     static bool IsPhysicalPath(std::string_view p);
 };
