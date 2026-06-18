@@ -2,6 +2,8 @@
 
 #include "Utilities/UPath.h"
 
+#include <iostream>
+
 namespace
 {
     static std::string ToGenericString(const std::filesystem::path& path)
@@ -20,8 +22,8 @@ std::string UPath::NormalizeVirtual(std::string_view path)
     std::string cleaned;
     cleaned.reserve(path.size() + 1);
 
-    // Force virtual absolute path
-    if (path.front() != '/')
+    // Only treat as virtual path if it is NOT a Windows absolute path
+    if (!IsPhysicalPath(path) && path.front() != '/')
         cleaned.push_back('/');
 
     bool previousWasSlash = false;
@@ -77,6 +79,7 @@ std::string UPath::NormalizePhysical(std::string_view path)
             c = '\\';
 #endif
 
+    std::cerr << "result: " << result << std::endl;
     return result;
 }
 
@@ -307,4 +310,13 @@ bool UPath::IsSameOrUnder(const std::string& ancestor, const std::string& path)
         return false;
 
     return p[a.size()] == '/';
+}
+
+bool UPath::IsPhysicalPath(std::string_view p)
+{
+#ifdef JENGINE_PLATFORM_WINDOWS
+    return p.size() > 1 && std::isalpha(p[0]) && p[1] == ':';
+#else
+    return !p.empty() && p.front() == '/';
+#endif
 }

@@ -270,4 +270,6 @@ public:
      * @return True if path is the same as or located under ancestor.
      */
     static bool IsSameOrUnder(const std::string& ancestor, const std::string& path);
+
+    static bool IsPhysicalPath(std::string_view p);
 };
