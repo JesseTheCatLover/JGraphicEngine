@@ -185,6 +185,11 @@ function(redleaf_enable_reflection)
     )
 
     #
+    # Ensure JReflectGen is built before this module's reflection step
+    #
+    add_dependencies(${REFLECTION_TARGET} JReflectGenBuild)
+
+    #
     # Ensure reflection runs first
     #
     add_dependencies(${REFLECT_TARGET} ${REFLECTION_TARGET})
