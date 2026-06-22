@@ -36,6 +36,9 @@ struct FViewportContext;
 struct FFrameContext;
 struct FSurfaceContext;
 
+/**
+ * TODO: This class logic must be replaced with a robust architecture
+ */
 class EngineContext
 {
     friend class JEngine;
