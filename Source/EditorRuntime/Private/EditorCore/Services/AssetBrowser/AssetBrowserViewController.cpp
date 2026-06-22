@@ -105,6 +105,11 @@ bool AssetBrowserViewController::IsFolderExpanded(AssetBrowserNodeID id) const
     return m_ExpandedNodes.contains(id);
 }
 
+const std::string& AssetBrowserViewController::GetSearchFilter() const
+{
+    return m_Settings.searchFilter;
+}
+
 void AssetBrowserViewController::RequestSetSearchFilter(std::string filter)
 {
     m_PendingSearchFilter = std::move(filter);

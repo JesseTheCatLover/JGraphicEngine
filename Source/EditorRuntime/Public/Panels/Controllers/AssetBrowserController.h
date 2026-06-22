@@ -6,13 +6,12 @@
 #include <vector>
 
 #include "Panels/PanelRegistry.h"
-#include "Documents/FAssetBrowserDocument.h"
+#include "EditorCore/Services/AssetBrowser/AssetBrowserViewController.h"
 
 struct FAssetBrowserOutput;
 struct FAssetBrowserPanelInput;
 class EditorHost;
 class EditorRuntime;
-class EditorFileAPI;
 
 class AssetBrowserController
 {
@@ -22,46 +21,34 @@ private:
     EditorHost& m_Host;
     EditorRuntime& m_Runtime;
 
-    EditorFileAPI& m_FileAPI;
+    FDelegateHandle m_AssetsMutatedHandle;
 
-    // --- Document / state ---
-    FAssetBrowserDocument m_Document;
-    bool m_bDirty = true;
+    AssetBrowserViewController m_TreeViewController;
+    AssetBrowserViewController m_ContentViewController;
 
-    // Internal helpers
-    void BuildDirectories();
-    void BuildAssets();
+    std::vector<std::string> m_PreviousHistory;
+    std::vector<std::string> m_ForwardHistory;
 
-    [[nodiscard]] bool IsDirectChildDirectory(const std::string& parentDir, const std::string& assetVirtualPath,
-        std::string& outChildDirName, std::string& outChildDirVirtualPath) const;
-
-    [[nodiscard]] bool IsDirectChildAsset(const std::string& parentDir, const std::string& assetVirtualPath) const;
-
-    [[nodiscard]] static std::string ComputeParentPath(const std::string& path);
+    bool m_bInternalNavigation = false;
 
 public:
     AssetBrowserController(PanelID id, EditorHost& host, EditorRuntime& runtime);
     ~AssetBrowserController();
 
-    // --- Panel-facing API ---
-
-    // Called once per frame (or per panel draw) by the panel
-    // Ensures the document is up-to-date
-    void Refresh();
-
-    // Navigation: panel calls this when user navigates to a different folder
-    void SetCurrentPath(const std::string& path);
-
-    // Convenience accessor
-    const std::string& GetCurrentPath() const { return m_Document.currentPath; }
-
-    // The panel uses this to render the folder contents
-    const FAssetBrowserDocument& GetDocument() const { return m_Document; }
-
-    // For external invalidation (e.g. asset imported / registry changed)
-    void Invalidate() { m_bDirty = true; }
 
     void Update(float deltaTime, const FAssetBrowserPanelInput& input, FAssetBrowserOutput& out);
     void OnPanelDestroyed();
+
+private:
+    void NavigateTo(const std::string& path);
+    void NavigateBack();
+    void NavigateForward();
+
+    void ProcessNavigation(const FAssetBrowserPanelInput &input);
+    void ProcessSearch(const FAssetBrowserPanelInput &input);
+    void ProcessExpansion(const FAssetBrowserPanelInput &input);
+    void ProcessSelection(const FAssetBrowserPanelInput &input);
+    void ProcessOpen(const FAssetBrowserPanelInput &input);
+    void ProcessMutations(const FAssetBrowserPanelInput &input, AssetBrowserService& service);
 
 };

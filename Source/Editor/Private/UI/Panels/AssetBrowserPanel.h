@@ -6,6 +6,9 @@
 
 #include "EditorCore/IEditorPanel.h"
 
+struct FAssetBrowserPanelInput;
+struct FAssetBrowserNode;
+
 class AssetBrowserPanel final : public IEditorPanel
 {
 public:
@@ -17,6 +20,10 @@ public:
 
     void OnDestroy(EditorHost& host) override;
     void Draw(EditorHost& host) override;
+
+    void DrawFolderTile(const FAssetBrowserNode& node, float cellW,FAssetBrowserPanelInput& input);
+    void DrawAssetTile(const FAssetBrowserNode& node, float cellW, FAssetBrowserPanelInput& input);
+
 
 private:
     // Split view sizes
@@ -31,9 +38,6 @@ private:
     // Search buffer (kept across frames)
     char m_SearchBuf[256] = {};
 
-    // Selection / focus state
-    std::string m_SelectedLeftPath;
-    std::string m_SelectedAssetID;
 
     // Optional toggles
     bool m_ShowFoldersInGrid = true;

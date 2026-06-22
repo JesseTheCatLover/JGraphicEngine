@@ -121,6 +121,7 @@ public:
     [[nodiscard]] bool IsFolderExpanded(AssetBrowserNodeID id) const;
 
     // Filtering
+    [[nodiscard]] const std::string& GetSearchFilter() const;
     void RequestSetSearchFilter(std::string filter);
 
     // Visibility

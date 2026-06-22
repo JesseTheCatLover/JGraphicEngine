@@ -8,7 +8,6 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
-#include "Panels/Controllers/Documents/FAssetBrowserDocument.h"
 #include "Panels/Controllers/Inputs/FAssetBrowserPanelInput.h"
 #include "Panels/Controllers/Outputs/FAssetBrowserOutput.h"
 
@@ -119,8 +118,6 @@ namespace
 void AssetBrowserPanel::OnDestroy(EditorHost& /*host*/)
 {
     // Clear any cached UI state if desired
-    m_SelectedLeftPath.clear();
-    m_SelectedAssetID = "";
     m_SearchBuf[0] = '\0';
 }
 
@@ -161,12 +158,9 @@ void AssetBrowserPanel::Draw(EditorHost& host)
         return;
     }
 
-    const FAssetBrowserDocument& doc = output->document;
-
     input.bNavigateToPath = false;
     input.bNavigateUp     = false;
     input.bNavigateHome   = false;
-    input.bForceRefresh   = false;
 
     // ---------------- Toolbar ----------------
 
@@ -178,7 +172,7 @@ void AssetBrowserPanel::Draw(EditorHost& host)
     ImGui::SameLine();
     if (DrawToolbarButton("Import", "Import Assets From System Files"))
     {
-       host.GetDialogManager().OpenDialog<AssetImporterDialog>();
+        host.GetDialogManager().OpenDialog<AssetImporterDialog>();
     }
 
     ImGuiStyle& style = ImGui::GetStyle();
@@ -202,14 +196,10 @@ void AssetBrowserPanel::Draw(EditorHost& host)
     if (DrawToolbarButton("Up", "Go to parent directory"))
         input.bNavigateUp = true;
 
-    ImGui::SameLine();
-    if (DrawToolbarButton("Refresh", "Refresh current folder"))
-        input.bForceRefresh = true;
 
     // ---------------- Breadcrumbs ----------------
     {
-        std::string path = doc.currentPath;
-        NormalizePathSlashes(path);
+        std::string path = output->currentContentNavigationPath;
         const auto parts = SplitPath(path);
 
         ImGui::Separator();
@@ -265,28 +255,28 @@ void AssetBrowserPanel::Draw(EditorHost& host)
             m_LeftPaneWidth = m_MinLeftPaneWidth;
     }
 
-    // Left pane: folders list
+    // Left pane: Tree view
     ImGui::BeginChild("##AssetBrowserLeft", ImVec2(m_LeftPaneWidth, 0.0f), true);
     {
         ImGui::TextUnformatted("Folders");
         ImGui::Separator();
-
-        for (const FAssetBrowserDirectory& dir : doc.directories)
-        {
-            ImGui::PushID(dir.virtualPath.c_str());
-
-            const bool selected = (m_SelectedLeftPath == dir.virtualPath);
-            if (ImGui::Selectable(dir.name.c_str(), selected))
-                m_SelectedLeftPath = dir.virtualPath;
-
-            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-            {
-                input.bNavigateToPath = true;
-                input.navigateToPath = dir.virtualPath;
-            }
-
-            ImGui::PopID();
-        }
+        //
+        // for (const auto& item : output->treeView.children)
+        // {
+        //     ImGui::PushID(dir.virtualPath.c_str());
+        //
+        //     const bool selected = (m_SelectedLeftPath == dir.virtualPath);
+        //     if (ImGui::Selectable(dir.name.c_str(), selected))
+        //         m_SelectedLeftPath = dir.virtualPath;
+        //
+        //     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        //     {
+        //         input.bNavigateToPath = true;
+        //         input.navigateToPath = dir.virtualPath;
+        //     }
+        //
+        //     ImGui::PopID();
+        // }
     }
     ImGui::EndChild();
 
@@ -333,103 +323,25 @@ void AssetBrowserPanel::Draw(EditorHost& host)
 
         if (ImGui::BeginTable("##AssetGrid", columns, ImGuiTableFlags_SizingFixedFit))
         {
-            // (A) Directories in grid (optional)
-            if (m_ShowFoldersInGrid)
+            const FAssetBrowserViewProjection& content = output->contentView;
+
+            for (AssetBrowserNodeID nodeID : content.viewNodeIDs)
             {
-                for (const FAssetBrowserDirectory& dir : doc.directories)
+                auto it = content.nodeCache.find(nodeID);
+                if (it == content.nodeCache.end())
+                    continue;
+
+                const FAssetBrowserNode& node = it->second;
+
+                switch (node.type)
                 {
-                    if (!CaseInsensitiveContains(dir.name, m_SearchBuf))
-                        continue;
+                    case EAssetBrowserNodeType::Folder:
+                        DrawFolderTile(node, cellW, input);
+                        break;
 
-                    ImGui::TableNextColumn();
-                    ImGui::PushID(dir.virtualPath.c_str());
-
-                    const bool selected = (m_SelectedLeftPath == dir.virtualPath);
-
-                    // Tile rect
-                    ImVec2 p0 = ImGui::GetCursorScreenPos();
-                    ImVec2 tileSize(cellW - m_GridPadding, m_IconSize + 40.0f);
-                    ImVec2 p1(p0.x + tileSize.x, p0.y + tileSize.y);
-
-                    ImDrawList* dl = ImGui::GetWindowDrawList();
-                    const ImU32 bg     = selected ? IM_COL32(70, 110, 180, 90)  : IM_COL32(255, 255, 255, 20);
-                    const ImU32 border = selected ? IM_COL32(120, 170, 255, 180): IM_COL32(255, 255, 255, 40);
-
-                    dl->AddRectFilled(p0, p1, bg, 6.0f);
-                    dl->AddRect(p0, p1, border, 6.0f);
-
-                    ImGui::InvisibleButton("##dir_tile", tileSize);
-
-                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                        m_SelectedLeftPath = dir.virtualPath;
-
-                    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-                    {
-                        input.bNavigateToPath = true;
-                        input.navigateToPath = dir.virtualPath;
-                    }
-
-                    // Folder icon
-                    ImVec2 iconP0(p0.x + m_GridPadding, p0.y + m_GridPadding);
-                    ImVec2 iconP1(iconP0.x + m_IconSize, iconP0.y + m_IconSize);
-                    dl->AddRectFilled(iconP0, iconP1, IM_COL32(240, 200, 60, 220), 8.0f);
-
-                    // Label
-                    ImVec2 textPos(p0.x + m_GridPadding, iconP1.y + 6.0f);
-                    dl->AddText(textPos, IM_COL32(230, 230, 230, 255), dir.name.c_str());
-
-                    ImGui::PopID();
-                }
-            }
-
-            // (B) Assets in grid
-            if (m_ShowAssetsInGrid)
-            {
-                for (const FAssetBrowserAsset& a : doc.assets)
-                {
-                    if (!CaseInsensitiveContains(a.name, m_SearchBuf))
-                        continue;
-
-                    ImGui::TableNextColumn();
-                    ImGui::PushID(a.assetID.c_str()); // stable, unique
-
-                    const bool selected = (m_SelectedAssetID == a.assetID);
-
-                    ImVec2 p0 = ImGui::GetCursorScreenPos();
-                    ImVec2 tileSize(cellW - m_GridPadding, m_IconSize + 40.0f);
-                    ImVec2 p1(p0.x + tileSize.x, p0.y + tileSize.y);
-
-                    ImDrawList* dl = ImGui::GetWindowDrawList();
-                    const ImU32 bg     = selected ? IM_COL32(70, 110, 180, 90)  : IM_COL32(255, 255, 255, 20);
-                    const ImU32 border = selected ? IM_COL32(120, 170, 255, 180): IM_COL32(255, 255, 255, 40);
-
-                    dl->AddRectFilled(p0, p1, bg, 6.0f);
-                    dl->AddRect(p0, p1, border, 6.0f);
-
-                    ImGui::InvisibleButton("##asset_tile", tileSize);
-
-                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                    {
-                        m_SelectedAssetID = a.assetID;
-                    }
-
-                    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-                    {
-                        // “open asset” is triggered here.
-                        // input.bOpenAsset = true;
-                        // input.openAssetID = a.assetID;
-                    }
-
-                    // Asset icon placeholder (could be colored by type/domain)
-                    ImVec2 iconP0(p0.x + m_GridPadding, p0.y + m_GridPadding);
-                    ImVec2 iconP1(iconP0.x + m_IconSize, iconP0.y + m_IconSize);
-                    dl->AddRectFilled(iconP0, iconP1, IM_COL32(160, 200, 255, 220), 8.0f);
-
-                    // Label
-                    ImVec2 textPos(p0.x + m_GridPadding, iconP1.y + 6.0f);
-                    dl->AddText(textPos, IM_COL32(230, 230, 230, 255), a.name.c_str());
-
-                    ImGui::PopID();
+                    case EAssetBrowserNodeType::Asset:
+                        DrawAssetTile(node, cellW, input);
+                        break;
                 }
             }
 
@@ -442,4 +354,122 @@ void AssetBrowserPanel::Draw(EditorHost& host)
 
     // 5) Submit input back
     subsystem.SubmitInput(input);
+}
+
+void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, float cellW, FAssetBrowserPanelInput& input)
+{
+    ImGui::TableNextColumn();
+
+    ImGui::PushID(node.nodeID);
+
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    const ImVec2 tileSize(cellW - m_GridPadding, m_IconSize + 40.0f);
+    const ImVec2 p1(p0.x + tileSize.x, p0.y + tileSize.y);
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+
+    dl->AddRectFilled(
+        p0,
+        p1,
+        IM_COL32(255,255,255,20),
+        6.0f);
+
+    dl->AddRect(
+        p0,
+        p1,
+        IM_COL32(255,255,255,40),
+        6.0f);
+
+    ImGui::InvisibleButton("##FolderTile", tileSize);
+
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+    {
+    }
+
+    if (ImGui::IsItemHovered() &&
+        ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+    {
+        input.bNavigateToPath = true;
+        input.navigateToPath = node.virtualPath;
+    }
+
+    const ImVec2 iconP0(
+        p0.x + m_GridPadding,
+        p0.y + m_GridPadding);
+
+    const ImVec2 iconP1(
+        iconP0.x + m_IconSize,
+        iconP0.y + m_IconSize);
+
+    dl->AddRectFilled(
+        iconP0,
+        iconP1,
+        IM_COL32(240,200,60,220),
+        8.0f);
+
+    dl->AddText(
+        ImVec2(p0.x + m_GridPadding,
+               iconP1.y + 6.0f),
+        IM_COL32(230,230,230,255),
+        node.displayName.c_str());
+
+    ImGui::PopID();
+}
+
+void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, float cellW, FAssetBrowserPanelInput& input)
+{
+    ImGui::TableNextColumn();
+
+    ImGui::PushID(node.nodeID);
+
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    const ImVec2 tileSize(cellW - m_GridPadding, m_IconSize + 40.0f);
+    const ImVec2 p1(p0.x + tileSize.x, p0.y + tileSize.y);
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+
+    dl->AddRectFilled(
+        p0,
+        p1,
+        IM_COL32(255,255,255,20),
+        6.0f);
+
+    dl->AddRect(
+        p0,
+        p1,
+        IM_COL32(255,255,255,40),
+        6.0f);
+
+    ImGui::InvisibleButton("##AssetTile", tileSize);
+
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+    {
+    }
+
+    if (ImGui::IsItemHovered() &&
+        ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+    {
+    }
+
+    const ImVec2 iconP0(
+        p0.x + m_GridPadding,
+        p0.y + m_GridPadding);
+
+    const ImVec2 iconP1(
+        iconP0.x + m_IconSize,
+        iconP0.y + m_IconSize);
+
+    dl->AddRectFilled(
+        iconP0,
+        iconP1,
+        IM_COL32(160,200,255,220),
+        8.0f);
+
+    dl->AddText(
+        ImVec2(p0.x + m_GridPadding,
+               iconP1.y + 6.0f),
+        IM_COL32(230,230,230,255),
+        node.displayName.c_str());
+
+    ImGui::PopID();
 }

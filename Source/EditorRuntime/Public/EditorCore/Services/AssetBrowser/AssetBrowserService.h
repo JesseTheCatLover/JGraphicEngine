@@ -119,6 +119,8 @@ public:
     [[nodiscard]] FAssetOpResult DeletePaths(const std::vector<std::string>& virtualPaths, bool bRecursiveFolders = true);
     [[nodiscard]] FAssetOpResult MovePathsToFolder(const std::vector<std::string>& sourceVirtualPaths, const std::string& destVirtualFolder);
 
+    static void MergeOpResult(FAssetOpResult& ioAgg, const FAssetOpResult& r);
+
 private:
     FModelGraph& GetModelGraph() { return m_Model; }
 
@@ -141,6 +143,4 @@ private:
 
     // Post-mutation UI reconciliation (selection translation + invalidation + broadcast)
     void PostMutation(const FAssetOpResult& result);
-
-    static void MergeOpResult(FAssetOpResult& ioAgg, const FAssetOpResult& r);
 };
