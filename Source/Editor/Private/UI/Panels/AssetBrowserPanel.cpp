@@ -332,17 +332,25 @@ void AssetBrowserPanel::Draw(EditorHost& host)
                     continue;
 
                 const FAssetBrowserNode& node = it->second;
+                const bool bSelected = output->selectedContentNodes.contains(node.nodeID);
 
                 switch (node.type)
                 {
                     case EAssetBrowserNodeType::Folder:
-                        DrawFolderTile(node, cellW, input);
+                        DrawFolderTile(node, bSelected, cellW, input);
                         break;
 
                     case EAssetBrowserNodeType::Asset:
-                        DrawAssetTile(node, cellW, input);
+                        DrawAssetTile(node, bSelected, cellW, input);
                         break;
                 }
+            }
+
+            if (ImGui::IsWindowHovered() &&
+                ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+                !ImGui::IsAnyItemHovered())
+            {
+                input.bClearContentSelection = true;
             }
 
             ImGui::EndTable();
@@ -356,7 +364,7 @@ void AssetBrowserPanel::Draw(EditorHost& host)
     subsystem.SubmitInput(input);
 }
 
-void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, float cellW, FAssetBrowserPanelInput& input)
+void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input)
 {
     ImGui::TableNextColumn();
 
@@ -384,6 +392,12 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, float cell
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
+        FAssetBrowserPanelInput::FNodeSelection sel;
+        sel.nodeID = node.nodeID;
+        sel.bToggle = input.bCtrl;
+        sel.bRange  = input.bShift;
+
+        input.contentSelections.push_back(sel);
     }
 
     if (ImGui::IsItemHovered() &&
@@ -393,6 +407,60 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, float cell
         input.navigateToPath = node.virtualPath;
     }
 
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+    {
+        if (!bSelected)
+        {
+            input.bClearContentSelection = true;
+
+            FAssetBrowserPanelInput::FNodeSelection sel;
+            sel.nodeID = node.nodeID;
+
+            input.contentSelections.push_back(sel);
+        }
+    }
+
+    if (ImGui::BeginPopupContextItem())
+    {
+        if (ImGui::MenuItem("Rename"))
+        {
+            FAssetBrowserPanelInput::FMutationRequest req;
+            req.type = FAssetBrowserPanelInput::EMutationType::Rename;
+            req.nodeID = node.nodeID;
+
+            input.mutations.push_back(req);
+        }
+
+        if (ImGui::MenuItem("Copy")) // TODO: Implement these
+        {
+            // FAssetBrowserPanelInput::FMutationRequest req;
+            // req.type = FAssetBrowserPanelInput::EMutationType::Copy;
+            // req.nodeID = node.nodeID;
+            //
+            // input.mutations.push_back(req);
+        }
+
+        if (ImGui::MenuItem("Move"))
+        {
+            // FAssetBrowserPanelInput::FMutationRequest req;
+            // req.type = FAssetBrowserPanelInput::EMutationType::Move;
+            // req.nodeID = node.nodeID;
+            //
+            // input.mutations.push_back(req);
+        }
+
+        if (ImGui::MenuItem("Delete"))
+        {
+            FAssetBrowserPanelInput::FMutationRequest req;
+            req.type = FAssetBrowserPanelInput::EMutationType::Delete;
+            req.nodeID = node.nodeID;
+
+            input.mutations.push_back(req);
+        }
+
+        ImGui::EndPopup();
+    }
+
     const ImVec2 iconP0(
         p0.x + m_GridPadding,
         p0.y + m_GridPadding);
@@ -400,6 +468,15 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, float cell
     const ImVec2 iconP1(
         iconP0.x + m_IconSize,
         iconP0.y + m_IconSize);
+
+    if (bSelected)
+    {
+        dl->AddRectFilled(
+            p0,
+            p1,
+            IM_COL32(60, 120, 255, 100),
+            6.0f);
+    }
 
     dl->AddRectFilled(
         iconP0,
@@ -416,7 +493,7 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, float cell
     ImGui::PopID();
 }
 
-void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, float cellW, FAssetBrowserPanelInput& input)
+void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input)
 {
     ImGui::TableNextColumn();
 
@@ -444,11 +521,82 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, float cellW
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
+        FAssetBrowserPanelInput::FNodeSelection sel;
+        sel.nodeID = node.nodeID;
+        sel.bToggle = input.bCtrl;
+        sel.bRange  = input.bShift;
+
+        input.contentSelections.push_back(sel);
     }
 
     if (ImGui::IsItemHovered() &&
         ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
     {
+        input.bOpenNode = true;
+        input.openNodeID = node.nodeID;
+    }
+
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+    {
+        if (!bSelected)
+        {
+            input.bClearContentSelection = true;
+
+            FAssetBrowserPanelInput::FNodeSelection sel;
+            sel.nodeID = node.nodeID;
+
+            input.contentSelections.push_back(sel);
+        }
+    }
+    if (ImGui::BeginPopupContextItem())
+    {
+        if (ImGui::MenuItem("Rename"))
+        {
+            FAssetBrowserPanelInput::FMutationRequest req;
+            req.type = FAssetBrowserPanelInput::EMutationType::Rename;
+            req.nodeID = node.nodeID;
+
+            input.mutations.push_back(req);
+        }
+
+        if (ImGui::MenuItem("Copy")) // TODO: Implement these
+        {
+            // FAssetBrowserPanelInput::FMutationRequest req;
+            // req.type = FAssetBrowserPanelInput::EMutationType::Copy;
+            // req.nodeID = node.nodeID;
+            //
+            // input.mutations.push_back(req);
+        }
+
+        if (ImGui::MenuItem("Move"))
+        {
+            // FAssetBrowserPanelInput::FMutationRequest req;
+            // req.type = FAssetBrowserPanelInput::EMutationType::Move;
+            // req.nodeID = node.nodeID;
+            //
+            // input.mutations.push_back(req);
+        }
+
+        if (ImGui::MenuItem("Duplicate"))
+        {
+            FAssetBrowserPanelInput::FMutationRequest req;
+            req.type = FAssetBrowserPanelInput::EMutationType::Duplicate;
+            req.nodeID = node.nodeID;
+
+            input.mutations.push_back(req);
+        }
+
+        if (ImGui::MenuItem("Delete"))
+        {
+            FAssetBrowserPanelInput::FMutationRequest req;
+            req.type = FAssetBrowserPanelInput::EMutationType::Delete;
+            req.nodeID = node.nodeID;
+
+            input.mutations.push_back(req);
+        }
+
+
+        ImGui::EndPopup();
     }
 
     const ImVec2 iconP0(
@@ -459,17 +607,27 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, float cellW
         iconP0.x + m_IconSize,
         iconP0.y + m_IconSize);
 
+    if (bSelected)
+    {
+        dl->AddRectFilled(
+            p0,
+            p1,
+            IM_COL32(60, 120, 255, 100),
+            6.0f);
+    }
+
     dl->AddRectFilled(
         iconP0,
         iconP1,
-        IM_COL32(160,200,255,220),
+        IM_COL32(160, 200, 255, 220),
         8.0f);
 
     dl->AddText(
         ImVec2(p0.x + m_GridPadding,
                iconP1.y + 6.0f),
-        IM_COL32(230,230,230,255),
+        IM_COL32(230, 230, 230, 255),
         node.displayName.c_str());
 
     ImGui::PopID();
+
 }

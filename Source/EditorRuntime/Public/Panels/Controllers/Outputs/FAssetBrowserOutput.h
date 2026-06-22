@@ -2,7 +2,9 @@
 
 #pragma once
 #include <string>
+#include <unordered_set>
 #include "EditorCore/Services/AssetBrowser/FAssetBrowserViewProjection.h"
+#include <EditorCore/Services/AssetBrowser/FAssetBrowserNode.h>
 
 
 struct FAssetBrowserOutput
@@ -20,4 +22,7 @@ struct FAssetBrowserOutput
 
     std::string currentTreeSearch;
     std::string currentContentSearch;
+
+    std::unordered_set<AssetBrowserNodeID> selectedContentNodes;
+    std::unordered_set<AssetBrowserNodeID> selectedTreeNodes;
 };

@@ -130,6 +130,16 @@ void AssetBrowserViewController::RequestProjectionMode(EAssetBrowserProjectionMo
     m_PendingProjectionMode = mode;
 }
 
+bool AssetBrowserViewController::IsSelected(AssetBrowserService& service, AssetBrowserNodeID id) const
+{
+    const FAssetBrowserNode* node = service.GetNode(m_View, id);
+
+    if (!node)
+        return false;
+
+    return GetSelectionModel(service).IsSelected(node->virtualPath);
+}
+
 void AssetBrowserViewController::RequestSelectNode(AssetBrowserNodeID id, bool bToggle, bool bRange)
 {
     m_PendingSelections.push_back({id, bToggle, bRange});

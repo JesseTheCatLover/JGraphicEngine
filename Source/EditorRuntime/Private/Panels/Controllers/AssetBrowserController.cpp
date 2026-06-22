@@ -76,6 +76,33 @@ void AssetBrowserController::Update(float /*deltaTime*/, const FAssetBrowserPane
 
     out.currentContentSearch = m_ContentViewController.GetSearchFilter();
 
+
+    for (AssetBrowserNodeID id : out.treeView.viewNodeIDs)
+    {
+        const FAssetBrowserNode* node = service.GetNode(out.treeView, id);
+
+        if (!node)
+            continue;
+
+        if (m_TreeViewController.IsSelected(service, node->nodeID))
+        {
+            out.selectedTreeNodes.insert(id);
+        }
+    }
+
+    for (AssetBrowserNodeID id : out.contentView.viewNodeIDs)
+    {
+        const FAssetBrowserNode* node = service.GetNode(out.contentView, id);
+
+        if (!node)
+            continue;
+
+        if (m_ContentViewController.IsSelected(service, node->nodeID))
+        {
+            out.selectedContentNodes.insert(id);
+        }
+    }
+
     out.bValid = true;
 }
 

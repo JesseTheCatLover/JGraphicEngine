@@ -132,6 +132,7 @@ public:
     void RequestProjectionMode(EAssetBrowserProjectionMode mode);
 
     // Selection
+    bool IsSelected(AssetBrowserService& service, AssetBrowserNodeID id) const;
     void RequestSelectNode(AssetBrowserNodeID id, bool bToggle = false, bool bRange = false);
 
     void RequestClearSelection();

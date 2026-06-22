@@ -21,8 +21,8 @@ public:
     void OnDestroy(EditorHost& host) override;
     void Draw(EditorHost& host) override;
 
-    void DrawFolderTile(const FAssetBrowserNode& node, float cellW,FAssetBrowserPanelInput& input);
-    void DrawAssetTile(const FAssetBrowserNode& node, float cellW, FAssetBrowserPanelInput& input);
+    void DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW,FAssetBrowserPanelInput& input);
+    void DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input);
 
 
 private:
