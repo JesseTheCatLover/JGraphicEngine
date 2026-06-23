@@ -27,7 +27,7 @@ struct FAssetBrowserPanelInput : FPanelInputBase
     std::string contentSearch;
 
     // Tree expansion
-
+    
     std::vector<AssetBrowserNodeID> expandNodes;
     std::vector<AssetBrowserNodeID> collapseNodes;
 

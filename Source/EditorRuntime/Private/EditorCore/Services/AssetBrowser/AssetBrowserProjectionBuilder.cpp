@@ -58,25 +58,20 @@ void AssetBrowserProjectionBuilder::BuildTree(AssetBrowserService& service,
 
     service.EnsureFolderLoaded(rootID);
 
-    if (controller.GetSettings().bIncludeRootNode) // If root should be included we include it
+    if (controller.GetSettings().bIncludeRootNode)
     {
+        view.viewNodeIDs.push_back(rootID);
         BuildTreeRecursive(service, controller, view, rootID);
-        return;
     }
-
-    const auto& children = service.GetChildren(rootID); // If not we start from its children
-
-    for (AssetBrowserNodeID childID : children)
+    else
     {
-        const FAssetBrowserNode* child = service.TryGetModelNode(childID);
+        const auto& children = service.GetChildren(rootID);
 
-        if (!child)
-            continue;
-
-        if (!ShouldIncludeNode(*child, controller.GetSettings()))
-            continue;
-
-        BuildTreeRecursive(service, controller, view, childID);
+        for (auto childID : children)
+        {
+            view.viewNodeIDs.push_back(childID); // ONLY roots here
+            BuildTreeRecursive(service, controller, view, childID);
+        }
     }
 }
 
@@ -84,45 +79,25 @@ void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &serv
     FAssetBrowserViewProjection &view, AssetBrowserNodeID nodeID)
 {
     const FAssetBrowserNode* node = service.TryGetModelNode(nodeID);
+    if (!node) return;
 
-    if (!node)
-        return;
+    RegisterNode(view, *node);
 
     const bool bIsFolder = node->type == EAssetBrowserNodeType::Folder;
     const bool bExpanded = bIsFolder && controller.IsFolderExpanded(nodeID);
 
-    if (bExpanded)
-    {
-        service.EnsureFolderLoaded(nodeID); // Load the folder and children for model first then copy
-        node = service.TryGetModelNode(nodeID); // Reacquire the pointer
-
-        if (!node)
-            return;
-    }
-
-    AddNodeToView(view, *node);
-
-    if (!bIsFolder)
-        return; // Assets don't have children, we quit
-
-    if (!bExpanded)
-        return; // We don't care about collapsed folder's children
+    if (!bIsFolder || !bExpanded)
+        return;
 
     const auto& modelChildren = service.GetChildren(nodeID);
 
-    auto& projectedChildren = view.children[nodeID];
-
-    for (AssetBrowserNodeID childID : modelChildren)
+    for (auto childID : modelChildren)
     {
         const FAssetBrowserNode* child = service.TryGetModelNode(childID);
+        if (!child) continue;
+        if (!ShouldIncludeNode(*child, controller.GetSettings())) continue;
 
-        if (!child)
-            continue;
-
-        if (!ShouldIncludeNode(*child, controller.GetSettings()))
-            continue;
-
-        projectedChildren.push_back(childID);
+        view.children[nodeID].push_back(childID);
 
         BuildTreeRecursive(service, controller, view, childID);
     }
@@ -146,4 +121,10 @@ bool AssetBrowserProjectionBuilder::ShouldIncludeNode(const FAssetBrowserNode &n
         return settings.bShowAssets;
 
     return true;
+}
+
+void AssetBrowserProjectionBuilder::RegisterNode(FAssetBrowserViewProjection &view, const FAssetBrowserNode &node)
+{
+    view.nodeCache[node.nodeID] = node;
+    view.pathToID[node.virtualPath] = node.nodeID;
 }

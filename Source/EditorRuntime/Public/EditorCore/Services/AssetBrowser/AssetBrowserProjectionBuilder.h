@@ -22,4 +22,6 @@ private:
 
     static void AddNodeToView(FAssetBrowserViewProjection& view, const FAssetBrowserNode& node);
     static bool ShouldIncludeNode(const FAssetBrowserNode& node, const FAssetBrowserViewSettings &settings);
+
+    static void RegisterNode(FAssetBrowserViewProjection& view, const FAssetBrowserNode& node);
 };

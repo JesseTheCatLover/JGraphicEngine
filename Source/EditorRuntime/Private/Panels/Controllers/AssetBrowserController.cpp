@@ -22,7 +22,8 @@ AssetBrowserController::AssetBrowserController(PanelID id, EditorHost& host, Edi
             .currentPath = "/Project",
             .projectionMode = EAssetBrowserProjectionMode::Tree,
             .bShowFolders = true,
-            .bShowAssets = true
+            .bShowAssets = false,
+            .bIncludeRootNode = false
         })
 
     , m_ContentViewController(

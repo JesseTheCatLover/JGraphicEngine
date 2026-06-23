@@ -5,7 +5,9 @@
 #include <cstdint>
 
 #include "EditorCore/IEditorPanel.h"
+#include "EditorCore/Services/AssetBrowser/FAssetBrowserNode.h"
 
+struct FAssetBrowserViewProjection;
 struct FAssetBrowserPanelInput;
 struct FAssetBrowserNode;
 
@@ -21,10 +23,6 @@ public:
     void OnDestroy(EditorHost& host) override;
     void Draw(EditorHost& host) override;
 
-    void DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW,FAssetBrowserPanelInput& input);
-    void DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input);
-
-
 private:
     // Split view sizes
     float m_LeftPaneWidth = 260.0f;
@@ -38,8 +36,16 @@ private:
     // Search buffer (kept across frames)
     char m_SearchBuf[256] = {};
 
-
     // Optional toggles
     bool m_ShowFoldersInGrid = true;
     bool m_ShowAssetsInGrid = true;
+
+    AssetBrowserNodeID m_ContextMenuNode = 0;
+    bool m_bItemPopupsOpen = false;
+
+private:
+    void DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrowserViewProjection& treeView, FAssetBrowserPanelInput& input);
+
+    void DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW,FAssetBrowserPanelInput& input);
+    void DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input);
 };

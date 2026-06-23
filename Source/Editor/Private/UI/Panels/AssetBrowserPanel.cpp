@@ -164,15 +164,20 @@ void AssetBrowserPanel::Draw(EditorHost& host)
 
     // ---------------- Toolbar ----------------
 
-    if (DrawToolbarButton("Save All", "Save all the edited assets"))
+    if (DrawToolbarButton("Create", "Save all the edited assets"))
     {
-
     }
 
     ImGui::SameLine();
     if (DrawToolbarButton("Import", "Import Assets From System Files"))
     {
         host.GetDialogManager().OpenDialog<AssetImporterDialog>();
+    }
+
+    ImGui::SameLine();
+    if (DrawToolbarButton("Save All", "Save all the edited assets"))
+    {
+
     }
 
     ImGuiStyle& style = ImGui::GetStyle();
@@ -258,25 +263,12 @@ void AssetBrowserPanel::Draw(EditorHost& host)
     // Left pane: Tree view
     ImGui::BeginChild("##AssetBrowserLeft", ImVec2(m_LeftPaneWidth, 0.0f), true);
     {
-        ImGui::TextUnformatted("Folders");
-        ImGui::Separator();
-        //
-        // for (const auto& item : output->treeView.children)
-        // {
-        //     ImGui::PushID(dir.virtualPath.c_str());
-        //
-        //     const bool selected = (m_SelectedLeftPath == dir.virtualPath);
-        //     if (ImGui::Selectable(dir.name.c_str(), selected))
-        //         m_SelectedLeftPath = dir.virtualPath;
-        //
-        //     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-        //     {
-        //         input.bNavigateToPath = true;
-        //         input.navigateToPath = dir.virtualPath;
-        //     }
-        //
-        //     ImGui::PopID();
-        // }
+        const auto& treeView = output->treeView;
+
+        for (AssetBrowserNodeID rootID : treeView.viewNodeIDs)
+        {
+            DrawTreeNode(rootID, treeView, input);
+        }
     }
     ImGui::EndChild();
 
@@ -347,10 +339,41 @@ void AssetBrowserPanel::Draw(EditorHost& host)
             }
 
             if (ImGui::IsWindowHovered() &&
-                ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+                (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right) ) &&
                 !ImGui::IsAnyItemHovered())
             {
                 input.bClearContentSelection = true;
+                m_bItemPopupsOpen = false;
+            }
+
+            if (!m_bItemPopupsOpen)
+            {
+                if (ImGui::BeginPopupContextWindow("##AssetGridContext",
+                   ImGuiPopupFlags_MouseButtonRight |
+                   ImGuiPopupFlags_NoOpenOverItems))
+                {
+                    if (ImGui::MenuItem("Create Folder", "Cmd+N"))
+                    {
+                        FAssetBrowserPanelInput::FMutationRequest req;
+                        req.type = FAssetBrowserPanelInput::EMutationType::CreateFolder;
+                        req.destinationPath = output->currentContentNavigationPath;
+
+                        input.mutations.push_back(req);
+                    }
+
+                    ImGui::Separator();
+
+                    if (ImGui::BeginMenu("Create Schematic"))
+                    {
+                        if (ImGui::MenuItem("ActorSchematic"))
+                        {
+
+                        }
+                        ImGui::EndMenu();
+                    }
+
+                    ImGui::EndPopup();
+                }
             }
 
             ImGui::EndTable();
@@ -376,26 +399,23 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSele
 
     ImDrawList* dl = ImGui::GetWindowDrawList();
 
-    dl->AddRectFilled(
-        p0,
-        p1,
-        IM_COL32(255,255,255,20),
-        6.0f);
-
-    dl->AddRect(
-        p0,
-        p1,
-        IM_COL32(255,255,255,40),
-        6.0f);
-
     ImGui::InvisibleButton("##FolderTile", tileSize);
+
+    if (ImGui::IsItemHovered())
+    {
+        dl->AddRectFilled( // Unselected hover highlight
+           p0,
+           p1,
+           IM_COL32(255,255,255,20),
+           4.0f);
+    }
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
         FAssetBrowserPanelInput::FNodeSelection sel;
         sel.nodeID = node.nodeID;
         sel.bToggle = input.bCtrl;
-        sel.bRange  = input.bShift;
+        sel.bRange = input.bShift;
 
         input.contentSelections.push_back(sel);
     }
@@ -409,6 +429,8 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSele
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
     {
+        m_ContextMenuNode = node.nodeID;
+
         if (!bSelected)
         {
             input.bClearContentSelection = true;
@@ -418,11 +440,14 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSele
 
             input.contentSelections.push_back(sel);
         }
+
+        ImGui::OpenPopup("##FolderItemContextMenu"); // TODO: To make the context menu behave better and stop stealing the focus... render a custom window as the context menu
+        m_bItemPopupsOpen = true;
     }
 
-    if (ImGui::BeginPopupContextItem())
+    if (ImGui::BeginPopup("##FolderItemContextMenu"))
     {
-        if (ImGui::MenuItem("Rename"))
+        if (ImGui::MenuItem("Rename", "Cmd+R"))
         {
             FAssetBrowserPanelInput::FMutationRequest req;
             req.type = FAssetBrowserPanelInput::EMutationType::Rename;
@@ -478,7 +503,7 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSele
             6.0f);
     }
 
-    dl->AddRectFilled(
+    dl->AddRectFilled( // Temp yellow icon
         iconP0,
         iconP1,
         IM_COL32(240,200,60,220),
@@ -505,26 +530,23 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
 
     ImDrawList* dl = ImGui::GetWindowDrawList();
 
-    dl->AddRectFilled(
-        p0,
-        p1,
-        IM_COL32(255,255,255,20),
-        6.0f);
-
-    dl->AddRect(
-        p0,
-        p1,
-        IM_COL32(255,255,255,40),
-        6.0f);
-
     ImGui::InvisibleButton("##AssetTile", tileSize);
+
+    if (ImGui::IsItemHovered())
+    {
+        dl->AddRectFilled( // Unselected hover highlight
+           p0,
+           p1,
+           IM_COL32(255,255,255,20),
+           4.0f);
+    }
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
         FAssetBrowserPanelInput::FNodeSelection sel;
         sel.nodeID = node.nodeID;
         sel.bToggle = input.bCtrl;
-        sel.bRange  = input.bShift;
+        sel.bRange = input.bShift;
 
         input.contentSelections.push_back(sel);
     }
@@ -538,6 +560,8 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
     {
+        m_ContextMenuNode = node.nodeID;
+
         if (!bSelected)
         {
             input.bClearContentSelection = true;
@@ -547,10 +571,13 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
 
             input.contentSelections.push_back(sel);
         }
+        ImGui::OpenPopup("##AssetItemContextMenu");
+        m_bItemPopupsOpen = true;
     }
-    if (ImGui::BeginPopupContextItem())
+
+    if (ImGui::BeginPopup("##AssetItemContextMenu"))
     {
-        if (ImGui::MenuItem("Rename"))
+        if (ImGui::MenuItem("Rename", "Cmd+R"))
         {
             FAssetBrowserPanelInput::FMutationRequest req;
             req.type = FAssetBrowserPanelInput::EMutationType::Rename;
@@ -595,7 +622,6 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
             input.mutations.push_back(req);
         }
 
-
         ImGui::EndPopup();
     }
 
@@ -616,7 +642,7 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
             6.0f);
     }
 
-    dl->AddRectFilled(
+    dl->AddRectFilled( // Temp blue icon
         iconP0,
         iconP1,
         IM_COL32(160, 200, 255, 220),
@@ -630,4 +656,58 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
 
     ImGui::PopID();
 
+}
+
+void AssetBrowserPanel::DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrowserViewProjection& treeView,
+    FAssetBrowserPanelInput &input)
+{
+    auto nodeIt = treeView.nodeCache.find(nodeID);
+    if (nodeIt == treeView.nodeCache.end())
+        return;
+
+    const FAssetBrowserNode& node = nodeIt->second;
+
+    ImGuiTreeNodeFlags flags = 0;
+    flags |= ImGuiTreeNodeFlags_OpenOnDoubleClick;
+    flags |= ImGuiTreeNodeFlags_OpenOnArrow;
+
+    if (!node.HasFolderChildren())
+    {
+        flags |= ImGuiTreeNodeFlags_Leaf;
+
+    }
+
+    bool opened = ImGui::TreeNodeEx(
+        (void*)(uintptr_t)nodeID,
+        flags,
+        "%s",
+        node.displayName.c_str());
+
+    if (ImGui::IsItemClicked())
+    {
+        input.bNavigateToPath = true;
+        input.navigateToPath = node.virtualPath;
+    }
+
+    if (ImGui::IsItemToggledOpen())
+    {
+        if (opened)
+            input.expandNodes.push_back(nodeID);
+        else
+            input.collapseNodes.push_back(nodeID);
+    }
+
+    if (opened)
+    {
+        auto childIt = treeView.children.find(node.nodeID);
+        if (childIt != treeView.children.end())
+        {
+            for (AssetBrowserNodeID childID : childIt->second)
+            {
+                DrawTreeNode(childID, treeView, input);
+            }
+        }
+
+        ImGui::TreePop();
+    }
 }
