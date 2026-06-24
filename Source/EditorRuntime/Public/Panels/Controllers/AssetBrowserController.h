@@ -28,6 +28,7 @@ private:
 
     std::vector<std::string> m_PreviousHistory;
     std::vector<std::string> m_ForwardHistory;
+    static constexpr size_t kMaxHistorySize = 50;
 
     bool m_bInternalNavigation = false;
 
@@ -51,4 +52,5 @@ private:
     void ProcessOpen(const FAssetBrowserPanelInput &input);
     void ProcessMutations(const FAssetBrowserPanelInput &input, AssetBrowserService& service);
 
+    void ClampHistory(std::vector<std::string>& history);
 };

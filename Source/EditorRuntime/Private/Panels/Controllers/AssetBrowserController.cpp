@@ -127,8 +127,14 @@ void AssetBrowserController::NavigateTo(const std::string& path)
     if (current == path)
         return;
 
-    m_PreviousHistory.push_back(current);
-    m_ForwardHistory.clear();
+    if (!m_bInternalNavigation)
+    {
+        m_PreviousHistory.push_back(current);
+        m_ForwardHistory.clear();
+
+        ClampHistory(m_PreviousHistory);
+        ClampHistory(m_ForwardHistory);
+    }
 
     m_ContentViewController.RequestNavigateTo(path);
 }
@@ -138,17 +144,19 @@ void AssetBrowserController::NavigateBack()
     if (m_PreviousHistory.empty())
         return;
 
-    const std::string current =
-        m_ContentViewController.GetCurrentNavigationPath();
+    const std::string current = m_ContentViewController.GetCurrentNavigationPath();
 
     m_ForwardHistory.push_back(current);
 
-    const std::string previous =
-        m_PreviousHistory.back();
-
+    const std::string previous =m_PreviousHistory.back();
     m_PreviousHistory.pop_back();
 
+    m_bInternalNavigation = true;
     m_ContentViewController.RequestNavigateTo(previous);
+    m_bInternalNavigation = false;
+
+    ClampHistory(m_PreviousHistory);
+    ClampHistory(m_ForwardHistory);
 }
 
 void AssetBrowserController::NavigateForward()
@@ -163,10 +171,14 @@ void AssetBrowserController::NavigateForward()
 
     const std::string next =
         m_ForwardHistory.back();
-
     m_ForwardHistory.pop_back();
 
+    m_bInternalNavigation = true;
     m_ContentViewController.RequestNavigateTo(next);
+    m_bInternalNavigation = false;
+
+    ClampHistory(m_PreviousHistory);
+    ClampHistory(m_ForwardHistory);
 }
 
 void AssetBrowserController::ProcessNavigation(const FAssetBrowserPanelInput &input)
@@ -399,4 +411,12 @@ void AssetBrowserController::ProcessMutations(
 
         std::cerr << "[AssetBrowserController] " << warning << "\n";
     }
+}
+
+void AssetBrowserController::ClampHistory(std::vector<std::string> &history)
+{
+    if (history.size() <= kMaxHistorySize)
+        return;
+
+    history.erase(history.begin(), history.begin() + (history.size() - kMaxHistorySize));
 }

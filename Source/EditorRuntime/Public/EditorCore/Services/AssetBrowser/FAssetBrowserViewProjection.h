@@ -13,7 +13,7 @@ struct FAssetBrowserViewProjection
     // Projected cache for this view instance
     std::unordered_map<AssetBrowserNodeID, FAssetBrowserNode> nodeCache;
     std::unordered_map<AssetBrowserNodeID, std::vector<AssetBrowserNodeID>> children;
-    std::vector<AssetBrowserNodeID> viewNodeIDs;
+    std::vector<AssetBrowserNodeID> viewNodeIDs; ///< NOTE: Unlike Flat view, For Tree view only the root node is pushed into this list
 
     // Visible order for shift-click range selection (paths in the same order as viewNodeIDs)
     std::vector<std::string> visibleVirtualPaths;

@@ -27,7 +27,7 @@ void AssetBrowserProjectionBuilder::BuildFlat(AssetBrowserService& service, cons
 
     service.EnsureFolderLoaded(rootID);
 
-    const auto* rootNode = service.TryGetModelNode(rootID);
+    const auto* rootNode = service.GetModelNode(rootID);
 
     if (!rootNode)
         return;
@@ -39,7 +39,7 @@ void AssetBrowserProjectionBuilder::BuildFlat(AssetBrowserService& service, cons
 
     for (AssetBrowserNodeID childID : children)
     {
-        const auto* child = service.TryGetModelNode(childID);
+        const auto* child = service.GetModelNode(childID);
 
         if (!child)
             continue;
@@ -79,7 +79,7 @@ void AssetBrowserProjectionBuilder::BuildTree(AssetBrowserService& service,
 void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &service, const AssetBrowserViewController& controller,
     FAssetBrowserViewProjection &view, AssetBrowserNodeID nodeID)
 {
-    const FAssetBrowserNode* node = service.TryGetModelNode(nodeID);
+    const FAssetBrowserNode* node = service.GetModelNode(nodeID);
     if (!node) return;
 
     RegisterNode(view, *node);
@@ -95,7 +95,7 @@ void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &serv
 
     for (auto childID : modelChildren)
     {
-        const FAssetBrowserNode* child = service.TryGetModelNode(childID);
+        const FAssetBrowserNode* child = service.GetModelNode(childID);
         if (!child) continue;
         if (!ShouldIncludeNode(*child, controller.GetSettings())) continue;
 

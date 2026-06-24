@@ -165,6 +165,8 @@ void AssetBrowserPanel::Draw(EditorHost& host)
 
     // ---------------- Toolbar ----------------
 
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.f, 3.f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5.f, 2.f));
     if (DrawToolbarButton("Create", "Add a new asset"))
     {
     }
@@ -183,68 +185,146 @@ void AssetBrowserPanel::Draw(EditorHost& host)
     {
 
     }
+    ImGui::PopStyleVar(2);
 
-    ImGuiStyle& style = ImGui::GetStyle();
-    const float exploreButtonsWidth = 154.0f;
-    const float spacing = style.ItemSpacing.x;
+    // ---------------- Navigation Bar ----------------
+    {
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 2.f);
 
-    float available = ImGui::GetContentRegionAvail().x;
-    float searchWidth = available - exploreButtonsWidth - spacing;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.f, 3.f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5.f, 3.f));
 
-    if (searchWidth < 140.0f)
-        searchWidth = 140.0f;
+        ImGui::BeginGroup();
 
-    ImGui::SetNextItemWidth(searchWidth);
-    ImGui::InputTextWithHint("##AssetSearch", "Search assets...", m_SearchBuf, sizeof(m_SearchBuf));
+        if (DrawToolbarButton("Home", "Go to assets root"))
+            input.bNavigateHome = true;
 
-    ImGui::SameLine();
-    if (DrawToolbarButton("Home", "Go to assets root"))
-        input.bNavigateHome = true;
+        ImGui::SameLine();
+        if (DrawToolbarButton("Up", "Go to parent directory"))
+            input.bNavigateUp = true;
 
-    ImGui::SameLine();
-    if (DrawToolbarButton("Up", "Go to parent directory"))
-        input.bNavigateUp = true;
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical, 1.f);
 
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!output->bCanNavigateBack);
+        if (ImGui::ArrowButton("##Back", ImGuiDir_Left))
+        {
+            input.bNavigatePrevious = true;
+        }
+        ImGui::EndDisabled();
+
+        ImGui::SameLine();
+
+        ImGui::BeginDisabled(!output->bCanNavigateForward);
+        if (ImGui::ArrowButton("##Forward", ImGuiDir_Right))
+        {
+            input.bNavigateNext = true;
+        }
+        ImGui::EndDisabled();
+
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical, 1.f);
+
+        ImGui::EndGroup();
+    }
 
     // ---------------- Breadcrumbs ----------------
     {
-        std::string path = output->currentContentNavigationPath;
-        const auto parts = SplitPath(path);
+        ImGui::SameLine();
+        const std::string currentPath = output->currentContentNavigationPath;
 
-        ImGui::Separator();
-
-        if (parts.empty())
+        if (m_bEditingBreadcrumbs)
         {
-            ImGui::TextUnformatted("(root)");
+            ImGui::SetNextItemWidth(-FLT_MIN);
+
+            if (ImGui::InputText("##BreadcrumbEditor",
+                m_BreadcrumbEditBuffer,
+                sizeof(m_BreadcrumbEditBuffer),
+                ImGuiInputTextFlags_EnterReturnsTrue))
+            { // Returned successfully:
+
+                if (std::string newPath = m_BreadcrumbEditBuffer; IsValidPath(newPath, host))
+                {
+                    input.bNavigateToPath = true;
+                    input.navigateToPath = newPath;
+                }
+                else
+                {
+                    // invalid -> revert
+                    input.bNavigateToPath = true;
+                    input.navigateToPath = m_BreadcrumbOriginalPath;
+                }
+
+                EndBreadcrumbEditing();
+            }
+
+            if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+            {
+                EndBreadcrumbEditing();
+            }
         }
         else
         {
-            for (int i = 0; i < (int)parts.size(); ++i)
+            ImVec2 regionStart = ImGui::GetCursorScreenPos();
+
+            const auto parts = SplitPath(currentPath);
+
+            if (parts.empty())
             {
-                ImGui::PushID(i);
-
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
-                const bool clicked = ImGui::SmallButton(parts[i].c_str());
-                ImGui::PopStyleVar();
-
-                if (clicked)
+                ImGui::TextUnformatted("/Project");
+            }
+            else
+            {
+                for (int i = 0; i < (int) parts.size(); ++i)
                 {
-                    input.bNavigateToPath = true;
-                    input.navigateToPath = JoinPathPrefix(parts, i);
-                }
+                    ImGui::PushID(i);
 
-                ImGui::PopID();
+                    ImGui::PushStyleVar(
+                        ImGuiStyleVar_FramePadding,
+                        ImVec2(6, 4));
 
-                if (i != (int)parts.size() - 1)
-                {
-                    ImGui::SameLine();
-                    ImGui::TextUnformatted("/");
-                    ImGui::SameLine();
+                    const bool clicked =
+                            ImGui::SmallButton(parts[i].c_str());
+
+                    ImGui::PopStyleVar();
+
+                    if (clicked)
+                    {
+                        input.bNavigateToPath = true;
+                        input.navigateToPath =
+                                JoinPathPrefix(parts, i);
+                    }
+
+                    ImGui::PopID();
+
+                    if (i != (int) parts.size() - 1)
+                    {
+                        ImGui::SameLine();
+                        ImGui::TextUnformatted("/");
+                        ImGui::SameLine();
+                    }
                 }
             }
-        }
 
-        ImGui::Separator();
+            float rowWidth = ImGui::GetContentRegionAvail().x;
+            ImVec2 regionEnd(regionStart.x + rowWidth, ImGui::GetCursorScreenPos().y);
+
+            const ImVec2 mouse = ImGui::GetMousePos();
+
+            const bool insideBreadcrumbRegion =
+                mouse.x >= regionStart.x &&
+                mouse.x <= regionEnd.x &&
+                mouse.y >= regionStart.y &&
+                mouse.y <= regionEnd.y;
+
+            if (insideBreadcrumbRegion &&
+                ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            {
+                BeginBreadcrumbEditing(currentPath);
+            }
+        }
+        ImGui::PopStyleVar(2);
     }
 
     // ---------------- Split layout ----------------
@@ -328,6 +408,13 @@ void AssetBrowserPanel::Draw(EditorHost& host)
         if (ImGui::BeginTable("##AssetGrid", columns, ImGuiTableFlags_SizingFixedFit))
         {
             const FAssetBrowserViewProjection& content = output->contentView;
+
+            if (content.viewNodeIDs.empty())
+            {
+                ImGui::BeginChild("ContentTileView", ImVec2(cellW, 0.0f), true);
+                ImGui::TextDisabled("Empty folder");
+                ImGui::EndChild();
+            }
 
             for (AssetBrowserNodeID nodeID : content.viewNodeIDs)
             {
@@ -670,7 +757,7 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
 }
 
 void AssetBrowserPanel::DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrowserViewProjection& treeView,
-    const std::unordered_set<AssetBrowserNodeID>& selectedNodes, FAssetBrowserPanelInput &input)
+                                     const std::unordered_set<AssetBrowserNodeID>& selectedNodes, FAssetBrowserPanelInput &input)
 {
     auto nodeIt = treeView.nodeCache.find(nodeID);
     if (nodeIt == treeView.nodeCache.end())
@@ -803,4 +890,31 @@ void AssetBrowserPanel::DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrow
     }
 
     ImGui::PopID();
+}
+
+void AssetBrowserPanel::BeginBreadcrumbEditing(const std::string& currentPath)
+{
+    m_bEditingBreadcrumbs = true;
+    m_BreadcrumbOriginalPath = currentPath;
+
+    std::snprintf(m_BreadcrumbEditBuffer,
+        sizeof(m_BreadcrumbEditBuffer),
+        "%s",
+        currentPath.c_str()
+     );
+}
+
+void AssetBrowserPanel::EndBreadcrumbEditing()
+{
+    m_bEditingBreadcrumbs = false;
+}
+
+bool AssetBrowserPanel::IsValidPath(const std::string &path, EditorHost &host)
+{
+    auto& service = host.GetService<AssetBrowserService>();
+
+    const AssetBrowserNodeID id = service.TryGetID(path);
+
+    return id != 0;
+
 }

@@ -91,7 +91,9 @@ public:
     [[nodiscard]] const std::vector<AssetBrowserNodeID>& GetChildren(AssetBrowserNodeID id) const;
 
     // --- Node access helpers (operate on the model) ---
-    const FAssetBrowserNode* GetModelNodeByPath(const std::string& path) const;
+    [[nodiscard]] const FAssetBrowserNode* GetModelNodeByPath(const std::string& path) const;
+    [[nodiscard]] const FAssetBrowserNode* GetModelNode(AssetBrowserNodeID id) const;
+    [[nodiscard]] AssetBrowserNodeID TryGetID(const std::string& virtualPath) const;
 
     [[nodiscard]] std::vector<AssetBrowserNodeID>GetAllFolderIDs() const;
 
@@ -134,9 +136,6 @@ private:
 
     void LinkChild(AssetBrowserNodeID parent, AssetBrowserNodeID child);
     void UnlinkChild(AssetBrowserNodeID parent, AssetBrowserNodeID child);
-
-    [[nodiscard]] const FAssetBrowserNode* TryGetModelNode(AssetBrowserNodeID id) const;
-    [[nodiscard]] AssetBrowserNodeID TryGetID(const std::string& virtualPath) const;
 
     void MarkFolderDirtyByPath(const std::string& folderVirtualPath);
 

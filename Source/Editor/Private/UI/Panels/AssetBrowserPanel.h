@@ -37,6 +37,11 @@ private:
     // Search buffer (kept across frames)
     char m_SearchBuf[256] = {};
 
+    // Breadcrumbs section
+    bool m_bEditingBreadcrumbs = false;
+    std::string m_BreadcrumbOriginalPath;
+    char m_BreadcrumbEditBuffer[512];
+
     // Optional toggles
     bool m_ShowFoldersInGrid = true;
     bool m_ShowAssetsInGrid = true;
@@ -50,4 +55,9 @@ private:
 
     void DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW,FAssetBrowserPanelInput& input);
     void DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input);
+
+    void BeginBreadcrumbEditing(const std::string& currentPath);
+    void EndBreadcrumbEditing();
+
+    bool IsValidPath(const std::string& path, EditorHost& host);
 };

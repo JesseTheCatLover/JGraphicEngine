@@ -216,7 +216,7 @@ void AssetBrowserService::UnlinkChild(AssetBrowserNodeID parent, AssetBrowserNod
 }
 
 
-const FAssetBrowserNode* AssetBrowserService::TryGetModelNode(AssetBrowserNodeID id) const
+const FAssetBrowserNode* AssetBrowserService::GetModelNode(AssetBrowserNodeID id) const
 {
     auto it = m_Model.nodes.find(id);
     return (it != m_Model.nodes.end()) ? &it->second : nullptr;
@@ -242,7 +242,7 @@ void AssetBrowserService::MarkFolderDirtyByPath(const std::string& folderVirtual
 
 void AssetBrowserService::EnsureFolderLoaded(AssetBrowserNodeID folderID)
 {
-    const FAssetBrowserNode* folderNode = TryGetModelNode(folderID);
+    const FAssetBrowserNode* folderNode = GetModelNode(folderID);
     if (!folderNode)
         return;
 
@@ -354,8 +354,8 @@ void AssetBrowserService::EnsureFolderLoaded(AssetBrowserNodeID folderID)
     std::sort(vec.begin(), vec.end(),
         [&](AssetBrowserNodeID a, AssetBrowserNodeID b)
     {
-        const FAssetBrowserNode* A = TryGetModelNode(a);
-        const FAssetBrowserNode* B = TryGetModelNode(b);
+        const FAssetBrowserNode* A = GetModelNode(a);
+        const FAssetBrowserNode* B = GetModelNode(b);
 
         if (A->type != B->type)
         {
@@ -512,7 +512,7 @@ const FAssetBrowserNode * AssetBrowserService::GetModelNodeByPath(const std::str
     if (id == 0)
         return nullptr;
 
-    return TryGetModelNode(id);
+    return GetModelNode(id);
 }
 
 std::vector<AssetBrowserNodeID> AssetBrowserService::GetAllFolderIDs() const
