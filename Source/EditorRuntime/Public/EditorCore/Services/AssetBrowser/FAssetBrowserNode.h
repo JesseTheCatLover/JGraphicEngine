@@ -8,6 +8,7 @@
 
 #include "Assets/AssetTypes.h"
 #include "Assets/EAssetDomain.h"
+#include "Utilities/UPath.h"
 
 enum class EAssetBrowserNodeType
 {
@@ -32,11 +33,17 @@ struct FAssetBrowserNode
 
     EAssetBrowserNodeType type = EAssetBrowserNodeType::Folder;
 
-    std::string displayName; // e.g. "Textures" or "Sword_BaseColor"
     std::string virtualPath; // e.g. "/Project/Textures/Sword_BaseColor"
 
     EAssetBrowserChildState childFolderState = EAssetBrowserChildState::Unknown;
     EAssetBrowserChildState childAssetState = EAssetBrowserChildState::Unknown;
+
+    [[nodiscard]] std::string GetDisplayName() const
+    {
+        if (virtualPath == "/Project") return "Project"; // Root display name polish
+        if (virtualPath == "/Engine") return "Engine";
+        return UPath::GetFileName(virtualPath, false);
+    }
 
     [[nodiscard]] bool HasFolderChildren() const
     {

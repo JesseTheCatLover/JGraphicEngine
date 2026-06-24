@@ -390,8 +390,7 @@ void AssetImporterDialog::OnBrowseSourceFiles(EditorHost& host, EditorRuntime& r
     {
         FPendingItem item;
         item.sourceFilePath = filePath;
-        item.destinationVirtualFolder = "/Project"; /* TODO: Must set it to a default later, and the default will be from
-        the folder where the importer was asked to be opened by the AssetBrowser. */
+        item.destinationVirtualFolder = m_DefaultImportDestinationPath;
         item.bOverwrite = false;
 
         m_Items.push_back(std::move(item));

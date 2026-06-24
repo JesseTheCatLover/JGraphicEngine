@@ -90,6 +90,9 @@ public:
     FAssetBrowserNode* GetMutableNode(AssetBrowserNodeID id);
     [[nodiscard]] const std::vector<AssetBrowserNodeID>& GetChildren(AssetBrowserNodeID id) const;
 
+    // --- Node access helpers (operate on the model) ---
+    const FAssetBrowserNode* GetModelNodeByPath(const std::string& path) const;
+
     [[nodiscard]] std::vector<AssetBrowserNodeID>GetAllFolderIDs() const;
 
     void PurgeNodeSubtree(AssetBrowserNodeID rootID);

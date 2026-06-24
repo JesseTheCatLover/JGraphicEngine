@@ -3,6 +3,7 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include <unordered_set>
 
 #include "EditorCore/IEditorPanel.h"
 #include "EditorCore/Services/AssetBrowser/FAssetBrowserNode.h"
@@ -44,7 +45,8 @@ private:
     bool m_bItemPopupsOpen = false;
 
 private:
-    void DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrowserViewProjection& treeView, FAssetBrowserPanelInput& input);
+    void DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrowserViewProjection& treeView,
+        const std::unordered_set<AssetBrowserNodeID>& selectedNodes, FAssetBrowserPanelInput& input);
 
     void DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW,FAssetBrowserPanelInput& input);
     void DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input);

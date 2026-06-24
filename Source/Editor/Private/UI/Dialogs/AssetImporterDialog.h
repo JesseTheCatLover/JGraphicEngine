@@ -13,6 +13,8 @@ private:
     bool m_bIsOpen = false;
     bool m_bRequestFocus = false;
 
+    std::string m_DefaultImportDestinationPath = "/Project";
+
     float m_InitialWidth = 800.f;
     float m_InitialHeight = 500.f;
 
@@ -77,4 +79,9 @@ public:
 
     void Draw(EditorHost& host, EditorRuntime& runtime) override;
     [[nodiscard]] bool IsOpen() const override { return m_bIsOpen; }
+
+    void SetDefaultDestinationPath(const std::string &destinationPath)
+    {
+        m_DefaultImportDestinationPath = destinationPath;
+    }
 };

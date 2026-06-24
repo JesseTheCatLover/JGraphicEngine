@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <cctype>
+#include <iostream>
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -164,14 +165,17 @@ void AssetBrowserPanel::Draw(EditorHost& host)
 
     // ---------------- Toolbar ----------------
 
-    if (DrawToolbarButton("Create", "Save all the edited assets"))
+    if (DrawToolbarButton("Create", "Add a new asset"))
     {
     }
 
     ImGui::SameLine();
     if (DrawToolbarButton("Import", "Import Assets From System Files"))
     {
-        host.GetDialogManager().OpenDialog<AssetImporterDialog>();
+        if (auto importerDialog = host.GetDialogManager().OpenDialog<AssetImporterDialog>())
+        {
+            importerDialog->SetDefaultDestinationPath(output->currentContentNavigationPath);
+        }
     }
 
     ImGui::SameLine();
@@ -267,7 +271,15 @@ void AssetBrowserPanel::Draw(EditorHost& host)
 
         for (AssetBrowserNodeID rootID : treeView.viewNodeIDs)
         {
-            DrawTreeNode(rootID, treeView, input);
+            DrawTreeNode(rootID, treeView, output->selectedTreeNodes, input);
+        }
+
+        // Clear selection when clicking empty space in the tree pane
+        if (ImGui::IsWindowHovered() &&
+            ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+            !ImGui::IsAnyItemHovered())
+        {
+            input.bClearTreeSelection = true;
         }
     }
     ImGui::EndChild();
@@ -513,7 +525,7 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSele
         ImVec2(p0.x + m_GridPadding,
                iconP1.y + 6.0f),
         IM_COL32(230,230,230,255),
-        node.displayName.c_str());
+        node.GetDisplayName().c_str());
 
     ImGui::PopID();
 }
@@ -652,14 +664,13 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
         ImVec2(p0.x + m_GridPadding,
                iconP1.y + 6.0f),
         IM_COL32(230, 230, 230, 255),
-        node.displayName.c_str());
+        node.GetDisplayName().c_str());
 
     ImGui::PopID();
-
 }
 
 void AssetBrowserPanel::DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrowserViewProjection& treeView,
-    FAssetBrowserPanelInput &input)
+    const std::unordered_set<AssetBrowserNodeID>& selectedNodes, FAssetBrowserPanelInput &input)
 {
     auto nodeIt = treeView.nodeCache.find(nodeID);
     if (nodeIt == treeView.nodeCache.end())
@@ -670,6 +681,7 @@ void AssetBrowserPanel::DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrow
     ImGuiTreeNodeFlags flags = 0;
     flags |= ImGuiTreeNodeFlags_OpenOnDoubleClick;
     flags |= ImGuiTreeNodeFlags_OpenOnArrow;
+    flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
 
     if (!node.HasFolderChildren())
     {
@@ -677,13 +689,33 @@ void AssetBrowserPanel::DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrow
 
     }
 
+    const bool bSelected = selectedNodes.contains(nodeID);
+
+    if (bSelected)
+    {
+        flags |= ImGuiTreeNodeFlags_Selected;
+    }
+
+    ImGui::PushID((void*)(uintptr_t)nodeID);
+
     bool opened = ImGui::TreeNodeEx(
         (void*)(uintptr_t)nodeID,
         flags,
         "%s",
-        node.displayName.c_str());
+        node.GetDisplayName().c_str());
 
-    if (ImGui::IsItemClicked())
+    // Left-click selection (skip when the click was an arrow toggle)
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+    {
+        FAssetBrowserPanelInput::FNodeSelection sel;
+        sel.nodeID  = node.nodeID;
+        sel.bToggle = input.bCtrl;
+        sel.bRange  = input.bShift;
+
+        input.treeSelections.push_back(sel);
+    }
+
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
         input.bNavigateToPath = true;
         input.navigateToPath = node.virtualPath;
@@ -697,6 +729,65 @@ void AssetBrowserPanel::DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrow
             input.collapseNodes.push_back(nodeID);
     }
 
+    // Right-click context menu
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+    {
+        m_ContextMenuNode = node.nodeID;
+
+        // Right-clicking an unselected node selects just it;
+        // right-clicking inside a multi-selection keeps the selection.
+        if (!bSelected)
+        {
+            input.bClearTreeSelection = true;
+
+            FAssetBrowserPanelInput::FNodeSelection sel;
+            sel.nodeID = node.nodeID;
+            input.treeSelections.push_back(sel);
+        }
+
+        ImGui::OpenPopup("##TreeItemContextMenu");
+        m_bItemPopupsOpen = true;
+    }
+
+    if (ImGui::BeginPopup("##TreeItemContextMenu"))
+    {
+        if (ImGui::MenuItem("Rename", "Cmd+R"))
+        {
+            FAssetBrowserPanelInput::FMutationRequest req;
+            req.type   = FAssetBrowserPanelInput::EMutationType::Rename;
+            req.nodeID = node.nodeID;
+            input.mutations.push_back(req);
+        }
+
+        if (ImGui::MenuItem("New Folder", "Cmd+N"))
+        {
+            FAssetBrowserPanelInput::FMutationRequest req;
+            req.type            = FAssetBrowserPanelInput::EMutationType::CreateFolder;
+            req.destinationPath = node.virtualPath; // create inside this folder
+            input.mutations.push_back(req);
+        }
+
+        if (ImGui::MenuItem("Move"))
+        {
+            // FAssetBrowserPanelInput::FMutationRequest req;
+            // req.type = FAssetBrowserPanelInput::EMutationType::Move;
+            // req.nodeID = node.nodeID;
+            // input.mutations.push_back(req);
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Delete"))
+        {
+            FAssetBrowserPanelInput::FMutationRequest req;
+            req.type   = FAssetBrowserPanelInput::EMutationType::Delete;
+            req.nodeID = node.nodeID;
+            input.mutations.push_back(req);
+        }
+
+        ImGui::EndPopup();
+    }
+
     if (opened)
     {
         auto childIt = treeView.children.find(node.nodeID);
@@ -704,10 +795,12 @@ void AssetBrowserPanel::DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrow
         {
             for (AssetBrowserNodeID childID : childIt->second)
             {
-                DrawTreeNode(childID, treeView, input);
+                DrawTreeNode(childID, treeView, selectedNodes, input);
             }
         }
 
         ImGui::TreePop();
     }
+
+    ImGui::PopID();
 }

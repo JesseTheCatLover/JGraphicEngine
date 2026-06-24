@@ -20,8 +20,9 @@ private:
     static void BuildTreeRecursive(AssetBrowserService& service,const AssetBrowserViewController& controller,
         FAssetBrowserViewProjection& view, AssetBrowserNodeID nodeID);
 
-    static void AddNodeToView(FAssetBrowserViewProjection& view, const FAssetBrowserNode& node);
     static bool ShouldIncludeNode(const FAssetBrowserNode& node, const FAssetBrowserViewSettings &settings);
 
     static void RegisterNode(FAssetBrowserViewProjection& view, const FAssetBrowserNode& node);
+    static void AddVisibleNodeForFlat(FAssetBrowserViewProjection& view, const FAssetBrowserNode& node);
+    static void AddVisibleNodeForTree(FAssetBrowserViewProjection& view, const FAssetBrowserNode& node);
 };

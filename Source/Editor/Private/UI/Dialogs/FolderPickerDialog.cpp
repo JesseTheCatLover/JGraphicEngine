@@ -399,7 +399,6 @@ void FolderPickerDialog::ApplyPendingFolderModifier(FAssetBrowserViewProjection&
         node.nodeID = id;
         node.type = EAssetBrowserNodeType::Folder;
         node.virtualPath = path;
-        node.displayName = UPath::GetFileName(path);
 
         node.childFolderState = EAssetBrowserChildState::Unknown;
 
@@ -438,7 +437,7 @@ void FolderPickerDialog::ApplyPendingFolderModifier(FAssetBrowserViewProjection&
            const auto& na = projection.nodeCache[a];
            const auto& nb = projection.nodeCache[b];
 
-           return na.displayName < nb.displayName;
+           return na.GetDisplayName() < nb.GetDisplayName();
            });
 
         auto& childNode = projection.nodeCache[childID];
@@ -583,9 +582,9 @@ void FolderPickerDialog::DrawNode(AssetBrowserNodeID id)
 std::string FolderPickerDialog::BuildNodeLabel(const FAssetBrowserNode& node) const
 {
     if (IsPendingNode(node.virtualPath))
-        return node.displayName + " *";
+        return node.GetDisplayName() + " *";
 
-    return node.displayName;
+    return node.GetDisplayName();
 }
 
 void FolderPickerDialog::DrawPendingRenameWidget()
@@ -698,7 +697,7 @@ void FolderPickerDialog::HandlePendingNodeInteractions(AssetBrowserNodeID id, co
     if (dbl)
     {
         m_PendingFolders.renameTargetPath = node.virtualPath;
-        m_PendingFolders.renameBuffer = node.displayName;
+        m_PendingFolders.renameBuffer = node.GetDisplayName();
         m_PendingFolders.bStartRenameFocus = true;
     }
 
@@ -707,7 +706,7 @@ void FolderPickerDialog::HandlePendingNodeInteractions(AssetBrowserNodeID id, co
         if (ImGui::MenuItem("Rename"))
         {
             m_PendingFolders.renameTargetPath = node.virtualPath;
-            m_PendingFolders.renameBuffer = node.displayName;
+            m_PendingFolders.renameBuffer = node.GetDisplayName();
             m_PendingFolders.bStartRenameFocus = true;
         }
 
@@ -1054,13 +1053,16 @@ bool FolderPickerDialog::IsPendingNodeID(AssetBrowserNodeID id) const
 
 bool FolderPickerDialog::IsRealFolderPresent(const std::string& path) const
 {
-    auto* node = m_Service->GetNodeByPath(GetProjection(), path);
-    return node && !IsPendingNode(path);
+    const auto* node = m_Service->GetModelNodeByPath(path);
+
+    return node &&
+           node->type == EAssetBrowserNodeType::Folder &&
+           !IsPendingNode(path);
 }
 
 bool FolderPickerDialog::PathExistsInPicker(const std::string& path) const
 {
-    return IsRealFolderPresent(path) || IsPendingNode(path);
+    return IsRealFolderPresent(path);
 }
 
 bool FolderPickerDialog::FolderHasChildren(AssetBrowserNodeID id) const

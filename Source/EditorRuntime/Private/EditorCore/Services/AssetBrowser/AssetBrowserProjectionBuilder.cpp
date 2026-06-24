@@ -47,7 +47,8 @@ void AssetBrowserProjectionBuilder::BuildFlat(AssetBrowserService& service, cons
         if (!ShouldIncludeNode(*child, controller.GetSettings()))
             continue;
 
-        AddNodeToView(view, *child);
+        RegisterNode(view, *child);
+        AddVisibleNodeForFlat(view, *child);
     }
 }
 
@@ -82,6 +83,7 @@ void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &serv
     if (!node) return;
 
     RegisterNode(view, *node);
+    AddVisibleNodeForTree(view, *node);
 
     const bool bIsFolder = node->type == EAssetBrowserNodeType::Folder;
     const bool bExpanded = bIsFolder && controller.IsFolderExpanded(nodeID);
@@ -103,14 +105,6 @@ void AssetBrowserProjectionBuilder::BuildTreeRecursive(AssetBrowserService &serv
     }
 }
 
-void AssetBrowserProjectionBuilder::AddNodeToView(FAssetBrowserViewProjection &view, const FAssetBrowserNode &node)
-{
-    view.nodeCache[node.nodeID] = node;
-    view.pathToID[node.virtualPath] = node.nodeID;
-    view.viewNodeIDs.push_back(node.nodeID);
-    view.visibleVirtualPaths.push_back(node.virtualPath);
-}
-
 bool AssetBrowserProjectionBuilder::ShouldIncludeNode(const FAssetBrowserNode &node,
     const FAssetBrowserViewSettings &settings)
 {
@@ -127,4 +121,15 @@ void AssetBrowserProjectionBuilder::RegisterNode(FAssetBrowserViewProjection &vi
 {
     view.nodeCache[node.nodeID] = node;
     view.pathToID[node.virtualPath] = node.nodeID;
+}
+
+void AssetBrowserProjectionBuilder::AddVisibleNodeForFlat(FAssetBrowserViewProjection &view, const FAssetBrowserNode &node)
+{
+    view.viewNodeIDs.push_back(node.nodeID);
+    view.visibleVirtualPaths.push_back(node.virtualPath);
+}
+
+void AssetBrowserProjectionBuilder::AddVisibleNodeForTree(FAssetBrowserViewProjection &view, const FAssetBrowserNode &node)
+{
+    view.visibleVirtualPaths.push_back(node.virtualPath);
 }

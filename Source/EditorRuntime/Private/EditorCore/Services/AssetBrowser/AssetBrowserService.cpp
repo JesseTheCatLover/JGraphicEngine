@@ -181,11 +181,6 @@ AssetBrowserNodeID AssetBrowserService::EnsureNode(const std::string& rawPath, E
     node.parentID = parentID;
     node.type = type;
     node.virtualPath = path;
-    node.displayName = UPath::GetFileName(path); // for folders, this is leaf folder name too
-
-    // Root display name polish (optional)
-    if (path == "/Project") node.displayName = "Project";
-    if (path == "/Engine")  node.displayName = "Engine";
 
     m_Model.pathToID.emplace(node.virtualPath, id);
     m_Model.nodes.emplace(id, node);
@@ -294,7 +289,6 @@ void AssetBrowserService::EnsureFolderLoaded(AssetBrowserNodeID folderID)
             auto& child = m_Model.nodes[childID];
 
             child.parentID = folderID;
-            child.displayName = entry.name;
 
             if (child.childFolderState == EAssetBrowserChildState::Unknown ||
                 child.childAssetState == EAssetBrowserChildState::Unknown)
@@ -311,7 +305,6 @@ void AssetBrowserService::EnsureFolderLoaded(AssetBrowserNodeID folderID)
 
             auto& n = m_Model.nodes[AssetID];
             n.parentID = folderID;
-            n.displayName = entry.name;
             n.childFolderState = EAssetBrowserChildState::None; // Assets have no children
             n.childAssetState = EAssetBrowserChildState::None;
 
@@ -369,7 +362,7 @@ void AssetBrowserService::EnsureFolderLoaded(AssetBrowserNodeID folderID)
             return A->type == EAssetBrowserNodeType::Folder;
         }
 
-        return A->displayName < B->displayName;
+        return A->GetDisplayName() < B->GetDisplayName();
     });
 
     // 5) Mark the current folder node with children states
@@ -510,6 +503,16 @@ const std::vector<AssetBrowserNodeID>& AssetBrowserService::GetChildren(AssetBro
     return (it != m_Model.children.end())
         ? it->second
         : empty;
+}
+
+const FAssetBrowserNode * AssetBrowserService::GetModelNodeByPath(const std::string &path) const
+{
+    AssetBrowserNodeID id = TryGetID(path);
+
+    if (id == 0)
+        return nullptr;
+
+    return TryGetModelNode(id);
 }
 
 std::vector<AssetBrowserNodeID> AssetBrowserService::GetAllFolderIDs() const
