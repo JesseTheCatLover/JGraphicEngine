@@ -9,3 +9,5 @@ cmake-build-release/
 Cargo.lock
 /Binaries/
 Saved/Launch/LaunchSettings.json
+/Assets/
+/SourceAssets/
