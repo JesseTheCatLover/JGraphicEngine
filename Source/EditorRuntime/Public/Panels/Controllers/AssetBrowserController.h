@@ -7,6 +7,7 @@
 
 #include "Panels/PanelRegistry.h"
 #include "EditorCore/Services/AssetBrowser/AssetBrowserViewController.h"
+#include "Rendering/RHandles.h"
 
 struct FAssetBrowserOutput;
 struct FAssetBrowserPanelInput;
@@ -25,6 +26,9 @@ private:
 
     AssetBrowserViewController m_TreeViewController;
     AssetBrowserViewController m_ContentViewController;
+
+    RTextureHandle m_FolderIcon;
+    RTextureHandle m_AssetIcon;
 
     std::vector<std::string> m_PreviousHistory;
     std::vector<std::string> m_ForwardHistory;

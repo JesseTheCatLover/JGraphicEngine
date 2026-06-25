@@ -428,11 +428,11 @@ void AssetBrowserPanel::Draw(EditorHost& host)
                 switch (node.type)
                 {
                     case EAssetBrowserNodeType::Folder:
-                        DrawFolderTile(node, bSelected, cellW, input);
+                        DrawFolderTile(node, bSelected, cellW, input, *output);
                         break;
 
                     case EAssetBrowserNodeType::Asset:
-                        DrawAssetTile(node, bSelected, cellW, input);
+                        DrawAssetTile(node, bSelected, cellW, input, *output);
                         break;
                 }
             }
@@ -486,7 +486,8 @@ void AssetBrowserPanel::Draw(EditorHost& host)
     subsystem.SubmitInput(input);
 }
 
-void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input)
+void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input,
+    const FAssetBrowserOutput& output)
 {
     ImGui::TableNextColumn();
 
@@ -602,11 +603,12 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSele
             6.0f);
     }
 
-    dl->AddRectFilled( // Temp yellow icon
-        iconP0,
-        iconP1,
-        IM_COL32(240,200,60,220),
-        8.0f);
+    dl->AddImage(
+       (ImTextureID)output.icons.folder,
+       iconP0,
+       iconP1,
+       ImVec2(0,1),
+       ImVec2(1,0));
 
     dl->AddText(
         ImVec2(p0.x + m_GridPadding,
@@ -617,7 +619,8 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSele
     ImGui::PopID();
 }
 
-void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input)
+void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input,
+    const FAssetBrowserOutput& output)
 {
     ImGui::TableNextColumn();
 
@@ -741,11 +744,12 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
             6.0f);
     }
 
-    dl->AddRectFilled( // Temp blue icon
-        iconP0,
-        iconP1,
-        IM_COL32(160, 200, 255, 220),
-        8.0f);
+    dl->AddImage(
+       (ImTextureID)output.icons.asset,
+       iconP0,
+       iconP1,
+       ImVec2(0,1),
+       ImVec2(1,0));
 
     dl->AddText(
         ImVec2(p0.x + m_GridPadding,

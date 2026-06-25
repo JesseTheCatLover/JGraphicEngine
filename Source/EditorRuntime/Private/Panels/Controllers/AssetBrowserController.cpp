@@ -7,6 +7,7 @@
 #include "EditorRuntime.h"
 #include "EditorCore/EditorHost.h"
 #include "Assets/FAssetRecord.h"
+#include "EditorCore/Services/AssetCacheService.h"
 #include "Panels/Controllers/Inputs/FAssetBrowserPanelInput.h"
 #include "Panels/Controllers/Outputs/FAssetBrowserOutput.h"
 #include "Utilities/UPath.h"
@@ -41,6 +42,11 @@ AssetBrowserController::AssetBrowserController(PanelID id, EditorHost& host, Edi
         m_TreeViewController.RequestRefresh();
         m_ContentViewController.RequestRefresh();
     });
+
+    auto& cache = m_Host.GetService<AssetCacheService>();
+
+    m_FolderIcon = cache.GetTexture("AssetBrowser/FolderIcon");
+    m_AssetIcon = cache.GetTexture("AssetBrowser/AssetIcon");
 }
 
 AssetBrowserController::~AssetBrowserController()
@@ -103,6 +109,9 @@ void AssetBrowserController::Update(float /*deltaTime*/, const FAssetBrowserPane
             out.selectedContentNodes.insert(id);
         }
     }
+
+    out.icons.folder = m_Runtime.GetViewport().GetNativeTexture(m_FolderIcon);
+    out.icons.asset = m_Runtime.GetViewport().GetNativeTexture(m_AssetIcon);
 
     out.bValid = true;
 }

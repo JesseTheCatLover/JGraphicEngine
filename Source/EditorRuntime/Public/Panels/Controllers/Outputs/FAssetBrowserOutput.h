@@ -6,6 +6,11 @@
 #include "EditorCore/Services/AssetBrowser/FAssetBrowserViewProjection.h"
 #include <EditorCore/Services/AssetBrowser/FAssetBrowserNode.h>
 
+struct FAssetBrowserIcons
+{
+    void* folder = nullptr;
+    void* asset = nullptr;
+};
 
 struct FAssetBrowserOutput
 {
@@ -25,4 +30,6 @@ struct FAssetBrowserOutput
 
     std::unordered_set<AssetBrowserNodeID> selectedContentNodes;
     std::unordered_set<AssetBrowserNodeID> selectedTreeNodes;
+
+    FAssetBrowserIcons icons;
 };

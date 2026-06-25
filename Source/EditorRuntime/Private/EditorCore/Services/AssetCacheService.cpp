@@ -46,7 +46,7 @@ void AssetCacheService::ScanAndLoadTextures(EditorRuntime& runtime)
 
 RTextureHandle AssetCacheService::GetTexture(std::string_view key) const
 {
-    auto it = m_TextureMap.find(std::string(key));
+    auto it = m_TextureMap.find(UPath::RemoveExtension(std::string(key)));
     if (it == m_TextureMap.end())
         return {};
     return it->second;

@@ -7,6 +7,7 @@
 
 #include "EditorCore/IEditorPanel.h"
 #include "EditorCore/Services/AssetBrowser/FAssetBrowserNode.h"
+#include "Panels/Controllers/Outputs/FAssetBrowserOutput.h"
 
 struct FAssetBrowserViewProjection;
 struct FAssetBrowserPanelInput;
@@ -53,8 +54,10 @@ private:
     void DrawTreeNode(AssetBrowserNodeID nodeID, const FAssetBrowserViewProjection& treeView,
         const std::unordered_set<AssetBrowserNodeID>& selectedNodes, FAssetBrowserPanelInput& input);
 
-    void DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW,FAssetBrowserPanelInput& input);
-    void DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input);
+    void DrawFolderTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input,
+        const FAssetBrowserOutput& output);
+    void DrawAssetTile(const FAssetBrowserNode& node, bool bSelected, float cellW, FAssetBrowserPanelInput& input,
+        const FAssetBrowserOutput& output);
 
     void BeginBreadcrumbEditing(const std::string& currentPath);
     void EndBreadcrumbEditing();
