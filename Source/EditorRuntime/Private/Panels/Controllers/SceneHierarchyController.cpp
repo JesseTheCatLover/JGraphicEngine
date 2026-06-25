@@ -42,7 +42,7 @@ void SceneHierarchyController::Update(float deltaTime, const FHierarchyPanelInpu
     out.revealActorID = selection.ConsumeRevealRequest();
 
     // Reparenting
-    if (input.bReparentRequested && input.draggedActor != input.targetParentActor)
+    if (input.bReparentRequested && input.draggedActor != input.targetParentActor) // TODO: Implement Undo History On These Actions
     {
         hierarchy.ReparentActor(input.draggedActor, input.targetParentActor);
     }
