@@ -6,22 +6,32 @@
 #include <unordered_map>
 #include <vector>
 
+#include "EditorCore/IEditorService.h"
 #include "Rendering/RHandles.h"
 
 class EditorRuntime;
 
 struct FEditorTextureAsset
 {
-    std::string Key;         // e.g. "Icons/Move"
-    std::string SourcePath;  // absolute or relative path
-    RTextureHandle Handle{};
+    std::string key;         // e.g. "Icons/Move"
+    std::string sourcePath;  // absolute or relative path
+    RTextureHandle handle{};
 };
 
-class EditorAssetCache
+class AssetCacheService : public IEditorService
 {
+private:
+    EditorRuntime& m_Runtime;
+
+    std::unordered_map<std::string, RTextureHandle> m_TextureMap;
+    std::vector<FEditorTextureAsset> m_Textures;
+
 public:
+    ~AssetCacheService() override;
+    explicit AssetCacheService(EditorRuntime& runtime);
+
     // Call once at editor startup
-    void PreloadAll(EditorRuntime& runtime);
+    void PreloadAll();
 
     // Lookup
     [[nodiscard]] RTextureHandle GetTexture(std::string_view key) const;
@@ -30,8 +40,4 @@ public:
 
 private:
     void ScanAndLoadTextures(EditorRuntime& runtime);
-
-private:
-    std::unordered_map<std::string, RTextureHandle> m_TextureMap;
-    std::vector<FEditorTextureAsset> m_Textures;
 };

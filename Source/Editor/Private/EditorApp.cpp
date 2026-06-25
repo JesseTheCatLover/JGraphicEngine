@@ -6,7 +6,7 @@
 #include <Renderer/Backends/ImGuiBackend.h>
 #include <iostream>
 
-#include "EditorCore/EditorAssetCache.h"
+#include "EditorCore/Services/AssetCacheService.h"
 #include "EditorCore/EditorHost.h"
 #include "Renderer/EditorPanelTracker.h"
 #include "EditorCore/Services/ShellCommandService.h"
@@ -86,14 +86,11 @@ void EditorApp::OnProjectInitialized(IPlatformWindow* window)
     m_PanelTracker->Initialize(*m_EditorHost);
     m_PanelTracker->ApplyLayout(*m_EditorHost, *m_LayoutModel); // initial sync
 
-    m_EditorCache = MakeUnique<EditorAssetCache>();
-    m_EditorCache->PreloadAll(*m_EditorRuntime);
-
     RegisterEditorShellCommands(*m_EditorHost, *m_LayoutModel);
     RegisterServicesShellCommands(*m_EditorHost);
 
-    m_Renderer = MakeUnique<ImGuiRenderer>();
-    m_Renderer->Initialize(*m_EditorHost, *m_EditorRuntime, *m_LayoutModel, *m_EditorCache);
+    m_Renderer = MakeUnique<ImGuiRenderer>(*m_EditorHost, *m_EditorRuntime, *m_LayoutModel);
+    m_Renderer->Initialize();
 }
 
 void EditorApp::OnSceneLoaded(const std::string &sceneName)

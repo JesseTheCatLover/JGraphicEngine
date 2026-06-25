@@ -9,7 +9,7 @@ class IEditorPanel;
 class EditorHost;
 class EditorRuntime;
 class EditorLayoutModel;
-class EditorAssetCache;
+class AssetCacheService;
 
 /**
  * Renderer interface for the Editor UI layer.
@@ -23,11 +23,7 @@ public:
     virtual ~IEditorRenderer() = default;
 
     // Initialize with editor services. Typically called once on editor startup.
-    virtual void Initialize(
-        EditorHost& host,
-        EditorRuntime& runtime,
-        EditorLayoutModel& layout,
-        EditorAssetCache& cache) = 0;
+    virtual void Initialize() = 0;
 
     // Called once per frame between UIBackend BeginFrame/EndFrame
     virtual void RenderChrome(float deltaTime) = 0; ///< menu + toolbar + dockspace

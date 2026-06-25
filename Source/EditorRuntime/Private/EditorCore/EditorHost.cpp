@@ -4,6 +4,7 @@
 
 #include "Panels/TPanelContainer.h"
 #include "EditorCore/DialogManager.h"
+#include "EditorCore/Services/AssetCacheService.h"
 #include "Tools/ToolService.h"
 #include "EditorCore/Services/AssetBrowser/AssetBrowserService.h"
 #include "EditorCore/Services/EditTimelineService.h"
@@ -42,6 +43,7 @@ void EditorHost::RegisterCoreSubsystems()
 
 void EditorHost::RegisterCoreServices()
 {
+    m_Services->Register<AssetCacheService>(m_EditorRuntime).PreloadAll();
     m_Services->Register<SceneQueryService>(m_EditorRuntime);
     m_Services->Register<SelectionService>();
     m_Services->Register<SceneSelectionSynchronizer>(*this, m_EditorRuntime);

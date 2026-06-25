@@ -8,25 +8,31 @@
 #include "EditorCore/EditorHost.h"
 #include "EditorRuntime.h"
 #include "EditorLayout/EditorLayoutModel.h"
-#include "EditorCore/EditorAssetCache.h"
+#include "EditorCore/Services/AssetCacheService.h"
 #include "EditorCore/Services/EditTimelineService.h"
 #include "EditorCore/Services/HotkeyService.h"
 #include "EditorCore/Services/ShellCommandService.h"
 #include "EditorCore/IEditorPanel.h"
 
-static bool IsViewportKey(const char *key)
+namespace
 {
-    return (std::strncmp(key, "Viewport", 8) == 0);
+    static bool IsViewportKey(const char *key)
+    {
+        return (std::strncmp(key, "Viewport", 8) == 0);
+    }
 }
 
-void ImGuiRenderer::Initialize(EditorHost &host, EditorRuntime &runtime, EditorLayoutModel &layout,
-                               EditorAssetCache &cache)
+ImGuiRenderer::ImGuiRenderer(EditorHost& host, EditorRuntime& runtime, EditorLayoutModel& layout)
+    : m_Host(host)
+    , m_Runtime(runtime)
+    , m_Layout(layout)
+    , m_Cache(host.GetService<AssetCacheService>())
+    , m_EditTimeLine(host.GetService<EditTimelineService>())
 {
-    m_Host = &host;
-    m_Runtime = &runtime;
-    m_Layout = &layout;
-    m_Cache = &cache;
+}
 
+void ImGuiRenderer::Initialize()
+{
     // Tools dockspace: accept tool windows
     m_ToolsDockClass = {};
     m_ToolsDockClass.ClassId = ImHashStr("DockClass_Tools");
@@ -65,25 +71,22 @@ void ImGuiRenderer::RenderPanels(std::span<IEditorPanel * const> panels)
         if (const ImGuiWindowClass *wc = GetDockClassForPanel(*p))
             ImGui::SetNextWindowClass(wc);
 
-        p->Draw(*m_Host);
+        p->Draw(m_Host);
     }
 }
 
 void ImGuiRenderer::RenderDialogs()
 {
-    if (!m_Host)
-        return;
-
-    m_Host->GetDialogManager().DrawDialogs();
+    m_Host.GetDialogManager().DrawDialogs();
 }
 
 void ImGuiRenderer::DrawMainMenuBar()
 {
-    if (!ImGui::BeginMainMenuBar() || !m_Host)
+    if (!ImGui::BeginMainMenuBar())
         return;
 
-    auto &shell = m_Host->GetService<ShellCommandService>();
-    auto &hotkeys = m_Host->GetService<HotkeyService>();
+    auto &shell = m_Host.GetService<ShellCommandService>();
+    auto &hotkeys = m_Host.GetService<HotkeyService>();
 
     if (ImGui::BeginMenu("File"))
     {
@@ -101,8 +104,8 @@ void ImGuiRenderer::DrawMainMenuBar()
 
     if (ImGui::BeginMenu("Edit"))
     {
-        const bool canUndo = m_Host->GetService<EditTimelineService>().CanUndo();
-        const bool canRedo = m_Host->GetService<EditTimelineService>().CanRedo();
+        const bool canUndo = m_EditTimeLine.CanUndo();
+        const bool canRedo = m_EditTimeLine.CanRedo();
 
         const std::string hkUndo = hotkeys.GetShortcutText("Editor.History.Undo");
         if (ImGui::MenuItem("Undo", hkUndo.empty() ? nullptr : hkUndo.c_str(), false, canUndo))
@@ -116,22 +119,22 @@ void ImGuiRenderer::DrawMainMenuBar()
 
     if (ImGui::BeginMenu("View"))
     {
-        bool bHierarchy = m_Layout->IsPanelVisible(EEditorPanelType::SceneHierarchy);
+        bool bHierarchy = m_Layout.IsPanelVisible(EEditorPanelType::SceneHierarchy);
         if (ImGui::MenuItem("Scene Hierarchy",
                             hotkeys.GetShortcutText("Editor.View.ToggleSceneHierarchy").c_str(), bHierarchy))
             shell.Execute("Editor.View.ToggleSceneHierarchy");
 
-        bool bConsole = m_Layout->IsPanelVisible(EEditorPanelType::Console);
+        bool bConsole = m_Layout.IsPanelVisible(EEditorPanelType::Console);
         if (ImGui::MenuItem("Console",
                             hotkeys.GetShortcutText("Editor.View.ToggleConsole").c_str(), bConsole))
             shell.Execute("Editor.View.ToggleConsole");
 
-        bool bAssetBrowser = m_Layout->IsPanelVisible(EEditorPanelType::AssetBrowser);
+        bool bAssetBrowser = m_Layout.IsPanelVisible(EEditorPanelType::AssetBrowser);
         if (ImGui::MenuItem("Asset Browser",
                             hotkeys.GetShortcutText("Editor.View.ToggleAssetBrowser").c_str(), bAssetBrowser))
             shell.Execute("Editor.View.ToggleAssetBrowser");
 
-        bool bInspector = m_Layout->IsPanelVisible(EEditorPanelType::Inspector);
+        bool bInspector = m_Layout.IsPanelVisible(EEditorPanelType::Inspector);
         if (ImGui::MenuItem("Inspector",
                             hotkeys.GetShortcutText("Editor.View.ToggleInspector").c_str(), bInspector))
             shell.Execute("Editor.View.ToggleInspector");
@@ -231,7 +234,7 @@ void ImGuiRenderer::DrawToolbar()
 
     for (const char *k: keys)
     {
-        RTextureHandle h = m_Cache->GetTexture(k);
+        RTextureHandle h = m_Cache.GetTexture(k);
         if (!h.IsValid())
             continue;
 
@@ -239,12 +242,12 @@ void ImGuiRenderer::DrawToolbar()
         ImVec2 avail = ImGui::GetContentRegionAvail();
         float hh = (avail.y > 0.f) ? avail.y : 0.f;
 
-        auto texId = (ImTextureID) m_Runtime->GetViewport().GetNativeTexture(h);
+        auto texId = (ImTextureID) m_Runtime.GetViewport().GetNativeTexture(h);
         ImGui::Image(texId, ImVec2(hh, hh), uv0, uv1);
     }
 
     std::string gizmoMode = "GizmoMode: ";
-    switch (m_Host->GetSubsystem<ViewportSubsystem>().GetGizmoMode())
+    switch (m_Host.GetSubsystem<ViewportSubsystem>().GetGizmoMode())
     {
         case GizmoEditorTool::EMode::Translate: gizmoMode += "Translate";
             break;
@@ -258,7 +261,7 @@ void ImGuiRenderer::DrawToolbar()
     ImGui::TextUnformatted(gizmoMode.c_str());
 
     std::string gizmoSpace = "GizmoSpace: ";
-    switch (m_Host->GetSubsystem<ViewportSubsystem>().GetGizmoSpace())
+    switch (m_Host.GetSubsystem<ViewportSubsystem>().GetGizmoSpace())
     {
         case GizmoEditorTool::ESpace::World: gizmoSpace += "World";
             break;
@@ -339,7 +342,7 @@ void ImGuiRenderer::DrawDockspaceAndPanels(float /*deltaTime*/)
     if (ImGui::Begin("ViewportDockHost", nullptr, vpHostFlags))
     {
         ImGuiDockNodeFlags vpDockFlags = ImGuiDockNodeFlags_None;
-        if (!m_Layout->GetShowViewportDocktabs())
+        if (!m_Layout.GetShowViewportDocktabs())
             vpDockFlags |= ImGuiDockNodeFlags_NoTabBar;
 
 

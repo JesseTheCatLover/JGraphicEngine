@@ -1,29 +1,37 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "EditorCore/EditorAssetCache.h"
+#include "EditorCore/Services/AssetCacheService.h"
 
 #include "EditorRuntime.h"
 #include "Assets/FAssetRecord.h"
 #include "EditorAPI/File/FileAPI.h"
 #include "Utilities/UPath.h"
 
-void EditorAssetCache::PreloadAll(EditorRuntime& runtime)
+AssetCacheService::~AssetCacheService()
+{
+}
+
+AssetCacheService::AssetCacheService(EditorRuntime& runtime)
+    : m_Runtime(runtime)
+{
+}
+
+void AssetCacheService::PreloadAll()
 {
     m_TextureMap.clear();
     m_Textures.clear();
 
-    ScanAndLoadTextures(runtime);
+    ScanAndLoadTextures(m_Runtime);
 }
 
-void EditorAssetCache::ScanAndLoadTextures(EditorRuntime& runtime)
+void AssetCacheService::ScanAndLoadTextures(EditorRuntime& runtime)
 {
     const std::string kTexturePathInEngine = "/Engine/Editor/Textures/";
     auto assets = runtime.GetFile().FindAllAssetsByVirtualPathPrefix(kTexturePathInEngine);
 
     for (const FAssetRecord* asset : assets)
     {
-        RTextureHandle handle =
-            runtime.GetFile().LoadEditorTextureFromFile(asset->virtualPath.c_str(), true);
+        RTextureHandle handle = runtime.GetFile().LoadEditorTextureFromFile(asset->virtualPath.c_str(), true);
 
         if (!handle.IsValid())
             continue;
@@ -36,7 +44,7 @@ void EditorAssetCache::ScanAndLoadTextures(EditorRuntime& runtime)
     }
 }
 
-RTextureHandle EditorAssetCache::GetTexture(std::string_view key) const
+RTextureHandle AssetCacheService::GetTexture(std::string_view key) const
 {
     auto it = m_TextureMap.find(std::string(key));
     if (it == m_TextureMap.end())

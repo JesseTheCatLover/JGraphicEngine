@@ -6,10 +6,27 @@
 #include "IEditorRenderer.h"
 #include "imgui.h"
 
+class EditTimelineService;
+
 class ImGuiRenderer final : public IEditorRenderer
 {
+private:
+    EditorHost& m_Host;
+    EditorRuntime& m_Runtime;
+    EditorLayoutModel& m_Layout;
+
+    AssetCacheService& m_Cache;
+    EditTimelineService& m_EditTimeLine;
+
+    ImGuiWindowClass m_ToolsDockClass{};
+    ImGuiWindowClass m_ViewportDockClass{};
+    ImGuiWindowClass m_ViewportHostDockClass{};
+    bool m_BuiltDefaultLayout = false; // optional for DockBuilder defaults
+    const ImGuiWindowClass* GetDockClassForPanel(const IEditorPanel& panel);
+
 public:
-    void Initialize(EditorHost& host, EditorRuntime& runtime, EditorLayoutModel& layout, EditorAssetCache& cache) override;
+    ImGuiRenderer(EditorHost& host, EditorRuntime& runtime, EditorLayoutModel& layout);
+    void Initialize() override;
 
     void RenderChrome(float deltaTime) override;
     void RenderPanels(std::span<IEditorPanel* const> panels) override;
@@ -19,16 +36,4 @@ private:
     void DrawMainMenuBar();
     void DrawToolbar();
     void DrawDockspaceAndPanels(float deltaTime);
-
-private:
-    EditorHost* m_Host = nullptr;
-    EditorRuntime* m_Runtime = nullptr;
-    EditorLayoutModel* m_Layout = nullptr;
-    EditorAssetCache* m_Cache = nullptr;
-
-    ImGuiWindowClass m_ToolsDockClass{};
-    ImGuiWindowClass m_ViewportDockClass{};
-    ImGuiWindowClass m_ViewportHostDockClass{};
-    bool m_BuiltDefaultLayout = false; // optional for DockBuilder defaults
-    const ImGuiWindowClass* GetDockClassForPanel(const IEditorPanel& panel);
 };
