@@ -7,12 +7,17 @@
 #include "EditorCore/IEditorService.h"
 #include "EditorAPI/Scene/FHierarchySnapshot.h"
 
+class EditorRuntime;
 class EditorHost;
 
-class HierarchyService : public IEditorService
+using ActorID = uint64_t;
+
+class SceneHierarchyService : public IEditorService
 {
 private:
     EditorHost& m_Host;
+    EditorRuntime& m_Runtime;
+
     bool m_Dirty = true;
     std::vector<FHierarchySnapshot> m_Snapshot;
     std::vector<uint64_t> m_VisibleOrder;
@@ -20,12 +25,17 @@ private:
     void RebuildVisibleOrder();
 
 public:
-    explicit HierarchyService(EditorHost& host);
+    explicit SceneHierarchyService(EditorHost& host, EditorRuntime& runtime);
 
     void Tick(float deltaTime) override;
 
     void MarkDirty() { m_Dirty = true; }
 
     [[nodiscard]] const std::vector<FHierarchySnapshot>& GetSnapshot() const { return m_Snapshot; }
-    [[nodiscard]] const std::vector<uint64_t>& GetVisibleOrder() const { return m_VisibleOrder; }
+    [[nodiscard]] const std::vector<ActorID>& GetVisibleOrder() const { return m_VisibleOrder; }
+
+    void ReparentActor(ActorID childID, ActorID newParentID);
+    void DestroyActor(ActorID actorID);
+    void RenameActor(ActorID actorID, const std::string& newName);
+    void ToggleVisibility(ActorID actorID);
 };

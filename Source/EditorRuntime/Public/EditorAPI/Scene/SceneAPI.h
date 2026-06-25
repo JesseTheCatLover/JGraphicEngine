@@ -46,10 +46,16 @@ public:
     [[nodiscard]] std::string GetActorName(ActorID id) const;
     void SetActorName(ActorID id, const std::string& newName);
 
-    [[nodiscard]] std::vector<FHierarchySnapshot>
-        BuildHierarchySnapshot() const;
+    bool ReparentActor(ActorID childID, ActorID newParentID);
+    bool ToggleActorVisibility(ActorID actorID);
+
+    void DeleteActorsImmediately(const std::vector<ActorID> &ids);
+
+    [[nodiscard]] std::vector<FHierarchySnapshot> BuildHierarchySnapshot() const;
     void SetSelectedActors(const std::vector<ActorID>& ids);
+
     void DeleteActors(const std::vector<ActorID>& ids);
+
     void DuplicateActors(const std::vector<ActorID>& ids);
 
     bool RaycastIntoTheScene(const FRay& ray, FRaycastHit& outHit);

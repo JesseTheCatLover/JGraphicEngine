@@ -13,7 +13,7 @@
 #include "Tools/CameraEditorTool.h"
 #include "Tools/ToolService.h"
 #include "EditorCore/Services/EditTimelineService.h"
-#include "EditorCore/Services/HierarchyService.h"
+#include "EditorCore/Services/SceneHierarchyService.h"
 #include "EditorCore/Services/ScenePickingService.h"
 #include "EditorCore/Services/SceneQueryService.h"
 #include "EditorCore/Services/Selection/SelectionService.h"
@@ -30,7 +30,7 @@ ViewportController::ViewportController(PanelID id, EditorHost& host, EditorRunti
     , m_Tools(tools)
     , m_SceneSelection(m_Host.GetService<SelectionService>().GetSceneActorSelection())
     , m_Picker(m_Host.GetService<ScenePickingService>())
-    , m_Hierarchy(m_Host.GetService<HierarchyService>())
+    , m_Hierarchy(m_Host.GetService<SceneHierarchyService>())
     , m_ViewportSubsystem(m_Host.GetSubsystem<ViewportSubsystem>())
 {
 }
@@ -463,7 +463,7 @@ void ViewportController::HandleActorPicking(const FViewportPanelInput& input,
                                            CameraEditorTool* cam,
                                            const ScenePickingService& picker,
                                            TSelectionModel<ActorID>& selection,
-                                           const HierarchyService& hierarchy)
+                                           const SceneHierarchyService& hierarchy)
 {
     if (!CanConsumeInputThisFrame(input)) return;
     if (!cam) return;

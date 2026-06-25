@@ -27,7 +27,7 @@ public:
     , m_Runtime(runtime)
     , m_Channel([this](PanelID id)
     {
-        return std::make_unique<AssetBrowserController>(id, m_Host, m_Runtime);
+        return MakeUnique<AssetBrowserController>(id, m_Host, m_Runtime);
     })
     {}
 

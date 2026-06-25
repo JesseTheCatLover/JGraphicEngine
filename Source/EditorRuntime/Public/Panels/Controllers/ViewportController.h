@@ -10,7 +10,7 @@
 #include "Utilities/UDynamicID.h"
 
 class ViewportSubsystem;
-class HierarchyService;
+class SceneHierarchyService;
 class ScenePickingService;
 template<typename T>
 class TSelectionModel;
@@ -45,7 +45,7 @@ private:
     // Service caches
     TSelectionModel<ActorID>& m_SceneSelection;
     ScenePickingService& m_Picker;
-    HierarchyService& m_Hierarchy;
+    SceneHierarchyService& m_Hierarchy;
     ViewportSubsystem& m_ViewportSubsystem;
 
     // One camera tool per panel
@@ -106,7 +106,7 @@ private:
     void SubmitView(const FRenderView& view);
 
     void HandleActorPicking(const FViewportPanelInput& input, CameraEditorTool* cam, const ScenePickingService& picker,
-                            TSelectionModel<ActorID>& selection, const HierarchyService& hierarchy);
+                            TSelectionModel<ActorID>& selection, const SceneHierarchyService& hierarchy);
 
     void EnsureGizmoIDs();
     bool HandleGizmo(const FViewportPanelInput& input, const CameraEditorTool& cam, const FRenderView& view,

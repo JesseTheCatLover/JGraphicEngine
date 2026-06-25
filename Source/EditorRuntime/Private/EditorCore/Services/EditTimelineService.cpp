@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-#include "EditorCore/Services/HierarchyService.h"
+#include "EditorCore/Services/SceneHierarchyService.h"
 #include "EditorCore/Services/ShellCommandService.h"
 #include "EditorCore/EditorHost.h"
 
@@ -86,7 +86,7 @@ void EditTimelineService::ApplyEffects(const IUndoableAction &action)
     const EEditEffect fx = action.GetEffects();
 
     if (HasEffect(fx, EEditEffect::Hierarchy))
-        m_Host.GetService<HierarchyService>().MarkDirty();
+        m_Host.GetService<SceneHierarchyService>().MarkDirty();
     //
     // if (HasEffect(fx, EEditEffect::Inspector))
     //     m_Host.GetService<InspectorService>().MarkDirty();

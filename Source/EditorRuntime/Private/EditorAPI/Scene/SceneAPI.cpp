@@ -182,6 +182,52 @@ void EditorSceneAPI::SetActorName(ActorID id, const std::string &newName)
         actor->SetActorName(newName);
 }
 
+bool EditorSceneAPI::ReparentActor(ActorID childID, ActorID newParentID)
+{
+    JActor* child = TryGetActor(childID);
+    if (!child) return false;
+
+    // Dropping onto the background/root (Target ID 0)
+    if (newParentID == 0)
+    {
+        // true = Keep world transform when detaching
+        child->DetachFromParentActor(true);
+        return true;
+    }
+
+    // Dropping onto another actor
+    JActor* parent = TryGetActor(newParentID);
+    if (parent)
+    {
+        // true = Keep world transform when attaching
+        return child->AttachToActor(parent, true);
+    }
+
+    return false;
+}
+
+void EditorSceneAPI::DeleteActors(const std::vector<ActorID>& ids)
+{
+    for (ActorID id : ids)
+    {
+        if (JActor* actor = TryGetActor(id))
+        {
+            // Flags the actor to be cleaned up safely by the scene manager
+            actor->DestroyActor();
+        }
+    }
+}
+
+bool EditorSceneAPI::ToggleActorVisibility(ActorID id)
+{
+    if (JActor* actor = TryGetActor(id))
+    {
+        actor->SetVisible(!actor->IsVisible());
+        return true;
+    }
+    return false;
+}
+
 std::vector<FHierarchySnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
 {
     std::vector<FHierarchySnapshot> result;
@@ -203,7 +249,7 @@ std::vector<FHierarchySnapshot> EditorSceneAPI::BuildHierarchySnapshot() const
                             ? actor->GetParentActor()->GetRuntimeID()
                             : 0;
         info.name = actor->GetActorName();
-        info.hasChildren = !actor->GetChildActors().empty();
+        info.bHasChildren = !actor->GetChildActors().empty();
 
         result.push_back(std::move(info));
     }
@@ -219,7 +265,7 @@ void EditorSceneAPI::SetSelectedActors(const std::vector<ActorID> &ids)
     m_Context.GetEditorSelectionState().SetSelectedActors(ids);
 }
 
-void EditorSceneAPI::DeleteActors(const std::vector<ActorID> &ids)
+void EditorSceneAPI::DeleteActorsImmediately(const std::vector<ActorID> &ids)
 {
     for (ActorID id : ids)
         m_SceneManager.ImmediateDestroyActor(id);

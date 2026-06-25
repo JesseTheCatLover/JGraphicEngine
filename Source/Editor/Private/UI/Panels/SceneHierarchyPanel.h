@@ -26,6 +26,9 @@ class SceneHierarchyPanel : public IEditorPanel
     std::unordered_set<ActorID> m_OpenNodes;
     ActorID m_ScrollTo = 0;
 
+    ActorID m_RenamingNodeID = 0;
+    char m_RenameBuffer[256] = {0};
+
     void ApplyRevealRequest(const std::vector<FHierarchySnapshot>& actors, ActorID reveal);
     void DrawActorNode(const FHierarchySnapshot& node,
                        const std::vector<FHierarchySnapshot>& allActors,

@@ -3,7 +3,7 @@
 #include "Panels/Controllers/SceneHierarchyController.h"
 
 #include "EditorCore/EditorHost.h"
-#include "EditorCore/Services/HierarchyService.h"
+#include "EditorCore/Services/SceneHierarchyService.h"
 #include "EditorCore/Services/Selection/SelectionService.h"
 #include "Panels/Controllers/Inputs/FHierarchyPanelInput.h"
 #include "Panels/Controllers/Outputs/FHierarchyOutput.h"
@@ -15,7 +15,7 @@ SceneHierarchyController::SceneHierarchyController(PanelID id, EditorHost &host)
 
 void SceneHierarchyController::Update(float deltaTime, const FHierarchyPanelInput& input, FHierarchyOutput& out)
 {
-    auto& hierarchy = m_Host.GetService<HierarchyService>();
+    auto& hierarchy = m_Host.GetService<SceneHierarchyService>();
     auto& selection = m_Host.GetService<SelectionService>().GetSceneActorSelection();
 
     const auto& snap = hierarchy.GetSnapshot();
@@ -40,4 +40,28 @@ void SceneHierarchyController::Update(float deltaTime, const FHierarchyPanelInpu
 
     // Reveal (viewport selection -> hierarchy expand/scroll)
     out.revealActorID = selection.ConsumeRevealRequest();
+
+    // Reparenting
+    if (input.bReparentRequested && input.draggedActor != input.targetParentActor)
+    {
+        hierarchy.ReparentActor(input.draggedActor, input.targetParentActor);
+    }
+
+    // Deletion
+    if (input.bDeleteRequested)
+    {
+        hierarchy.DestroyActor(input.targetActorToModify);
+    }
+
+    // Renaming
+    if (input.bRenameRequested)
+    {
+        hierarchy.RenameActor(input.targetActorToModify, input.newName);
+    }
+
+    // Visibility
+    if (input.bToggleVisibilityRequested)
+    {
+        hierarchy.ToggleVisibility(input.targetActorToModify);
+    }
 }

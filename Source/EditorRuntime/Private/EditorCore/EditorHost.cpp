@@ -8,7 +8,7 @@
 #include "Tools/ToolService.h"
 #include "EditorCore/Services/AssetBrowser/AssetBrowserService.h"
 #include "EditorCore/Services/EditTimelineService.h"
-#include "EditorCore/Services/HierarchyService.h"
+#include "EditorCore/Services/SceneHierarchyService.h"
 #include "EditorCore/Services/HotkeyService.h"
 #include "EditorCore/Services/ScenePickingService.h"
 #include "EditorCore/Services/SceneQueryService.h"
@@ -47,7 +47,7 @@ void EditorHost::RegisterCoreServices()
     m_Services->Register<SceneQueryService>(m_EditorRuntime);
     m_Services->Register<SelectionService>();
     m_Services->Register<SceneSelectionSynchronizer>(*this, m_EditorRuntime);
-    m_Services->Register<HierarchyService>(*this);
+    m_Services->Register<SceneHierarchyService>(*this, m_EditorRuntime);
     m_Services->Register<ScenePickingService>(*this);
     m_Services->Register<AssetBrowserService>(*this, m_EditorRuntime.GetFile());
     m_Services->Register<EditTimelineService>(*this);

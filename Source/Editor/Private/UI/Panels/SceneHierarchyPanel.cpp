@@ -51,44 +51,135 @@ void SceneHierarchyPanel::DrawActorNode(const FHierarchySnapshot& node,
         ImGuiTreeNodeFlags_OpenOnArrow |
         ImGuiTreeNodeFlags_SpanAvailWidth;
 
-    if (!node.hasChildren)
+    if (!node.bHasChildren)
         flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
     if (selection.IsSelected(node.id))
         flags |= ImGuiTreeNodeFlags_Selected;
 
-    const bool wantOpen = (m_OpenNodes.count(node.id) > 0);
-    ImGui::SetNextItemOpen(wantOpen, ImGuiCond_Always);
-
-    const bool opened = ImGui::TreeNodeEx((void*)(intptr_t)node.id, flags, "%s", node.name.c_str());
-
-    if (ImGui::IsItemToggledOpen())
+    // --- Node Expansion State ---
+    // Only force the node open if the backend specifically requested a reveal.
+    // Otherwise, we let ImGui handle the standard user click toggles internally.
+    if (m_OpenNodes.count(node.id) > 0)
     {
-        if (opened) m_OpenNodes.insert(node.id);
-        else        m_OpenNodes.erase(node.id);
+        ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+        m_OpenNodes.erase(node.id); // Consume the request so it isn't locked open forever
     }
 
-    if (m_ScrollTo == node.id)
+    // 1. Draw the Node (or an InputText if we are renaming)
+    bool bOpened = false;
+    if (m_RenamingNodeID == node.id)
     {
-        ImGui::SetScrollHereY(0.25f);
-        m_ScrollTo = 0;
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 30.0f);
+        if (ImGui::InputText("##Rename", m_RenameBuffer, sizeof(m_RenameBuffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+        {
+            ioInput.bRenameRequested = true;
+            ioInput.targetActorToModify = node.id;
+            ioInput.newName = m_RenameBuffer;
+            m_RenamingNodeID = 0;
+        }
+
+        if (!ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            m_RenamingNodeID = 0;
+        }
+
+        bOpened = ImGui::TreeNodeEx((void*)(intptr_t)node.id, flags, "");
+    }
+    else
+    {
+        bOpened = ImGui::TreeNodeEx((void*)(intptr_t)node.id, flags, "%s", node.name.c_str());
     }
 
-    // click selection (ignore clicks that just toggled open)
-    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+    // =======================================================================================
+    // --- Order of Operations ---
+    // ALL context menus, drag/drops, and click checks MUST happen immediately after TreeNodeEx
+    // =======================================================================================
+
+    // Click selection
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen() && m_RenamingNodeID != node.id)
     {
         m_bClickedAnyItemThisFrame = true;
         ioInput.bClickedItem = true;
         ioInput.clickedActor = node.id;
     }
 
-    if (opened && node.hasChildren)
+    // Context Menu (Right Click)
+    if (ImGui::BeginPopupContextItem())
+    {
+        if (ImGui::MenuItem("Rename"))
+        {
+            m_RenamingNodeID = node.id;
+            strncpy(m_RenameBuffer, node.name.c_str(), sizeof(m_RenameBuffer));
+        }
+        if (ImGui::MenuItem("Delete"))
+        {
+            ioInput.bDeleteRequested = true;
+            ioInput.targetActorToModify = node.id;
+        }
+        ImGui::EndPopup();
+    }
+
+    // --- CACHE THE NODE STATE IMMEDIATELY ---
+    bool bNodeClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+    bool bNodeToggled = ImGui::IsItemToggledOpen();
+
+    // Drag and Drop Source
+    if (ImGui::BeginDragDropSource())
+    {
+        ImGui::SetDragDropPayload("JENGINE_ACTOR_ID", &node.id, sizeof(ActorID));
+        ImGui::Text("Move %s", node.name.c_str());
+        ImGui::EndDragDropSource();
+    }
+
+    // Drag and Drop Target
+    if (ImGui::BeginDragDropTarget())
+    {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("JENGINE_ACTOR_ID"))
+        {
+            ActorID droppedActorID = *(const ActorID*)payload->Data;
+            ioInput.bReparentRequested = true;
+            ioInput.draggedActor = droppedActorID;
+            ioInput.targetParentActor = node.id;
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    // --- Button Overlap Hit-Testing ---
+    // Tell ImGui to allow the upcoming button to be clicked, even though SpanAvailWidth is covering the line
+    ImGui::SetItemAllowOverlap();
+
+    // 2. Visibility Toggle (Right-aligned)
+    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 24.0f);
+
+    const char* visLabel = node.bVisible ? "[O]" : "[-]";
+
+    ImGui::PushID((int)node.id);
+    if (ImGui::SmallButton(visLabel))
+    {
+        ioInput.bToggleVisibilityRequested = true;
+        ioInput.targetActorToModify = node.id;
+    }
+    ImGui::PopID();
+
+    // Scroll reveal
+    if (m_ScrollTo == node.id)
+    {
+        ImGui::SetScrollHereY(0.25f);
+        m_ScrollTo = 0;
+    }
+
+    // 3. Draw Children
+    if (bOpened && node.bHasChildren)
     {
         for (const auto& child : allActors)
             if (child.parentID == node.id)
                 DrawActorNode(child, allActors, ioInput, selection);
 
-        ImGui::TreePop();
+        if (node.bHasChildren)
+        {
+            ImGui::TreePop();
+        }
     }
 }
 

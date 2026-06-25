@@ -12,7 +12,7 @@ struct FHierarchySnapshot
     ID parentID = 0;
     std::string name;
 
-    bool hasChildren = false;
-    bool isHidden = false;
-    bool isLocked = false;
+    bool bHasChildren = false;
+    bool bVisible = false;
+    bool bLocked = false;
 };

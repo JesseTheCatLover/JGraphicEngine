@@ -18,7 +18,7 @@ class AssetBrowserPanel final : public IEditorPanel
 public:
     AssetBrowserPanel() = default;
 
-    [[nodiscard]] const char* GetName() const override { return "AssetBrowser###AssetBrowser"; }
+    [[nodiscard]] const char* GetName() const override { return "Asset Browser###AssetBrowser"; }
     [[nodiscard]] const char* GetPanelKey() const override { return "AssetBrowser"; }
     [[nodiscard]] EPanelDockGroup GetDockGroup() const override { return EPanelDockGroup::Single; }
 
