@@ -28,6 +28,7 @@ private:
     AssetBrowserViewController m_ContentViewController;
 
     RTextureHandle m_FolderIcon;
+    RTextureHandle m_FolderEmptyIcon;
     RTextureHandle m_AssetIcon;
 
     std::vector<std::string> m_PreviousHistory;

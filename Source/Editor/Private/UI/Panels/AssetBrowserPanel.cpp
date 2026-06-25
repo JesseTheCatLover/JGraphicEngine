@@ -59,6 +59,32 @@ namespace
         return changed;
     }
 
+    static std::string TruncateWithEllipsis(const std::string& text, float maxWidth)
+    {
+        const std::string ellipsis = "...";
+
+        if (ImGui::CalcTextSize(text.c_str()).x <= maxWidth)
+            return text;
+
+        std::string result;
+        result.reserve(text.size());
+
+        for (const char i : text)
+        {
+            result.push_back(i);
+
+            std::string test = result + ellipsis;
+
+            if (ImGui::CalcTextSize(test.c_str()).x > maxWidth)
+            {
+                result.pop_back();
+                return result + ellipsis;
+            }
+        }
+
+        return result + ellipsis;
+    }
+
     static void NormalizePathSlashes(std::string& s)
     {
         for (char& c : s)
@@ -586,13 +612,34 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSele
         ImGui::EndPopup();
     }
 
+    const ImVec2 center(
+        p0.x + tileSize.x * 0.5f,
+        p0.y + tileSize.y * 0.5f
+    );
+
+    const ImVec2 iconSize(m_IconSize, m_IconSize);
+
     const ImVec2 iconP0(
-        p0.x + m_GridPadding,
-        p0.y + m_GridPadding);
+        center.x - iconSize.x * 0.5f,
+        p0.y + m_GridPadding
+    );
 
     const ImVec2 iconP1(
-        iconP0.x + m_IconSize,
-        iconP0.y + m_IconSize);
+        iconP0.x + iconSize.x,
+        iconP0.y + iconSize.y
+    );
+
+    const float maxTextWidth = tileSize.x - 8.0f;
+
+    const std::string displayName =
+    TruncateWithEllipsis(node.GetDisplayName(), maxTextWidth);
+
+    const ImVec2 textSize = ImGui::CalcTextSize(displayName.c_str());
+
+    const ImVec2 textPos(
+        p0.x + (tileSize.x - textSize.x) * 0.5f,
+        iconP1.y + 6.0f
+    );
 
     if (bSelected)
     {
@@ -603,18 +650,18 @@ void AssetBrowserPanel::DrawFolderTile(const FAssetBrowserNode& node, bool bSele
             6.0f);
     }
 
+    auto icon = node.HasAnyChildren() ? output.icons.folder : output.icons.folderEmpty;
     dl->AddImage(
-       (ImTextureID)output.icons.folder,
+       (ImTextureID)icon,
        iconP0,
        iconP1,
        ImVec2(0,1),
-       ImVec2(1,0));
+       ImVec2(1, 0));
 
     dl->AddText(
-        ImVec2(p0.x + m_GridPadding,
-               iconP1.y + 6.0f),
-        IM_COL32(230,230,230,255),
-        node.GetDisplayName().c_str());
+        textPos,
+        IM_COL32(230, 230, 230, 255),
+        displayName.c_str());
 
     ImGui::PopID();
 }
@@ -727,13 +774,34 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
         ImGui::EndPopup();
     }
 
+    const ImVec2 center(
+        p0.x + tileSize.x * 0.5f,
+        p0.y + tileSize.y * 0.5f
+    );
+
+    const ImVec2 iconSize(m_IconSize, m_IconSize);
+
     const ImVec2 iconP0(
-        p0.x + m_GridPadding,
-        p0.y + m_GridPadding);
+        center.x - iconSize.x * 0.5f,
+        p0.y + m_GridPadding
+    );
 
     const ImVec2 iconP1(
-        iconP0.x + m_IconSize,
-        iconP0.y + m_IconSize);
+        iconP0.x + iconSize.x,
+        iconP0.y + iconSize.y
+    );
+
+    const float maxTextWidth = tileSize.x - 8.0f;
+
+    const std::string displayName =
+    TruncateWithEllipsis(node.GetDisplayName(), maxTextWidth);
+
+    const ImVec2 textSize = ImGui::CalcTextSize(displayName.c_str());
+
+    const ImVec2 textPos(
+        p0.x + (tileSize.x - textSize.x) * 0.5f,
+        iconP1.y + 6.0f
+    );
 
     if (bSelected)
     {
@@ -748,14 +816,13 @@ void AssetBrowserPanel::DrawAssetTile(const FAssetBrowserNode& node, bool bSelec
        (ImTextureID)output.icons.asset,
        iconP0,
        iconP1,
-       ImVec2(0,1),
-       ImVec2(1,0));
+       ImVec2(0, 1),
+       ImVec2(1, 0));
 
     dl->AddText(
-        ImVec2(p0.x + m_GridPadding,
-               iconP1.y + 6.0f),
+        textPos,
         IM_COL32(230, 230, 230, 255),
-        node.GetDisplayName().c_str());
+        displayName.c_str());
 
     ImGui::PopID();
 }

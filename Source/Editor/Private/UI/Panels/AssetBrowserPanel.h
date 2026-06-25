@@ -33,7 +33,7 @@ private:
 
     // Grid view
     float m_IconSize = 64.0f;
-    float m_GridPadding = 12.0f;
+    float m_GridPadding = 8.0f;
 
     // Search buffer (kept across frames)
     char m_SearchBuf[256] = {};

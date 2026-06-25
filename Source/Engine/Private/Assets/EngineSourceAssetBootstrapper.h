@@ -7,7 +7,7 @@ class ProjectContext;
 class VirtualPathMounter;
 class AssetImportSubsystem;
 
-class EngineSourceAssetBootstrapper
+class EngineSourceAssetBootstrapper // TODO: Make the source file processing smarter: - Detect old vs new version, - Remove old version
 {
 public:
     static bool Bootstrap(AssetImportSubsystem& assetImporter,

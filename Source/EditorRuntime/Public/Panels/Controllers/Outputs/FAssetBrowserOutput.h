@@ -9,6 +9,7 @@
 struct FAssetBrowserIcons
 {
     void* folder = nullptr;
+    void* folderEmpty = nullptr;
     void* asset = nullptr;
 };
 

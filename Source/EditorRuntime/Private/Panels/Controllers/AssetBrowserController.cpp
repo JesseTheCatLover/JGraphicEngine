@@ -46,6 +46,7 @@ AssetBrowserController::AssetBrowserController(PanelID id, EditorHost& host, Edi
     auto& cache = m_Host.GetService<AssetCacheService>();
 
     m_FolderIcon = cache.GetTexture("AssetBrowser/FolderIcon");
+    m_FolderEmptyIcon = cache.GetTexture("AssetBrowser/FolderEmptyIcon");
     m_AssetIcon = cache.GetTexture("AssetBrowser/AssetIcon");
 }
 
@@ -111,6 +112,7 @@ void AssetBrowserController::Update(float /*deltaTime*/, const FAssetBrowserPane
     }
 
     out.icons.folder = m_Runtime.GetViewport().GetNativeTexture(m_FolderIcon);
+    out.icons.folderEmpty = m_Runtime.GetViewport().GetNativeTexture(m_FolderEmptyIcon);
     out.icons.asset = m_Runtime.GetViewport().GetNativeTexture(m_AssetIcon);
 
     out.bValid = true;
