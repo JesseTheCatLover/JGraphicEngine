@@ -157,7 +157,8 @@ enum class REValueTag : uint8_t
     Transform,
 
     EnumInt64,     // enum numeric
-    ObjectUUID     // for ObjectPtr set by UUID
+    ObjectUUID,    // for ObjectPtr set by UUID
+    VariantArray
 };
 
 struct REVariant
@@ -177,6 +178,9 @@ struct REVariant
     FVector4   v4{};
     FQuat      q{};
     FTransform t{};
+
+    // Generic array storage
+    std::vector<REVariant> arrayElements;
 
     struct
     {
@@ -392,6 +396,9 @@ private:
     void ResolvePropertyKinds(REType& owner);
     void ResolveEnumNumericValues();
     static std::string NormalizeTypeName(std::string s);
+
+    static bool ReadVariantFromMemory(const void* ptr, const std::string& typeName, const REProperty* propMeta, REVariant& out);
+    static bool WriteVariantToMemory(void* ptr, const std::string& typeName, const REProperty* propMeta, const REVariant& v);
 
     // We store REType in unique_ptr to make returned const REType* stable forever.
     std::unordered_map<std::type_index, std::unique_ptr<REType>> m_Types;

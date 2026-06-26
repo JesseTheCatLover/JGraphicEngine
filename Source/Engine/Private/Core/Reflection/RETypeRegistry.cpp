@@ -95,99 +95,142 @@ int64_t RETypeRegistry::EnumRaw_ToI64(const REVariant &v)
 
 bool RETypeRegistry::ReadVariantFromProperty(const REProperty &prop, const void *basePtr, REVariant &out)
 {
-    out = {};
+    const void* fieldPtr = prop.getConstPtr ? prop.getConstPtr(basePtr) : nullptr;
+    if (!fieldPtr) return false;
 
-        const void* fieldPtr = prop.getConstPtr ? prop.getConstPtr(basePtr) : nullptr;
-        if (!fieldPtr)
-            return false;
+    // --- HANDLE ARRAYS DYNAMICALLY ---
+    if (prop.kind == REPropKind::Array && prop.array.size && prop.array.getConst)
+    {
+        out = {};
+        out.tag = REValueTag::VariantArray;
 
-        if (prop.kind == REPropKind::ObjectPtr)
+        const size_t count = prop.array.size(const_cast<void*>(fieldPtr));
+        out.arrayElements.reserve(count);
+
+        for (size_t i = 0; i < count; ++i)
         {
-            out.tag = REValueTag::ObjectUUID;
-            auto* obj = *reinterpret_cast<JCoreObject* const*>(fieldPtr);
-            out.s = obj ? obj->GetUUID() : "";
-            return true;
+            const void* elemPtr = prop.array.getConst(fieldPtr, i);
+            REVariant elemVar;
+            if (ReadVariantFromMemory(elemPtr, prop.elementTypeName, &prop, elemVar))
+            {
+                out.arrayElements.push_back(std::move(elemVar));
+            }
         }
+        return true;
+    }
 
-        if (prop.kind == REPropKind::Enum)
-        {
-            // read EXACT underlying bytes
-            const uint8_t size = prop.valueSize ? prop.valueSize : 8;
-            const size_t n = std::min<size_t>(size, 8);
-
-            out = {};
-            out.tag = REValueTag::EnumInt64;
-            out.enumRaw.size = size;
-            out.enumRaw.signedness = prop.bSigned;
-
-            std::memset(out.enumRaw.bytes, 0, sizeof(out.enumRaw.bytes));
-            std::memcpy(out.enumRaw.bytes, fieldPtr, n);
-
-            // compute i64 for UI lookup (sign-extend if needed)
-            out.i64 = EnumRaw_ToI64(out);
-            return true;
-        }
-
-        const std::string& tn = prop.typeName;
-
-        if (tn == "bool")        { out.tag = REValueTag::Bool;   out.b = *reinterpret_cast<const bool*>(fieldPtr); return true; }
-        if (tn == "int" || tn == "int32") { out.tag = REValueTag::Int; out.i32 = *reinterpret_cast<const int32_t*>(fieldPtr); return true; }
-        if (tn == "int64")       { out.tag = REValueTag::Int64;  out.i64 = *reinterpret_cast<const int64_t*>(fieldPtr); return true; }
-        if (tn == "size_t")      { out.tag = REValueTag::Int64;  out.i64 = (int64_t)*reinterpret_cast<const size_t*>(fieldPtr); return true; }
-        if (tn == "float")       { out.tag = REValueTag::Float;  out.f32 = *reinterpret_cast<const float*>(fieldPtr); return true; }
-        if (tn == "double")      { out.tag = REValueTag::Double; out.f64 = *reinterpret_cast<const double*>(fieldPtr); return true; }
-        if (tn == "std::string") { out.tag = REValueTag::String; out.s   = *reinterpret_cast<const std::string*>(fieldPtr); return true; }
-
-        if (tn == "FVector2")    { out.tag = REValueTag::Vec2; out.v2 = *reinterpret_cast<const FVector2*>(fieldPtr); return true; }
-        if (tn == "FVector3")    { out.tag = REValueTag::Vec3; out.v3 = *reinterpret_cast<const FVector3*>(fieldPtr); return true; }
-        if (tn == "FVector4")    { out.tag = REValueTag::Vec4; out.v4 = *reinterpret_cast<const FVector4*>(fieldPtr); return true; }
-        if (tn == "FQuat")       { out.tag = REValueTag::Quat; out.q  = *reinterpret_cast<const FQuat*>(fieldPtr); return true; }
-        if (tn == "FTransform")  { out.tag = REValueTag::Transform; out.t = *reinterpret_cast<const FTransform*>(fieldPtr); return true; }
-
-        return false;
+    // --- HANDLE SINGULAR VALUES ---
+    return ReadVariantFromMemory(fieldPtr, prop.typeName, &prop, out);
 }
 
 bool RETypeRegistry::ApplyVariantToProperty(const REProperty &prop, void *basePtr, const REVariant &v)
 {
-        if (prop.setFromValue)
-            return prop.setFromValue(basePtr, v);
+    if (prop.setFromValue) return prop.setFromValue(basePtr, v);
 
-        void* fieldPtr = prop.getPtr ? prop.getPtr(basePtr) : nullptr;
-        if (!fieldPtr) return false;
+    void* fieldPtr = prop.getPtr ? prop.getPtr(basePtr) : nullptr;
+    if (!fieldPtr) return false;
 
-        const std::string& tn = prop.typeName;
+    // --- HANDLE ARRAYS DYNAMICALLY ---
+    if (prop.kind == REPropKind::Array && v.tag == REValueTag::VariantArray)
+    {
+        prop.array.resize(fieldPtr, v.arrayElements.size());
+        for (size_t i = 0; i < v.arrayElements.size(); ++i)
+        {
+            void* elemPtr = prop.array.get(fieldPtr, i);
+            WriteVariantToMemory(elemPtr, prop.elementTypeName, &prop, v.arrayElements[i]);
+        }
+        return true;
+    }
 
-        if (tn == "bool" && v.tag == REValueTag::Bool) { *reinterpret_cast<bool*>(fieldPtr) = v.b; return true; }
+    // --- HANDLE SINGULAR VALUES ---
+    return WriteVariantToMemory(fieldPtr, prop.typeName, &prop, v);
+}
 
-        if ((tn == "int" || tn == "int32") && v.tag == REValueTag::Int) { *reinterpret_cast<int32_t*>(fieldPtr) = v.i32; return true; }
-        if (tn == "int64" && v.tag == REValueTag::Int64) { *reinterpret_cast<int64_t*>(fieldPtr) = v.i64; return true; }
-        if (tn == "size_t" && v.tag == REValueTag::Int64) { *reinterpret_cast<size_t*>(fieldPtr) = (size_t)v.i64; return true; }
 
-        if (tn == "float" && v.tag == REValueTag::Float)
+bool RETypeRegistry::ReadVariantFromMemory(const void* ptr, const std::string& typeName,
+    const REProperty* propMeta, REVariant& out)
+{
+    out = {};
+
+    if (!ptr) return false;
+
+    if (propMeta->kind == REPropKind::ObjectPtr)
+    {
+        out.tag = REValueTag::ObjectUUID;
+        auto* obj = *reinterpret_cast<JCoreObject* const*>(ptr);
+        out.s = obj ? obj->GetUUID() : "";
+        return true;
+    }
+
+    if (propMeta->kind == REPropKind::Enum)
+    {
+        if (!propMeta) return false;
+        const uint8_t size = propMeta->valueSize ? propMeta->valueSize : 8;
+        const size_t n = std::min<size_t>(size, 8);
+
+        out.tag = REValueTag::EnumInt64;
+        out.enumRaw.size = size;
+        out.enumRaw.signedness = propMeta->bSigned;
+
+        std::memset(out.enumRaw.bytes, 0, sizeof(out.enumRaw.bytes));
+        std::memcpy(out.enumRaw.bytes, ptr, n);
+
+        out.i64 = EnumRaw_ToI64(out);
+        return true;
+    }
+
+    if (typeName == "bool")        { out.tag = REValueTag::Bool;   out.b = *reinterpret_cast<const bool*>(ptr); return true; }
+    if (typeName == "int" || typeName == "int32") { out.tag = REValueTag::Int; out.i32 = *reinterpret_cast<const int32_t*>(ptr); return true; }
+    if (typeName == "int64")       { out.tag = REValueTag::Int64;  out.i64 = *reinterpret_cast<const int64_t*>(ptr); return true; }
+    if (typeName == "size_t")      { out.tag = REValueTag::Int64;  out.i64 = (int64_t)*reinterpret_cast<const size_t*>(ptr); return true; }
+    if (typeName == "float")       { out.tag = REValueTag::Float;  out.f32 = *reinterpret_cast<const float*>(ptr); return true; }
+    if (typeName == "double")      { out.tag = REValueTag::Double; out.f64 = *reinterpret_cast<const double*>(ptr); return true; }
+    if (typeName == "std::string") { out.tag = REValueTag::String; out.s   = *reinterpret_cast<const std::string*>(ptr); return true; }
+
+    if (typeName == "FVector2")    { out.tag = REValueTag::Vec2; out.v2 = *reinterpret_cast<const FVector2*>(ptr); return true; }
+    if (typeName == "FVector3")    { out.tag = REValueTag::Vec3; out.v3 = *reinterpret_cast<const FVector3*>(ptr); return true; }
+    if (typeName == "FVector4")    { out.tag = REValueTag::Vec4; out.v4 = *reinterpret_cast<const FVector4*>(ptr); return true; }
+    if (typeName == "FQuat")       { out.tag = REValueTag::Quat; out.q  = *reinterpret_cast<const FQuat*>(ptr); return true; }
+    if (typeName == "FTransform")  { out.tag = REValueTag::Transform; out.t = *reinterpret_cast<const FTransform*>(ptr); return true; }
+
+    return false;
+}
+bool RETypeRegistry::WriteVariantToMemory(void* ptr, const std::string& typeName, const REProperty* propMeta,
+    const REVariant& v)
+{
+    if (!ptr) return false;
+
+    if (typeName == "bool" && v.tag == REValueTag::Bool) { *reinterpret_cast<bool*>(ptr) = v.b; return true; }
+
+        if ((typeName == "int" || typeName == "int32") && v.tag == REValueTag::Int) { *reinterpret_cast<int32_t*>(ptr) = v.i32; return true; }
+        if (typeName == "int64" && v.tag == REValueTag::Int64) { *reinterpret_cast<int64_t*>(ptr) = v.i64; return true; }
+        if (typeName == "size_t" && v.tag == REValueTag::Int64) { *reinterpret_cast<size_t*>(ptr) = (size_t)v.i64; return true; }
+
+        if (typeName == "float" && v.tag == REValueTag::Float)
         {
             float x = v.f32;
-            const auto& rm = prop.GetResolvedMeta();
+            const auto& rm = propMeta->GetResolvedMeta();
             if (rm.bHasClamp)
             {
                 x = std::max(x, rm.clampMin);
                 x = std::min(x, rm.clampMax);
             }
-            *reinterpret_cast<float*>(fieldPtr) = x;
+            *reinterpret_cast<float*>(ptr) = x;
             return true;
         }
 
-        if (tn == "double" && v.tag == REValueTag::Double) { *reinterpret_cast<double*>(fieldPtr) = v.f64; return true; }
-        if (tn == "std::string" && v.tag == REValueTag::String) { *reinterpret_cast<std::string*>(fieldPtr) = v.s; return true; }
+        if (typeName == "double" && v.tag == REValueTag::Double) { *reinterpret_cast<double*>(ptr) = v.f64; return true; }
+        if (typeName == "std::string" && v.tag == REValueTag::String) { *reinterpret_cast<std::string*>(ptr) = v.s; return true; }
 
-        if (tn == "FVector2" && v.tag == REValueTag::Vec2) { *reinterpret_cast<FVector2*>(fieldPtr) = v.v2; return true; }
-        if (tn == "FVector3" && v.tag == REValueTag::Vec3) { *reinterpret_cast<FVector3*>(fieldPtr) = v.v3; return true; }
-        if (tn == "FVector4" && v.tag == REValueTag::Vec4) { *reinterpret_cast<FVector4*>(fieldPtr) = v.v4; return true; }
-        if (tn == "FQuat" && v.tag == REValueTag::Quat) { *reinterpret_cast<FQuat*>(fieldPtr) = v.q; return true; }
-        if (tn == "FTransform" && v.tag == REValueTag::Transform) { *reinterpret_cast<FTransform*>(fieldPtr) = v.t; return true; }
+        if (typeName == "FVector2" && v.tag == REValueTag::Vec2) { *reinterpret_cast<FVector2*>(ptr) = v.v2; return true; }
+        if (typeName == "FVector3" && v.tag == REValueTag::Vec3) { *reinterpret_cast<FVector3*>(ptr) = v.v3; return true; }
+        if (typeName == "FVector4" && v.tag == REValueTag::Vec4) { *reinterpret_cast<FVector4*>(ptr) = v.v4; return true; }
+        if (typeName == "FQuat" && v.tag == REValueTag::Quat) { *reinterpret_cast<FQuat*>(ptr) = v.q; return true; }
+        if (typeName == "FTransform" && v.tag == REValueTag::Transform) { *reinterpret_cast<FTransform*>(ptr) = v.t; return true; }
 
-        if (prop.kind == REPropKind::Enum && v.tag == REValueTag::EnumInt64)
+        if (propMeta->kind == REPropKind::Enum && v.tag == REValueTag::EnumInt64)
         {
-            const uint8_t size = prop.valueSize ? prop.valueSize : 8;
+            const uint8_t size = propMeta->valueSize ? propMeta->valueSize : 8;
             const size_t  n    = std::min<size_t>(size, 8);
 
             // Prefer enumRaw (best), fallback to packing from i64
@@ -203,12 +246,12 @@ bool RETypeRegistry::ApplyVariantToProperty(const REProperty &prop, void *basePt
                 std::memcpy(bytes, &tmp, n);
             }
 
-            std::memcpy(fieldPtr, bytes, n);
+            std::memcpy(ptr, bytes, n);
             return true;
         }
 
-        return false;
-    }
+    return false;
+}
 
 REType& RETypeRegistry::EnsureTypeEntry(const std::type_index& idx)
 {
