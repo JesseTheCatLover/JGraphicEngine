@@ -17,7 +17,7 @@ class IEditorPanel;
 class EditorHost;
 class IPlatformWindow;
 
-class EditorApp : public IEditorBridge
+class InkBlueEditorApp : public IEditorBridge
 {
 private:
     IPlatformWindow* m_Window;
@@ -34,8 +34,8 @@ private:
     TUniquePtr<EditorLayoutModel> m_LayoutModel;
 
 public:
-    EditorApp();
-    ~EditorApp();
+    InkBlueEditorApp();
+    ~InkBlueEditorApp();
 
     void BeginFrame();
     void RenderPanels();

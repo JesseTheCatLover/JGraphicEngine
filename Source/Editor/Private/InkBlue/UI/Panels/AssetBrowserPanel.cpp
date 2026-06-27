@@ -14,7 +14,7 @@
 
 #include "EditorCore/EditorHost.h"
 #include "Panels/Subsystems/AssetBrowserSubsystem.h"
-#include "UI/Dialogs/AssetImporterDialog.h"
+#include "InkBlue/UI/Dialogs/AssetImporterDialog.h"
 
 namespace
 {

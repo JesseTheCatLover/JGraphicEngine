@@ -7,7 +7,7 @@
 #include <string>
 
 #include "Core/JEngine.h"
-#include "EditorApp.h"
+#include "InkBlueEditorApp.h"
 #include "Core/Project/FProjectOpenRequest.h"
 #include "ProjectLaunch/ProjectLaunchResolver.h"
 #include "ProjectLaunch/ConsoleProjectLaunchUI.h"
@@ -81,7 +81,7 @@ namespace
 bool JApplication::RunEditor(int argc, char** argv)
 {
     std::cout << "[JApplication]: Launching in EDITOR mode...\n";
-    EditorApp editor;
+    InkBlueEditorApp editor;
     return LaunchEngine(&editor, argc, argv);
 }
 

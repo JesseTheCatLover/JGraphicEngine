@@ -3,10 +3,10 @@
 #include "EditorPanelTracker.h"
 
 #include "EditorCore/EditorHost.h"
-#include "UI/Panels/InspectorPanel.h"
-#include "UI/Panels/ViewportPanel.h"
-#include "UI/Panels/SceneHierarchyPanel.h"
-#include "UI/Panels/AssetBrowserPanel.h"
+#include "InkBlue/UI/Panels/InspectorPanel.h"
+#include "InkBlue/UI/Panels/ViewportPanel.h"
+#include "InkBlue/UI/Panels/SceneHierarchyPanel.h"
+#include "InkBlue/UI/Panels/AssetBrowserPanel.h"
 
 void EditorPanelTracker::Initialize(EditorHost& host)
 {

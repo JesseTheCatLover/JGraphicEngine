@@ -1,6 +1,6 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "EditorApp.h"
+#include "InkBlueEditorApp.h"
 
 #include <GLFW/glfw3.h>
 #include <Renderer/Backends/ImGuiBackend.h>
@@ -14,24 +14,24 @@
 #include "EditorLayout/EditorLayoutModel.h"
 #include "Rendering/IPlatformWindow.h"
 
-EditorApp::EditorApp()
+InkBlueEditorApp::InkBlueEditorApp()
 {
 }
 
-EditorApp::~EditorApp() = default;
+InkBlueEditorApp::~InkBlueEditorApp() = default;
 
-void EditorApp::BeginFrame()
+void InkBlueEditorApp::BeginFrame()
 {
     m_EditorUIBackend->BeginFrame();
 }
 
-void EditorApp::EndFrame()
+void InkBlueEditorApp::EndFrame()
 {
     if (m_EditorUIBackend)
         m_EditorUIBackend->EndFrame();
 }
 
-void EditorApp::Shutdown()
+void InkBlueEditorApp::Shutdown()
 {
     // Destroy core/context
    if (m_EditorHost)
@@ -49,7 +49,7 @@ void EditorApp::Shutdown()
     m_Window = nullptr;
 }
 
-void EditorApp::OnProjectInitialized(IPlatformWindow* window)
+void InkBlueEditorApp::OnProjectInitialized(IPlatformWindow* window)
 {
     if (!window)
     {
@@ -93,11 +93,11 @@ void EditorApp::OnProjectInitialized(IPlatformWindow* window)
     m_Renderer->Initialize();
 }
 
-void EditorApp::OnSceneLoaded(const std::string &sceneName)
+void InkBlueEditorApp::OnSceneLoaded(const std::string &sceneName)
 {
 }
 
-void EditorApp::OnRenderOverlay(float deltaTime)
+void InkBlueEditorApp::OnRenderOverlay(float deltaTime)
 {
     BeginFrame();
     m_Renderer->RenderChrome(deltaTime); // menu clicks happen here
@@ -107,20 +107,20 @@ void EditorApp::OnRenderOverlay(float deltaTime)
     EndFrame();
 }
 
-void EditorApp::OnTick(float deltaTime)
+void InkBlueEditorApp::OnTick(float deltaTime)
 {
     if (m_EditorHost)
         m_EditorHost->Tick(deltaTime);
 }
 
-void EditorApp::RegisterEditorShellCommands(EditorHost& host, EditorLayoutModel& layout)
+void InkBlueEditorApp::RegisterEditorShellCommands(EditorHost& host, EditorLayoutModel& layout)
 {
     auto& shell = host.GetService<ShellCommandService>();
     RegisterViewCommands(shell, layout);
     RegisterViewportCommands(shell, layout);
 }
 
-void EditorApp::RegisterViewCommands(ShellCommandService &shell, EditorLayoutModel &layout)
+void InkBlueEditorApp::RegisterViewCommands(ShellCommandService &shell, EditorLayoutModel &layout)
 {
     shell.Register("Editor.View.ToggleSceneHierarchy", [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::SceneHierarchy); });
     shell.Register("Editor.View.ToggleConsole",        [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::Console); });
@@ -128,7 +128,7 @@ void EditorApp::RegisterViewCommands(ShellCommandService &shell, EditorLayoutMod
     shell.Register("Editor.View.ToggleInspector",      [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::Inspector); });
 }
 
-void EditorApp::RegisterViewportCommands(ShellCommandService &shell, EditorLayoutModel &layout)
+void InkBlueEditorApp::RegisterViewportCommands(ShellCommandService &shell, EditorLayoutModel &layout)
 {
     shell.Register("Editor.Viewport.SetSingleView", [&layout]() { layout.SetViewportCount(1); });
     shell.Register("Editor.Viewport.SetDoubleView", [&layout]() { layout.SetViewportCount(2); });
@@ -137,7 +137,7 @@ void EditorApp::RegisterViewportCommands(ShellCommandService &shell, EditorLayou
     shell.Register("Editor.Viewport.ToggleTabVisibility", [&layout]() { layout.ToggleShowViewportDocktabs(); });
 }
 
-void EditorApp::RegisterServicesShellCommands(EditorHost &host)
+void InkBlueEditorApp::RegisterServicesShellCommands(EditorHost &host)
 {
     host.RegisterShellCommandsForServices();
 }

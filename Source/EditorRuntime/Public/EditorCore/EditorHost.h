@@ -14,7 +14,7 @@ class ToolService;
 
 class EditorHost
 {
-    friend class EditorApp;
+    friend class InkBlueEditorApp;
 private:
     explicit EditorHost(EditorRuntime& runtime);
 

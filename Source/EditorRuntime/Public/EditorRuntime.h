@@ -17,7 +17,7 @@ class RendererSubsystem;
 
 class EditorRuntime
 {
-    friend class EditorApp;
+    friend class InkBlueEditorApp;
 private:
     EditorRuntime();
 
