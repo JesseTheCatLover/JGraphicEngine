@@ -13,44 +13,8 @@
 
 namespace
 {
-    template<typename VecT>
-    void SetupStdVectorAccessors(REProperty& p)
-    {
-        using ElementT = typename VecT::value_type;
-
-        p.bIsArray = true;
-
-        p.array.size = [](void* fieldPtr) -> size_t
-        {
-            auto& vec = *reinterpret_cast<VecT*>(fieldPtr);
-            return vec.size();
-        };
-
-        p.array.resize = [](void* fieldPtr, size_t n)
-        {
-            auto& vec = *reinterpret_cast<VecT*>(fieldPtr);
-            vec.resize(n);
-        };
-
-        p.array.get = [](void* fieldPtr, size_t i) -> void*
-        {
-            auto& vec = *reinterpret_cast<VecT*>(fieldPtr);
-            if (i >= vec.size())
-                return nullptr;
-            return &vec[i];
-        };
-
-        p.array.getConst = [](const void* fieldPtr, size_t i) -> const void*
-        {
-            auto& vec = *reinterpret_cast<const VecT*>(fieldPtr);
-            if (i >= vec.size())
-                return nullptr;
-            return &vec[i];
-        };
-    }
+    static const std::type_index kVoidType = std::type_index(typeid(void));
 }
-
-static const std::type_index kVoidType = std::type_index(typeid(void));
 
 RETypeRegistry& RETypeRegistry::Get()
 {
@@ -111,6 +75,7 @@ bool RETypeRegistry::ReadVariantFromProperty(const REProperty &prop, const void 
         {
             const void* elemPtr = prop.array.getConst(fieldPtr, i);
             REVariant elemVar;
+            // Recursively read using the array's ELEMENT kind and name
             if (ReadVariantFromMemory(elemPtr, prop.elementTypeName, &prop, elemVar))
             {
                 out.arrayElements.push_back(std::move(elemVar));
@@ -137,6 +102,7 @@ bool RETypeRegistry::ApplyVariantToProperty(const REProperty &prop, void *basePt
         for (size_t i = 0; i < v.arrayElements.size(); ++i)
         {
             void* elemPtr = prop.array.get(fieldPtr, i);
+            // Recursively write using the array's ELEMENT kind and name
             WriteVariantToMemory(elemPtr, prop.elementTypeName, &prop, v.arrayElements[i]);
         }
         return true;
@@ -152,9 +118,13 @@ bool RETypeRegistry::ReadVariantFromMemory(const void* ptr, const std::string& t
 {
     out = {};
 
-    if (!ptr) return false;
+    if (!ptr || !propMeta) return false;
 
-    if (propMeta->kind == REPropKind::ObjectPtr)
+    // --- Resolve actual kind (Array vs Element) ---
+    REPropKind actualKind = propMeta->kind;
+    if (actualKind == REPropKind::Array) actualKind = propMeta->elementKind;
+
+    if (actualKind == REPropKind::ObjectPtr)
     {
         out.tag = REValueTag::ObjectUUID;
         auto* obj = *reinterpret_cast<JCoreObject* const*>(ptr);
@@ -162,9 +132,8 @@ bool RETypeRegistry::ReadVariantFromMemory(const void* ptr, const std::string& t
         return true;
     }
 
-    if (propMeta->kind == REPropKind::Enum)
+    if (actualKind == REPropKind::Enum)
     {
-        if (!propMeta) return false;
         const uint8_t size = propMeta->valueSize ? propMeta->valueSize : 8;
         const size_t n = std::min<size_t>(size, 8);
 
@@ -198,7 +167,11 @@ bool RETypeRegistry::ReadVariantFromMemory(const void* ptr, const std::string& t
 bool RETypeRegistry::WriteVariantToMemory(void* ptr, const std::string& typeName, const REProperty* propMeta,
     const REVariant& v)
 {
-    if (!ptr) return false;
+    if (!ptr || !propMeta) return false;
+
+    // --- Resolve actual kind (Array vs Element) ---
+    REPropKind actualKind = propMeta->kind;
+    if (actualKind == REPropKind::Array) actualKind = propMeta->elementKind;
 
     if (typeName == "bool" && v.tag == REValueTag::Bool) { *reinterpret_cast<bool*>(ptr) = v.b; return true; }
 
@@ -228,10 +201,10 @@ bool RETypeRegistry::WriteVariantToMemory(void* ptr, const std::string& typeName
         if (typeName == "FQuat" && v.tag == REValueTag::Quat) { *reinterpret_cast<FQuat*>(ptr) = v.q; return true; }
         if (typeName == "FTransform" && v.tag == REValueTag::Transform) { *reinterpret_cast<FTransform*>(ptr) = v.t; return true; }
 
-        if (propMeta->kind == REPropKind::Enum && v.tag == REValueTag::EnumInt64)
+        if (actualKind == REPropKind::Enum && v.tag == REValueTag::EnumInt64)
         {
             const uint8_t size = propMeta->valueSize ? propMeta->valueSize : 8;
-            const size_t  n    = std::min<size_t>(size, 8);
+            const size_t n = std::min<size_t>(size, 8);
 
             // Prefer enumRaw (best), fallback to packing from i64
             uint8_t bytes[8]{};
@@ -725,83 +698,64 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
         p.enumType = nullptr;
         p.objectType = nullptr;
 
-        // Normalize once and store it back, so everyone (including DebugDumpAllTypes)
-        // sees the canonical type string.
         p.typeName = NormalizeTypeName(p.typeName);
-
-        const std::string& raw  = p.typeName; // now already normalized
         const std::string& norm = p.typeName;
 
         // 1) Array (std::vector support)
+        std::string element;
+        if (TryParseVector(norm, element))
         {
-            std::string element;
-            // IMPORTANT: use the normalized name here, not the original raw string
-            if (TryParseVector(norm, element))
+            p.kind = REPropKind::Array;
+            p.bIsArray = true;
+
+            p.elementTypeName = NormalizeTypeName(element);
+            p.elementKind = REPropKind::Unknown;
+            p.elementReflectedType = nullptr;
+            p.elementEnumType = nullptr;
+            p.elementObjectType = nullptr;
+
+            const std::string elemNorm = p.elementTypeName;
+
+            if (const REEnum* e = FindEnumByName(elemNorm))
             {
-                p.kind = REPropKind::Array;
-                p.bIsArray = true;
-
-                p.elementTypeName = NormalizeTypeName(element);
-                p.elementKind = REPropKind::Unknown;
-                p.elementReflectedType = nullptr;
-                p.elementEnumType = nullptr;
-                p.elementObjectType = nullptr;
-
-                const std::string elemNorm = p.elementTypeName;
-
-                // Known element types: wire std::vector accessors here
-                if (elemNorm == "std::string")
-                {
-                    SetupStdVectorAccessors<std::vector<std::string>>(p);
-                    p.elementKind = REPropKind::Value;
-                    continue;
-                }
-
-                // Enum element
-                if (const REEnum* e = FindEnumByName(elemNorm))
-                {
-                    p.elementKind = REPropKind::Enum;
-                    p.elementEnumType = e;
-                    continue;
-                }
-
-                // Reflected struct/class element
-                if (const REType* rt = FindTypeByName(elemNorm))
-                {
-                    if (rt->kind == RETypeKind::Struct)
-                    {
-                        p.elementKind = REPropKind::ReflectedStruct;
-                        p.elementReflectedType = rt;
-                    }
-                    else
-                    {
-                        p.elementKind = REPropKind::Value;
-                        p.elementReflectedType = rt;
-                    }
-                    continue;
-                }
-
-                // Object pointer element
-                if (TypeLooksLikePointer(element))
-                {
-                    std::string base = StripPointerStars(StripSpaces(element));
-                    base = NormalizeTypeName(base);
-
-                    if (const REType* objT = FindTypeByName(base))
-                    {
-                        if (objT->kind == RETypeKind::Class)
-                        {
-                            p.elementKind = REPropKind::ObjectPtr;
-                            p.elementObjectType = objT;
-                            continue;
-                        }
-                    }
-                }
-
-                // Default element
-                p.elementKind = REPropKind::Value;
+                p.elementKind = REPropKind::Enum;
+                p.elementEnumType = e;
                 continue;
             }
+
+            if (const REType* rt = FindTypeByName(elemNorm))
+            {
+                if (rt->kind == RETypeKind::Struct)
+                {
+                    p.elementKind = REPropKind::ReflectedStruct;
+                    p.elementReflectedType = rt;
+                }
+                else
+                {
+                    p.elementKind = REPropKind::Value;
+                    p.elementReflectedType = rt;
+                }
+                continue;
+            }
+
+            if (TypeLooksLikePointer(element))
+            {
+                std::string base = StripPointerStars(StripSpaces(element));
+                base = NormalizeTypeName(base);
+
+                if (const REType* objT = FindTypeByName(base))
+                {
+                    if (objT->kind == RETypeKind::Class)
+                    {
+                        p.elementKind = REPropKind::ObjectPtr;
+                        p.elementObjectType = objT;
+                        continue;
+                    }
+                }
+            }
+
+            p.elementKind = REPropKind::Value;
+            continue;
         }
 
         // 2) Enum by name
@@ -822,24 +776,20 @@ void RETypeRegistry::ResolvePropertyKinds(REType& owner)
             }
             else
             {
-                // value-member of reflected class is weird; keep as Value for now
                 p.kind = REPropKind::Value;
                 p.reflectedType = rt;
             }
             continue;
         }
 
-        // 4) Pointer: treat as object pointer if pointee is a reflected class
-        if (TypeLooksLikePointer(raw))
+        // 4) Pointer
+        if (TypeLooksLikePointer(norm))
         {
-            // strip spaces then strip '*', then normalize again for const/etc
-            std::string base = StripPointerStars(StripSpaces(raw));
+            std::string base = StripPointerStars(StripSpaces(norm));
             base = NormalizeTypeName(base);
 
             if (const REType* objT = FindTypeByName(base))
             {
-                // Only treat reflected *classes* as ObjectPtr.
-                // (Struct pointers can be "Value" or a later feature; your choice.)
                 if (objT->kind == RETypeKind::Class)
                 {
                     p.kind = REPropKind::ObjectPtr;

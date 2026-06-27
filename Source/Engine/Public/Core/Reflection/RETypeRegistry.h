@@ -26,6 +26,14 @@ class JCoreObject;
 
 // ---------------- Reflection structures ----------------
 
+struct REArrayAccessor
+{
+    std::function<size_t(void*)> size;
+    std::function<void(void*, size_t)> resize;
+    std::function<void*(void*, size_t)> get;
+    std::function<const void*(const void*, size_t)> getConst;
+};
+
 // What kind of reflected type this is (needed for correct serialization & tooling)
 enum class RETypeKind : uint8_t
 {
@@ -67,14 +75,6 @@ struct REEnum
     std::string underlyingType; // raw, optional
     REMetaList meta;
     std::vector<REEnumValue> values;
-};
-
-struct REArrayAccessor
-{
-    std::function<size_t(void*)> size;
-    std::function<void(void*, size_t)> resize;
-    std::function<void*(void*, size_t)> get;
-    std::function<const void*(const void*, size_t)> getConst;
 };
 
 struct REProperty
@@ -141,6 +141,37 @@ struct REProperty
         bResolvedMetaCached = false;
     }
 };
+
+namespace REArrayUtils
+{
+    // 1. Template trait to detect std::vector at compile-time
+    template <typename T>
+    struct TIsStdVector : std::false_type {};
+
+    template <typename T, typename A>
+    struct TIsStdVector<std::vector<T, A>> : std::true_type {};
+
+    // 2. Generic Accessor wiring
+    template<typename VecT>
+    void SetupStdVectorAccessors(REProperty& p)
+    {
+        p.bIsArray = true;
+        p.array.size = [](void* fieldPtr) -> size_t {
+            return reinterpret_cast<VecT*>(fieldPtr)->size();
+        };
+        p.array.resize = [](void* fieldPtr, size_t n) {
+            reinterpret_cast<VecT*>(fieldPtr)->resize(n);
+        };
+        p.array.get = [](void* fieldPtr, size_t i) -> void* {
+            auto& vec = *reinterpret_cast<VecT*>(fieldPtr);
+            return i < vec.size() ? &vec[i] : nullptr;
+        };
+        p.array.getConst = [](const void* fieldPtr, size_t i) -> const void* {
+            auto& vec = *reinterpret_cast<const VecT*>(fieldPtr);
+            return i < vec.size() ? &vec[i] : nullptr;
+        };
+    }
+}
 
 enum class REValueTag : uint8_t
 {
@@ -300,6 +331,12 @@ public:
             auto* o = static_cast<const TOwner*>(obj);
             return &(o->*memberPtr);
         };
+
+        // --- Compile-time accessor injection! ---
+        if constexpr (REArrayUtils::TIsStdVector<TMember>::value)
+        {
+            REArrayUtils::SetupStdVectorAccessors<TMember>(P);
+        }
 
         T.properties.emplace_back(std::move(P));
     }
