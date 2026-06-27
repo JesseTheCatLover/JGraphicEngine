@@ -30,7 +30,7 @@ bool ProjectContext::OpenProject(const FProjectOpenRequest& request)
     }
 
     FProjectDescriptor loadedDescriptor;
-    if (!LoadProjectDescriptor(normalizedProjectFile, loadedDescriptor))
+    if (!FProjectDescriptor::LoadFromFile(normalizedProjectFile, loadedDescriptor))
         return false;
 
     if (!ValidateDescriptor(loadedDescriptor))
@@ -116,26 +116,8 @@ bool ProjectContext::CreateProject(const FProjectCreateRequest &request, FProjec
         return false;
     }
 
-    JsonWriter writer;
-    writer.Write("projectVersion", FProjectDescriptor::CurrentVersion);
-    writer.Write("projectName", request.projectName);
-    writer.Write("projectID", UUUID::GenerateUUID());
-
-    writer.Write("description", "");
-    writer.Write("thumbnailRelativePath", "");
-
-    writer.BeginObject("engineAssociation");
-    writer.Write("lastKnownEnginePath", normalizedEngineRoot);
-    writer.EndObject();
-
-    writer.BeginObject("folders");
-    writer.Write("assets", "Assets");
-    writer.Write("saved", "Saved");
-    writer.Write("intermediate", "Intermediate");
-    writer.Write("config", "Config");
-    writer.EndObject();
-
-    if (!writer.SaveToFile(projectFilePath))
+    FProjectDescriptor projectDescriptor;
+    if (!FProjectDescriptor::SaveToFile(projectFilePath, projectDescriptor))
     {
         outResult.errors.emplace_back("Failed to write .jproject file.");
         return false;
@@ -186,47 +168,6 @@ bool ProjectContext::IsValidProjectName(const std::string& name)
     return true;
 }
 
-bool ProjectContext::LoadProjectDescriptor(const std::string& projectFilePath, FProjectDescriptor& outDescriptor)
-{
-    JsonReader reader;
-    if (!reader.LoadFromFile(projectFilePath) || !reader.IsValid())
-    {
-        std::cerr << "[ProjectContext]: Failed to load .jproject file: " << projectFilePath << "\n";
-        return false;
-    }
-
-    outDescriptor.projectVersion = reader.Read<int32_t>("projectVersion", FProjectDescriptor::CurrentVersion);
-    outDescriptor.projectName    = reader.Read<std::string>("projectName", "");
-    outDescriptor.projectID      = reader.Read<std::string>("projectID", "");
-    outDescriptor.startupScene   = reader.Read<std::string>("startupScene", "");
-    outDescriptor.description    = reader.Read<std::string>("description", "");
-    outDescriptor.thumbnailRelativePath = reader.Read<std::string>("thumbnailRelativePath", "");
-
-    if (reader.IsObject("engineAssociation"))
-    {
-        JsonReader assoc = reader.GetObject("engineAssociation");
-        outDescriptor.engineAssociation.identifier =
-            assoc.Read<std::string>("identifier", "");
-        outDescriptor.engineAssociation.lastKnownEnginePath =
-            assoc.Read<std::string>("lastKnownEnginePath", "");
-    }
-
-    if (reader.IsObject("folders"))
-    {
-        JsonReader folders = reader.GetObject("folders");
-        outDescriptor.folders.assets =
-            folders.Read<std::string>("assets", "Assets");
-        outDescriptor.folders.saved =
-            folders.Read<std::string>("saved", "Saved");
-        outDescriptor.folders.intermediate =
-            folders.Read<std::string>("intermediate", "Intermediate");
-        outDescriptor.folders.config =
-            folders.Read<std::string>("config", "Config");
-    }
-
-    return true;
-}
-
 bool ProjectContext::ValidateDescriptor(const FProjectDescriptor& descriptor) const
 {
     if (descriptor.projectVersion <= 0)
@@ -235,7 +176,7 @@ bool ProjectContext::ValidateDescriptor(const FProjectDescriptor& descriptor) co
         return false;
     }
 
-    if (descriptor.projectVersion > FProjectDescriptor::CurrentVersion)
+    if (descriptor.projectVersion > FProjectDescriptor::kCurrentVersion)
     {
         std::cerr << "[ProjectContext]: Unsupported future .jproject version: "
                   << descriptor.projectVersion << "\n";

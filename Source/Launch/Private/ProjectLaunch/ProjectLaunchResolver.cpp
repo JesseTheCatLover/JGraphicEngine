@@ -124,7 +124,7 @@ bool ProjectLaunchResolver::ResolveProjectFileLaunch(const std::string& projectF
     }
 
     FProjectDescriptor descriptor;
-    if (!ProjectContext::LoadProjectDescriptor(normalizedProjectFile, descriptor))
+    if (!FProjectDescriptor::LoadFromFile(normalizedProjectFile, descriptor))
     {
         m_UI.ShowError("Launch", "Failed to read .jproject.");
         return false;

@@ -11,9 +11,10 @@ struct FEngineAssociation
 
 struct FProjectDescriptor
 {
-    static constexpr int32_t CurrentVersion = 1;
+    static constexpr int32_t kCurrentVersion = 2;
 
-    int32_t projectVersion = CurrentVersion;
+    int32_t descriptorVersion = kCurrentVersion;
+    int32_t projectVersion = 1;
 
     std::string projectName;
     std::string projectID;
@@ -33,4 +34,7 @@ struct FProjectDescriptor
     } folders;
 
     std::string startupScene;
+
+    static bool LoadFromFile(const std::string& projectFilePath, FProjectDescriptor& outDescriptor, bool bAutoMigrate = true);
+    static bool SaveToFile(const std::string& projectFilePath, const FProjectDescriptor& descriptor);
 };
