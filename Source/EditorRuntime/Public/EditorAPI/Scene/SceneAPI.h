@@ -32,8 +32,11 @@ private:
 public:
     EditorSceneAPI(EngineContext& ctx, SceneManager& scene, DebugDraw& debugDraw);
 
-    JScene* GetActiveScene();
     DebugDraw& GetDebugDraw();
+
+    JScene* GetActiveScene();
+    bool SaveActiveScene();
+    bool SaveActiveSceneAs(const std::string& destinationVirtualPath, const std::string& sceneName);
 
     JActor* TryGetActor(ActorID id) const;
     bool TryGetActorWorldTransform(ActorID id, FTransform& outXf) const;

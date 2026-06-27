@@ -53,7 +53,7 @@ class SceneManager
 private:
     SceneManager() = default;
 
-    std::unique_ptr<JScene> m_ActiveScene; ///< Currently active scene
+    TUniquePtr<JScene> m_ActiveScene; ///< Currently active scene
 
     /**
      * @brief Passes Tick to all actors in the active scene.
@@ -249,6 +249,23 @@ public:
      */
     bool SaveSceneFile(const JScene *scene, const std::string &sceneVirtualPath) const;
 
+    /**
+     * @brief Saves the currently active scene to its known virtual path.
+     * * @return true if saved successfully, false if no scene is active or if the scene has no path.
+     */
+    bool SaveActiveScene() const;
+
+    /**
+     * @brief Saves the currently active scene at a targeted virtual path.
+     *
+     * Serializes the provided scene and writes it to the specified virtual path
+     * under /Project.
+
+     * @param destinationVirtualPath Destination virtual path under /Project.
+     * @param sceneName Name of the scene to write as.
+     * @return true if saved successfully, false if no scene is active or failed to save at the target location.
+     */
+    bool SaveActiveSceneAs(const std::string &destinationVirtualPath, const std::string& sceneName);
 
     /**
      * @brief Reads lightweight metadata from a scene file without fully loading the scene.

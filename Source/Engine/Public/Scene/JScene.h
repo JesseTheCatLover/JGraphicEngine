@@ -34,7 +34,17 @@ private:
     std::vector<std::unique_ptr<JActor>> m_Actors; ///< Storage of all actors in the scene.
     std::unordered_map<uint64_t, JActor*> m_ActorsByID; ///< Fast lookup map from ID -> actor.
 
+    std::string m_VirtualFilePath; ///< The project virtual path this scene was loaded from.
+
     mutable bool m_bIsDirty = true; ///< track if cache needs rebuilding
+
+
+private:
+    /**
+     * @brief Sets the virtual file path for this scene.
+     * @param path The new virtual path (e.g., "/Project/Scenes/MyScene.jscene")
+     */
+    void SetVirtualFilePath(const std::string& path) { m_VirtualFilePath = path; }
 
     /**
      * @brief Called when the scene is first about to load.
@@ -140,6 +150,11 @@ public:
     void GatherRenderables(IRenderSubmission& submission, const FRenderContext& baseCtx) const;
 
     JCameraComponent* GetCameraComponent() const;
+
+    /**
+     * @brief Gets the virtual file path associated with this scene.
+     */
+    const std::string& GetVirtualFilePath() const { return m_VirtualFilePath; }
 
     /**
      * @brief Gathers all actors in the scene.

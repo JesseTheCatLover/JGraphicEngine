@@ -258,6 +258,9 @@ bool SceneManager::CreateSceneFile(const std::string& sceneName,
         scene = MakeUnique<JScene>(); // ctor consumes TLS
     }
 
+    // Set the path so the new scene inherently knows where it lives
+    scene->SetVirtualFilePath(sceneVirtualPath);
+
     return SaveSceneFile(scene.get(), sceneVirtualPath);
 }
 
@@ -287,6 +290,9 @@ JScene* SceneManager::LoadSceneFile(const std::string& sceneVirtualPath)
         FObjectInitTLS::FScope scope(init);
         newScene = MakeUnique<JScene>();
     }
+
+    // Inject path into the newly loaded scene
+    newScene->SetVirtualFilePath(sceneVirtualPath);
 
     ApplyLoadedResultToScene(loadResult, *newScene);
 
@@ -323,15 +329,89 @@ bool SceneManager::SaveSceneFile(const JScene* scene, const std::string& sceneVi
     return true;
 }
 
+bool SceneManager::SaveActiveScene() const
+{
+    if (!m_ActiveScene) return false;
+
+    const std::string& currentPath = m_ActiveScene->GetVirtualFilePath();
+
+    if (currentPath.empty())
+    {
+        // we might want to trigger a log warning or an editor popup here later
+        return false;
+    }
+
+    return SaveSceneFile(m_ActiveScene.get(), currentPath);
+}
+
+bool SceneManager::SaveActiveSceneAs(const std::string &destinationVirtualPath, const std::string &sceneName)
+{
+    if (!m_ActiveScene) return false;
+    if (destinationVirtualPath.empty()) return false;
+
+    const std::string fullPath = destinationVirtualPath + "/" + sceneName + ".jscene";
+
+    // Update the internal tracker to the new destination path
+    m_ActiveScene->SetVirtualFilePath(fullPath);
+
+    // Push changes to disk at the newly assigned path
+    return SaveSceneFile(m_ActiveScene.get(), fullPath);
+}
+
 bool SceneManager::RenameScene(JScene *scene, const std::string &newName)
 {
     if (!scene || newName.empty()) return false;
-    if (scene->GetObjectName() == newName) return false;
+    if (scene->GetObjectName() == newName) return false; // Name is already the same
 
+    const std::string& oldVirtualPath = scene->GetVirtualFilePath();
+
+    // If the scene has a file on disk, rename the physical file too
+    if (!oldVirtualPath.empty())
+    {
+        std::string oldPhysicalPath;
+        if (!ResolveProjectScenePath(oldVirtualPath, oldPhysicalPath))
+            return false; // Failed to resolve current path
+
+        // Extract the directory from the virtual path to construct the new path
+        // e.g., "/Project/Scenes/OldName.jscene" -> "/Project/Scenes"
+        std::string parentDir = UPath::GetParent(oldVirtualPath);
+
+        // Append the new name and extension
+        std::string newVirtualPath = parentDir + "/" + newName + ".jscene";
+
+        std::string newPhysicalPath;
+        if (!ResolveProjectScenePath(newVirtualPath, newPhysicalPath))
+            return false;
+
+        // Check if a file with the new name already exists to avoid overwriting
+        if (UFileSystem::FileExists(newPhysicalPath))
+            return false;
+
+        // Perform the file rename on disk using standard C++17 filesystem
+        try
+        {
+            std::filesystem::rename(oldPhysicalPath, newPhysicalPath);
+        }
+        catch (const std::filesystem::filesystem_error& e)
+        {
+            // Rename failed (e.g., file locked by another program, permission denied)
+            return false;
+        }
+
+        // Update the scene's internal path tracker to match the new file location
+        scene->SetVirtualFilePath(newVirtualPath);
+    }
+
+    // Update the object name in memory
     scene->SetObjectName(newName);
-    if (OnSceneRenamed) OnSceneRenamed(scene, newName);
+
+    // Fire the callback for the editor/UI systems
+    if (OnSceneRenamed)
+        OnSceneRenamed(scene, newName);
+
     return true;
 }
+
 FSceneMeta SceneManager::ReadSceneMeta(const std::string &filename)
 {
     FSceneMeta meta;

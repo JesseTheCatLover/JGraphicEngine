@@ -84,6 +84,16 @@ DebugDraw& EditorSceneAPI::GetDebugDraw()
     return m_DebugDraw;
 }
 
+bool EditorSceneAPI::SaveActiveScene()
+{
+    return m_SceneManager.SaveActiveScene();
+}
+
+bool EditorSceneAPI::SaveActiveSceneAs(const std::string &destinationVirtualPath, const std::string &sceneName)
+{
+    return m_SceneManager.SaveActiveSceneAs(destinationVirtualPath, sceneName);
+}
+
 JActor* EditorSceneAPI::TryGetActor(ActorID id) const
 {
     return m_SceneManager.FindActorByID(id);
