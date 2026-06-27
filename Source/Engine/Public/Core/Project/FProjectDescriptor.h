@@ -18,6 +18,10 @@ struct FProjectDescriptor
     std::string projectName;
     std::string projectID;
 
+    std::string description;
+
+    std::string thumbnailRelativePath;
+
     FEngineAssociation engineAssociation;
 
     struct FFolders

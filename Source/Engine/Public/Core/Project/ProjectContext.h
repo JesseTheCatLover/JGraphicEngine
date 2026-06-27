@@ -57,13 +57,14 @@ public:
     [[nodiscard]] const std::string& GetEngineRoot() const { return m_EngineRoot; }
     [[nodiscard]] const std::string& GetEngineAssetsRoot() const { return m_EngineAssetsRoot; }
 
+    static bool LoadProjectDescriptor(const std::string& projectFilePath, FProjectDescriptor& outDescriptor);
+
 private:
     bool OpenProject(const FProjectOpenRequest& request);
     static bool CreateProject(const FProjectCreateRequest& request, FProjectCreateResult& outResult);
     void Reset();
 
     static bool IsValidProjectName(const std::string& name);
-    bool LoadDescriptorFile(const std::string& projectFilePath, FProjectDescriptor& outDescriptor) const;
     bool ValidateDescriptor(const FProjectDescriptor& descriptor) const;
     void BuildResolvedPaths();
 

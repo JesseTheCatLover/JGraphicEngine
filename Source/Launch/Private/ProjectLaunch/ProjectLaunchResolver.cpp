@@ -41,13 +41,21 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
         LaunchSettings settings;
         if (settings.Load(currentEngineRoot))
         {
-            const std::string& lastProject = settings.GetLastOpenedProjectFilePath();
-            if (!lastProject.empty() && UFileSystem::FileExists(lastProject))
+            if (settings.GetShouldOpenLastProjectOnStartup()) // Only open recent project if settings let us
             {
-                outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
-                outRequest.projectFilePath = UPath::NormalizePhysical(lastProject);
-                outRequest.engineRootPath  = UPath::NormalizePhysical(currentEngineRoot);
-                return true;
+                const auto& recentList = settings.GetRecentProjects();
+                if (!recentList.empty())
+                {
+                    // Index 0 is always the most recent
+                    const std::string& lastProject = recentList[0];
+                    if (UFileSystem::FileExists(lastProject))
+                    {
+                        outRequest.launchSource    = EProjectLaunchSource::DirectEngineExecutable;
+                        outRequest.projectFilePath = UPath::NormalizePhysical(lastProject);
+                        outRequest.engineRootPath  = UPath::NormalizePhysical(currentEngineRoot);
+                        return true;
+                    }
+                }
             }
         }
     }
@@ -116,7 +124,7 @@ bool ProjectLaunchResolver::ResolveProjectFileLaunch(const std::string& projectF
     }
 
     FProjectDescriptor descriptor;
-    if (!LoadProjectDescriptor(normalizedProjectFile, descriptor))
+    if (!ProjectContext::LoadProjectDescriptor(normalizedProjectFile, descriptor))
     {
         m_UI.ShowError("Launch", "Failed to read .jproject.");
         return false;
@@ -152,39 +160,6 @@ bool ProjectLaunchResolver::ResolveLauncherLaunch(const std::string& projectFile
     outRequest.launchSource    = EProjectLaunchSource::Launcher;
     outRequest.projectFilePath = UPath::NormalizePhysical(projectFilePath);
     outRequest.engineRootPath  = resolved.engineRootPath;
-    return true;
-}
-
-bool ProjectLaunchResolver::LoadProjectDescriptor(const std::string& projectFilePath,
-                                                  FProjectDescriptor& outDescriptor) const
-{
-    JsonReader reader;
-    if (!reader.LoadFromFile(projectFilePath) || !reader.IsValid())
-        return false;
-
-    outDescriptor = {};
-
-    outDescriptor.projectVersion = reader.Read<int32_t>("projectVersion", FProjectDescriptor::CurrentVersion);
-    outDescriptor.projectName    = reader.Read<std::string>("projectName", "");
-    outDescriptor.projectID      = reader.Read<std::string>("projectID", "");
-    outDescriptor.startupScene   = reader.Read<std::string>("startupScene", "");
-
-    if (reader.IsObject("engineAssociation"))
-    {
-        JsonReader assoc = reader.GetObject("engineAssociation");
-        outDescriptor.engineAssociation.lastKnownEnginePath =
-            assoc.Read<std::string>("lastKnownEnginePath", "");
-    }
-
-    if (reader.IsObject("folders"))
-    {
-        JsonReader folders = reader.GetObject("folders");
-        outDescriptor.folders.assets       = folders.Read<std::string>("assets", "Assets");
-        outDescriptor.folders.saved        = folders.Read<std::string>("saved", "Saved");
-        outDescriptor.folders.intermediate = folders.Read<std::string>("intermediate", "Intermediate");
-        outDescriptor.folders.config       = folders.Read<std::string>("config", "Config");
-    }
-
     return true;
 }
 

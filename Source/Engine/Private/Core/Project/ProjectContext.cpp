@@ -30,7 +30,7 @@ bool ProjectContext::OpenProject(const FProjectOpenRequest& request)
     }
 
     FProjectDescriptor loadedDescriptor;
-    if (!LoadDescriptorFile(normalizedProjectFile, loadedDescriptor))
+    if (!LoadProjectDescriptor(normalizedProjectFile, loadedDescriptor))
         return false;
 
     if (!ValidateDescriptor(loadedDescriptor))
@@ -121,6 +121,9 @@ bool ProjectContext::CreateProject(const FProjectCreateRequest &request, FProjec
     writer.Write("projectName", request.projectName);
     writer.Write("projectID", UUUID::GenerateUUID());
 
+    writer.Write("description", "");
+    writer.Write("thumbnailRelativePath", "");
+
     writer.BeginObject("engineAssociation");
     writer.Write("lastKnownEnginePath", normalizedEngineRoot);
     writer.EndObject();
@@ -183,7 +186,7 @@ bool ProjectContext::IsValidProjectName(const std::string& name)
     return true;
 }
 
-bool ProjectContext::LoadDescriptorFile(const std::string& projectFilePath, FProjectDescriptor& outDescriptor) const
+bool ProjectContext::LoadProjectDescriptor(const std::string& projectFilePath, FProjectDescriptor& outDescriptor)
 {
     JsonReader reader;
     if (!reader.LoadFromFile(projectFilePath) || !reader.IsValid())
@@ -196,6 +199,8 @@ bool ProjectContext::LoadDescriptorFile(const std::string& projectFilePath, FPro
     outDescriptor.projectName    = reader.Read<std::string>("projectName", "");
     outDescriptor.projectID      = reader.Read<std::string>("projectID", "");
     outDescriptor.startupScene   = reader.Read<std::string>("startupScene", "");
+    outDescriptor.description    = reader.Read<std::string>("description", "");
+    outDescriptor.thumbnailRelativePath = reader.Read<std::string>("thumbnailRelativePath", "");
 
     if (reader.IsObject("engineAssociation"))
     {

@@ -157,7 +157,12 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
     // Remember the project we successfully opened
     {
         LaunchSettings settings;
-        settings.SetLastOpenedProjectFilePath(openRequest.projectFilePath);
+
+        // Make sure to load first so we don't overwrite the existing list!
+        settings.Load(currentEngineRoot);
+
+        settings.RegisterOpenedProject(openRequest.projectFilePath);
+
         if (!settings.Save(currentEngineRoot))
         {
             std::cerr << "[JApplication]: Failed to save launch settings.\n";

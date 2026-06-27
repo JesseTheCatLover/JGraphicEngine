@@ -41,7 +41,6 @@ public:
                                FProjectOpenRequest& outRequest);
 
 private:
-    bool LoadProjectDescriptor(const std::string& projectFilePath, FProjectDescriptor& outDescriptor) const;
     bool TryResolveEngineForProject(const std::string& projectFilePath,
                                     const FProjectDescriptor& descriptor,
                                     FProjectOpenRequest& outRequest);
