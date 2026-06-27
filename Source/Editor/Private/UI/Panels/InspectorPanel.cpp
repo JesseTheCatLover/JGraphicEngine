@@ -1292,6 +1292,184 @@ void InspectorPanel::DrawRow(const FInspectorRow& row, FInspectorPanelInput& inp
         {
             ImGui::TextDisabled("%s", row.rawName.c_str());
         } break;
+
+        case EInspectorWidget::GenericArray:
+        {
+            std::vector<REVariant> arr = (row.value.tag == REValueTag::VariantArray) ? row.value.arrayElements : std::vector<REVariant>{};
+            bool bArrayChanged = false;
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("%zu Elements", arr.size());
+            ImGui::SameLine(ImGui::GetContentRegionAvail().x - 24.0f);
+
+            if (ImGui::SmallButton("+##add"))
+            {
+                REVariant defaultElem{};
+
+                // IMPORTANT: If the array is empty, we must know what tag to initialize.
+                // Ideally, you should add an `REValueTag elementTag = ...` to FInspectorRow
+                // during BuildTargetFromObject, and use `defaultElem.tag = row.elementTag;` here.
+                // For now, we infer it from the first element, or default to Invalid if empty.
+                defaultElem.tag = arr.empty() ? REValueTag::Invalid : arr[0].tag;
+
+                // Provide sensible default zero-init based on the tag
+                if (defaultElem.tag == REValueTag::String) defaultElem.s = "";
+                else if (defaultElem.tag == REValueTag::Bool) defaultElem.b = false;
+
+                arr.push_back(defaultElem);
+                bArrayChanged = true;
+            }
+
+            for (size_t i = 0; i < arr.size(); ++i)
+            {
+                ImGui::PushID((int)i);
+                ImGui::TableNextRow();
+
+                // Column 0: Index Label
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Indent(15.0f);
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text("[%zu]", i);
+                ImGui::Unindent(15.0f);
+
+                // Column 1: Widget & Remove Button
+                ImGui::TableSetColumnIndex(1);
+
+                // Leave room for the small remove button
+                const float widgetWidth = ImGui::GetContentRegionAvail().x - 28.0f;
+                ImGui::SetNextItemWidth(widgetWidth);
+
+                // --- DRAW THE SPECIFIC ELEMENT ---
+                switch (arr[i].tag)
+                {
+                    case REValueTag::Bool:
+                    {
+                        // Checkbox triggers edit immediately on click
+                        if (ImGui::Checkbox("##elem", &arr[i].b)) bArrayChanged = true;
+                        break;
+                    }
+                    case REValueTag::Int:
+                    {
+                        ImGui::DragInt("##elem", &arr[i].i32, 1.0f);
+                        if (ImGui::IsItemDeactivatedAfterEdit()) bArrayChanged = true;
+                        break;
+                    }
+                    case REValueTag::Int64:
+                    {
+                        ImGui::DragScalar("##elem", ImGuiDataType_S64, &arr[i].i64, 1.0f);
+                        if (ImGui::IsItemDeactivatedAfterEdit()) bArrayChanged = true;
+                        break;
+                    }
+                    case REValueTag::Float:
+                    {
+                        ImGui::DragFloat("##elem", &arr[i].f32, 0.05f, 0.0f, 0.0f, "%.3f");
+                        if (ImGui::IsItemDeactivatedAfterEdit()) bArrayChanged = true;
+                        break;
+                    }
+                    case REValueTag::Double:
+                    {
+                        ImGui::DragScalar("##elem", ImGuiDataType_Double, &arr[i].f64, 0.05f);
+                        if (ImGui::IsItemDeactivatedAfterEdit()) bArrayChanged = true;
+                        break;
+                    }
+                    case REValueTag::String:
+                    {
+                        char buf[512];
+                        std::snprintf(buf, sizeof(buf), "%s", arr[i].s.c_str());
+                        if (ImGui::InputText("##elem", buf, sizeof(buf))) arr[i].s = buf;
+                        if (ImGui::IsItemDeactivatedAfterEdit()) bArrayChanged = true;
+                        break;
+                    }
+                    case REValueTag::Vec2:
+                    {
+                        float v[2] = { arr[i].v2.x, arr[i].v2.y };
+                        if (ImGui::DragFloat2("##elem", v, 0.05f, 0.0f, 0.0f, "%.2f"))
+                            arr[i].v2 = FVector2(v[0], v[1]);
+                        if (ImGui::IsItemDeactivatedAfterEdit()) bArrayChanged = true;
+                        break;
+                    }
+                    case REValueTag::Vec3:
+                    {
+                        float v[3] = { arr[i].v3.x, arr[i].v3.y, arr[i].v3.z };
+                        if (ImGui::DragFloat3("##elem", v, 0.05f, 0.0f, 0.0f, "%.2f"))
+                            arr[i].v3 = FVector3(v[0], v[1], v[2]);
+                        if (ImGui::IsItemDeactivatedAfterEdit()) bArrayChanged = true;
+                        break;
+                    }
+                    case REValueTag::Vec4:
+                    {
+                        float v[4] = { arr[i].v4.x, arr[i].v4.y, arr[i].v4.z, arr[i].v4.w };
+                        if (ImGui::DragFloat4("##elem", v, 0.05f, 0.0f, 0.0f, "%.2f"))
+                            arr[i].v4 = FVector4(v[0], v[1], v[2], v[3]);
+                        if (ImGui::IsItemDeactivatedAfterEdit()) bArrayChanged = true;
+                        break;
+                    }
+                    case REValueTag::EnumInt64:
+                    {
+                        const int64_t raw = arr[i].i64;
+                        const char* currentName = "<enum>";
+
+                        if (row.enumInfo)
+                        {
+                            for (const auto& ev : row.enumInfo->values)
+                                if (ev.valueI64 == raw) { currentName = ev.name.c_str(); break; }
+                        }
+
+                        if (ImGui::Button(currentName, ImVec2(widgetWidth, 0)))
+                            ImGui::OpenPopup("##EnumPopupArr");
+
+                        if (ImGui::BeginPopup("##EnumPopupArr"))
+                        {
+                            if (row.enumInfo)
+                            {
+                                for (const auto& ev : row.enumInfo->values)
+                                {
+                                    if (ImGui::Selectable(ev.name.c_str(), ev.valueI64 == raw))
+                                    {
+                                        RETypeRegistry::EnumRaw_FromI64(arr[i], ev.valueI64, row.enumSize, row.bEnumSigned);
+                                        bArrayChanged = true;
+                                        ImGui::CloseCurrentPopup();
+                                    }
+                                }
+                            }
+                            ImGui::EndPopup();
+                        }
+                        break;
+                    }
+                    case REValueTag::ObjectUUID:
+                    {
+                        const char* txt = arr[i].s.empty() ? "<null>" : arr[i].s.c_str();
+                        ImGui::TextUnformatted(txt);
+                        break;
+                    }
+                    default:
+                    {
+                        ImGui::TextDisabled("Unsupported Array Element");
+                        break;
+                    }
+                }
+
+                ImGui::SameLine();
+
+                // Subtract button right-aligned
+                if (ImGui::SmallButton("-##rm"))
+                {
+                    arr.erase(arr.begin() + i);
+                    bArrayChanged = true;
+                    --i; // Adjust loop counter so we don't skip the next item
+                }
+
+                ImGui::PopID();
+            }
+
+            if (bArrayChanged)
+            {
+                REVariant nv{};
+                nv.tag = REValueTag::VariantArray;
+                nv.arrayElements = std::move(arr);
+                PushEdit(input, row, nv, EInspectorEditPhase::End);
+            }
+        } break;
     }
 
     if (row.bReadOnly)

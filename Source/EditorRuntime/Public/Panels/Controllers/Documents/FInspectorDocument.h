@@ -23,7 +23,8 @@ enum class EInspectorWidget : uint8_t
     Quat,
     Transform,
     Enum,
-    ObjectRef
+    ObjectRef,
+    GenericArray
 };
 
 enum class EInspectorRowPresentation : uint8_t

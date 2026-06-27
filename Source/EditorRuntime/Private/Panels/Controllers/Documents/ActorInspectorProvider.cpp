@@ -185,6 +185,7 @@ namespace
         if (prop.kind == REPropKind::Enum)      return EInspectorWidget::Enum;
         if (prop.kind == REPropKind::ObjectPtr) return EInspectorWidget::ObjectRef;
         if (prop.kind == REPropKind::ReflectedStruct) return EInspectorWidget::Label; // MVP: collapsed struct
+        if (prop.kind == REPropKind::Array) return EInspectorWidget::GenericArray;
 
         const std::string& tn = prop.typeName;
 
@@ -277,6 +278,15 @@ namespace
 
         case REValueTag::EnumInt64: return a.i64 == b.i64;
         case REValueTag::ObjectUUID: return a.s == b.s;
+
+        case REValueTag::VariantArray:
+        {
+            if (a.arrayElements.size() != b.arrayElements.size()) return false;
+            for (size_t i = 0; i < a.arrayElements.size(); ++i) {
+                if (!VariantsEqual(a.arrayElements[i], b.arrayElements[i])) return false;
+            }
+            return true;
+        }
 
         default: return true;
     }
@@ -880,32 +890,32 @@ void ActorInspectorProvider::ApplyEdit(const FInspectorEditCommand& cmd)
     }
 
     // ------------------------------------------------------------
-// 2) Reflected property routing (undo via Begin/End snapshots)
-// ------------------------------------------------------------
-auto& scene = m_Host.GetRuntime().GetScene();
+    // 2) Reflected property routing (undo via Begin/End snapshots)
+    // ------------------------------------------------------------
+    auto& scene = m_Host.GetRuntime().GetScene();
 
-const uint64_t key = MakePropEditKey(
-    cmd.handle.primaryID,
-    cmd.handle.declaringTypeName,
-    cmd.handle.propName
-);
+    const uint64_t key = MakePropEditKey(
+        cmd.handle.primaryID,
+        cmd.handle.declaringTypeName,
+        cmd.handle.propName
+    );
 
-// BEGIN snapshot (normal drag workflow)
-if (cmd.phase == EInspectorEditPhase::Begin)
-{
-    REVariant before{};
-    if (scene.TryReadReflectedProperty(actorID, cmd.handle.primaryID,
-                                       cmd.handle.declaringTypeName, cmd.handle.propName,
-                                       before))
+    // BEGIN snapshot (normal drag workflow)
+    if (cmd.phase == EInspectorEditPhase::Begin)
     {
-        m_PropEditBegin[key] = before;
-    }
+        REVariant before{};
+        if (scene.TryReadReflectedProperty(actorID, cmd.handle.primaryID,
+                                           cmd.handle.declaringTypeName, cmd.handle.propName,
+                                           before))
+        {
+            m_PropEditBegin[key] = before;
+        }
 
-    // Live apply on Begin too
-    scene.TryWriteReflectedProperty(actorID, cmd.handle.primaryID,
-                                    cmd.handle.declaringTypeName, cmd.handle.propName,
-                                    cmd.value);
-    return;
+        // Live apply on Begin too
+        scene.TryWriteReflectedProperty(actorID, cmd.handle.primaryID,
+                                        cmd.handle.declaringTypeName, cmd.handle.propName,
+                                        cmd.value);
+        return;
 }
 
 // UPDATE: just apply
