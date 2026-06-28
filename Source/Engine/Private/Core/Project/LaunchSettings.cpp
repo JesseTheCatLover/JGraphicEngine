@@ -1,6 +1,8 @@
 //  Copyright 2025-2026 JesseTheCatLover. All Rights Reserved.
 
-#include "ProjectLaunch/LaunchSettings.h"
+#include "Core/Project/LaunchSettings.h"
+
+#include <algorithm>
 
 #include "Core/Serialization/JsonReader.h"
 #include "Core/Serialization/JsonWriter.h"
@@ -9,7 +11,7 @@
 
 void LaunchSettings::Reset()
 {
-    m_RecentProjects.clear();
+    m_RecentProjectPaths.clear();
     m_bShouldOpenLastProjectOnStartup = true;
 }
 
@@ -36,7 +38,7 @@ bool LaunchSettings::Load(const std::string& engineRootPath)
             for (const auto& item : data["recentProjects"])
             {
                 if (item.is_string())
-                    m_RecentProjects.push_back(item.get<std::string>());
+                    m_RecentProjectPaths.push_back(item.get<std::string>());
             }
         }
     }
@@ -50,7 +52,7 @@ bool LaunchSettings::Save(const std::string& engineRootPath) const
     JJson& data = writer.GetData();
 
     writer.Write("shouldOpenLastProjectOnStartup", m_bShouldOpenLastProjectOnStartup);
-    writer.Write("recentProjects", m_RecentProjects);
+    writer.Write("recentProjects", m_RecentProjectPaths);
 
     return writer.SaveToFile(GetSettingsFilePath(engineRootPath));
 }
@@ -64,6 +66,23 @@ std::string LaunchSettings::GetSettingsFilePath(const std::string& engineRootPat
     return UPath::NormalizePhysical(UPath::Join(settingsDir, "LaunchSettings.json"));
 }
 
+std::vector<FProjectDescriptor> LaunchSettings::LoadRecentProjectDescriptors() const
+{
+    std::vector<FProjectDescriptor> descriptors;
+    for (const std::string& path : m_RecentProjectPaths)
+    {
+        if (!UFileSystem::FileExists(path)) continue;
+
+        FProjectDescriptor desc;
+        // Enabled migration so descriptor cache profiles update smoothly (already loaded projects have been migrated safely)
+        if (FProjectDescriptor::LoadFromFile(path, desc, true))
+        {
+            descriptors.push_back(std::move(desc));
+        }
+    }
+    return descriptors;
+}
+
 void LaunchSettings::RegisterOpenedProject(const std::string& projectFilePath)
 {
     if (projectFilePath.empty())
@@ -72,18 +91,33 @@ void LaunchSettings::RegisterOpenedProject(const std::string& projectFilePath)
     const std::string normalizedPath = UPath::NormalizePhysical(projectFilePath);
 
     // If it already exists, remove it so we can push it to the very top
-    auto it = std::find(m_RecentProjects.begin(), m_RecentProjects.end(), normalizedPath);
-    if (it != m_RecentProjects.end())
+    auto it = std::find(m_RecentProjectPaths.begin(), m_RecentProjectPaths.end(), normalizedPath);
+    if (it != m_RecentProjectPaths.end())
     {
-        m_RecentProjects.erase(it);
+        m_RecentProjectPaths.erase(it);
     }
 
     // Insert at the front (Index 0 = most recent)
-    m_RecentProjects.insert(m_RecentProjects.begin(), normalizedPath);
+    m_RecentProjectPaths.insert(m_RecentProjectPaths.begin(), normalizedPath);
 
     // Enforce the hard cap
-    if (m_RecentProjects.size() > kMaxRecentProjects)
+    if (m_RecentProjectPaths.size() > kMaxRecentProjects)
     {
-        m_RecentProjects.resize(kMaxRecentProjects);
+        m_RecentProjectPaths.resize(kMaxRecentProjects);
     }
+}
+
+bool LaunchSettings::RemoveProjectFromHistory(const std::string &projectFilePath)
+{
+    if (projectFilePath.empty()) return false;
+    const std::string normalizedPath = UPath::NormalizePhysical(projectFilePath);
+
+    auto it = std::remove(m_RecentProjectPaths.begin(), m_RecentProjectPaths.end(), normalizedPath);
+    const bool bRemoved = (it != m_RecentProjectPaths.end());
+
+    if (bRemoved)
+    {
+        m_RecentProjectPaths.erase(it, m_RecentProjectPaths.end());
+    }
+    return bRemoved;
 }

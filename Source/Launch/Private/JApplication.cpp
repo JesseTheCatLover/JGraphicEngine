@@ -12,7 +12,7 @@
 #include "ProjectLaunch/ProjectLaunchResolver.h"
 #include "ProjectLaunch/ConsoleProjectLaunchUI.h"
 #include "ProjectLaunch/ImGuiProjectLaunchUI.h"
-#include "ProjectLaunch/LaunchSettings.h"
+#include "Core/Project/LaunchSettings.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 

@@ -5,7 +5,7 @@
 #include "Core/Project/ProjectContext.h"
 #include "Core/Serialization/JsonReader.h"
 #include "Core/Serialization/JsonWriter.h"
-#include "ProjectLaunch/LaunchSettings.h"
+#include "Core/Project/LaunchSettings.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
@@ -43,7 +43,7 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
         {
             if (settings.GetShouldOpenLastProjectOnStartup()) // Only open recent project if settings let us
             {
-                const auto& recentList = settings.GetRecentProjects();
+                const auto& recentList = settings.GetRecentProjectPaths();
                 if (!recentList.empty())
                 {
                     // Index 0 is always the most recent
