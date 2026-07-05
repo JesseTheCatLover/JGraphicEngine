@@ -71,9 +71,16 @@ std::vector<FProjectDescriptor> LaunchSettings::LoadRecentProjectDescriptors() c
     std::vector<FProjectDescriptor> descriptors;
     for (const std::string& path : m_RecentProjectPaths)
     {
-        if (!UFileSystem::FileExists(path)) continue;
-
         FProjectDescriptor desc;
+        // If it's missing, load a mock descriptor so it still appears in the UI grid
+        if (!UFileSystem::FileExists(path))
+        {
+            desc.projectName = UPath::GetFileName(path, false) + " (Missing)";
+            desc.description = "Warning: This project file could not be found on disk. The directory may have been moved or deleted.";
+            descriptors.push_back(std::move(desc));
+            continue;
+        }
+
         // Enabled migration so descriptor cache profiles update smoothly (already loaded projects have been migrated safely)
         if (FProjectDescriptor::LoadFromFile(path, desc, true))
         {

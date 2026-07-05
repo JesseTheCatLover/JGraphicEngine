@@ -139,6 +139,7 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
     if (!launchResolver.ResolveDirectLaunch(explicitProjectPath, currentEngineRoot, openRequest))
     {
         std::cerr << "[JApplication]: Failed to resolve project launch request.\n";
+        engine.Shutdown();
         return false;
     }
 

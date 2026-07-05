@@ -7,10 +7,12 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "Core/Project/LaunchSettings.h"
 #include "InkBlue/UI/Themes/ImGuiTheme.h"
 #include "Rendering/IRenderBackend.h"
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/IPlatformWindow.h"
+#include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
 namespace
@@ -45,7 +47,7 @@ bool ImGuiProjectLaunchUI::StartWindow()
     windowDesc.height = 720;
     windowDesc.title = "JEditor - Project Browser";
     windowDesc.windowState = EWindowState::Normal;
-    windowDesc.minWidth = 1000;
+    windowDesc.minWidth = 1130;
     windowDesc.minHeight = 480;
 
     auto window = m_Surface->CreateWindow(windowDesc);
@@ -128,12 +130,28 @@ EProjectLaunchAction ImGuiProjectLaunchUI::RunUnifiedBrowserLoop()
 {
     EProjectLaunchAction chosenAction = EProjectLaunchAction::None;
 
-    bool finished = false;
+    bool bFinished = false;
 
-    while (!finished && !m_Window->ShouldClose())
+    while (!bFinished)
     {
+        // 1. Check if the OS window has already received a close signal BEFORE polling events
+        if (m_Window->ShouldClose())
+        {
+            chosenAction = EProjectLaunchAction::Cancel;
+            bFinished = true;
+            break;
+        }
+
         // Process OS events
         m_Surface->PollSurfaceEvents();
+
+        // 2. Re-check immediately after polling in case the event thread captured an OS "X" click
+        if (m_Window->ShouldClose())
+        {
+            chosenAction = EProjectLaunchAction::Cancel;
+            bFinished = true;
+            break;
+        }
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -197,7 +215,7 @@ EProjectLaunchAction ImGuiProjectLaunchUI::RunUnifiedBrowserLoop()
 
         // ================= BOTTOM BAR =================
         ImGui::BeginChild("BottomBar", ImVec2(0, 0), false);
-        DrawBottomBar(chosenAction, finished);
+        DrawBottomBar(chosenAction, bFinished);
         ImGui::EndChild();
 
         // ================= ERROR MODAL =================
@@ -210,15 +228,18 @@ EProjectLaunchAction ImGuiProjectLaunchUI::RunUnifiedBrowserLoop()
         // Draw the popup if it's open
         DrawErrorPopup(m_ErrorTitle, m_ErrorMessage);
 
+        // ================= MISSING PROJECT MODAL =================
+        DrawMissingProjectPopup();
+
         // ================= END ROOT WINDOW =================
         ImGui::End(); // Root Window
 
         // If the user clicked the OS close button (rootOpen becomes false),
         // treat it as Quit.
-        if (!rootOpen && !finished)
+        if (!rootOpen && !bFinished)
         {
             chosenAction = EProjectLaunchAction::Cancel;
-            finished = true;
+            bFinished = true;
         }
 
         // Render
@@ -361,21 +382,40 @@ void ImGuiProjectLaunchUI::DrawContentGrid()
     ImGui::BeginChild("ContentGrid", ImVec2(0,0), false);
     ImGui::Dummy(ImVec2(0, 10));
 
-    const auto& items = (m_SelectedCategory == EBrowserCategory::RecentProjects) ? m_RecentProjects : m_Templates;
-
-    if (items.empty())
+    if (m_SelectedCategory == EBrowserCategory::RecentProjects)
     {
-        ImGui::TextDisabled("No items found.");
+        if (m_RecentProjects.empty())
+        {
+            ImGui::TextDisabled("No recent projects found.");
+        }
+        else
+        {
+            for (int i = 0; i < m_RecentProjects.size(); ++i)
+            {
+                bool isSelected = (m_SelectedItemIndex == i);
+                if (ImGui::Selectable(m_RecentProjects[i].projectName.c_str(), isSelected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(0, 40)))
+                {
+                    m_SelectedItemIndex = i;
+                }
+            }
+        }
     }
     else
     {
-        // Simple list representation for now (we can make this a true grid of cards later)
-        for (int i = 0; i < items.size(); ++i)
+        // Templates Handling
+        if (m_Templates.empty())
         {
-            bool isSelected = (m_SelectedItemIndex == i);
-            if (ImGui::Selectable(items[i].Name.c_str(), isSelected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(0, 40)))
+            ImGui::TextDisabled("No templates found.");
+        }
+        else
+        {
+            for (int i = 0; i < m_Templates.size(); ++i)
             {
-                m_SelectedItemIndex = i;
+                bool isSelected = (m_SelectedItemIndex == i);
+                if (ImGui::Selectable(m_Templates[i].projectName.c_str(), isSelected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(0, 40)))
+                {
+                    m_SelectedItemIndex = i;
+                }
             }
         }
     }
@@ -387,29 +427,81 @@ void ImGuiProjectLaunchUI::DrawDetailsPane()
 {
     ImGui::BeginChild("DetailsPane", ImVec2(0,0), false);
     ImGui::Dummy(ImVec2(0, 10));
-    const auto& items = (m_SelectedCategory == EBrowserCategory::RecentProjects) ? m_RecentProjects : m_Templates;
 
-    if (m_SelectedItemIndex >= 0 && m_SelectedItemIndex < items.size())
+    if (m_SelectedCategory == EBrowserCategory::RecentProjects)
     {
-        const FBrowserItem& item = items[m_SelectedItemIndex];
+        if (m_SelectedItemIndex >= 0 && m_SelectedItemIndex < m_RecentProjects.size())
+        {
+            const FProjectDescriptor& desc = m_RecentProjects[m_SelectedItemIndex];
 
-        // Title
-        ImGui::TextUnformatted(item.Name.c_str());
-        ImGui::Separator();
+            ImGui::TextUnformatted(desc.projectName.c_str());
+            ImGui::Separator();
 
-        // Placeholder for a thumbnail image
-        ImGui::Dummy(ImVec2(0, 10));
-        ImGui::Button("Thumbnail Placeholder", ImVec2(ImGui::GetContentRegionAvail().x, 150));
-        ImGui::Dummy(ImVec2(0, 10));
+            ImGui::Dummy(ImVec2(0, 10));
+            ImGui::Button("Thumbnail Placeholder", ImVec2(ImGui::GetContentRegionAvail().x, 150));
+            ImGui::Dummy(ImVec2(0, 10));
 
-        // Details
-        ImGui::TextWrapped("%s", item.Description.c_str());
-        ImGui::Dummy(ImVec2(0, 10));
-        ImGui::TextDisabled("Path: %s", item.Path.c_str());
+            ImGui::TextWrapped("%s", desc.description.empty() ? "a Redleaf Project." : desc.description.c_str());
+            ImGui::Dummy(ImVec2(0, 10));
+
+            ImGui::Dummy(ImVec2(0, 5));
+            ImGui::Separator();
+            ImGui::Dummy(ImVec2(0, 5));
+
+            ImGui::Text("Project Version: %d", desc.projectVersion);
+
+            std::string engineVersion = desc.engineAssociation.identifier;
+            if (engineVersion.empty())
+            {
+                // Fallback if no explicit string identifier is bound yet
+                engineVersion = desc.engineAssociation.lastKnownEnginePath.empty()
+                    ? "Unassociated"
+                    : "Local Build";
+            }
+            ImGui::Text("Engine Version: %s", engineVersion.c_str());
+
+            // To get the absolute file path, we check our active LaunchSettings setup matching index
+            LaunchSettings settings;
+            settings.Load(m_EngineRootPath);
+            const auto& paths = settings.GetRecentProjectPaths();
+
+            if (m_SelectedItemIndex < paths.size())
+            {
+                const std::string& fullPath = paths[m_SelectedItemIndex];
+                ImGui::TextDisabled("Path: %s", fullPath.c_str());
+                ImGui::Dummy(ImVec2(0, 15));
+
+                if (ImGui::Button("Remove From History", ImVec2(ImGui::GetContentRegionAvail().x, 30)))
+                {
+                    if (settings.RemoveProjectFromHistory(fullPath))
+                    {
+                        settings.Save(m_EngineRootPath);
+                        m_SelectedItemIndex = -1;
+                        RefreshRecentProjects();
+                    }
+                }
+            }
+        }
+        else
+        {
+            ImGui::TextDisabled("Select a project to view details.");
+        }
     }
     else
     {
-        ImGui::TextDisabled("Select an item to view details.");
+        // Template Details Rendering Code Block...
+        if (m_SelectedItemIndex >= 0 && m_SelectedItemIndex < m_Templates.size())
+        {
+            const FProjectDescriptor& templateDesc = m_Templates[m_SelectedItemIndex];
+            ImGui::TextUnformatted(templateDesc.projectName.c_str());
+            ImGui::Separator();
+            ImGui::Dummy(ImVec2(0, 10));
+            ImGui::TextWrapped("%s", templateDesc.description.c_str());
+        }
+        else
+        {
+            ImGui::TextDisabled("Select a template blueprint.");
+        }
     }
 
     ImGui::EndChild();
@@ -423,10 +515,10 @@ void ImGuiProjectLaunchUI::DrawBottomBar(EProjectLaunchAction& outAction, bool& 
     ImGui::Dummy(ImVec2(0, 4));
     ImGui::Indent(10.0f);
 
-    float rightAlignOffset = ImGui::GetWindowWidth() - 250.0f;
-
     if (m_SelectedCategory == EBrowserCategory::RecentProjects)
     {
+        float rightAlignOffset = ImGui::GetWindowWidth() - 450.0f;
+
         // --- RECENT PROJECTS BOTTOM BAR ---
         if (ImGui::Button("Browse...", ImVec2(100, 30)))
         {
@@ -449,6 +541,18 @@ void ImGuiProjectLaunchUI::DrawBottomBar(EProjectLaunchAction& outAction, bool& 
 
         ImGui::SameLine(rightAlignOffset);
 
+        // --- Checkbox Logic ---
+        if (ImGui::Checkbox("Open Recent Project on startup", &m_bOpenLastProjectOnStartup))
+        {
+            LaunchSettings settings;
+            if (settings.Load(m_EngineRootPath))
+            {
+                settings.SetShouldOpenLastProjectOnStartup(m_bOpenLastProjectOnStartup);
+                settings.Save(m_EngineRootPath);
+            }
+        }
+
+        ImGui::SameLine();
         if (ImGui::Button("Cancel", ImVec2(100, 30)))
         {
             outAction = EProjectLaunchAction::Cancel;
@@ -461,9 +565,29 @@ void ImGuiProjectLaunchUI::DrawBottomBar(EProjectLaunchAction& outAction, bool& 
         ImGui::BeginDisabled(m_SelectedItemIndex < 0 || m_SelectedItemIndex >= m_RecentProjects.size());
         if (ImGui::Button("Open", ImVec2(100, 30)))
         {
-            m_CachedProjectToOpen = m_RecentProjects[m_SelectedItemIndex].Path;
-            outAction = EProjectLaunchAction::OpenExisting;
-            outFinished = true;
+            LaunchSettings settings;
+            if (settings.Load(m_EngineRootPath))
+            {
+                const auto& paths = settings.GetRecentProjectPaths();
+                if (m_SelectedItemIndex < paths.size())
+                {
+                    std::string targetPath = paths[m_SelectedItemIndex];
+
+                    // Validate file existence!
+                    if (UFileSystem::FileExists(targetPath))
+                    {
+                        m_CachedProjectToOpen = targetPath;
+                        outAction = EProjectLaunchAction::OpenExisting;
+                        outFinished = true;
+                    }
+                    else
+                    {
+                        // Trigger the relocation popup instead of opening
+                        m_MissingProjectPath = targetPath;
+                        m_ShowingMissingPopup = true;
+                    }
+                }
+            }
         }
         ImGui::EndDisabled();
     }
@@ -473,13 +597,13 @@ void ImGuiProjectLaunchUI::DrawBottomBar(EProjectLaunchAction& outAction, bool& 
         ImGui::AlignTextToFramePadding();
         ImGui::Text("Project Name:");
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(200.0f);
+        ImGui::SetNextItemWidth(180.0f);
         ImGui::InputText("##ProjName", m_NewProjectName, sizeof(m_NewProjectName));
 
         ImGui::SameLine();
         ImGui::Text("Location:");
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(300.0f);
+        ImGui::SetNextItemWidth(250.0f);
         ImGui::InputText("##ProjPath", m_NewProjectPath, sizeof(m_NewProjectPath));
 
         ImGui::SameLine();
@@ -490,8 +614,26 @@ void ImGuiProjectLaunchUI::DrawBottomBar(EProjectLaunchAction& outAction, bool& 
             if (!folder.empty()) std::snprintf(m_NewProjectPath, sizeof(m_NewProjectPath), "%s", folder.c_str());
         }
 
-        ImGui::SameLine(rightAlignOffset);
+        // Expanded offset on creation view to fit input fields alongside the checkbox control smoothly
+        float creationRightAlignOffset = ImGui::GetWindowWidth() - 450.0f;
+        if (creationRightAlignOffset < ImGui::GetCursorPosX() + 10.0f)
+        {
+            creationRightAlignOffset = ImGui::GetCursorPosX() + 10.0f; // Push dynamically if string boundaries wrap
+        }
+        ImGui::SameLine(creationRightAlignOffset);
 
+        // --- Shared Checkbox Logic for Template Tab ---
+        if (ImGui::Checkbox("Open Recent Project on startup##TemplateTab", &m_bOpenLastProjectOnStartup))
+        {
+            LaunchSettings settings;
+            if (settings.Load(m_EngineRootPath))
+            {
+                settings.SetShouldOpenLastProjectOnStartup(m_bOpenLastProjectOnStartup);
+                settings.Save(m_EngineRootPath);
+            }
+        }
+
+        ImGui::SameLine();
         if (ImGui::Button("Cancel", ImVec2(100, 30)))
         {
             outAction = EProjectLaunchAction::Cancel;
@@ -540,18 +682,37 @@ bool ImGuiProjectLaunchUI::SearchForProjectFile(const std::filesystem::path& fol
 void ImGuiProjectLaunchUI::RefreshRecentProjects()
 {
     m_RecentProjects.clear();
-    // TODO: MOCK DATA: Replace with actual config file loading later
-    m_RecentProjects.push_back({"My Peak Game", "C:/JEngineProjects/MyPeakGame/MyPeakGame.jproject", "Last modified: Today", false});
-    m_RecentProjects.push_back({"Test Sandbox", "D:/Work/TestSandbox/TestSandbox.jproject", "Last modified: Yesterday", false});
+
+    LaunchSettings settings;
+    if (settings.Load(m_EngineRootPath))
+    {
+        m_RecentProjects = settings.LoadRecentProjectDescriptors();
+        m_bOpenLastProjectOnStartup = settings.GetShouldOpenLastProjectOnStartup();
+    }
 }
 
 void ImGuiProjectLaunchUI::LoadTemplates()
 {
     m_Templates.clear();
     // TODO: MOCK DATA: Replace with scanning the Engine/Templates directory later
-    m_Templates.push_back({"Blank Project", "", "A clean empty project with no starter content.", true});
-    m_Templates.push_back({"First Person", "", "A project template featuring a first-person character.", true});
-    m_Templates.push_back({"Third Person", "", "A project template featuring a third-person character.", true});
+
+    // --- Mock Template 1: Blank Project ---
+    FProjectDescriptor blankProj;
+    blankProj.projectName = "Blank Project";
+    blankProj.description = "A clean, empty project with an optimal directory layout. Ideal if you are starting from a completely fresh slate or writing systems from scratch.";
+    m_Templates.push_back(std::move(blankProj));
+
+    // --- Mock Template 2: Action Game ---
+    FProjectDescriptor ecsProj;
+    ecsProj.projectName = "Action Sandbox";
+    ecsProj.description = "Pre-configured with full Entity Component System paradigms. Includes lightweight spatial partitioning archetypes and performance-focused transform systems out of the box.";
+    m_Templates.push_back(std::move(ecsProj));
+
+    // --- Mock Template 3: Animation Cinematic ---
+    FProjectDescriptor animProj;
+    animProj.projectName = "Cinematic & Animation";
+    animProj.description = "Tailored for film-making and sequencing workflows. Minimizes gameplay tick overhead to maximize viewport rendering framerates and viewport immersion layouts.";
+    m_Templates.push_back(std::move(animProj));
 }
 
 void ImGuiProjectLaunchUI::Shutdown()
@@ -655,4 +816,85 @@ void ImGuiProjectLaunchUI::DrawErrorPopup(const std::string &title, const std::s
 
     if (!open)
         m_ShowingError = false; // ensure member exists
+}
+
+void ImGuiProjectLaunchUI::DrawMissingProjectPopup()
+{
+    if (m_ShowingMissingPopup)
+    {
+        ImGui::OpenPopup("Project Missing");
+    }
+
+    ImGui::SetNextWindowSizeConstraints(
+        ImVec2(400.0f, 0.0f),   // min size (width 400, height auto)
+        ImVec2(FLT_MAX, FLT_MAX) // max size (no limit)
+    );
+
+    bool open = true;
+    if (ImGui::BeginPopupModal("Project Missing", &open, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextWrapped("The project could not be found at the following path:\n\n%s\n\nDo you want to relocate it or remove it from the list?", m_MissingProjectPath.c_str());
+
+        ImGui::Dummy(ImVec2(0, 10));
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0, 10));
+
+        if (ImGui::Button("Relocate...", ImVec2(120, 30)))
+        {
+            std::string folder = m_Surface->OpenFolderDialog(nullptr);
+            if (!folder.empty())
+            {
+                std::string foundPath;
+                if (SearchForProjectFile(folder, foundPath))
+                {
+                    LaunchSettings settings;
+                    if (settings.Load(m_EngineRootPath))
+                    {
+                        // Swap out the stale path for the newly located one
+                        settings.RemoveProjectFromHistory(m_MissingProjectPath);
+                        settings.RegisterOpenedProject(foundPath);
+                        settings.Save(m_EngineRootPath);
+                    }
+
+                    RefreshRecentProjects();
+                    m_SelectedItemIndex = -1;
+                    m_ShowingMissingPopup = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                else
+                {
+                    m_ErrorTitle = "Project Not Found";
+                    m_ErrorMessage = "Could not find a .jproject file in the selected directory.";
+                    m_ShowingError = true;
+                }
+            }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Remove", ImVec2(100, 30)))
+        {
+            LaunchSettings settings;
+            if (settings.Load(m_EngineRootPath))
+            {
+                settings.RemoveProjectFromHistory(m_MissingProjectPath);
+                settings.Save(m_EngineRootPath);
+            }
+
+            RefreshRecentProjects();
+            m_SelectedItemIndex = -1;
+            m_ShowingMissingPopup = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(100, 30)))
+        {
+            m_ShowingMissingPopup = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    if (!open) m_ShowingMissingPopup = false;
 }

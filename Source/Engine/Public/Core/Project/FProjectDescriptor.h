@@ -5,7 +5,7 @@
 
 struct FEngineAssociation
 {
-    std::string identifier;          // e.g. "Stable-1.2"
+    std::string identifier = "Alpha1";          // e.g. "Stable-1.2"
     std::string lastKnownEnginePath; // optional, machine-local convenience path
 };
 

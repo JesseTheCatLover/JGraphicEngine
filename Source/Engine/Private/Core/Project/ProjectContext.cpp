@@ -116,7 +116,14 @@ bool ProjectContext::CreateProject(const FProjectCreateRequest &request, FProjec
         return false;
     }
 
+    // Build the brand new descriptor with all the required runtime data
     FProjectDescriptor projectDescriptor;
+    projectDescriptor.projectName = request.projectName;
+    projectDescriptor.projectID = UUUID::GenerateUUID();
+
+    // Set the initial engine association so it knows where it was born
+    projectDescriptor.engineAssociation.lastKnownEnginePath = normalizedEngineRoot;
+
     if (!FProjectDescriptor::SaveToFile(projectFilePath, projectDescriptor))
     {
         outResult.errors.emplace_back("Failed to write .jproject file.");

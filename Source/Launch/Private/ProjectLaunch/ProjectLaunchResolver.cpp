@@ -197,7 +197,7 @@ bool ProjectLaunchResolver::TryResolveEngineForProject(const std::string& projec
 }
 
 bool ProjectLaunchResolver::UpdateProjectLastKnownEnginePath(const std::string& projectFilePath,
-                                                             const std::string& engineRootPath) const
+                                                             const std::string& engineRootPath) const // TODO: Later add engine version update too
 {
     JsonReader reader;
     if (!reader.LoadFromFile(projectFilePath) || !reader.IsValid())

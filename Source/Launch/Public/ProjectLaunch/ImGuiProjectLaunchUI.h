@@ -8,22 +8,13 @@
 #include <filesystem>
 
 #include "Core/Memory/SmartPointers.h"
+#include "Core/Project/FProjectDescriptor.h"
 
 enum class EBrowserCategory
 {
     RecentProjects,
     Games,
     Animation
-};
-
-// Represents a project or template card in the UI
-struct FBrowserItem
-{
-    std::string Name;
-    std::string Path;
-    std::string Description;
-    bool bIsTemplate = false;
-    // void* PreviewTextureID = nullptr; // Uncomment later when implementing image thumbnails
 };
 
 class IRenderBackend;
@@ -47,14 +38,19 @@ private:
     // --- Unified UI State ---
     EBrowserCategory m_SelectedCategory = EBrowserCategory::RecentProjects;
     int m_SelectedItemIndex = -1;
+    bool m_bOpenLastProjectOnStartup = true;
+
+    // --- Missing Project Modal State ---
+    bool m_ShowingMissingPopup = false;
+    std::string m_MissingProjectPath;
 
     // Creation Buffers
     char m_NewProjectName[256] = "MyProject";
     char m_NewProjectPath[1024] = "";
 
     // Data Models
-    std::vector<FBrowserItem> m_RecentProjects;
-    std::vector<FBrowserItem> m_Templates;
+    std::vector<FProjectDescriptor> m_RecentProjects;
+    std::vector<FProjectDescriptor> m_Templates;
 
     // --- Cached Results ---
     // We store the results here when the unified browser closes,
@@ -91,6 +87,7 @@ private:
     // --- Popups ---
     bool DrawEnginePathPicker(std::string& outEnginePath);
     void DrawErrorPopup(const std::string& title, const std::string& message);
+    void DrawMissingProjectPopup();
 
     // --- Data Population & Utilities ---
     void RefreshRecentProjects();
