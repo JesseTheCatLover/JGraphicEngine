@@ -3,6 +3,7 @@
 #include "GLFWInputBackend.h"
 #include <cmath>
 #include "GLFWInputMapping.h"
+#include "Rendering/IPlatformWindow.h"
 
 static std::unordered_map<GLFWwindow*, GLFWInputBackend*> s_WindowToBackend;
 
@@ -26,6 +27,32 @@ GLFWInputBackend::GLFWInputBackend(GLFWwindow* window)
 GLFWInputBackend::~GLFWInputBackend()
 {
     s_WindowToBackend.erase(m_Window);
+}
+
+void GLFWInputBackend::SetTargetWindow(IPlatformWindow* platformWindow)
+{
+    // 1. If nullptr was passed, untangle our window reference and exit early
+    if (!platformWindow)
+    {
+        m_Window = nullptr;
+        return;
+    }
+
+    // 2. Extract the raw native handle safely inside the GLFW implementation boundary
+    GLFWwindow* newRawWindow = static_cast<GLFWwindow*>(platformWindow->GetNativeHandle());
+    if (!newRawWindow)
+    {
+        return;
+    }
+
+    m_Window = newRawWindow;
+
+    // 3. Register tracking state so our static callbacks route events to this backend instance
+    s_WindowToBackend[m_Window] = this;
+
+    // 4. Update core viewport position metrics and flush old events safely
+    glfwGetCursorPos(m_Window, &m_LastMouseX, &m_LastMouseY);
+    m_PendingEvents.clear();
 }
 
 void GLFWInputBackend::FetchEvents(std::vector<FRawInputEvent>& outEvents)

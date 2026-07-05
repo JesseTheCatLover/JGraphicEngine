@@ -180,6 +180,12 @@ TSharedPtr<IPlatformWindow> GLFWSurface::CreateWindow(const FWindowDesc& windowD
                 if (current == locked)
                     m_FocusedWindow.reset();
             }
+
+            // Pass the event up to whoever is listening (the Core Engine)
+            if (m_FocusDelegate)
+            {
+                m_FocusDelegate(locked, focused);
+            }
         });
 
     m_Windows.push_back(window);

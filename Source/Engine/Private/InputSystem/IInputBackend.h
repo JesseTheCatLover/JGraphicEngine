@@ -5,10 +5,14 @@
 
 #include "FRawInputEvent.h"
 
+class IPlatformWindow;
+
 class IInputBackend
 {
 public:
     virtual ~IInputBackend() = default;
+
+    virtual void SetTargetWindow(IPlatformWindow* platformWindow) = 0;
 
     // Collects all input events since last frame
     virtual void FetchEvents(std::vector<FRawInputEvent>& outEvents) = 0;

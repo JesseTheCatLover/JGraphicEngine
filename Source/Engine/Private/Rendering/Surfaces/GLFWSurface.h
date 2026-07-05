@@ -21,6 +21,8 @@ private:
     bool m_Initialized = false;
     bool m_Shutdown = false;
 
+    IPlatformSurface::FOnWindowFocusChanged m_FocusDelegate = nullptr;
+
 public:
     GLFWSurface() = default;
     ~GLFWSurface() override;
@@ -38,6 +40,8 @@ public:
     [[nodiscard]] TSharedPtr<IPlatformWindow> GetEffectiveInputWindow() const override;
 
     [[nodiscard]] std::vector<TSharedPtr<IPlatformWindow>> GetAllWindows() const override;
+
+    void SetWindowFocusChangedDelegate(FOnWindowFocusChanged delegate) override { m_FocusDelegate = delegate; }
 
     void MakeContextCurrent(const TSharedPtr<IPlatformWindow> &window) override;
 

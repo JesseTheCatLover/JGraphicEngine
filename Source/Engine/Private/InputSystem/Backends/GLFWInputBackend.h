@@ -12,6 +12,7 @@ public:
     explicit GLFWInputBackend(GLFWwindow* window);
     ~GLFWInputBackend();
 
+    void SetTargetWindow(IPlatformWindow* platformWindow) override;
     void FetchEvents(std::vector<FRawInputEvent>& outEvents) override;
     void GetMousePosition(float& outX, float& outY) override;
 

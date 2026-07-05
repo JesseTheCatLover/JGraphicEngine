@@ -13,6 +13,7 @@ class IPlatformSurface
 {
 public:
     using GetProcAddressFunc = void* (*)(const char*);
+    using FOnWindowFocusChanged = std::function<void(TSharedPtr<IPlatformWindow> window, bool bFocused)>;
 
 public:
     virtual ~IPlatformSurface() = default;
@@ -38,6 +39,8 @@ public:
 
     // List all windows
     [[nodiscard]] virtual std::vector<TSharedPtr<IPlatformWindow>> GetAllWindows() const = 0;
+
+    virtual void SetWindowFocusChangedDelegate(FOnWindowFocusChanged delegate) = 0;
 
     // Bind a given window’s context (backend-agnostic wrapper)
     virtual void MakeContextCurrent(const TSharedPtr<IPlatformWindow>& window) = 0;
