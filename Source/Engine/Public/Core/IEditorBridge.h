@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 
+class ProjectContext;
 class IProjectLaunchUI;
 class IRenderBackend;
 class IPlatformWindow;
@@ -15,7 +16,7 @@ class IEditorBridge
 {
 public:
     virtual ~IEditorBridge() = default;
-    virtual void OnProjectInitialized(IPlatformWindow* window) = 0;
+    virtual void OnProjectInitialized(IPlatformWindow* window, ProjectContext& projectCtx) = 0;
     virtual void OnSceneLoaded(const std::string& sceneName) = 0;
     virtual void OnRenderOverlay(float deltaTime) = 0;
     virtual void OnTick(float deltaTime) = 0;

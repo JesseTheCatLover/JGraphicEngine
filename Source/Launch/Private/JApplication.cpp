@@ -69,10 +69,7 @@ namespace
 
     static std::string GuessCurrentEngineRoot()
     {
-        std::filesystem::path exePath = UFileSystem::GetExecutablePath();
-
-        // <EngineRoot>/Binaries/<exe>
-        std::filesystem::path engineRoot = exePath.parent_path();
+        std::filesystem::path engineRoot = UFileSystem::GetEngineRoot();
 
         return UPath::NormalizePhysical(engineRoot.string());
     }

@@ -23,8 +23,8 @@ namespace
         if (!GEngine)
             return {};
 
-        const std::string savedRoot = GEngine->GetProjectContext()->GetProjectSavedRoot();
-        return UPath::Join(savedRoot, "Editor", "Layout", "ImGui", "CurrentLayout.ini");
+        const std::string configRoot = GEngine->GetProjectContext()->GetProjectConfigRoot();
+        return UPath::Join(configRoot, "Editor", "Layout", "ImGui", "CurrentLayout.ini");
     }
     bool ReadTextFile(const std::filesystem::path& path, std::string& outText)
     {

@@ -158,6 +158,13 @@ public:
      */
     static std::filesystem::path GetExecutablePath();
 
+    /**
+     * @brief Get the root directory of the engine.
+     *
+     * @return Engine root directory path, or empty path if unavailable.
+     */
+    static std::filesystem::path GetEngineRoot() { return GetExecutablePath().parent_path(); }
+
     // ----------------- Info & Listing -----------------
 
     /**

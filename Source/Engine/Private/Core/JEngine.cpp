@@ -161,7 +161,7 @@ bool JEngine::InitializeProject()
 
     if (m_EditorBridge)
     {
-        m_EditorBridge->OnProjectInitialized(m_PrimaryWindow.get());
+        m_EditorBridge->OnProjectInitialized(m_PrimaryWindow.get(), *m_ProjectContext.get());
     }
 
     return true;

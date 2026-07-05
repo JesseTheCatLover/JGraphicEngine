@@ -8,6 +8,7 @@
 #include "Core/IEditorBridge.h"
 #include "Core/Memory/SmartPointers.h"
 
+class ProjectContext;
 class ShellCommandService;
 class IEditorRenderer;
 class IEditorUIBackend;
@@ -43,12 +44,14 @@ public:
 
     void Shutdown();
 
-    void OnProjectInitialized(IPlatformWindow* window) override;
+    void OnProjectInitialized(IPlatformWindow* window, ProjectContext& projectCtx) override;
     void OnSceneLoaded(const std::string &sceneName) override;
     void OnRenderOverlay(float deltaTime) override;
     void OnTick(float deltaTime) override;
 
-    private:
+private:
+    void EnsureDefaultEditorLayoutExists(ProjectContext& projectCtx);
+
     void RegisterEditorShellCommands(EditorHost& host, EditorLayoutModel& layout);
     static void RegisterViewCommands(ShellCommandService& shell, EditorLayoutModel& layout);
     static void RegisterViewportCommands(ShellCommandService& shell, EditorLayoutModel& layout);
