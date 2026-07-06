@@ -19,22 +19,22 @@ AssetBrowserController::AssetBrowserController(PanelID id, EditorHost& host, Edi
 , m_TreeViewController(
         FAssetBrowserViewSettings{
             .selectionPolicy = EAssetBrowserSelectionPolicy::LocalSelection,
-            .rootPath = "/Project",
             .currentPath = "/Project",
-            .projectionMode = EAssetBrowserProjectionMode::Tree,
+            .rootPath = "/Project",
             .bShowFolders = true,
             .bShowAssets = false,
-            .bIncludeRootNode = false
+            .bIncludeRootNode = false,
+            .projectionMode = EAssetBrowserProjectionMode::Tree,
         })
 
     , m_ContentViewController(
         FAssetBrowserViewSettings{
             .selectionPolicy = EAssetBrowserSelectionPolicy::SharedGlobalSelection,
-            .rootPath = "/Project",
             .currentPath = "/Project",
-            .projectionMode = EAssetBrowserProjectionMode::Flat,
+            .rootPath = "/Project",
             .bShowFolders = true,
-            .bShowAssets = true
+            .bShowAssets = true,
+            .projectionMode = EAssetBrowserProjectionMode::Flat,
         })
 {
     m_AssetsMutatedHandle = m_Host.GetService<AssetBrowserService>().OnAssetsMutated().Add([this](const FAssetOpResult&)

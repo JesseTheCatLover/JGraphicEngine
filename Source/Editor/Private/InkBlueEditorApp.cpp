@@ -139,7 +139,7 @@ void InkBlueEditorApp::EnsureDefaultEditorLayoutExists(ProjectContext& projectCt
     }
 
     // 2. Attempt to pull from the Engine's DefaultLayout.ini
-    std::string engineRoot = UFileSystem::GetEngineRoot();
+    std::string engineRoot = UFileSystem::GetEngineRoot().string();
     std::string engineLayoutFile = UPath::Join(engineRoot, "Configs", "Editor", "Layout", "ImGui", "DefaultLayout.ini");
 
     if (UFileSystem::FileExists(engineLayoutFile))
