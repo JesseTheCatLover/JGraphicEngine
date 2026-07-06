@@ -87,6 +87,8 @@ void ImGuiRenderer::RenderPanels(std::span<IEditorPanel * const> panels)
 void ImGuiRenderer::RenderDialogs()
 {
     m_Host.GetDialogManager().DrawDialogs();
+
+    DrawMissingProjectPopup();
 }
 
 void ImGuiRenderer::DrawMainMenuBar()
@@ -115,7 +117,7 @@ void ImGuiRenderer::DrawMainMenuBar()
                 std::string foundPath;
                 if (SearchForProjectFile(folder, foundPath))
                 {
-                    m_Runtime.RestartEditor(foundPath);
+                    HandleProjectLaunch(foundPath);
                 }
                 else
                 {
@@ -139,7 +141,7 @@ void ImGuiRenderer::DrawMainMenuBar()
                     {
                         if (i < m_RecentProjectPaths.size())
                         {
-                            m_Runtime.RestartEditor(m_RecentProjectPaths[i]);
+                            HandleProjectLaunch(m_RecentProjectPaths[i]);
                         }
                     }
                 }
@@ -408,6 +410,82 @@ void ImGuiRenderer::DrawDockspaceAndPanels(float /*deltaTime*/)
     ImGui::End();
 }
 
+void ImGuiRenderer::DrawMissingProjectPopup()
+{
+    if (m_bShowMissingPopup)
+    {
+        ImGui::OpenPopup("Project Not Found##Editor");
+        m_bShowMissingPopup = false;
+    }
+
+    ImGui::SetNextWindowSizeConstraints(ImVec2(450.0f, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
+
+    if (ImGui::BeginPopupModal("Project Not Found##Editor", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextWrapped("The following project configuration file could not be verified on disk:\n\n%s\n\nWould you like to relocate the project or remove it from your history?", m_MissingProjectPath.c_str());
+
+        ImGui::Dummy(ImVec2(0, 15));
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0, 10));
+
+        // --- RELOCATE PROJECT BUTTON ---
+        if (ImGui::Button("Relocate...", ImVec2(120, 30)))
+        {
+            std::string folder = m_Runtime.GetSurface().OpenFolderDialog(nullptr);
+            if (!folder.empty())
+            {
+                std::string foundPath;
+                if (SearchForProjectFile(folder, foundPath))
+                {
+                    LaunchSettings settings;
+                    std::string engineRoot = UFileSystem::GetEngineRoot().string();
+                    if (settings.Load(engineRoot))
+                    {
+                        settings.RemoveProjectFromHistory(m_MissingProjectPath);
+                        settings.RegisterOpenedProject(foundPath);
+                        settings.Save(engineRoot);
+                    }
+
+                    RefreshRecentProjects();
+                    ImGui::CloseCurrentPopup();
+                    m_Runtime.RestartEditor(foundPath); // Boot up into the newly found path!
+                }
+                else
+                {
+                    std::cerr << "[Editor]: No valid .jproject found in the relocation target.\n";
+                }
+            }
+        }
+
+        ImGui::SameLine();
+
+        // --- REMOVE FROM HISTORY BUTTON ---
+        if (ImGui::Button("Remove", ImVec2(100, 30)))
+        {
+            LaunchSettings settings;
+            std::string engineRoot = UFileSystem::GetEngineRoot().string();
+            if (settings.Load(engineRoot))
+            {
+                settings.RemoveProjectFromHistory(m_MissingProjectPath);
+                settings.Save(engineRoot);
+            }
+
+            RefreshRecentProjects();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        // --- CANCEL BUTTON ---
+        if (ImGui::Button("Cancel", ImVec2(100, 30)))
+        {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
 void ImGuiRenderer::RefreshRecentProjects()
 {
     m_RecentProjects.clear();
@@ -437,6 +515,20 @@ bool ImGuiRenderer::SearchForProjectFile(const std::filesystem::path& folderPath
     }
     catch (...) {}
     return false;
+}
+
+void ImGuiRenderer::HandleProjectLaunch(const std::string& projectPath)
+{
+    if (UFileSystem::FileExists(projectPath))
+    {
+        m_Runtime.RestartEditor(projectPath);
+    }
+    else
+    {
+        // Intercept failure and invoke the missing handler window
+        m_MissingProjectPath = projectPath;
+        m_bShowMissingPopup = true;
+    }
 }
 
 const ImGuiWindowClass *ImGuiRenderer::GetDockClassForPanel(const IEditorPanel &panel)

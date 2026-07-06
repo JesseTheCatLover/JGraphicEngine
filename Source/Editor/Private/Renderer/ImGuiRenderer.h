@@ -29,6 +29,9 @@ private:
     std::vector<std::string> m_RecentProjectPaths;
     std::vector<FProjectDescriptor> m_RecentProjects;
 
+    bool m_bShowMissingPopup = false;
+    std::string m_MissingProjectPath;
+
 public:
     ImGuiRenderer(EditorHost& host, EditorRuntime& runtime, EditorLayoutModel& layout);
     void Initialize() override;
@@ -42,6 +45,9 @@ private:
     void DrawToolbar();
     void DrawDockspaceAndPanels(float deltaTime);
 
+    void DrawMissingProjectPopup();
+
     void RefreshRecentProjects();
     bool SearchForProjectFile(const std::filesystem::path& folderPath, std::string& outProjectPath);
+    void HandleProjectLaunch(const std::string& projectPath);
 };
