@@ -36,6 +36,7 @@
 #include "Rendering/IPlatformWindow.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
 #include "Utilities/UFileSystem.h"
+#include "Utilities/UProcess.h"
 
 JEngine::JEngine()
     : m_Services(MakeUnique<TServiceContainer>()),
@@ -170,46 +171,45 @@ bool JEngine::InitializeProject()
 
 void JEngine::RestartEditor(const std::string& targetProjectPath, const std::string& extraArgs)
 {
-    std::filesystem::path binaryPath = UFileSystem::GetExecutablePath();
+    std::filesystem::path exePath = UFileSystem::GetExecutablePath();
 
-    if (std::filesystem::is_directory(binaryPath))
+    if (std::filesystem::is_directory(exePath))
     {
         // Change "RedleafEngine" to match the exact executable file output name if it's named differently
-        binaryPath /= "RedleafEngine";
+#ifdef JENGINE_PLATFORM_WINDOWS
+        exePath /= "RedleafEngine.exe";
+#else
+        exePath /= "RedleafEngine";
+#endif
     }
 
-    std::string exePath = binaryPath.string();
-    std::string command;
+    std::vector<std::string> arguments;
 
-#ifdef JENGINE_PLATFORM_WINDOWS
-    // Windows: 'start' detaches the process natively
-    command = "start \"\" \"" + exePath + "\" --editor";
-#else
-    // macOS/Linux: '&' backgrounds the process
-    command = "\"" + exePath + "\" --editor";
-#endif
+    arguments.emplace_back("--editor");
 
-    // Automatically append force-launcher if we are booting without a project
     if (targetProjectPath.empty())
     {
-        command += " --force-launcher";
+        arguments.emplace_back("--force-launcher");
     }
     else
     {
-        command += " --project=\"" + targetProjectPath + "\"";
+        arguments.emplace_back("--project=" + targetProjectPath);
     }
 
     if (!extraArgs.empty())
     {
-        command += " " + extraArgs;
+        arguments.emplace_back(extraArgs);
     }
 
-#ifndef JENGINE_PLATFORM_WINDOWS
-    command += " &";
-#endif
+    UProcess::FLaunchOptions launchOptions;
+    launchOptions.bDetached = true;
+    launchOptions.bHidden = true;
 
-    std::cout << "[JEngine]: Spawning new editor instance: " << command << "\n";
-    std::system(command.c_str());
+    if (!UProcess::Launch(exePath, arguments, launchOptions))
+    {
+        std::cerr << "[JEngine]: Failed to restart editor.\n";
+        return;
+    }
 
     // Safely break the current engine's main loop
     if (m_Context)
