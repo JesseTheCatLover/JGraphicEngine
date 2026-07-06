@@ -176,11 +176,11 @@ void JEngine::RestartEditor(const std::string& targetProjectPath, const std::str
     if (std::filesystem::is_directory(exePath))
     {
         // Change "RedleafEngine" to match the exact executable file output name if it's named differently
-#ifdef JENGINE_PLATFORM_WINDOWS
+    #ifdef JENGINE_PLATFORM_WINDOWS
         exePath /= "RedleafEngine.exe";
-#else
+    #else
         exePath /= "RedleafEngine";
-#endif
+    #endif
     }
 
     std::vector<std::string> arguments;
