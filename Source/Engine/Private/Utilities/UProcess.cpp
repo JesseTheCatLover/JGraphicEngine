@@ -20,35 +20,31 @@
 
 #endif
 
-namespace
+// TODO:
+// Implement proper Windows command-line escaping.
+// This implementation is sufficient for simple arguments such as:
+// --editor
+// --force-launcher
+// --project=C:/Project
+std::string UProcess::BuildCommandLine(
+    const std::filesystem::path &executable,
+    const std::vector<std::string> &arguments)
 {
-    // TODO:
-    // Implement proper Windows command-line escaping.
-    // This implementation is sufficient for simple arguments such as:
-    // --editor
-    // --force-launcher
-    // --project=C:/Project
+    std::ostringstream ss;
 
-    std::string BuildCommandLine(
-        const std::filesystem::path& executable,
-        const std::vector<std::string>& arguments)
+    ss << '"' << executable.string() << '"';
+
+    for (const auto &arg: arguments)
     {
-        std::ostringstream ss;
+        ss << ' ';
 
-        ss << '"' << executable.string() << '"';
-
-        for (const auto& arg : arguments)
-        {
-            ss << ' ';
-
-            if (arg.find(' ') != std::string::npos)
-                ss << '"' << arg << '"';
-            else
-                ss << arg;
-        }
-
-        return ss.str();
+        if (arg.find(' ') != std::string::npos)
+            ss << '"' << arg << '"';
+        else
+            ss << arg;
     }
+
+    return ss.str();
 }
 
 bool UProcess::Launch(

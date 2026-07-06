@@ -22,6 +22,11 @@ namespace UProcess
         std::filesystem::path WorkingDirectory;
     };
 
+    // Builds a platform-appropriate command line string for logging/debugging.
+    std::string BuildCommandLine(
+        const std::filesystem::path& executable,
+        const std::vector<std::string>& arguments);
+
     bool Launch(
         const std::filesystem::path& executable,
         const std::vector<std::string>& arguments = {},

@@ -205,6 +205,10 @@ void JEngine::RestartEditor(const std::string& targetProjectPath, const std::str
     launchOptions.bDetached = true;
     launchOptions.bHidden = true;
 
+    std::cout << "[JEngine]: Spawning new editor instance: "
+              << UProcess::BuildCommandLine(exePath, arguments)
+              << '\n';
+
     if (!UProcess::Launch(exePath, arguments, launchOptions))
     {
         std::cerr << "[JEngine]: Failed to restart editor.\n";
