@@ -25,6 +25,7 @@ public:
      */
     bool ResolveDirectLaunch(const std::string& preferredProjectFilePath,
                              const std::string& currentEngineRoot,
+                             bool bForceLauncher,
                              FProjectOpenRequest& outRequest);
 
     /**

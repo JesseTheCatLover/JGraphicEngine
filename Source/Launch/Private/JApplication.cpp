@@ -130,10 +130,13 @@ bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)
     std::string explicitProjectPath;
     TryGetArgValue(argc, argv, "--project", explicitProjectPath);
 
+    // Check if we are forcing the launcher to open via command line
+    const bool bForceLauncher = HasFlag(argc, argv, "--force-launcher");
+
     // v1 behavior:
     // - if --project is passed, use it
     // - otherwise prompt via launch UI
-    if (!launchResolver.ResolveDirectLaunch(explicitProjectPath, currentEngineRoot, openRequest))
+    if (!launchResolver.ResolveDirectLaunch(explicitProjectPath, currentEngineRoot, bForceLauncher, openRequest))
     {
         std::cerr << "[JApplication]: Failed to resolve project launch request.\n";
         engine.Shutdown();

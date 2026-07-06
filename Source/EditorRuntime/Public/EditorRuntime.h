@@ -40,6 +40,9 @@ private:
 public:
     ~EditorRuntime();
 
+    // Spawns a new engine process. If targetProjectPath is empty, it boots into the Launcher.
+    void RestartEditor(const std::string& targetProjectPath = "", const std::string& extraArgs = "");
+
     // Mutating operations
     [[nodiscard]] EditorSceneAPI& GetScene() { return m_SceneAPI; }
     [[nodiscard]] EditorViewportAPI& GetViewport() { return m_ViewportAPI; }

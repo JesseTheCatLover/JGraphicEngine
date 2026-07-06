@@ -35,6 +35,7 @@
 #include "Rendering/FRenderView.h"
 #include "Rendering/IPlatformWindow.h"
 #include "Scene/SceneComponents/JCameraComponent.h"
+#include "Utilities/UFileSystem.h"
 
 JEngine::JEngine()
     : m_Services(MakeUnique<TServiceContainer>()),
@@ -165,6 +166,56 @@ bool JEngine::InitializeProject()
     }
 
     return true;
+}
+
+void JEngine::RestartEditor(const std::string& targetProjectPath, const std::string& extraArgs)
+{
+    std::filesystem::path binaryPath = UFileSystem::GetExecutablePath();
+
+    if (std::filesystem::is_directory(binaryPath))
+    {
+        // Change "RedleafEngine" to match the exact executable file output name if it's named differently
+        binaryPath /= "RedleafEngine";
+    }
+
+    std::string exePath = binaryPath.string();
+    std::string command;
+
+#ifdef JENGINE_PLATFORM_WINDOWS
+    // Windows: 'start' detaches the process natively
+    command = "start \"\" \"" + exePath + "\" --editor";
+#else
+    // macOS/Linux: '&' backgrounds the process
+    command = "\"" + exePath + "\" --editor";
+#endif
+
+    // Automatically append force-launcher if we are booting without a project
+    if (targetProjectPath.empty())
+    {
+        command += " --force-launcher";
+    }
+    else
+    {
+        command += " --project=\"" + targetProjectPath + "\"";
+    }
+
+    if (!extraArgs.empty())
+    {
+        command += " " + extraArgs;
+    }
+
+#ifndef JENGINE_PLATFORM_WINDOWS
+    command += " &";
+#endif
+
+    std::cout << "[JEngine]: Spawning new editor instance: " << command << "\n";
+    std::system(command.c_str());
+
+    // Safely break the current engine's main loop
+    if (m_Context)
+    {
+        m_Context->SetRunning(false);
+    }
 }
 
 bool JEngine::Run()

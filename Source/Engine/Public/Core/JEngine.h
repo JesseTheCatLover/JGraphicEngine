@@ -31,6 +31,7 @@ class JRendererLegacy;
 class JEngine
 {
     friend class JApplication;
+    friend class EditorRuntime;
 public:
     static JEngine& Get()
     {
@@ -97,6 +98,9 @@ private:
     bool InitializeRuntime();
     bool OpenProject(const FProjectOpenRequest& request);
     bool InitializeProject();
+
+    // Spawns a new engine process. If targetProjectPath is empty, it boots into the Launcher.
+    void RestartEditor(const std::string& targetProjectPath = "", const std::string& extraArgs = "");
 
     bool Run();
 

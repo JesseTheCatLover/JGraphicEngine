@@ -91,6 +91,11 @@ EditorRuntime::~EditorRuntime()
 
 }
 
+void EditorRuntime::RestartEditor(const std::string &targetProjectPath, const std::string& extraArgs)
+{
+    JEngine::Get().RestartEditor(targetProjectPath, extraArgs);
+}
+
 bool EditorRuntime::InstallEditorInputMappings()
 {
     FActionAxisMap axisMap = BuildEditorAxisMap();

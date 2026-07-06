@@ -2,17 +2,23 @@
 
 #include "ImGuiRenderer.h"
 
+#include <iostream>
+
 #include "imgui.h"
 #include "imgui_internal.h"
 
 #include "EditorCore/EditorHost.h"
 #include "EditorRuntime.h"
+#include "Core/Project/FProjectCreateRequest.h"
+#include "Core/Project/LaunchSettings.h"
 #include "EditorLayout/EditorLayoutModel.h"
 #include "EditorCore/Services/AssetCacheService.h"
 #include "EditorCore/Services/EditTimelineService.h"
 #include "EditorCore/Services/HotkeyService.h"
 #include "EditorCore/Services/ShellCommandService.h"
 #include "EditorCore/IEditorPanel.h"
+#include "Utilities/UFileSystem.h"
+#include "Utilities/UPath.h"
 
 namespace
 {
@@ -53,6 +59,9 @@ void ImGuiRenderer::Initialize()
 
     // Optional: prevent other windows docking "over" it
     m_ViewportHostDockClass.DockNodeFlagsOverrideSet |= ImGuiDockNodeFlags_NoDockingOverMe;
+
+    // Load recent projects once on initialization
+    RefreshRecentProjects();
 }
 
 void ImGuiRenderer::RenderChrome(float deltaTime)
@@ -97,8 +106,52 @@ void ImGuiRenderer::DrawMainMenuBar()
         ImGui::MenuItem("New Scene", "Ctrl+N");
         ImGui::MenuItem("Open Scene", "Ctrl+O");
         ImGui::Separator();
-        ImGui::MenuItem("New Project");
-        ImGui::MenuItem("Open Project");
+
+        if (ImGui::MenuItem("Open Project"))
+        {
+            std::string folder = m_Runtime.GetSurface().OpenFolderDialog(nullptr);
+            if (!folder.empty())
+            {
+                std::string foundPath;
+                if (SearchForProjectFile(folder, foundPath))
+                {
+                    m_Runtime.RestartEditor(foundPath);
+                }
+                else
+                {
+                    std::cerr << "[Editor]: No .jproject file found in the selected directory.\n";
+                }
+            }
+        }
+
+        if (ImGui::BeginMenu("Recent Projects"))
+        {
+            if (m_RecentProjects.empty())
+            {
+                ImGui::MenuItem("No recent project available", nullptr, false, false);
+            }
+            else
+            {
+                for (size_t i = 0; i < m_RecentProjects.size(); ++i)
+                {
+                    // If user clicks a recent project, verify path exists and launch
+                    if (ImGui::MenuItem(m_RecentProjects[i].projectName.c_str()))
+                    {
+                        if (i < m_RecentProjectPaths.size())
+                        {
+                            m_Runtime.RestartEditor(m_RecentProjectPaths[i]);
+                        }
+                    }
+                }
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem("New Project"))
+        {
+            // Restart without a target path; JApplication will boot the launcher
+            m_Runtime.RestartEditor("");
+        }
         ImGui::EndMenu();
     }
 
@@ -353,6 +406,37 @@ void ImGuiRenderer::DrawDockspaceAndPanels(float /*deltaTime*/)
     ImGui::PopStyleVar(2);
 
     ImGui::End();
+}
+
+void ImGuiRenderer::RefreshRecentProjects()
+{
+    m_RecentProjects.clear();
+    m_RecentProjectPaths.clear();
+
+    LaunchSettings settings;
+    std::string engineRoot = UFileSystem::GetEngineRoot().string();
+    if (settings.Load(engineRoot))
+    {
+        m_RecentProjects = settings.LoadRecentProjectDescriptors();
+        m_RecentProjectPaths = settings.GetRecentProjectPaths();
+    }
+}
+
+bool ImGuiRenderer::SearchForProjectFile(const std::filesystem::path& folderPath, std::string& outProjectPath)
+{
+    try
+    {
+        for (auto& entry : std::filesystem::recursive_directory_iterator(folderPath))
+        {
+            if (entry.is_regular_file() && entry.path().extension() == ".jproject")
+            {
+                outProjectPath = entry.path().string();
+                return true;
+            }
+        }
+    }
+    catch (...) {}
+    return false;
 }
 
 const ImGuiWindowClass *ImGuiRenderer::GetDockClassForPanel(const IEditorPanel &panel)

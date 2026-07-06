@@ -17,12 +17,13 @@ ProjectLaunchResolver::ProjectLaunchResolver(IProjectLaunchUI& ui)
 
 bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProjectFilePath,
                                                 const std::string& currentEngineRoot,
+                                                bool bForceLauncher,
                                                 FProjectOpenRequest& outRequest)
 {
     outRequest = {};
 
     // 1) Explicit --project path always wins
-    if (!preferredProjectFilePath.empty())
+    if (!preferredProjectFilePath.empty() && !bForceLauncher)
     {
         if (!UFileSystem::FileExists(preferredProjectFilePath))
         {
@@ -37,6 +38,7 @@ bool ProjectLaunchResolver::ResolveDirectLaunch(const std::string& preferredProj
     }
 
     // 2) Try last opened project from launch settings
+    if (!bForceLauncher)
     {
         LaunchSettings settings;
         if (settings.Load(currentEngineRoot))
