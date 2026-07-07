@@ -165,6 +165,17 @@ public:
      */
     static std::filesystem::path GetEngineRoot() { return GetExecutablePath().parent_path(); }
 
+    /**
+     * @brief Get the OS-specific user configuration directory for RedleafEngine.
+     *
+     * Windows: %APPDATA%/RedleafEngine
+     * Linux: ~/.config/RedleafEngine
+     * macOS: ~/Library/Application Support/RedleafEngine
+     *
+     * @return The path to the user config directory.
+     */
+    static std::string GetUserConfigDirectory();
+
     // ----------------- Info & Listing -----------------
 
     /**

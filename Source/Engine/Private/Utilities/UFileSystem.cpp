@@ -271,6 +271,43 @@ std::filesystem::path UFileSystem::GetExecutablePath()
 #endif
 }
 
+std::string UFileSystem::GetUserConfigDirectory()
+{
+    std::filesystem::path configPath;
+
+#ifdef JENGINE_PLATFORM_WINDOWS
+    if (const char* appData = std::getenv("APPDATA"))
+    {
+        configPath = std::filesystem::path(appData);
+    }
+    else
+    {
+        configPath = std::filesystem::path("C:/ProgramData");
+    }
+#elif defined(JENGINE_PLATFORM_MACOS)
+    if (const char* home = std::getenv("HOME"))
+    {
+        configPath = std::filesystem::path(home) / "Library" / "Application Support";
+    }
+#elif defined(JENGINE_PLATFORM_LINUX)
+    if (const char* xdgConfig = std::getenv("XDG_CONFIG_HOME"))
+    {
+        configPath = std::filesystem::path(xdgConfig);
+    }
+    else if (const char* home = std::getenv("HOME"))
+    {
+        configPath = std::filesystem::path(home) / ".config";
+    }
+#else
+    configPath = std::filesystem::current_path();
+#endif
+
+    // Enforce the universal app name across all platforms
+    configPath /= "RedleafEngine";
+
+    return UPath::NormalizePhysical(configPath.string());
+}
+
 // ----------------- Info & Listing -----------------
 
 bool UFileSystem::FileExists(const std::string& path)
