@@ -3,6 +3,8 @@
 #include "Panels/Subsystems/ViewportSubsystem.h"
 
 #include "EditorRuntime.h"
+#include "EditorCore/Services/ShellCommandService.h"
+#include "EditorInput/FEditorCommands.h"
 
 ViewportSubsystem::ViewportSubsystem(EditorHost &host, EditorRuntime &runtime, ToolService &tools)
 : m_Host(host)
@@ -55,6 +57,23 @@ void ViewportSubsystem::EndCapture(PanelID id)
     m_SharedCaptureKind  = EMouseCaptureKind::None;
     ApplySurfaceCursorCapture(false);
 }
+
+void ViewportSubsystem::RegisterShellCommands(ShellCommandService &shell)
+{
+    constexpr std::string context = "Viewport";
+    shell.Register(context, FEditorCommands::Tools::Translate, [this]{
+        SetGizmoMode(GizmoEditorTool::EMode::Translate);
+    });
+
+    shell.Register(context, FEditorCommands::Tools::Rotate, [this] {
+        SetGizmoMode(GizmoEditorTool::EMode::Rotate);
+    });
+
+    shell.Register(context, FEditorCommands::Tools::Scale, [this] {
+        SetGizmoMode(GizmoEditorTool::EMode::Scale);
+    });
+}
+
 void ViewportSubsystem::ApplySurfaceCursorCapture(const bool bShouldCapture)
 {
     if (bShouldCapture && !m_bCursorCaptured)

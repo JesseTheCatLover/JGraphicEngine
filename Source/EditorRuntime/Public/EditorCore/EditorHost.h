@@ -27,13 +27,14 @@ private:
     void RegisterCoreSubsystems();
     void RegisterCoreServices();
 
+    void RegisterShellCommandsForServices();
+    void RegisterShellCommandsForSubsystems();
+
 public:
     // Called every frame from EditorApp::OnTick
     void Tick(float deltaTime);
 
     void Shutdown();
-
-    void RegisterShellCommandsForServices();
 
     // Getters
     [[nodiscard]] TPanelContainer* GetPanelContainer() const { return m_PanelContainer.get(); }

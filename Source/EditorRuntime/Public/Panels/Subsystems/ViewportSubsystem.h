@@ -68,4 +68,6 @@ public:
 
     void SetGizmoMode(GizmoEditorTool::EMode mode)   { m_SharedGizmoMode = mode; }
     void SetGizmoSpace(GizmoEditorTool::ESpace space) { m_SharedGizmoSpace = space; }
+
+    void RegisterShellCommands(ShellCommandService& shell) override;
 };

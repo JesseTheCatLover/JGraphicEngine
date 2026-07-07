@@ -76,6 +76,20 @@ public:
     }
 
     // ------------------------------------------------------------
+    // Register shell commands for all active subsystems
+    // ------------------------------------------------------------
+    void RegisterSubsystemShellCommands(ShellCommandService& shell)
+    {
+        for (auto& [_, sys] : m_Subsystems)
+        {
+            if (sys)
+            {
+                sys->RegisterShellCommands(shell);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------
     // Tick all subsystems
     // ------------------------------------------------------------
     void Tick(float dt)

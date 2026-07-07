@@ -11,6 +11,7 @@
 #include "EditorCore/EditorHost.h"
 #include "Renderer/EditorPanelTracker.h"
 #include "EditorCore/Services/ShellCommandService.h"
+#include "EditorInput/FEditorCommands.h"
 #include "Renderer/ImGuiRenderer.h"
 #include "EditorLayout/EditorLayoutModel.h"
 #include "Rendering/IPlatformWindow.h"
@@ -92,7 +93,6 @@ void InkBlueEditorApp::OnProjectInitialized(IPlatformWindow* window, ProjectCont
     m_PanelTracker->ApplyLayout(*m_EditorHost, *m_LayoutModel); // initial sync
 
     RegisterEditorShellCommands(*m_EditorHost, *m_LayoutModel);
-    RegisterServicesShellCommands(*m_EditorHost);
 
     m_Renderer = MakeUnique<ImGuiRenderer>(*m_EditorHost, *m_EditorRuntime, *m_LayoutModel);
     m_Renderer->Initialize();
@@ -247,22 +247,17 @@ void InkBlueEditorApp::RegisterEditorShellCommands(EditorHost& host, EditorLayou
 
 void InkBlueEditorApp::RegisterViewCommands(ShellCommandService &shell, EditorLayoutModel &layout)
 {
-    shell.Register("Editor.View.ToggleSceneHierarchy", [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::SceneHierarchy); });
-    shell.Register("Editor.View.ToggleConsole",        [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::Console); });
-    shell.Register("Editor.View.ToggleAssetBrowser",   [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::AssetBrowser); });
-    shell.Register("Editor.View.ToggleInspector",      [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::Inspector); });
+    shell.Register(FEditorCommands::View::ToggleSceneHierarchy, [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::SceneHierarchy); });
+    shell.Register(FEditorCommands::View::ToggleConsole,        [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::Console); });
+    shell.Register(FEditorCommands::View::ToggleAssetBrowser,   [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::AssetBrowser); });
+    shell.Register(FEditorCommands::View::ToggleInspector,      [&layout]() { layout.TogglePanelVisibility(EEditorPanelType::Inspector); });
 }
 
 void InkBlueEditorApp::RegisterViewportCommands(ShellCommandService &shell, EditorLayoutModel &layout)
 {
-    shell.Register("Editor.Viewport.SetSingleView", [&layout]() { layout.SetViewportCount(1); });
-    shell.Register("Editor.Viewport.SetDoubleView", [&layout]() { layout.SetViewportCount(2); });
-    shell.Register("Editor.Viewport.SetTripleView", [&layout]() { layout.SetViewportCount(3); });
-    shell.Register("Editor.Viewport.SetQuadView",   [&layout]() { layout.SetViewportCount(4); });
-    shell.Register("Editor.Viewport.ToggleTabVisibility", [&layout]() { layout.ToggleShowViewportDocktabs(); });
-}
-
-void InkBlueEditorApp::RegisterServicesShellCommands(EditorHost &host)
-{
-    host.RegisterShellCommandsForServices();
+    shell.Register(FEditorCommands::Viewport::SetSingleView, [&layout]() { layout.SetViewportCount(1); });
+    shell.Register(FEditorCommands::Viewport::SetDoubleView, [&layout]() { layout.SetViewportCount(2); });
+    shell.Register(FEditorCommands::Viewport::SetTripleView, [&layout]() { layout.SetViewportCount(3); });
+    shell.Register(FEditorCommands::Viewport::SetQuadView,   [&layout]() { layout.SetViewportCount(4); });
+    shell.Register(FEditorCommands::Viewport::ToggleTabVisibility, [&layout]() { layout.ToggleShowViewportDocktabs(); });
 }

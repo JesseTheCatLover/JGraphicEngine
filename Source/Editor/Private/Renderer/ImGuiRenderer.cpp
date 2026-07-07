@@ -17,6 +17,8 @@
 #include "EditorCore/Services/HotkeyService.h"
 #include "EditorCore/Services/ShellCommandService.h"
 #include "EditorCore/IEditorPanel.h"
+#include "EditorCore/Services/EditorFocusService.h"
+#include "EditorInput/FEditorCommands.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
@@ -26,6 +28,18 @@ namespace
     {
         return (std::strncmp(key, "Viewport", 8) == 0);
     }
+
+    // Maps raw ImGui window names (like "Viewport 0##Viewport0") to clean Context IDs
+    static std::string ResolveContextFromWindowName(const std::string& windowName)
+    {
+        if (windowName.find("Viewport") != std::string::npos) return "Viewport";
+        if (windowName.find("SceneHierarchy") != std::string::npos) return "SceneHierarchy";
+        if (windowName.find("AssetBrowser") != std::string::npos) return "AssetBrowser";
+        if (windowName.find("Inspector") != std::string::npos) return "Inspector";
+        if (windowName.find("Console") != std::string::npos) return "Console";
+
+        return "Global";
+    }
 }
 
 ImGuiRenderer::ImGuiRenderer(EditorHost& host, EditorRuntime& runtime, EditorLayoutModel& layout)
@@ -34,6 +48,7 @@ ImGuiRenderer::ImGuiRenderer(EditorHost& host, EditorRuntime& runtime, EditorLay
     , m_Layout(layout)
     , m_Cache(host.GetService<AssetCacheService>())
     , m_EditTimeLine(host.GetService<EditTimelineService>())
+    , m_EditorFocus(host.GetService<EditorFocusService>())
 {
 }
 
@@ -81,6 +96,20 @@ void ImGuiRenderer::RenderPanels(std::span<IEditorPanel * const> panels)
             ImGui::SetNextWindowClass(wc);
 
         p->Draw(m_Host);
+    }
+
+    // Extract the currently focused window from ImGui's internal state
+    if (ImGuiContext* ctx = ImGui::GetCurrentContext())
+    {
+        std::string newContext = "Global";
+
+        // NavWindow is the window currently receiving input focus
+        if (ImGuiWindow* focusedWindow = ctx->NavWindow)
+        {
+            newContext = ResolveContextFromWindowName(focusedWindow->Name);
+        }
+
+        m_EditorFocus.SetActiveContext(newContext);
     }
 }
 
@@ -162,13 +191,13 @@ void ImGuiRenderer::DrawMainMenuBar()
         const bool canUndo = m_EditTimeLine.CanUndo();
         const bool canRedo = m_EditTimeLine.CanRedo();
 
-        const std::string hkUndo = hotkeys.GetShortcutText("Editor.History.Undo");
+        const std::string hkUndo = hotkeys.GetShortcutText(FEditorCommands::History::Undo);
         if (ImGui::MenuItem("Undo", hkUndo.empty() ? nullptr : hkUndo.c_str(), false, canUndo))
-            shell.Execute("Editor.History.Undo");
+            shell.Execute(FEditorCommands::History::Undo);
 
-        const std::string hkRedo = hotkeys.GetShortcutText("Editor.History.Redo");
+        const std::string hkRedo = hotkeys.GetShortcutText(FEditorCommands::History::Redo);
         if (ImGui::MenuItem("Redo", hkRedo.empty() ? nullptr : hkRedo.c_str(), false, canRedo))
-            shell.Execute("Editor.History.Redo");
+            shell.Execute(FEditorCommands::History::Redo);
         ImGui::EndMenu();
     }
 
@@ -176,23 +205,23 @@ void ImGuiRenderer::DrawMainMenuBar()
     {
         bool bHierarchy = m_Layout.IsPanelVisible(EEditorPanelType::SceneHierarchy);
         if (ImGui::MenuItem("Scene Hierarchy",
-                            hotkeys.GetShortcutText("Editor.View.ToggleSceneHierarchy").c_str(), bHierarchy))
-            shell.Execute("Editor.View.ToggleSceneHierarchy");
+                            hotkeys.GetShortcutText(FEditorCommands::View::ToggleSceneHierarchy).c_str(), bHierarchy))
+            shell.Execute(FEditorCommands::View::ToggleSceneHierarchy);
 
         bool bConsole = m_Layout.IsPanelVisible(EEditorPanelType::Console);
         if (ImGui::MenuItem("Console",
-                            hotkeys.GetShortcutText("Editor.View.ToggleConsole").c_str(), bConsole))
-            shell.Execute("Editor.View.ToggleConsole");
+                            hotkeys.GetShortcutText(FEditorCommands::View::ToggleConsole).c_str(), bConsole))
+            shell.Execute(FEditorCommands::View::ToggleConsole);
 
         bool bAssetBrowser = m_Layout.IsPanelVisible(EEditorPanelType::AssetBrowser);
         if (ImGui::MenuItem("Asset Browser",
-                            hotkeys.GetShortcutText("Editor.View.ToggleAssetBrowser").c_str(), bAssetBrowser))
-            shell.Execute("Editor.View.ToggleAssetBrowser");
+                            hotkeys.GetShortcutText(FEditorCommands::View::ToggleAssetBrowser).c_str(), bAssetBrowser))
+            shell.Execute(FEditorCommands::View::ToggleAssetBrowser);
 
         bool bInspector = m_Layout.IsPanelVisible(EEditorPanelType::Inspector);
         if (ImGui::MenuItem("Inspector",
-                            hotkeys.GetShortcutText("Editor.View.ToggleInspector").c_str(), bInspector))
-            shell.Execute("Editor.View.ToggleInspector");
+                            hotkeys.GetShortcutText(FEditorCommands::View::ToggleInspector).c_str(), bInspector))
+            shell.Execute(FEditorCommands::View::ToggleInspector);
 
         ImGui::EndMenu();
     }
@@ -202,28 +231,28 @@ void ImGuiRenderer::DrawMainMenuBar()
         if (ImGui::BeginMenu("Multi-View Modes", "Ctrl+M+V"))
         {
             if (ImGui::MenuItem("Single View",
-                                hotkeys.GetShortcutText("Editor.Viewport.SetSingleView").c_str()))
-                shell.Execute("Editor.Viewport.SetSingleView");
+                                hotkeys.GetShortcutText(FEditorCommands::Viewport::SetSingleView).c_str()))
+                shell.Execute(FEditorCommands::Viewport::SetSingleView);
 
             if (ImGui::MenuItem("Double View",
-                                hotkeys.GetShortcutText("Editor.Viewport.SetDoubleView").c_str()))
-                shell.Execute("Editor.Viewport.SetDoubleView");
+                                hotkeys.GetShortcutText(FEditorCommands::Viewport::SetDoubleView).c_str()))
+                shell.Execute(FEditorCommands::Viewport::SetSingleView);
 
             if (ImGui::MenuItem("Triple View",
-                                hotkeys.GetShortcutText("Editor.Viewport.SetTripleView").c_str()))
-                shell.Execute("Editor.Viewport.SetTripleView");
+                                hotkeys.GetShortcutText(FEditorCommands::Viewport::SetTripleView).c_str()))
+                shell.Execute(FEditorCommands::Viewport::SetTripleView);
 
             if (ImGui::MenuItem("Quad View",
-                                hotkeys.GetShortcutText("Editor.Viewport.SetQuadView").c_str()))
-                shell.Execute("Editor.Viewport.SetQuadView");
+                                hotkeys.GetShortcutText(FEditorCommands::Viewport::SetQuadView).c_str()))
+                shell.Execute(FEditorCommands::Viewport::SetQuadView);
 
             ImGui::EndMenu();
         }
 
         if (ImGui::MenuItem("Toggle Tab Visibility",
-                            hotkeys.GetShortcutText("Editor.Viewport.ToggleTabVisibility").c_str()))
+                            hotkeys.GetShortcutText(FEditorCommands::Viewport::ToggleTabVisibility).c_str()))
         {
-            shell.Execute("Editor.Viewport.ToggleTabVisibility");
+            shell.Execute(FEditorCommands::Viewport::ToggleTabVisibility);
         }
 
         ImGui::EndMenu();

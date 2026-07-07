@@ -112,7 +112,6 @@ private:
     bool HandleGizmo(const FViewportPanelInput& input, const CameraEditorTool& cam, const FRenderView& view,
                      const TSelectionModel<ActorID>& selection);
     bool TryBuildGizmoTransform(FTransform& outXf) const;
-    void UpdateSharedGizmoModePolicy(const FViewportPanelInput& input); // shared mode hotkeys
 
     // Capture
     void CheckPanelFocusStatus(const FViewportPanelInput& input);

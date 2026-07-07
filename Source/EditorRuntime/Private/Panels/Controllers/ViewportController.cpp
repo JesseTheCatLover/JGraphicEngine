@@ -347,9 +347,6 @@ void ViewportController::UpdateInputPolicy(const FViewportPanelInput& input)
     // Focus safety
     CheckPanelFocusStatus(input);
 
-    // Shared gizmo hotkeys first (so mode is ready for gizmo update)
-    UpdateSharedGizmoModePolicy(input);
-
     // Then capture decisions (camera capture can block gizmo capture start)
     UpdateCameraCapturePolicy(input);
 }
@@ -437,26 +434,6 @@ void ViewportController::UpdateCameraCapturePolicy(const FViewportPanelInput& in
         if (input.bRightReleased)
             m_ViewportSubsystem.EndCapture(m_PanelID);
     }
-}
-
-void ViewportController::UpdateSharedGizmoModePolicy(const FViewportPanelInput& input)
-{
-    if (!CanDriveSharedHotkeys(input))
-        return;
-
-    if (m_ViewportSubsystem.HasCapture())
-        return;
-
-    auto& inputManager = m_Runtime.GetSurface().GetInputManager();
-
-    if (inputManager.GetActionDown("Editor.Tools.Translate"))
-        m_ViewportSubsystem.SetGizmoMode(GizmoEditorTool::EMode::Translate);
-
-    if (inputManager.GetActionDown("Editor.Tools.Rotate"))
-        m_ViewportSubsystem.SetGizmoMode(GizmoEditorTool::EMode::Rotate);
-
-    if (inputManager.GetActionDown("Editor.Tools.Scale"))
-        m_ViewportSubsystem.SetGizmoMode(GizmoEditorTool::EMode::Scale);
 }
 
 void ViewportController::HandleActorPicking(const FViewportPanelInput& input,

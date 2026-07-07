@@ -2,12 +2,12 @@
 
 #pragma once
 #include <filesystem>
-#include <unordered_map>
 #include <string>
 #include "IEditorRenderer.h"
 #include "imgui.h"
 #include "Core/Project/FProjectDescriptor.h"
 
+class EditorFocusService;
 class EditTimelineService;
 
 class ImGuiRenderer final : public IEditorRenderer
@@ -19,6 +19,7 @@ private:
 
     AssetCacheService& m_Cache;
     EditTimelineService& m_EditTimeLine;
+    EditorFocusService& m_EditorFocus;
 
     ImGuiWindowClass m_ToolsDockClass{};
     ImGuiWindowClass m_ViewportDockClass{};

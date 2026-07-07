@@ -5,6 +5,7 @@
 #include "Panels/TPanelContainer.h"
 #include "EditorCore/DialogManager.h"
 #include "EditorCore/Services/AssetCacheService.h"
+#include "EditorCore/Services/EditorFocusService.h"
 #include "Tools/ToolService.h"
 #include "EditorCore/Services/AssetBrowser/AssetBrowserService.h"
 #include "EditorCore/Services/EditTimelineService.h"
@@ -30,6 +31,9 @@ m_EditorRuntime(runtime)
 
     RegisterCoreSubsystems();
     RegisterCoreServices();
+
+    RegisterShellCommandsForSubsystems();
+    RegisterShellCommandsForServices();
 }
 
 void EditorHost::RegisterCoreSubsystems()
@@ -43,6 +47,7 @@ void EditorHost::RegisterCoreSubsystems()
 
 void EditorHost::RegisterCoreServices()
 {
+    m_Services->Register<EditorFocusService>();
     m_Services->Register<AssetCacheService>(m_EditorRuntime).PreloadAll();
     m_Services->Register<SceneQueryService>(m_EditorRuntime);
     m_Services->Register<SelectionService>();
@@ -70,4 +75,9 @@ void EditorHost::Shutdown()
 void EditorHost::RegisterShellCommandsForServices()
 {
     m_Services->RegisterShellCommand(GetService<ShellCommandService>());
+}
+
+void EditorHost::RegisterShellCommandsForSubsystems()
+{
+    m_PanelContainer->RegisterSubsystemShellCommands(GetService<ShellCommandService>());
 }

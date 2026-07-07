@@ -7,6 +7,7 @@
 #include "EditorCore/Services/SceneHierarchyService.h"
 #include "EditorCore/Services/ShellCommandService.h"
 #include "EditorCore/EditorHost.h"
+#include "EditorInput/FEditorCommands.h"
 
 EditTimelineService::EditTimelineService(EditorHost& host)
     : m_Host(host)
@@ -76,9 +77,9 @@ void EditTimelineService::Shutdown()
 
 void EditTimelineService::RegisterShellCommands(ShellCommandService &shell)
 {
-    shell.Register("Editor.History.Undo", [this](){ Undo(); });
-    shell.Register("Editor.History.Redo", [this](){ Redo(); });
-    shell.Register("Editor.History.Clear", [this](){ Clear(); });
+    shell.Register(FEditorCommands::History::Undo, [this](){ Undo(); });
+    shell.Register(FEditorCommands::History::Redo, [this](){ Redo(); });
+    shell.Register(FEditorCommands::History::Clear, [this](){ Clear(); });
 }
 
 void EditTimelineService::ApplyEffects(const IUndoableAction &action)

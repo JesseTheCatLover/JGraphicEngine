@@ -2,6 +2,8 @@
 
 #include "EditorInput/EditorInputDefaults.h"
 
+#include "EditorInput/FEditorCommands.h"
+
 namespace
 {
     // Tiny helper to reduce boilerplate for axis bindings
@@ -180,7 +182,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
 
     // ---------------- App ----------------
     map.commands.push_back(MakeCommand(
-        "Editor.App.Quit",
+        FEditorCommands::App::Quit,
         "Application",
         "Quit editor",
         {
@@ -189,7 +191,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
 
     // ---------------- File ----------------
     map.commands.push_back(MakeCommand(
-        "Editor.File.NewScene",
+        FEditorCommands::File::NewScene,
         "File",
         "Create a new scene",
         {
@@ -198,7 +200,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.File.OpenScene",
+        FEditorCommands::File::OpenScene,
         "File",
         "Open a scene",
         {
@@ -207,7 +209,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.File.Save",
+        FEditorCommands::File::Save,
         "File",
         "Save current scene",
         {
@@ -216,7 +218,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.File.SaveAs",
+        FEditorCommands::File::SaveAs,
         "File",
         "Save current scene as",
         {
@@ -226,7 +228,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.File.SaveAll",
+        FEditorCommands::File::SaveAll,
         "File",
         "Save all modified content",
         {
@@ -236,7 +238,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
 
     // ---------------- Edit ----------------
     map.commands.push_back(MakeCommand(
-        "Editor.Edit.Copy",
+        FEditorCommands::Edit::Copy,
         "Edit",
         "Copy selected objects",
         {
@@ -245,7 +247,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Edit.Paste",
+        FEditorCommands::Edit::Paste,
         "Edit",
         "Paste objects",
         {
@@ -254,7 +256,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.History.Undo",
+        FEditorCommands::History::Undo,
         "Edit",
         "Undo last action",
         {
@@ -263,7 +265,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.History.Redo",
+        FEditorCommands::History::Redo,
         "Edit",
         "Redo last action",
         {
@@ -273,7 +275,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
 
     // ---------------- View ----------------
     map.commands.push_back(MakeCommand(
-        "Editor.View.ToggleSceneHierarchy",
+        FEditorCommands::View::ToggleSceneHierarchy,
         "View",
         "Toggle Scene Hierarchy panel",
         {
@@ -281,7 +283,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.View.ToggleInspector",
+        FEditorCommands::View::ToggleInspector,
         "View",
         "Toggle Inspector panel",
         {
@@ -289,7 +291,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.View.ToggleAssetBrowser",
+        FEditorCommands::View::ToggleAssetBrowser,
         "View",
         "Toggle Asset Browser panel",
         {
@@ -297,7 +299,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.View.ToggleConsole",
+        FEditorCommands::View::ToggleConsole,
         "View",
         "Toggle Console panel",
         {
@@ -306,7 +308,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
 
     // ---------------- Viewport ----------------
     map.commands.push_back(MakeCommand(
-        "Editor.Viewport.FocusSelection",
+        FEditorCommands::Viewport::FocusSelection,
         "Viewport",
         "Focus camera on selection",
         {
@@ -314,7 +316,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Viewport.ToggleGameView",
+        FEditorCommands::Viewport::ToggleGameView,
         "Viewport",
         "Toggle game view",
         {
@@ -322,7 +324,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Viewport.SetSingleView",
+        FEditorCommands::Viewport::SetSingleView,
         "Viewport",
         "Set viewport layout to single view",
         {
@@ -331,7 +333,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Viewport.SetDoubleView",
+        FEditorCommands::Viewport::SetDoubleView,
         "Viewport",
         "Set viewport layout to double view",
         {
@@ -340,7 +342,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Viewport.SetTripleView",
+        FEditorCommands::Viewport::SetTripleView,
         "Viewport",
         "Set viewport layout to triple view",
         {
@@ -349,7 +351,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Viewport.SetQuadView",
+        FEditorCommands::Viewport::SetQuadView,
         "Viewport",
         "Set viewport layout to quad view",
         {
@@ -358,7 +360,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-    "Editor.Viewport.ToggleTabVisibility",
+    FEditorCommands::Viewport::ToggleTabVisibility,
     "Viewport",
     "Toggle viewport dock tab visibility",
     {
@@ -368,7 +370,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
 
     // ---------------- Tools ----------------
     map.commands.push_back(MakeCommand(
-        "Editor.Tools.Translate",
+        FEditorCommands::Tools::Translate,
         "Tools",
         "Select translate tool",
         {
@@ -376,7 +378,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Tools.Rotate",
+        FEditorCommands::Tools::Rotate,
         "Tools",
         "Select rotate tool",
         {
@@ -384,7 +386,7 @@ FHotkeyMap BuildEditorDefaultHotkeys()
         }));
 
     map.commands.push_back(MakeCommand(
-        "Editor.Tools.Scale",
+        FEditorCommands::Tools::Scale,
         "Tools",
         "Select scale tool",
         {
