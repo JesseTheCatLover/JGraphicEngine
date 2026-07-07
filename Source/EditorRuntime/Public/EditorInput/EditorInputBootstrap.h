@@ -4,5 +4,8 @@
 
 class InputSubsystem;
 
-// Installs editor input mapping (axis + hotkeys) into the input subsystem.
-bool InstallEditorInputMapping(InputSubsystem& inputSubsystem, const char* userHotkeyOverridesPath);
+namespace EditorInputBootstrap
+{
+    // Installs editor input mapping (axis + hotkeys) into the input subsystem.
+    bool InstallEditorInputMapping(InputSubsystem& inputSubsystem);
+}

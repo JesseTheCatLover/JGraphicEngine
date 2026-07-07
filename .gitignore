@@ -8,6 +8,6 @@ cmake-build-release/
 /Tools/JReflectGen/target/
 Cargo.lock
 /Binaries/
-Saved/Launch/LaunchSettings.json
 /Assets/
 /SourceAssets/
+/Saved/

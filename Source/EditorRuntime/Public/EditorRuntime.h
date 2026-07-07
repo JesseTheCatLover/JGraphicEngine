@@ -53,6 +53,4 @@ public:
     [[nodiscard]] IEditActionSink* GetEditSink() const { return m_EditSink; }
 
     static constexpr uint32_t kEditorPostProfile = 1; // TODO: Legacy: should be moved
-private:
-    bool InstallEditorInputMappings();
 };

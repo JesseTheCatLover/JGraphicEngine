@@ -5,5 +5,8 @@
 #include "InputSystem/MappingStyles/ActionAxis/ActionAxisConfig.h"
 #include "InputSystem/MappingStyles/HotkeyChord/HotkeyChordConfig.h"
 
-FActionAxisMap BuildEditorAxisMap();
-FHotkeyMap BuildEditorDefaultHotkeys();
+namespace EditorInputDefaults
+{
+    FActionAxisMap BuildEditorAxisMap();
+    FHotkeyMap BuildEditorDefaultHotkeys();
+}

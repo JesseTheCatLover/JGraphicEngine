@@ -9,35 +9,42 @@
 #include "InputSystem/MappingStyles/HotkeyChord/HotkeySerialization.h"
 #include "InputSystem/MappingStyles/HotkeyChord/HotkeyPlatformUtils.h"
 #include "EditorInput/EditorInputDefaults.h"
+#include "Utilities/UFileSystem.h"
+#include "Utilities/UPath.h"
 
 
-bool InstallEditorInputMapping(InputSubsystem& inputSubsystem, const char* userHotkeyOverridesPath)
+bool EditorInputBootstrap::InstallEditorInputMapping(InputSubsystem& inputSubsystem)
 {
-    // 1) Build defaults
-    FActionAxisMap axisMap = BuildEditorAxisMap();
-    FHotkeyMap hotkeyDefaults = BuildEditorDefaultHotkeys();
+    // 1) Build defaults in-memory (Source of Truth)
+    FActionAxisMap axisMap = EditorInputDefaults::BuildEditorAxisMap();
+    FHotkeyMap hotkeyDefaults = EditorInputDefaults::BuildEditorDefaultHotkeys();
 
     // 2) Detect platform
     const EInputPlatform platform = DetectInputPlatform();
-
-    // 3) Create hotkey style and apply user overrides
     auto hotkeyStyle = MakeUnique<HotkeyChordStyle>(hotkeyDefaults, platform);
 
-    if (userHotkeyOverridesPath && userHotkeyOverridesPath[0] != '\0')
+    // 3) Resolve OS User Config Path (e.g., %APPDATA%/RedleafEngine)
+    std::string userConfigDir = UFileSystem::GetUserConfigDirectory();
+    std::string hotkeyUserPath = UPath::Join(userConfigDir, "EditorHotkeys.User.json");
+
+    // 4) Load and apply only the overrides
+    FHotkeyOverrides overrides;
+    if (LoadHotkeyOverridesFromFile(hotkeyUserPath, overrides))
     {
-        FHotkeyOverrides overrides;
-        if (LoadHotkeyOverridesFromFile(userHotkeyOverridesPath, overrides))
-        {
-            hotkeyStyle->ApplyOverrides(overrides);
-        }
+        hotkeyStyle->ApplyOverrides(overrides);
+    }
+    else
+    {
+        // Ensure the directory exists so the engine's Hotkey Editor UI can save to it later without failing
+        UFileSystem::CreateDirectory(userConfigDir);
     }
 
-    // 4) Build composite (axis + hotkeys)
+    // 5) Build composite (axis + hotkeys)
     auto composite = MakeUnique<CompositeInputMappingStyle>();
     composite->AddStyle(MakeUnique<ActionAxisStyle>(axisMap));
     composite->AddStyle(std::move(hotkeyStyle));
 
-    // 5) Install
+    // 6) Install
     inputSubsystem.SetMappingStyle(std::move(composite));
     return true;
 }

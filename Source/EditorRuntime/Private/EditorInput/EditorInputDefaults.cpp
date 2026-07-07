@@ -84,7 +84,7 @@ namespace
     }
 }
 
-FActionAxisMap BuildEditorAxisMap()
+FActionAxisMap EditorInputDefaults::BuildEditorAxisMap()
 {
     FActionAxisMap map;
 
@@ -172,7 +172,7 @@ FActionAxisMap BuildEditorAxisMap()
     return map;
 }
 
-FHotkeyMap BuildEditorDefaultHotkeys()
+FHotkeyMap EditorInputDefaults::BuildEditorDefaultHotkeys()
 {
     FHotkeyMap map;
 
