@@ -1,6 +1,6 @@
 # RedleafEngine
 
-Redleaf is a Cross-Platform, Rendering-First, Source-Available Game Engine built on JEngine Technology.
+Redleaf is a Cross-Platform, Source-Available Game Engine built on JEngine Technology.
 
 The engine is currently in Alpha1 development, with its editor in EditorPrototype phase.
 
