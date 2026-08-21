@@ -76,7 +76,7 @@ endif()
 
 
 # Third party folder
-set_target_properties(glfw stb imgui glm assimp nfd PROPERTIES
+set_target_properties(glfw stb imgui glm assimp nfd nlohmann_json PROPERTIES
         EXCLUDE_FROM_ALL TRUE
         FOLDER "ThirdParty"
 )
