@@ -266,7 +266,7 @@ std::filesystem::path UFileSystem::GetExecutablePath()
     return {};
 
 #else
-    std::cerr << "Unsupported platform.\n";
+    std::cerr << "[UFileSystem]: Unsupported platform.\n";
     return {};
 #endif
 }

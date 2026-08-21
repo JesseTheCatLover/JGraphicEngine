@@ -64,7 +64,7 @@ public:
      * @param outResult Populated with success state, errors, and generated virtual paths.
      * @return True if the import succeeded, false otherwise.
      */
-    bool Import(const FAssetImportRequest& request,
+    bool Import(const FAssetImportRequest& request, // TODO: Implement a pre-pass format sniffing (Magic byte sniffing)
                 const VirtualPathMounter& pathMounter,
                 FAssetImportResult& outResult) const;
 
