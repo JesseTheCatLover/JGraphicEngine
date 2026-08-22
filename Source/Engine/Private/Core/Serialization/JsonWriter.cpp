@@ -5,6 +5,8 @@
 #include <iostream>
 #include <filesystem>
 
+#include "Utilities/UFileSystem.h"
+
 void JsonWriter::BeginObject(const std::string& key)
 {
     if (m_Stack.empty())
@@ -179,17 +181,8 @@ void JsonWriter::WriteObjectToArray(const std::string& key, const JJson& object)
 
 bool JsonWriter::SaveToFile(const std::string& filePath) const
 {
-    std::filesystem::path path(filePath);
-    std::filesystem::create_directories(path.parent_path());
-
-    std::ofstream out(filePath);
-    if (!out.is_open())
-    {
-        std::cerr << "[JsonWriter]: Failed to open file: " << filePath
-                  << " (directory may not exist or permissions denied)" << std::endl;
-        return false;
-    }
-
-    out << m_Data.dump(4);
-    return true;
+    return UFileSystem::WriteTextFile(
+        filePath,
+        m_Data.dump(4)
+    );
 }
