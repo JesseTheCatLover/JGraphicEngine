@@ -24,19 +24,25 @@ public:
     virtual void SetSurfaceSize(int width, int height) = 0;
     virtual void GetWindowSize(int& w, int& h) const = 0;
     virtual void GetFramebufferSize(int& w, int& h) const = 0;
+    virtual void GetWindowFrameSize(int& left, int& top, int& right, int& bottom) const = 0;
 
     [[nodiscard]] virtual int GetWidth() const = 0;
     [[nodiscard]] virtual int GetHeight() const = 0;
     [[nodiscard]] virtual float GetAspectRatio() const = 0;
 
+    virtual void GetMonitorWorkArea(int& x, int& y, int& width, int& height) const = 0;
+
     virtual void SetMinSize(int minWidth, int minHeight) {}
     virtual void SetMaxSize(int maxWidth, int maxHeight) {}
+
+    virtual void SetWindowState(EWindowState state) = 0;
 
     // State and meta
 
     [[nodiscard]] virtual bool IsVSyncEnabled() const = 0;
     [[nodiscard]] virtual bool IsFullscreen() const = 0;
-    [[nodiscard]] virtual FWindowDesc GetState() const = 0;
+    [[nodiscard]] virtual FWindowDesc GetWindowState() const = 0;
+    virtual void SetPosition(int x, int y) = 0;
 
     virtual void Show() = 0;
     virtual void Hide() = 0;

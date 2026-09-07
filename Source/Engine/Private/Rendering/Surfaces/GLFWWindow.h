@@ -26,6 +26,13 @@ private:
 
     friend class GLFWSurface;
 
+    int m_WindowedX = 0;
+    int m_WindowedY = 0;
+    int m_WindowedWidth = 0;
+    int m_WindowedHeight = 0;
+
+    bool m_bHasSavedWindowedGeometry = false;
+
     // Lifecycle of this window only (Handled by the surface)
     void Shutdown();
 
@@ -41,6 +48,7 @@ public:
     void SetSurfaceSize(int width, int height) override;
     void GetWindowSize(int& w, int& h) const override;
     void GetFramebufferSize(int& w, int& h) const override;
+    void GetWindowFrameSize(int &left, int &top, int &right, int &bottom) const override;
 
     bool ShouldClose() const override;
     void SetShouldClose(bool bShould) override;
@@ -49,12 +57,18 @@ public:
     int GetHeight() const override;
     float GetAspectRatio() const override;
 
+    void GetMonitorWorkArea(int &x, int &y, int &width, int &height) const override;
+
     void SetMinSize(int minWidth, int minHeight) override;
     void SetMaxSize(int maxWidth, int maxHeight) override;
 
-    bool IsVSyncEnabled() const override;
+    auto IsVSyncEnabled() const -> bool override;
     bool IsFullscreen() const override;
-    FWindowDesc GetState() const override;
+    FWindowDesc GetWindowState() const override;
+
+    void SetWindowState(EWindowState state) override;
+
+    void SetPosition(int x, int y) override;
 
     void Show() override;
     void Hide() override;

@@ -210,6 +210,20 @@ void GLFWWindow::GetFramebufferSize(int& w, int& h) const
     }
 }
 
+void GLFWWindow::GetWindowFrameSize(int &left, int &top, int &right, int &bottom) const
+{
+    if (!m_Window)
+    {
+        left = 0;
+        top = 0;
+        right = 0;
+        bottom = 0;
+        return;
+    }
+
+    glfwGetWindowFrameSize(m_Window, &left, &top, &right, &bottom);
+}
+
 bool GLFWWindow::ShouldClose() const
 {
     return m_Window ? glfwWindowShouldClose(m_Window) == GLFW_TRUE : true;
@@ -246,6 +260,27 @@ float GLFWWindow::GetAspectRatio() const
     if (m_State.height <= 0 || m_State.width <= 0)
         return 1.0f;
     return static_cast<float>(m_State.width) / static_cast<float>(m_State.height);
+}
+
+void GLFWWindow::GetMonitorWorkArea(int &x, int &y, int &width, int &height) const
+{
+    GLFWmonitor* monitor = static_cast<GLFWmonitor*>(m_State.monitorHandle);
+
+    if (!monitor)
+    {
+        monitor = glfwGetPrimaryMonitor();
+    }
+
+    if (!monitor)
+    {
+        x = 0;
+        y = 0;
+        width = 0;
+        height = 0;
+        return;
+    }
+
+    glfwGetMonitorWorkarea(monitor, &x, &y, &width, &height);
 }
 
 void GLFWWindow::SetMinSize(int minWidth, int minHeight)
@@ -294,9 +329,151 @@ bool GLFWWindow::IsFullscreen() const
     return m_State.windowState == EWindowState::Fullscreen;
 }
 
-FWindowDesc GLFWWindow::GetState() const
+FWindowDesc GLFWWindow::GetWindowState() const
 {
     return m_State;
+}
+
+void GLFWWindow::SetWindowState(EWindowState state)
+{
+    if (!m_Window)
+        return;
+
+    if (m_State.windowState == state)
+        return;
+
+    GLFWmonitor* monitor = static_cast<GLFWmonitor*>(m_State.monitorHandle);
+    if (!monitor)
+        monitor = glfwGetPrimaryMonitor();
+
+    if (!monitor)
+        return;
+
+    switch (state)
+    {
+        case EWindowState::Normal:
+        {
+            if (m_State.windowState == EWindowState::Fullscreen)
+            {
+                if (!m_bHasSavedWindowedGeometry)
+                {
+                    m_State.windowState = EWindowState::Normal;
+
+                    glfwRestoreWindow(m_Window);
+                    return;
+                }
+
+                glfwSetWindowMonitor(
+                    m_Window,
+                    nullptr,
+                    m_WindowedX,
+                    m_WindowedY,
+                    m_WindowedWidth,
+                    m_WindowedHeight,
+                    GLFW_DONT_CARE
+                );
+            }
+            else
+            {
+                glfwRestoreWindow(m_Window);
+            }
+
+            m_State.windowState =
+                EWindowState::Normal;
+
+            break;
+        }
+
+        case EWindowState::Maximized:
+        {
+            if (m_State.windowState == EWindowState::Fullscreen)
+            {
+                if (m_bHasSavedWindowedGeometry)
+                {
+                    glfwSetWindowMonitor(
+                        m_Window,
+                        nullptr,
+                        m_WindowedX,
+                        m_WindowedY,
+                        m_WindowedWidth,
+                        m_WindowedHeight,
+                        GLFW_DONT_CARE
+                    );
+                }
+                else
+                {
+                    glfwRestoreWindow(m_Window);
+                }
+            }
+
+            glfwMaximizeWindow(m_Window);
+
+            m_State.windowState =
+                EWindowState::Maximized;
+
+            break;
+        }
+
+        case EWindowState::Fullscreen:
+        {
+            // Preserve the current windowed geometry so we
+            // can restore it when leaving fullscreen.
+            if (m_State.windowState != EWindowState::Fullscreen)
+            {
+                glfwGetWindowPos(
+                    m_Window,
+                    &m_WindowedX,
+                    &m_WindowedY
+                );
+
+                glfwGetWindowSize(
+                    m_Window,
+                    &m_WindowedWidth,
+                    &m_WindowedHeight
+                );
+
+                m_bHasSavedWindowedGeometry = true;
+            }
+
+            const GLFWvidmode* mode =
+                glfwGetVideoMode(monitor);
+
+            if (!mode)
+                return;
+
+            glfwSetWindowMonitor(
+                m_Window,
+                monitor,
+                0,
+                0,
+                mode->width,
+                mode->height,
+                mode->refreshRate
+            );
+
+            m_State.width = mode->width;
+            m_State.height = mode->height;
+            m_State.windowState =
+                EWindowState::Fullscreen;
+
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+void GLFWWindow::SetPosition(int x, int y)
+{
+    if (!m_Window)
+        return;
+
+    glfwSetWindowPos(
+        m_Window,
+        x,
+        y
+    );
 }
 
 void GLFWWindow::Show()
