@@ -23,9 +23,12 @@ bool GLFWWindow::Initialize()
     if (!monitor)
         monitor = glfwGetPrimaryMonitor();
 
-    if (IsFullscreen() || m_State.windowState == EWindowState::Maximized)
+    if (IsFullscreen())
     {
         const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        if (!mode)
+            return false;
+
         glfwWindowHint(GLFW_RED_BITS,     mode->redBits);
         glfwWindowHint(GLFW_GREEN_BITS,   mode->greenBits);
         glfwWindowHint(GLFW_BLUE_BITS,    mode->blueBits);
@@ -36,12 +39,15 @@ bool GLFWWindow::Initialize()
     }
     else
     {
-        // windowed
+        // windowed / maximized
         glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
         glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE);
         glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
         glfwWindowHint(GLFW_FLOATING, GLFW_FALSE);
+
+        glfwWindowHint(GLFW_MAXIMIZED, m_State.windowState == EWindowState::Maximized ? GLFW_TRUE : GLFW_FALSE);
+
         // keep width/height from m_State as passed in
     }
 
@@ -62,6 +68,11 @@ bool GLFWWindow::Initialize()
         std::cerr << "[GLFWWindow]: Failed to create GLFW window\n";
         return false;
     }
+
+    // if (m_State.windowState == EWindowState::Maximized)
+    // {
+    //     glfwMaximizeWindow(m_Window);
+    // }
 
     m_State.nativeHandle  = m_Window;
     m_State.monitorHandle = monitor;
