@@ -19,3 +19,7 @@
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
 	shallow = true
+[submodule "Frameworks/Silverware"]
+	path = Frameworks/Silverware
+	url = https://github.com/JesseTheCatLover/Silverware
+	branch = redleaf-integration
