@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # -- Include build utilities ---
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/BuildSystem")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/BuildSystem")
 
 include(RedleafOptions)
 include(RedleafPlatform)
@@ -24,6 +24,9 @@ include(RedleafModule)
 
 # --- ThirdParty libraries ---
 add_subdirectory(ThirdParty)
+
+# --- Frameworks ---
+add_subdirectory(Frameworks)
 
 # --- Tools ---
 add_subdirectory(Tools/JReflectGen) # (must come BEFORE Engine so JREFLECTGEN_EXE is exported)
