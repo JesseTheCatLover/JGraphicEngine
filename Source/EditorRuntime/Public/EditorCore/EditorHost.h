@@ -15,6 +15,8 @@ class ToolService;
 class EditorHost
 {
     friend class InkBlueEditorApp;
+    friend class SilverwareEditorApp;
+
 private:
     explicit EditorHost(EditorRuntime& runtime);
 

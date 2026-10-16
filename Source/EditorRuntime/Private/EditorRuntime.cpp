@@ -19,6 +19,7 @@
 #include "Rendering/FRenderView.h"
 #include "Rendering/IPlatformSurface.h"
 #include "Rendering/RendererSubsystem.h"
+#include "Rendering/Silverware/SilverwareRenderingContext.h"
 #include "Resources/ResourceSubsystem.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
@@ -89,6 +90,11 @@ EditorRuntime::EditorRuntime()
 EditorRuntime::~EditorRuntime()
 {
 
+}
+
+TUniquePtr<Silverware::IRenderingContext> EditorRuntime::CreateSilverwareRenderingContext()
+{
+    return MakeUnique<SilverwareRenderingContext>(m_Renderer);
 }
 
 void EditorRuntime::RestartEditor(const std::string &targetProjectPath, const std::string& extraArgs)

@@ -7,6 +7,7 @@
 #include "EditorAPI/Scene/SceneAPI.h"
 #include "EditorAPI/Surface/SurfaceAPI.h"
 #include "EditorAPI/Viewport/ViewportAPI.h"
+#include "Silverware/Backend/IRenderingContext.h"
 
 class InputSubsystem;
 class ICameraViewSource;
@@ -18,6 +19,7 @@ class RendererSubsystem;
 class EditorRuntime
 {
     friend class InkBlueEditorApp;
+    friend class SilverwareEditorApp;
 private:
     EditorRuntime();
 
@@ -39,6 +41,7 @@ private:
 
 public:
     ~EditorRuntime();
+    [[nodiscard]] TUniquePtr<Silverware::IRenderingContext> CreateSilverwareRenderingContext();
 
     // Spawns a new engine process. If targetProjectPath is empty, it boots into the Launcher.
     void RestartEditor(const std::string& targetProjectPath = "", const std::string& extraArgs = "");

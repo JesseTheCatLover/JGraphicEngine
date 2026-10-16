@@ -8,6 +8,7 @@
 
 #include "Core/JEngine.h"
 #include "InkBlueEditorApp.h"
+#include "SilverwareEditorApp.h"
 #include "SilverwareSandboxApp.h"
 #include "Core/Project/FProjectOpenRequest.h"
 #include "ProjectLaunch/ProjectLaunchResolver.h"
@@ -79,6 +80,7 @@ namespace
 bool JApplication::RunEditor(int argc, char** argv)
 {
     std::cout << "[JApplication]: Launching in EDITOR mode...\n";
+    // SilverwareEditorApp editor;
     InkBlueEditorApp editor;
     return LaunchEngine(&editor, argc, argv);
 }
