@@ -7,6 +7,7 @@
 #include <string>
 #include <cmath>
 #include <vector>
+#include <cstdint>
 #include <algorithm>
 #include <unordered_set>
 
@@ -423,10 +424,37 @@ RMeshHandle GLBackend::CreateMesh(const RMesh& meshData)
             mesh.indexCount = static_cast<uint32_t>(meshData.vertices.size() / 3);
     }
 
-    // Attribute layout (0=pos, 1=normal, 2=uv, 3=tangent, etc.)
     const GLsizei stride = (meshData.vertexStride > 0)
+    ? static_cast<GLsizei>(meshData.vertexStride)
+    : static_cast<GLsizei>(sizeof(float) * 3);
+
+    // Attribute layout
+    if (!meshData.attributes.empty())
+    {
+        for (const FVertexAttribute& attribute : meshData.attributes)
+        {
+            const GLuint location = static_cast<GLuint>(attribute.location);
+
+            glEnableVertexAttribArray(location);
+            glVertexAttribPointer(
+                location,
+                attribute.size,
+                GL_FLOAT,
+                GL_FALSE,
+                stride,
+                reinterpret_cast<const void*>(
+                    static_cast<std::uintptr_t>(attribute.offset)
+                )
+            );
+        }
+    }
+    else
+    {
+        // Attribute layout (0=pos, 1=normal, 2=uv, 3=tangent, etc.)
+        const GLsizei stride = (meshData.vertexStride > 0)
         ? static_cast<GLsizei>(meshData.vertexStride)
         : static_cast<GLsizei>(sizeof(float) * 3); // fallback
+    }
 
     // Position
     size_t offset = 0;
