@@ -182,4 +182,7 @@ public:
     // Rendering
     void SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4& transform) override;
     void UploadLights(const RLightData* lights, uint32_t count) override;
+
+    void EnableScissorRegion(bool bEnable) override;
+    void SetScissorRegion(int x, int y, int width, int height) override;
 };

@@ -264,7 +264,7 @@ void GLBackend::EndFrame()
     //glFlush();
     glDisable(GL_DEPTH_TEST);
     //glDisable(GL_CULL_FACE);
-    //glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_SCISSOR_TEST);
     //glDisable(GL_FRAMEBUFFER_SRGB);
     glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -1292,6 +1292,28 @@ void GLBackend::UploadLights(const RLightData *lights, uint32_t count)
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     m_LastLightCount = (int)n;
+}
+
+void GLBackend::EnableScissorRegion(bool bEnable)
+{
+    if (bEnable)
+        glEnable(GL_SCISSOR_TEST);
+    else
+        glDisable(GL_SCISSOR_TEST);
+}
+
+void GLBackend::SetScissorRegion(int x, int y, int width, int height)
+{
+    GLint viewport[4]{};
+    glGetIntegerv(GL_VIEWPORT, viewport);
+
+    width = std::max(width, 0);
+    height = std::max(height, 0);
+
+    const GLint scissorX = viewport[0] + x;
+    const GLint scissorY = viewport[1] + viewport[3] - y - height;
+
+    glScissor(scissorX, scissorY, width, height);
 }
 
 void GLBackend::SubmitMesh(RMeshHandle mesh, RShaderHandle shader, const FMatrix4 &transform)

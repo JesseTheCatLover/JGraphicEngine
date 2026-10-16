@@ -128,6 +128,10 @@ public:
 
     virtual void UploadLights(const RLightData* lights, uint32_t count) = 0;
 
+    // Scissor
+    virtual void EnableScissorRegion(bool bEnable) = 0;
+    virtual void SetScissorRegion(int x, int y, int width, int height) = 0;
+
     // --- Uniforms (scalars/vectors/matrices) ---
     virtual void SetUniformInt  (RShaderHandle sh, const char* name, int v) = 0;
     virtual void SetUniformFloat(RShaderHandle sh, const char* name, float v) = 0;
