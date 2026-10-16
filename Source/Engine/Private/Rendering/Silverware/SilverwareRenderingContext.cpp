@@ -199,8 +199,7 @@ void SilverwareRenderingContext::EnableScissorRegion(bool bEnable)
     m_RenderDevice.EnableScissorRegion(bEnable);
 }
 
-void SilverwareRenderingContext::SetScissorRegion(
-    int x, int y, int width, int height)
+void SilverwareRenderingContext::SetScissorRegion(int x, int y, int width, int height)
 {
     m_RenderDevice.SetScissorRegion(x, y, width, height);
 }
