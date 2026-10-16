@@ -8,6 +8,7 @@
 
 #include "Core/JEngine.h"
 #include "InkBlueEditorApp.h"
+#include "SilverwareSandboxApp.h"
 #include "Core/Project/FProjectOpenRequest.h"
 #include "ProjectLaunch/ProjectLaunchResolver.h"
 #include "ProjectLaunch/ConsoleProjectLaunchUI.h"
@@ -90,8 +91,27 @@ bool JApplication::RunGame(int argc, char** argv)
 
 bool JApplication::RunFromArgs(int argc, char** argv)
 {
+    if (HasFlag(argc, argv, "--silverware-sandbox"))
+        return RunSilverwareSandbox();
+
     const bool bEditor = HasFlag(argc, argv, "--editor");
     return bEditor ? RunEditor(argc, argv) : RunGame(argc, argv);
+}
+
+bool JApplication::RunSilverwareSandbox()
+{
+    std::cout << "[JApplication]: Launching Silverware Sandbox...\n";
+
+    auto& engine = JEngine::Get();
+
+    if (!engine.InitializeRuntime())
+    {
+        std::cerr << "[JApplication]: Failed to initialize engine runtime.\n";
+        return false;
+    }
+
+    SilverwareSandboxApp sandbox;
+    return engine.RunStandalone(sandbox);
 }
 
 bool JApplication::LaunchEngine(IEditorBridge* editor, int argc, char** argv)

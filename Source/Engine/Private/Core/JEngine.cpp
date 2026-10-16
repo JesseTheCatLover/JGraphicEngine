@@ -13,6 +13,7 @@
 #include "Assets/EngineSourceAssetBootstrapper.h"
 #endif
 #include "Assets/Importers/IAssetImporter.h"
+#include "Core/IRuntimeLayer.h"
 #include "Core/TServiceContainer.h"
 #include "Framework/InputManager.h"
 #include "Framework/PostProcessManager.h"
@@ -47,6 +48,89 @@ JEngine::JEngine()
 
 JEngine::~JEngine()
 {
+}
+
+bool JEngine::RunStandalone(IRuntimeLayer& runtimeLayer)
+{
+    if (!bRuntimeInitialized)
+    {
+        std::cerr << "[JEngine]: Runtime is not initialized.\n";
+        return false;
+    }
+
+    if (m_ProjectContext->IsOpen())
+    {
+        std::cerr << "[JEngine]: Standalone mode cannot run with an open project.\n";
+        return false;
+    }
+
+    if (!runtimeLayer.OnInitialize(*this))
+    {
+        std::cerr << "[JEngine]: Standalone runtime initialization failed.\n";
+        runtimeLayer.OnShutdown();
+        Shutdown();
+        return false;
+    }
+
+    m_Context->SetRunning(true);
+    m_PrimaryWindow->Show();
+
+    RunStandaloneMainLoop(&runtimeLayer);
+
+    runtimeLayer.OnShutdown();
+    Shutdown();
+
+    return true;
+}
+
+void JEngine::RunStandaloneMainLoop(IRuntimeLayer* runtimeLayer)
+{
+    while (!m_PrimaryWindow->ShouldClose() && m_Context->GetIsRunning())
+    {
+        CalculateDeltaTime();
+
+        if (GetDebugDraw())
+            GetDebugDraw()->BeginFrame();
+
+        m_Context->ClearViewSources();
+
+        TickStandalone(runtimeLayer);
+
+        // Only the normal game mode builds game views automatically.
+        if (!m_EditorBridge && !runtimeLayer)
+            BuildGameViews();
+
+        m_Renderer->RenderFrame(m_Context->GetViewSources());
+
+        if (m_EditorBridge)
+            m_EditorBridge->OnRenderOverlay(m_Context->GetDeltaTime());
+        else if (runtimeLayer)
+            runtimeLayer->OnRenderOverlay(m_Context->GetDeltaTime());
+
+        m_PlatformSurface->Present(m_PrimaryWindow);
+        m_PlatformSurface->PollSurfaceEvents();
+    }
+}
+
+void JEngine::TickStandalone(IRuntimeLayer* runtimeLayer)
+{
+    auto& deltaTime = m_Context->GetDeltaTime();
+
+    if (GetSceneManager())
+        GetSceneManager()->Tick(deltaTime);
+
+    if (GetDebugDraw())
+        GetDebugDraw()->Tick(deltaTime);
+
+    if (m_InputSubSystem)
+        m_InputSubSystem->Tick(deltaTime);
+
+    if (m_EditorBridge)
+        m_EditorBridge->OnTick(deltaTime);
+    else if (runtimeLayer)
+        runtimeLayer->OnTick(deltaTime);
+    else
+        TickGameFreeCamera(deltaTime);
 }
 
 bool JEngine::InitializeRuntime()

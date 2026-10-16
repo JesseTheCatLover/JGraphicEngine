@@ -26,6 +26,8 @@ public:
     /** Launches based on a command-line flag (e.g., --editor or --game). */
     static bool RunFromArgs(int argc, char** argv);
 
+    static bool RunSilverwareSandbox();
+
 private:
     static bool LaunchEngine(IEditorBridge* editor, int argc, char** argv);
 };

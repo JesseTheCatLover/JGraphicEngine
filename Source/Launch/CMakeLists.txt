@@ -31,14 +31,22 @@ redleaf_add_executable(
         DEPS JApplication
 )
 
+redleaf_add_executable(
+        NAME SilverwareSandbox
+        ENTRY SilverwareSandboxEntry.cpp
+        DEPS JApplication
+)
+
 # ---------------- Force Engine Registration ----------------
 
 redleaf_force_link(JEditor Engine)
 redleaf_force_link(JGame Engine)
 redleaf_force_link(RedleafEngine Engine)
+redleaf_force_link(SilverwareSandbox Engine)
 
 # ---------------- IDE Organization ----------------
 
 redleaf_set_folder(JEditor "Executables")
 redleaf_set_folder(JGame "Executables")
 redleaf_set_folder(RedleafEngine "Executables")
+redleaf_set_folder(SilverwareSandbox "Executables")

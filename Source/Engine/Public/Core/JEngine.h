@@ -7,6 +7,7 @@
 #include "Memory/SmartPointers.h"
 #include "IEditorBridge.h"
 
+class IRuntimeLayer;
 class IPlatformWindow;
 class AssetManager;
 class AssetImportSubsystem;
@@ -94,6 +95,11 @@ private:
     TUniquePtr<InputSubsystem> m_InputSubSystem;
 
     TUniquePtr<TServiceContainer> m_Services;
+
+    // Standalone Execution
+    bool RunStandalone(IRuntimeLayer& runtimeLayer);
+    void RunStandaloneMainLoop(IRuntimeLayer* runtimeLayer = nullptr);
+    void TickStandalone(IRuntimeLayer* runtimeLayer = nullptr);
 
     bool InitializeRuntime();
     bool OpenProject(const FProjectOpenRequest& request);
