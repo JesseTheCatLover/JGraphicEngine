@@ -64,6 +64,9 @@ private:
     RShaderHandle m_FXAAShader{}; // TODO: These messy stuff need to be refactored for the future
     void EnsureFXAAShader();
 
+    RShaderHandle m_UIGeometryShader{};
+    void EnsureUIGeometryShader();
+
     RShaderHandle m_DebugLineShader{};
     void EnsureDebugLineShader();
 
@@ -179,6 +182,13 @@ public:
 
     RTextureHandle CreateTexture(const RTexture &data) override;
     void DestroyTexture(RTextureHandle h) override;
+
+    void SubmitScreenSpaceGeometry(RMeshHandle mesh, RTextureHandle texture, float translationX, float translationY,
+        int viewportWidth, int viewportHeight) override;
+
+    void EnableScissorRegion(bool bEnable) override;
+
+    void SetScissorRegion(int x, int y, int width, int height) override;
 
     RShaderHandle CreateShader(const RShader &data) override;
     void DestroyShader(RShaderHandle h) override;

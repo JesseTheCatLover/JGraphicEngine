@@ -740,6 +740,66 @@ void RendererSubsystem::EnsureFXAAShader()
     m_FXAAShader = m_Backend->CreateShader(s);
 }
 
+void RendererSubsystem::EnsureUIGeometryShader()
+{
+    if (m_UIGeometryShader.IsValid())
+        return;
+
+    RShader shader{};
+
+    shader.vertexSource = R"(
+        #version 330 core
+
+        layout(location = 0) in vec2 aPosition;
+        layout(location = 1) in vec2 aTexCoord;
+        layout(location = 2) in vec4 aColour;
+
+        uniform vec2 u_Translation;
+        uniform vec2 u_ViewportSize;
+
+        out vec2 vTexCoord;
+        out vec4 vColour;
+
+        void main()
+        {
+            vec2 position = aPosition + u_Translation;
+
+            vec2 ndc = vec2(
+                (position.x / u_ViewportSize.x) * 2.0 - 1.0,
+                1.0 - (position.y / u_ViewportSize.y) * 2.0
+            );
+
+            gl_Position = vec4(ndc, 0.0, 1.0);
+
+            vTexCoord = aTexCoord;
+            vColour = aColour;
+        }
+    )";
+
+    shader.fragmentSource = R"(
+        #version 330 core
+
+        in vec2 vTexCoord;
+        in vec4 vColour;
+
+        uniform sampler2D u_Texture;
+        uniform int u_UseTexture;
+
+        out vec4 FragColor;
+
+        void main()
+        {
+            vec4 texel = u_UseTexture != 0
+                ? texture(u_Texture, vTexCoord)
+                : vec4(1.0);
+
+            FragColor = texel * vColour;
+        }
+    )";
+
+    m_UIGeometryShader = m_Backend->CreateShader(shader);
+}
+
 void RendererSubsystem::EnsureDebugLineShader()
 {
     if (m_DebugLineShader.IsValid())
@@ -1786,6 +1846,60 @@ void RendererSubsystem::DestroyTexture(RTextureHandle h)
     m_Backend->DestroyTexture(h);
 }
 
+void RendererSubsystem::SubmitScreenSpaceGeometry(RMeshHandle mesh, RTextureHandle texture, float translationX,
+    float translationY, int viewportWidth, int viewportHeight)
+{
+    if (!mesh.IsValid() || viewportWidth <= 0 || viewportHeight <= 0)
+        return;
+
+    EnsureUIGeometryShader();
+
+    if (!m_UIGeometryShader.IsValid())
+        return;
+
+    m_Backend->SetCullMode(IRenderBackend::ECullMode::None);
+    m_Backend->SetDepthState(false, false, IRenderBackend::ECompareFunc::Always);
+
+    m_Backend->SetBlendState(
+        true,
+        IRenderBackend::EBlendFactor::One,
+        IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
+
+    m_Backend->SetColorWriteMask(true, true, true, true);
+    m_Backend->BindShader(m_UIGeometryShader);
+
+    const float translation[] = { translationX, translationY };
+    const float viewportSize[] = {
+        static_cast<float>(viewportWidth),
+        static_cast<float>(viewportHeight)
+    };
+
+    m_Backend->SetUniformVec2(
+        m_UIGeometryShader, "u_Translation", translation);
+
+    m_Backend->SetUniformVec2(
+        m_UIGeometryShader, "u_ViewportSize", viewportSize);
+
+    m_Backend->SetUniformInt(m_UIGeometryShader, "u_Texture", 0);
+
+    const bool bUseTexture = texture.IsValid();
+    m_Backend->SetUniformInt(m_UIGeometryShader, "u_UseTexture", bUseTexture ? 1 : 0);
+
+    if (bUseTexture)
+        m_Backend->BindTexture(texture, 0);
+
+    m_Backend->SubmitMesh(mesh, m_UIGeometryShader, FMatrix4::Identity());
+}
+
+void RendererSubsystem::EnableScissorRegion(bool bEnable)
+{
+    m_Backend->EnableScissorRegion(bEnable);
+}
+
+void RendererSubsystem::SetScissorRegion(int x, int y, int width, int height)
+{
+    m_Backend->SetScissorRegion(x, y, width, height);
+}
 RShaderHandle RendererSubsystem::CreateShader(const RShader &data)
 {
     return m_Backend->CreateShader(data);

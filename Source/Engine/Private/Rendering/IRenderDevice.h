@@ -38,6 +38,13 @@ public:
     virtual void SubmitDebugLines(const FRenderView& view, const FDebugLine* lines, uint32_t lineCount) = 0;
     virtual void SubmitDebugTriangles(const FRenderView& view, const FDebugTri* tris, uint32_t triCount) = 0;
 
+    virtual void SubmitScreenSpaceGeometry(RMeshHandle mesh, RTextureHandle texture,
+    float translationX, float translationY,
+    int viewportWidth, int viewportHeight) = 0;
+
+    virtual void EnableScissorRegion(bool bEnable) = 0;
+    virtual void SetScissorRegion(int x, int y, int width, int height) = 0;
+
     // virtual RMaterialHandle CreateMaterial(const RMaterialDesc& d) = 0;
     // Queue a lambda to run on the render thread.
     virtual void EnqueueRenderTask(std::function<void()> fn) = 0;
