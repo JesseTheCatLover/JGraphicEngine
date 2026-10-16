@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "FSurfaceDesc.h"
-#include "IRenderDevice.h"
+#include "../../Public/Rendering/IRenderDevice.h"
 #include "Rendering/RHandles.h"
 #include "RCommandBuffer.h"
 #include "Rendering/FProjectionDesc.h"

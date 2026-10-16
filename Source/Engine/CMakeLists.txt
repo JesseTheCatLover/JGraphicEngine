@@ -6,6 +6,7 @@ redleaf_add_module(
         NAME Engine
 
         PUBLIC_DEPS glad stb glfw assimp glm nlohmann_json nfd
+        SilverwareBackend
 )
 
 target_compile_definitions(
