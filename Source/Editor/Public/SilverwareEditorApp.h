@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 #include "Core/IEditorBridge.h"
 #include "Core/Memory/SmartPointers.h"
@@ -10,6 +11,7 @@
 namespace Silverware
 {
     class ContainerWidget;
+    class TextWidget;
 
     namespace Backends::RmlUi
     {
@@ -35,6 +37,12 @@ private:
 
     TUniquePtr<EditorRuntime> m_EditorRuntime;
     TUniquePtr<EditorHost> m_EditorHost;
+
+    Silverware::TextWidget* m_TestTextWidget = nullptr;
+    Silverware::TextWidget* m_TestDynamicTextWidget = nullptr;
+
+    float m_SyncTestElapsed = 0.0f;
+    std::uint8_t m_SyncTestStage = 0;
 
 public:
     SilverwareEditorApp();

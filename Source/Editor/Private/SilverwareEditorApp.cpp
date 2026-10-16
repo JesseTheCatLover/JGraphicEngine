@@ -102,13 +102,45 @@ void SilverwareEditorApp::OnProjectInitialized(IPlatformWindow* window, ProjectC
         return;
     }
 
-    m_RootWidget = TUniquePtr<Silverware::ContainerWidget>(new FEditorRootWidget());
+    m_RootWidget =
+    TUniquePtr<Silverware::ContainerWidget>(new FEditorRootWidget());
 
-    m_RootWidget->AddChild(
-        TUniquePtr<Silverware::CoreWidget>(
-            new Silverware::TextWidget(
-                "Hello from the Silverware widget tree!")));
+    // Root layout
+    auto rootLayout = m_RootWidget->GetLayout();
+    rootLayout.width = Silverware::FLayoutLength::Percent(100.0f);
+    rootLayout.height = Silverware::FLayoutLength::Percent(100.0f);
+    m_RootWidget->SetLayout(rootLayout);
 
+    // Container layout
+    auto containerLayout = m_RootWidget->GetContainerLayout();
+    containerLayout.direction = Silverware::ELayoutDirection::Horizontal;
+    containerLayout.gap = Silverware::FLayoutLength::Pixels(30.0f);
+    containerLayout.alignItems = Silverware::EAlignment::Start;
+    containerLayout.justifyContent = Silverware::EJustification::Center;
+    m_RootWidget->SetContainerLayout(containerLayout);
+
+    // Create the text widget
+    auto* textWidget = new Silverware::TextWidget("Hello from the Silverware widget tree!");
+
+    if (!m_RootWidget->AddChild(Silverware::TUniquePtr<Silverware::CoreWidget>(textWidget)))
+    {
+        std::cerr << "[SilverwareEditorApp]: Failed to add initial text widget.\n";
+        Shutdown();
+        return;
+    }
+
+    m_TestTextWidget = textWidget;
+
+    // Text layout
+    auto textLayout = m_TestTextWidget->GetLayout();
+    textLayout.margin.top = Silverware::FLayoutLength::Pixels(24.0f);
+    textLayout.margin.left = Silverware::FLayoutLength::Pixels(24.0f);
+    m_TestTextWidget->SetLayout(textLayout);
+
+    m_SyncTestElapsed = 0.0f;
+    m_SyncTestStage = 0;
+
+    // Initial synchronization
     if (!m_RmlUiRuntime->Synchronize(
             *m_RootWidget,
             Silverware::EBackendSyncMode::Full))
@@ -131,14 +163,94 @@ void SilverwareEditorApp::OnTick(float deltaTime)
     if (m_EditorHost)
         m_EditorHost->Tick(deltaTime);
 
-    if (m_RmlUiRuntime && m_RootWidget)
+    if (!m_RmlUiRuntime || !m_RootWidget)
+        return;
+
+    if (m_SyncTestStage < 3)
     {
-        if (!m_RmlUiRuntime->Synchronize(
-                *m_RootWidget,
-                Silverware::EBackendSyncMode::Incremental))
+        m_SyncTestElapsed += deltaTime;
+
+        if (m_SyncTestElapsed >= 2.0f)
         {
-            std::cerr << "[SilverwareEditorApp]: Widget synchronization failed.\n";
+            m_SyncTestElapsed = 0.0f;
+
+            switch (m_SyncTestStage)
+            {
+            case 0:
+                if (m_TestTextWidget)
+                {
+                    m_TestTextWidget->SetText(
+                        "Incremental property update succeeded!");
+
+                    std::cout
+                        << "[SilverwareEditorApp]: Testing property update.\n";
+                }
+                break;
+
+            case 1:
+            {
+                Silverware::TUniquePtr<Silverware::CoreWidget> child(
+                    new Silverware::TextWidget(
+                        "Runtime child added successfully!"));
+
+                auto* textWidget = static_cast<Silverware::TextWidget*>(child.get());
+
+                if (m_RootWidget->AddChild(
+                        Silverware::TakeUniqueOwnership(child)))
+                {
+                    m_TestDynamicTextWidget = textWidget;
+                    auto textLayout = m_TestDynamicTextWidget->GetLayout();
+                    textLayout.margin.top = Silverware::FLayoutLength::Pixels(24.0f);
+                    textLayout.margin.left = Silverware::FLayoutLength::Pixels(24.0f);
+                    m_TestDynamicTextWidget->SetLayout(textLayout);
+
+                    std::cout
+                        << "[SilverwareEditorApp]: Testing child addition.\n";
+                }
+                else
+                {
+                    std::cerr
+                        << "[SilverwareEditorApp]: Failed to add test child.\n";
+                }
+
+                break;
+            }
+
+            case 2:
+                if (m_TestDynamicTextWidget)
+                {
+                    auto removed =
+                        m_RootWidget->RemoveChild(*m_TestDynamicTextWidget);
+
+                    if (removed)
+                    {
+                        m_TestDynamicTextWidget = nullptr;
+
+                        std::cout
+                            << "[SilverwareEditorApp]: Testing child removal.\n";
+                    }
+                    else
+                    {
+                        std::cerr
+                            << "[SilverwareEditorApp]: Failed to remove test child.\n";
+                    }
+                }
+                break;
+
+            default:
+                break;
+            }
+
+            ++m_SyncTestStage;
         }
+    }
+
+    if (!m_RmlUiRuntime->Synchronize(
+            *m_RootWidget,
+            Silverware::EBackendSyncMode::Incremental))
+    {
+        std::cerr
+            << "[SilverwareEditorApp]: Incremental synchronization failed.\n";
     }
 }
 
