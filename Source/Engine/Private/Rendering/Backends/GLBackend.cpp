@@ -442,9 +442,7 @@ RMeshHandle GLBackend::CreateMesh(const RMesh& meshData)
                 GL_FLOAT,
                 GL_FALSE,
                 stride,
-                reinterpret_cast<const void*>(
-                    static_cast<std::uintptr_t>(attribute.offset)
-                )
+                reinterpret_cast<const void*>(static_cast<std::uintptr_t>(attribute.offset))
             );
         }
     }
