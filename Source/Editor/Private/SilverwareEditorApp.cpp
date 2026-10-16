@@ -5,6 +5,7 @@
 #include "EditorRuntime.h"
 #include "EditorCore/EditorHost.h"
 #include "Core/Project/ProjectContext.h"
+#include "Silverware/Backend/IRenderingContext.h"
 #include "Rendering/IPlatformWindow.h"
 
 #include <iostream>

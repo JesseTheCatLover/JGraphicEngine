@@ -7,7 +7,11 @@
 #include "EditorAPI/Scene/SceneAPI.h"
 #include "EditorAPI/Surface/SurfaceAPI.h"
 #include "EditorAPI/Viewport/ViewportAPI.h"
-#include "Silverware/Backend/IRenderingContext.h"
+
+namespace Silverware
+{
+    class IRenderingContext;
+}
 
 class InputSubsystem;
 class ICameraViewSource;

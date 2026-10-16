@@ -6,7 +6,11 @@
 
 #include "Core/IEditorBridge.h"
 #include "Core/Memory/SmartPointers.h"
-#include "Silverware/Backend/IRenderingContext.h"
+
+namespace Silverware
+{
+    class IRenderingContext;
+}
 
 class EditorHost;
 class EditorRuntime;
