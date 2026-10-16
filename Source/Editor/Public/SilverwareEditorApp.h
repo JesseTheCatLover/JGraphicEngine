@@ -9,6 +9,11 @@
 
 namespace Silverware
 {
+    namespace Backends::RmlUi
+    {
+        class RmlUiRuntime;
+    }
+
     class IRenderingContext;
 }
 
@@ -23,6 +28,7 @@ private:
     IPlatformWindow* m_Window = nullptr;
 
     TUniquePtr<Silverware::IRenderingContext> m_RenderingContext;
+    TUniquePtr<Silverware::Backends::RmlUi::RmlUiRuntime> m_RmlUiRuntime;
 
     TUniquePtr<EditorRuntime> m_EditorRuntime;
     TUniquePtr<EditorHost> m_EditorHost;
