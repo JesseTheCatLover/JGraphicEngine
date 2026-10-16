@@ -9,6 +9,8 @@
 
 namespace Silverware
 {
+    class ContainerWidget;
+
     namespace Backends::RmlUi
     {
         class RmlUiRuntime;
@@ -29,6 +31,7 @@ private:
 
     TUniquePtr<Silverware::IRenderingContext> m_RenderingContext;
     TUniquePtr<Silverware::Backends::RmlUi::RmlUiRuntime> m_RmlUiRuntime;
+    TUniquePtr<Silverware::ContainerWidget> m_RootWidget;
 
     TUniquePtr<EditorRuntime> m_EditorRuntime;
     TUniquePtr<EditorHost> m_EditorHost;

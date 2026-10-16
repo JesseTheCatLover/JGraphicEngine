@@ -11,8 +11,20 @@
 
 #include <iostream>
 
+#include "Silverware/Backend/IWidgetBackend.h"
+#include "Silverware/Core/ContainerWidget.h"
+#include "Silverware/UI/TextWidget.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
+
+namespace
+{
+    class FEditorRootWidget final : public Silverware::ContainerWidget
+    {
+    public:
+        FEditorRootWidget() = default;
+    };
+}
 
 SilverwareEditorApp::SilverwareEditorApp()
 {
@@ -90,6 +102,22 @@ void SilverwareEditorApp::OnProjectInitialized(IPlatformWindow* window, ProjectC
         return;
     }
 
+    m_RootWidget = TUniquePtr<Silverware::ContainerWidget>(new FEditorRootWidget());
+
+    m_RootWidget->AddChild(
+        TUniquePtr<Silverware::CoreWidget>(
+            new Silverware::TextWidget(
+                "Hello from the Silverware widget tree!")));
+
+    if (!m_RmlUiRuntime->Synchronize(
+            *m_RootWidget,
+            Silverware::EBackendSyncMode::Full))
+    {
+        std::cerr << "[SilverwareEditorApp]: Initial widget synchronization failed.\n";
+        Shutdown();
+        return;
+    }
+
     // Silverware backend and UI initialization will be added here.
     (void)projectCtx;
 }
@@ -102,6 +130,16 @@ void SilverwareEditorApp::OnTick(float deltaTime)
 {
     if (m_EditorHost)
         m_EditorHost->Tick(deltaTime);
+
+    if (m_RmlUiRuntime && m_RootWidget)
+    {
+        if (!m_RmlUiRuntime->Synchronize(
+                *m_RootWidget,
+                Silverware::EBackendSyncMode::Incremental))
+        {
+            std::cerr << "[SilverwareEditorApp]: Widget synchronization failed.\n";
+        }
+    }
 }
 
 void SilverwareEditorApp::OnRenderOverlay(float)

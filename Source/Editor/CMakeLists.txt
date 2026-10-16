@@ -7,7 +7,7 @@ redleaf_add_module(
         EditorRuntime
         imgui
 
-        PRIVATE_DEPS SilverwareBackend SilverwareBackends
+        PRIVATE_DEPS SilverwareBackend SilverwareBackends SilverwareUI
 )
 
 redleaf_set_folder(Editor "EditorLibs")
