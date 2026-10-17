@@ -13,14 +13,14 @@ class EditorHost;
 class EditorRuntime;
 class SilverwareBackend;
 
-class SilverwareRenderer
+class SilverwareEditorRenderer
 {
 public:
-    SilverwareRenderer();
-    ~SilverwareRenderer();
+    SilverwareEditorRenderer();
+    ~SilverwareEditorRenderer();
 
-    SilverwareRenderer(const SilverwareRenderer&) = delete;
-    SilverwareRenderer& operator=(const SilverwareRenderer&) = delete;
+    SilverwareEditorRenderer(const SilverwareEditorRenderer&) = delete;
+    SilverwareEditorRenderer& operator=(const SilverwareEditorRenderer&) = delete;
 
 private:
     bool BuildEditorLayout();

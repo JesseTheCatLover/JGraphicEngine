@@ -10,7 +10,7 @@
 
 #include <iostream>
 
-#include "Renderer/SilverwareRenderer.h"
+#include "Renderer/SilverwareEditorRenderer.h"
 #include "Renderer/Backends/SilverwareBackend.h"
 
 SilverwareEditorApp::SilverwareEditorApp()
@@ -69,7 +69,7 @@ void SilverwareEditorApp::OnProjectInitialized(IPlatformWindow* window, ProjectC
         return;
     }
 
-    m_SilverwareRenderer = MakeUnique<SilverwareRenderer>();
+    m_SilverwareRenderer = MakeUnique<SilverwareEditorRenderer>();
 
     if (!m_SilverwareRenderer->Initialize(*m_EditorHost, *m_EditorRuntime, *m_SilverwareBackend))
     {

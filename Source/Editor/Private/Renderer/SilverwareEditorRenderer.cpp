@@ -1,6 +1,6 @@
 // Copyright 2026 JesseTheCatLover. All Rights Reserved.
 
-#include "SilverwareRenderer.h"
+#include "SilverwareEditorRenderer.h"
 
 #include "EditorCore/EditorHost.h"
 #include "EditorRuntime.h"
@@ -50,16 +50,16 @@ namespace
     }
 }
 
-SilverwareRenderer::SilverwareRenderer()
+SilverwareEditorRenderer::SilverwareEditorRenderer()
 {
 }
 
-SilverwareRenderer::~SilverwareRenderer()
+SilverwareEditorRenderer::~SilverwareEditorRenderer()
 {
     Shutdown();
 }
 
-bool SilverwareRenderer::Initialize(EditorHost& editorHost, EditorRuntime& editorRuntime, SilverwareBackend& backend)
+bool SilverwareEditorRenderer::Initialize(EditorHost& editorHost, EditorRuntime& editorRuntime, SilverwareBackend& backend)
 {
     Shutdown();
 
@@ -104,7 +104,7 @@ bool SilverwareRenderer::Initialize(EditorHost& editorHost, EditorRuntime& edito
     return true;
 }
 
-bool SilverwareRenderer::BuildEditorLayout()
+bool SilverwareEditorRenderer::BuildEditorLayout()
 {
     if (!m_RootWidget)
         return false;
@@ -117,7 +117,7 @@ bool SilverwareRenderer::BuildEditorLayout()
         AddEditorSection(*m_RootWidget, "Inspector", 20.0f);
 }
 
-void SilverwareRenderer::Tick(float deltaTime)
+void SilverwareEditorRenderer::Tick(float deltaTime)
 {
     (void)deltaTime;
 
@@ -130,7 +130,7 @@ void SilverwareRenderer::Tick(float deltaTime)
     }
 }
 
-void SilverwareRenderer::Shutdown()
+void SilverwareEditorRenderer::Shutdown()
 {
     m_RootWidget.reset();
 
