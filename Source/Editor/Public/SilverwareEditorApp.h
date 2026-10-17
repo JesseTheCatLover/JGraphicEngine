@@ -7,19 +7,8 @@
 #include "Core/IEditorBridge.h"
 #include "Core/Memory/SmartPointers.h"
 
-namespace Silverware
-{
-    class FLayeredResourceProvider;
-    class ContainerWidget;
-
-    namespace Backends::RmlUi
-    {
-        class RmlUiRuntime;
-    }
-
-    class IRenderingContext;
-}
-
+class SilverwareRenderer;
+class SilverwareBackend;
 class EditorHost;
 class EditorRuntime;
 class IPlatformWindow;
@@ -30,10 +19,8 @@ class SilverwareEditorApp final : public IEditorBridge
 private:
     IPlatformWindow* m_Window = nullptr;
 
-    TUniquePtr<Silverware::IRenderingContext> m_RenderingContext;
-    TUniquePtr<Silverware::FLayeredResourceProvider> m_ResourceProvider;
-    TUniquePtr<Silverware::Backends::RmlUi::RmlUiRuntime> m_RmlUiRuntime;
-    TUniquePtr<Silverware::ContainerWidget> m_RootWidget;
+    TUniquePtr<SilverwareBackend> m_SilverwareBackend;
+    TUniquePtr<SilverwareRenderer> m_SilverwareRenderer;
 
     TUniquePtr<EditorRuntime> m_EditorRuntime;
     TUniquePtr<EditorHost> m_EditorHost;
