@@ -6,6 +6,7 @@
 #include "Core/EngineGlobals.h"
 #include "Core/JEngine.h"
 #include "Core/Project/ProjectContext.h"
+#include "Core/Project/VirtualPathMounter.h"
 #include "EditorInput/EditorInputBootstrap.h"
 #include "Framework/PostProcessManager.h"
 #include "EditorInput/EditorInputDefaults.h"
@@ -21,6 +22,7 @@
 #include "Rendering/RendererSubsystem.h"
 #include "Rendering/Silverware/SilverwareRenderingContext.h"
 #include "Resources/ResourceSubsystem.h"
+#include "Resources/Silverware/FVirtualPathSource.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
 
@@ -95,6 +97,15 @@ EditorRuntime::~EditorRuntime()
 TUniquePtr<Silverware::IRenderingContext> EditorRuntime::CreateSilverwareRenderingContext()
 {
     return MakeUnique<SilverwareRenderingContext>(m_Renderer);
+}
+
+TSharedPtr<Silverware::IResourceSource> EditorRuntime::CreateSilverwareResourceSource(
+    const std::string& virtualRoot) const
+{
+    if (!m_VirtualPathMounter.IsMounted(virtualRoot))
+        return {};
+
+    return MakeShared<Silverware::Adapters::RedleafEngine::FVirtualPathSource>(m_VirtualPathMounter, virtualRoot);
 }
 
 void EditorRuntime::RestartEditor(const std::string &targetProjectPath, const std::string& extraArgs)

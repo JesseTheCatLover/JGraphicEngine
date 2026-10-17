@@ -80,8 +80,8 @@ namespace
 bool JApplication::RunEditor(int argc, char** argv)
 {
     std::cout << "[JApplication]: Launching in EDITOR mode...\n";
-    // SilverwareEditorApp editor;
-    InkBlueEditorApp editor;
+    SilverwareEditorApp editor;
+    // InkBlueEditorApp editor;
     return LaunchEngine(&editor, argc, argv);
 }
 

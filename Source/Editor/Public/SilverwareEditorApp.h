@@ -10,6 +10,7 @@
 
 namespace Silverware
 {
+    class FLayeredResourceProvider;
     class ContainerWidget;
     class TextWidget;
 
@@ -32,6 +33,8 @@ private:
     IPlatformWindow* m_Window = nullptr;
 
     TUniquePtr<Silverware::IRenderingContext> m_RenderingContext;
+    TUniquePtr<Silverware::FLayeredResourceProvider> m_ResourceProvider;
+
     TUniquePtr<Silverware::Backends::RmlUi::RmlUiRuntime> m_RmlUiRuntime;
     TUniquePtr<Silverware::ContainerWidget> m_RootWidget;
 

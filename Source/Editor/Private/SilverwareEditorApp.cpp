@@ -11,8 +11,16 @@
 
 #include <iostream>
 
+#include <array>
+#include <span>
+
+#include "Silverware/Core/Resources/IResourceProvider.h"
+#include "Silverware/Core/Resources/IResourceStream.h"
+#include "Silverware/Core/Resources/ResourcePath.h"
+
 #include "Silverware/Backend/IWidgetBackend.h"
 #include "Silverware/Core/ContainerWidget.h"
+#include "Silverware/Core/Resources/LayeredResourceProvider.h"
 #include "Silverware/UI/TextWidget.h"
 #include "Utilities/UFileSystem.h"
 #include "Utilities/UPath.h"
@@ -24,6 +32,143 @@ namespace
     public:
         FEditorRootWidget() = default;
     };
+
+bool RunSilverwareResourceSmokeTest(
+    Silverware::IResourceProvider& provider)
+{
+    using namespace Silverware;
+
+    constexpr char kFontURI[] =
+        "engine:/Editor/Fonts/FunnelSans.ttf";
+
+    FResourcePath fontPath;
+
+    if (!FResourcePath::TryParse(kFontURI, fontPath))
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: Failed to parse font path.\n";
+        return false;
+    }
+
+    Silverware::TUniquePtr<IResourceStream> stream;
+
+    if (provider.Open(fontPath, stream) != EResourceOpenResult::Opened ||
+        !stream)
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: Failed to open "
+            << kFontURI << '\n';
+        return false;
+    }
+
+    const std::uint64_t size = stream->GetSize();
+
+    if (size < 4)
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: Font resource is unexpectedly small.\n";
+        return false;
+    }
+
+    // Read the first four bytes.
+    std::array<std::byte, 4> header{};
+    std::size_t bytesRead = 0;
+
+    if (!stream->Read(std::span<std::byte>(header), bytesRead) ||
+        bytesRead != header.size())
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: Initial read failed.\n";
+        return false;
+    }
+
+    // Seek to the beginning and verify deterministic reading.
+    if (!stream->Seek(0))
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: Seek to beginning failed.\n";
+        return false;
+    }
+
+    std::array<std::byte, 4> headerAgain{};
+    bytesRead = 0;
+
+    if (!stream->Read(
+            std::span<std::byte>(headerAgain), bytesRead) ||
+        bytesRead != headerAgain.size() ||
+        header != headerAgain)
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: Read-after-seek failed.\n";
+        return false;
+    }
+
+    // Seeking to EOF and reading should succeed with zero bytes.
+    if (!stream->Seek(size))
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: Seek to EOF failed.\n";
+        return false;
+    }
+
+    std::array<std::byte, 1> finalByte{};
+    bytesRead = 0;
+
+    if (!stream->Read(std::span<std::byte>(finalByte), bytesRead) ||
+        bytesRead != 0)
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: EOF behavior is incorrect.\n";
+        return false;
+    }
+
+    // A missing resource must report NotFound.
+    FResourcePath missingPath;
+
+    if (!FResourcePath::TryParse(
+            "engine:/__silverware_test__/missing.bin",
+            missingPath))
+    {
+        return false;
+    }
+
+    Silverware::TUniquePtr<IResourceStream> missingStream;
+
+    if (provider.Open(missingPath, missingStream) !=
+            EResourceOpenResult::NotFound ||
+        missingStream)
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: Missing-resource handling failed.\n";
+        return false;
+    }
+
+    // Verify relative path resolution stays in the same namespace.
+    FResourcePath relativePath;
+
+    if (!FResourcePath::TryResolveRelative(
+            fontPath,
+            "../Textures/AssetBrowser/Icon.jasset",
+            relativePath) ||
+        relativePath.ToString() !=
+            "engine:/Editor/Textures/AssetBrowser/Icon.jasset")
+    {
+        std::cerr
+            << "[SilverwareResourceTest]: Relative path resolution failed.\n";
+        return false;
+    }
+
+    std::cout
+        << "[SilverwareResourceTest]: PASSED\n"
+        << "  Resource: " << fontPath.ToString() << '\n'
+        << "  Size: " << size << " bytes\n"
+        << "  Read/seek: OK\n"
+        << "  EOF behavior: OK\n"
+        << "  Missing resource: OK\n"
+        << "  Relative paths: OK\n";
+
+    return true;
+}
 }
 
 SilverwareEditorApp::SilverwareEditorApp()
@@ -42,6 +187,17 @@ void SilverwareEditorApp::Shutdown()
         m_RmlUiRuntime->Shutdown();
         m_RmlUiRuntime.reset();
     }
+
+    // The runtime/backend must be destroyed before its widget tree.
+    m_RootWidget.reset();
+    m_TestTextWidget = nullptr;
+    m_TestDynamicTextWidget = nullptr;
+    m_SyncTestElapsed = 0.0f;
+    m_SyncTestStage = 0;
+
+    // Resource sources borrow host-owned infrastructure.
+    // Release them before destroying the host-facing runtime.
+    m_ResourceProvider.reset();
 
     if (m_EditorHost)
     {
@@ -77,6 +233,39 @@ void SilverwareEditorApp::OnProjectInitialized(IPlatformWindow* window, ProjectC
         return;
     }
 
+    m_ResourceProvider = MakeUnique<Silverware::FLayeredResourceProvider>();
+
+    auto engineSource = m_EditorRuntime->CreateSilverwareResourceSource("/Engine");
+
+    if (!engineSource || !m_ResourceProvider->Mount("engine", 0, engineSource))
+    {
+        std::cerr << "[SilverwareEditorApp]: Failed to mount engine resources.\n";
+        Shutdown();
+        return;
+    }
+
+    auto projectSource = m_EditorRuntime->CreateSilverwareResourceSource("/Project");
+
+    if (projectSource)
+    {
+        if (!m_ResourceProvider->Mount("project", 0, projectSource))
+        {
+            std::cerr << "[SilverwareEditorApp]: Failed to mount project resources.\n";
+            Shutdown();
+            return;
+        }
+    }
+    else
+    {
+        std::cerr << "[SilverwareEditorApp]: Project resource mount is unavailable.\n";
+    }
+
+    if (!RunSilverwareResourceSmokeTest(*m_ResourceProvider))
+    {
+        std::cerr
+            << "[SilverwareEditorApp]: Resource smoke test failed.\n";
+    }
+
     int width = 0;
     int height = 0;
     window->GetFramebufferSize(width, height);
@@ -102,8 +291,7 @@ void SilverwareEditorApp::OnProjectInitialized(IPlatformWindow* window, ProjectC
         return;
     }
 
-    m_RootWidget =
-    TUniquePtr<Silverware::ContainerWidget>(new FEditorRootWidget());
+    m_RootWidget = TUniquePtr<Silverware::ContainerWidget>(new FEditorRootWidget());
 
     // Root layout
     auto rootLayout = m_RootWidget->GetLayout();

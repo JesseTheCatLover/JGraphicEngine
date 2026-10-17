@@ -7,9 +7,11 @@
 #include "EditorAPI/Scene/SceneAPI.h"
 #include "EditorAPI/Surface/SurfaceAPI.h"
 #include "EditorAPI/Viewport/ViewportAPI.h"
+#include "Core/Memory/SmartPointers.h"
 
 namespace Silverware
 {
+    class IResourceSource;
     class IRenderingContext;
 }
 
@@ -45,7 +47,9 @@ private:
 
 public:
     ~EditorRuntime();
+
     [[nodiscard]] TUniquePtr<Silverware::IRenderingContext> CreateSilverwareRenderingContext();
+    [[nodiscard]] TSharedPtr<Silverware::IResourceSource> CreateSilverwareResourceSource(const std::string& virtualRoot) const;
 
     // Spawns a new engine process. If targetProjectPath is empty, it boots into the Launcher.
     void RestartEditor(const std::string& targetProjectPath = "", const std::string& extraArgs = "");
