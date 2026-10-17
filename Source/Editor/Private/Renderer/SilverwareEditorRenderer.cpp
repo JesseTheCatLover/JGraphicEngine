@@ -10,6 +10,7 @@
 #include "Silverware/Core/ContainerWidget.h"
 #include "Silverware/Core/CoreWidget.h"
 #include "Silverware/Core/WidgetLayout.h"
+#include "Silverware/Core/Styling/TextStyle.h"
 #include "Silverware/UI/TextWidget.h"
 
 #include <iostream>
@@ -41,10 +42,15 @@ namespace
         labelLayout.margin.left = FLayoutLength::Pixels(8.0f);
         label->SetLayout(labelLayout);
 
+        FTextStyle labelStyle;
+        labelStyle.fontFamily = "LatoLatin";
+        labelStyle.fontSize = 30.0f;
+        labelStyle.color = FColor{1.f, 1.f, 1.f, 1.0f};
+        labelStyle.fontWeight = EFontWeight::Bold;
+        label->SetTextStyle(labelStyle);
+
         if (!section->AddChild(Silverware::TUniquePtr<CoreWidget>(label.release())))
-        {
             return false;
-        }
 
         return root.AddChild(Silverware::TUniquePtr<CoreWidget>(section.release()));
     }
@@ -109,8 +115,6 @@ bool SilverwareEditorRenderer::BuildEditorLayout()
     if (!m_RootWidget)
         return false;
 
-    // Initial composition only. We'll replace these section contents with
-    // Silverware-native views as the editor presentation layer is separated.
     return
         AddEditorSection(*m_RootWidget, "Scene Hierarchy", 20.0f) &&
         AddEditorSection(*m_RootWidget, "Viewport", 55.0f) &&
@@ -125,9 +129,7 @@ void SilverwareEditorRenderer::Tick(float deltaTime)
         return;
 
     if (!m_Backend->Synchronize(*m_RootWidget, Silverware::EBackendSyncMode::Incremental))
-    {
         std::cerr << "[SilverwareRenderer]: Incremental synchronization failed.\n";
-    }
 }
 
 void SilverwareEditorRenderer::Shutdown()
