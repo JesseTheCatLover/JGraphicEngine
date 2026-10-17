@@ -3,6 +3,8 @@
 #pragma once
 
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include "Core/Memory/SmartPointers.h"
 #include "Silverware/Core/Resources/IResourceSource.h"
@@ -22,7 +24,13 @@ namespace Silverware::Adapters::RedleafEngine
 
         [[nodiscard]] bool IsValid() const noexcept;
 
-        [[nodiscard]] EResourceOpenResult Open(std::string_view relativePath,
+        [[nodiscard]] EResourceOpenResult Open(
+            std::string_view relativePath,
             TUniquePtr<IResourceStream>& outStream) override;
+
+        [[nodiscard]] EResourceListResult EnumerateFiles(
+            std::string_view relativeDirectory,
+            bool recursive,
+            std::vector<std::string>& outRelativePaths) override;
     };
 }

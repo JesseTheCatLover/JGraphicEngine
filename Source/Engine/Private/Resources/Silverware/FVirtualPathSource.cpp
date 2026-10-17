@@ -104,6 +104,60 @@ namespace Silverware::Adapters::RedleafEngine
                 return m_Size;
             }
         };
+
+        bool IsUnderRoot(
+    const std::filesystem::path& root,
+    const std::filesystem::path& candidate)
+        {
+            auto rootIt = root.begin();
+            auto candidateIt = candidate.begin();
+
+            for (; rootIt != root.end(); ++rootIt, ++candidateIt)
+            {
+                if (candidateIt == candidate.end() || *rootIt != *candidateIt)
+                    return false;
+            }
+
+            return true;
+        }
+
+        bool IsSafeRelativePath(const std::filesystem::path& path, bool allowEmpty = false)
+        {
+            if (path.is_absolute() || path.has_root_name() || path.has_root_directory())
+                return false;
+
+            if (path.empty())
+                return allowEmpty;
+
+            for (const auto& component : path)
+            {
+                if (component == ".." || component == ".")
+                    return false;
+            }
+
+            return true;
+        }
+
+        bool ResolveCanonicalRoot(
+            const VirtualPathMounter& mounter,
+            const std::string& virtualRoot,
+            std::filesystem::path& outRoot)
+        {
+            std::string physicalRoot;
+            if (!mounter.ResolveVirtualToPhysical(virtualRoot, physicalRoot))
+                return false;
+
+            std::error_code error;
+            const auto canonicalRoot = std::filesystem::canonical(physicalRoot, error);
+            if (error)
+                return false;
+
+            if (!std::filesystem::is_directory(canonicalRoot, error) || error)
+                return false;
+
+            outRoot = canonicalRoot;
+            return true;
+        }
     }
 
     FVirtualPathSource::FVirtualPathSource(const ::VirtualPathMounter& mounter, std::string virtualRoot)
@@ -202,4 +256,139 @@ namespace Silverware::Adapters::RedleafEngine
 
         return EResourceOpenResult::Opened;
     }
+
+    EResourceListResult FVirtualPathSource::EnumerateFiles(
+    std::string_view relativeDirectory,
+    bool recursive,
+    std::vector<std::string>& outRelativePaths)
+{
+    outRelativePaths.clear();
+
+    if (!IsValid())
+        return EResourceListResult::Error;
+
+    const std::filesystem::path relativePath{std::string(relativeDirectory)};
+    if (!IsSafeRelativePath(relativePath, true))
+        return EResourceListResult::Error;
+
+    if (!relativeDirectory.empty())
+    {
+        FResourcePath validatedPath;
+
+        if (!FResourcePath::TryCreate("validation", relativeDirectory, validatedPath) ||
+            std::string_view(validatedPath.GetRelativePath()) != relativeDirectory)
+        {
+            return EResourceListResult::Error;
+        }
+    }
+
+    std::filesystem::path canonicalRoot;
+    if (!ResolveCanonicalRoot(m_Mounter, m_VirtualRoot, canonicalRoot))
+        return EResourceListResult::Error;
+
+    std::error_code error;
+    std::filesystem::path target = canonicalRoot;
+
+    if (!relativePath.empty())
+    {
+        target = std::filesystem::canonical(canonicalRoot / relativePath, error);
+
+        if (error)
+        {
+            if (error == std::errc::no_such_file_or_directory ||
+                error == std::errc::not_a_directory)
+            {
+                return EResourceListResult::NotFound;
+            }
+
+            return EResourceListResult::Error;
+        }
+    }
+
+    if (!IsUnderRoot(canonicalRoot, target))
+        return EResourceListResult::Error;
+
+    if (!std::filesystem::is_directory(target, error))
+        return error ? EResourceListResult::Error : EResourceListResult::NotFound;
+
+    if (error)
+        return EResourceListResult::Error;
+
+    auto addFile = [&](const std::filesystem::directory_entry& entry)
+    {
+        const bool isSymlink = entry.is_symlink(error);
+        if (error)
+            return false;
+
+        // Don't discover font files through symbolic links.
+        if (isSymlink)
+            return true;
+
+        if (!entry.is_regular_file(error))
+            return !error;
+
+        const auto canonicalFile = std::filesystem::canonical(entry.path(), error);
+        if (error || !IsUnderRoot(canonicalRoot, canonicalFile))
+            return false;
+
+        const auto relativeFile = canonicalFile.lexically_relative(canonicalRoot);
+        if (!IsSafeRelativePath(relativeFile))
+            return false;
+
+        outRelativePaths.push_back(relativeFile.generic_string());
+        return true;
+    };
+
+    if (recursive)
+    {
+        std::filesystem::recursive_directory_iterator iterator(target, error);
+        const std::filesystem::recursive_directory_iterator end;
+
+        if (error)
+            return EResourceListResult::Error;
+
+        while (iterator != end)
+        {
+            if (!addFile(*iterator))
+            {
+                outRelativePaths.clear();
+                return EResourceListResult::Error;
+            }
+
+            iterator.increment(error);
+            if (error)
+            {
+                outRelativePaths.clear();
+                return EResourceListResult::Error;
+            }
+        }
+    }
+    else
+    {
+        std::filesystem::directory_iterator iterator(target, error);
+        const std::filesystem::directory_iterator end;
+
+        if (error)
+            return EResourceListResult::Error;
+
+        while (iterator != end)
+        {
+            if (!addFile(*iterator))
+            {
+                outRelativePaths.clear();
+                return EResourceListResult::Error;
+            }
+
+            iterator.increment(error);
+            if (error)
+            {
+                outRelativePaths.clear();
+                return EResourceListResult::Error;
+            }
+        }
+    }
+
+    std::sort(outRelativePaths.begin(), outRelativePaths.end());
+    return EResourceListResult::Enumerated;
+}
 }

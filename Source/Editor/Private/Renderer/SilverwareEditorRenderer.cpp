@@ -43,7 +43,7 @@ namespace
         label->SetLayout(labelLayout);
 
         FTextStyle labelStyle;
-        labelStyle.fontFamily = "LatoLatin";
+        labelStyle.fontFamily = "Funnel Sans";
         labelStyle.fontSize = 30.0f;
         labelStyle.color = FColor{1.f, 1.f, 1.f, 1.0f};
         labelStyle.fontWeight = EFontWeight::Bold;
