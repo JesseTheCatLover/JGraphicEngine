@@ -623,12 +623,18 @@ void ViewportController::Update(float deltaTime, const FViewportPanelInput& inpu
     // Write snapshot output
     if (m_RT.color.IsValid())
     {
+        out.textureHandle = m_RT.color;
+        out.width = m_RT.width;
+        out.height = m_RT.height;
         out.nativeTexture = m_Runtime.GetViewport().GetNativeTexture(m_RT.color);
-        out.bHasTexture   = (out.nativeTexture != nullptr);
+        out.bHasTexture = out.nativeTexture != nullptr;
     }
     else
     {
+        out.textureHandle = {};
+        out.width = 0;
+        out.height = 0;
         out.nativeTexture = nullptr;
-        out.bHasTexture   = false;
+        out.bHasTexture = false;
     }
 }

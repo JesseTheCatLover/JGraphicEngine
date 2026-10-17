@@ -19,7 +19,8 @@ SilverwareRenderingContext::~SilverwareRenderingContext()
         m_RenderDevice.DestroyMesh(mesh);
 
     for (const auto& [_, texture] : m_Textures)
-        m_RenderDevice.DestroyTexture(texture);
+        if (texture.bOwned && texture.Resource.IsValid())
+            m_RenderDevice.DestroyTexture(texture.Resource);
 }
 
 void SilverwareRenderingContext::SetViewportSize(int width, int height)
@@ -130,20 +131,18 @@ Silverware::FTextureHandle SilverwareRenderingContext::CreateTexture(
     textureData.minFilter = ETexFilter::Linear;
     textureData.magFilter = ETexFilter::Linear;
 
-    const RTextureHandle textureHandle =
-        m_RenderDevice.CreateTexture(textureData);
+    const RTextureHandle textureHandle = m_RenderDevice.CreateTexture(textureData);
 
     if (!textureHandle.IsValid())
         return {};
 
     const std::uint64_t id = m_NextTextureHandle++;
-    m_Textures.emplace(id, textureHandle);
+    m_Textures.emplace(id, FTextureEntry{textureHandle, true});
 
     return { id };
 }
 
-void SilverwareRenderingContext::DestroyTexture(
-    Silverware::FTextureHandle texture)
+void SilverwareRenderingContext::DestroyTexture(Silverware::FTextureHandle texture)
 {
     if (!texture.IsValid())
         return;
@@ -153,8 +152,64 @@ void SilverwareRenderingContext::DestroyTexture(
     if (it == m_Textures.end())
         return;
 
-    m_RenderDevice.DestroyTexture(it->second);
+    if (it->second.bOwned && it->second.Resource.IsValid())
+        m_RenderDevice.DestroyTexture(it->second.Resource);
+
     m_Textures.erase(it);
+}
+
+Silverware::FTextureHandle SilverwareRenderingContext::CreateExternalTexture(
+    Silverware::FExternalTextureReference texture)
+{
+    if (m_NextTextureHandle == 0)
+        return {};
+
+    RTextureHandle resource{};
+
+    if (texture.IsValid())
+    {
+        if (texture.Value > static_cast<std::uint64_t>(std::numeric_limits<Rint>::max()))
+            return {};
+
+        resource = RTextureHandle{static_cast<Rint>(texture.Value)};
+
+        if (!resource.IsValid())
+            return {};
+    }
+
+    const std::uint64_t id = m_NextTextureHandle++;
+    m_Textures.emplace(id, FTextureEntry{resource, false});
+
+    return {id};
+}
+
+bool SilverwareRenderingContext::UpdateExternalTexture(
+    Silverware::FTextureHandle texture,
+    Silverware::FExternalTextureReference externalTexture)
+{
+    if (!texture.IsValid())
+        return false;
+
+    auto it = m_Textures.find(texture.Value);
+
+    if (it == m_Textures.end() || it->second.bOwned)
+        return false;
+
+    RTextureHandle resource{};
+
+    if (externalTexture.IsValid())
+    {
+        if (externalTexture.Value > static_cast<std::uint64_t>(std::numeric_limits<Rint>::max()))
+            return false;
+
+        resource = RTextureHandle{static_cast<Rint>(externalTexture.Value)};
+
+        if (!resource.IsValid())
+            return false;
+    }
+
+    it->second.Resource = resource;
+    return true;
 }
 
 void SilverwareRenderingContext::RenderGeometry(
@@ -179,10 +234,10 @@ void SilverwareRenderingContext::RenderGeometry(
     {
         const auto textureIt = m_Textures.find(texture.Value);
 
-        if (textureIt == m_Textures.end())
+        if (textureIt == m_Textures.end() || !textureIt->second.Resource.IsValid())
             return;
 
-        textureHandle = textureIt->second;
+        textureHandle = textureIt->second.Resource;
     }
 
     m_RenderDevice.SubmitScreenSpaceGeometry(

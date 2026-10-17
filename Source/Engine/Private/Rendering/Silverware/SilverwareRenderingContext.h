@@ -11,10 +11,17 @@
 class SilverwareRenderingContext final : public Silverware::IRenderingContext
 {
 private:
+    struct FTextureEntry
+    {
+        RTextureHandle Resource{};
+        bool bOwned = false;
+    };
+
+private:
     IRenderDevice& m_RenderDevice;
 
     std::unordered_map<std::uint64_t, RMeshHandle> m_Geometries;
-    std::unordered_map<std::uint64_t, RTextureHandle> m_Textures;
+    std::unordered_map<std::uint64_t, FTextureEntry> m_Textures;
 
     std::uint64_t m_NextGeometryHandle = 1;
     std::uint64_t m_NextTextureHandle = 1;
@@ -43,6 +50,10 @@ public:
         std::span<const std::byte> rgbaPixels) override;
 
     void DestroyTexture(Silverware::FTextureHandle texture) override;
+
+    [[nodiscard]] Silverware::FTextureHandle CreateExternalTexture(Silverware::FExternalTextureReference texture) override;
+
+    bool UpdateExternalTexture(Silverware::FTextureHandle texture, Silverware::FExternalTextureReference externalTexture) override;
 
     void RenderGeometry(Silverware::FGeometryHandle geometry, Silverware::FTextureHandle texture,
         float translationX, float translationY) override;
