@@ -5,7 +5,6 @@
 #include "EditorRuntime.h"
 #include "Rendering/IPlatformWindow.h"
 
-#include "Silverware/Core/Resources/FDirectoryResource.h"
 #include "Silverware/Core/Resources/ResourcePath.h"
 
 #include "Utilities/UFileSystem.h"
@@ -50,6 +49,7 @@ bool SilverwareBackend::Initialize(EditorRuntime& editorRuntime, IPlatformWindow
     Shutdown();
 
     m_RenderingContext = editorRuntime.CreateSilverwareRenderingContext();
+
     if (!m_RenderingContext)
     {
         std::cerr << "[SilverwareBackend]: Failed to create rendering context.\n";
@@ -63,40 +63,37 @@ bool SilverwareBackend::Initialize(EditorRuntime& editorRuntime, IPlatformWindow
         return false;
     }
 
-    // Register engine-owned editor fonts.
-    // This does not scan the developer's working project assets.
+    // RedleafEngine owns this registry and registers its own fonts.
     m_FontRegistry = Silverware::MakeUnique<Silverware::FontRegistry>(*m_ResourceProvider);
 
-    Silverware::FFontDirectoryOptions fontOptions;
-    fontOptions.recursive = true;
+    Silverware::FFontDirectoryOptions engineFontOptions;
+    engineFontOptions.recursive = true;
 
-    const auto directoryReport = m_FontRegistry->RegisterFontDirectory(
-        "engine:/Editor/Fonts", fontOptions);
+    const auto engineFontReport = m_FontRegistry->RegisterFontDirectory("engine:/Editor/Fonts", engineFontOptions);
 
-    if (!directoryReport.Completed())
+    if (!engineFontReport.Completed())
+        std::cerr << "[SilverwareBackend]: Could not enumerate engine editor fonts.\n";
+
+    for (const auto& diagnostic : engineFontReport.diagnostics)
     {
-        std::cerr << "[SilverwareBackend]: Failed to enumerate engine editor fonts.\n";
+        std::cerr << "[SilverwareBackend]: Rejected engine font "
+                  << diagnostic.path.ToString() << " ("
+                  << GetFontRegistrationStatusName(diagnostic.status) << ").\n";
     }
 
-    for (const auto& diagnostic : directoryReport.diagnostics)
+    // Import the prepared host inventory, including synchronized project fonts.
+    const auto preparedFontReport = m_FontRegistry->RegisterFonts(registeredFonts);
+
+    for (const auto& diagnostic : preparedFontReport.diagnostics)
     {
-        std::cerr << "[SilverwareBackend]: Rejected font "
-                  << diagnostic.path.ToString()
-                  << " (" << GetFontRegistrationStatusName(diagnostic.status) << ").\n";
+        std::cerr << "[SilverwareBackend]: Rejected prepared font "
+                  << diagnostic.path.ToString() << " ("
+                  << GetFontRegistrationStatusName(diagnostic.status) << ").\n";
     }
 
-    // Import any additional fonts already registered by RedleafEngine.
-    const auto fontReport = m_FontRegistry->RegisterFonts(registeredFonts);
-
-    for (const auto& diagnostic : fontReport.diagnostics)
-    {
-        std::cerr << "[SilverwareBackend]: Rejected font "
-                  << diagnostic.path.ToString()
-                  << " (" << GetFontRegistrationStatusName(diagnostic.status) << ").\n";
-    }
-
-   if (m_FontRegistry->IsEmpty())
-        std::cerr << "[SilverwareBackend]: No fonts from the supplied inventory passed validation; continuing without registered fonts.\n";
+    if (m_FontRegistry->IsEmpty())
+        std::cerr << "[SilverwareBackend]: No host fonts passed registration validation; "
+                     "continuing without host fonts.\n";
 
     if (!InitializeRuntime(window))
     {
@@ -114,31 +111,11 @@ bool SilverwareBackend::Initialize(EditorRuntime& editorRuntime, IPlatformWindow
 
 bool SilverwareBackend::MountResources(EditorRuntime& editorRuntime)
 {
+    // The host owns the provider and mounts only host namespaces.
     m_ResourceProvider = MakeUnique<Silverware::FLayeredResourceProvider>();
 
-    const std::filesystem::path silverwareResourceRoot(
-        UPath::Join(UFileSystem::GetEngineRoot().string(), "Frameworks", "Silverware", "Resources"));
-
-    std::error_code filesystemError;
-    if (!std::filesystem::is_directory(silverwareResourceRoot, filesystemError))
-    {
-        std::cerr << "[SilverwareBackend]: Silverware resource directory does not exist or is inaccessible: "
-                  << silverwareResourceRoot.string();
-        if (filesystemError)
-            std::cerr << " (" << filesystemError.message() << ")";
-        std::cerr << '\n';
-        return false;
-    }
-
-    auto silverwareSource = MakeShared<Silverware::FDirectoryResource>(silverwareResourceRoot);
-    if (!m_ResourceProvider->Mount("silverware", 0, silverwareSource))
-    {
-        std::cerr << "[SilverwareBackend]: Failed to mount Silverware resources.\n";
-        return false;
-    }
-
-    // Engine assets are exposed through RedleafEngine's existing virtual paths.
     auto engineSource = editorRuntime.CreateSilverwareResourceSource("/Engine");
+
     if (!engineSource || !m_ResourceProvider->Mount("engine", 0, engineSource))
     {
         std::cerr << "[SilverwareBackend]: Failed to mount engine resources.\n";
@@ -147,6 +124,7 @@ bool SilverwareBackend::MountResources(EditorRuntime& editorRuntime)
 
     // Projects may not always have a mounted project resource root.
     auto projectSource = editorRuntime.CreateSilverwareResourceSource("/Project");
+
     if (projectSource && !m_ResourceProvider->Mount("project", 0, projectSource))
     {
         std::cerr << "[SilverwareBackend]: Failed to mount project resources.\n";
@@ -160,7 +138,8 @@ bool SilverwareBackend::InitializeRuntime(IPlatformWindow& window)
 {
     if (!m_RenderingContext || !m_ResourceProvider || !m_FontRegistry)
     {
-        std::cerr << "[SilverwareBackend]: Cannot initialize RmlUi before resources and font registry are ready.\n";
+        std::cerr << "[SilverwareBackend]: Cannot initialize RmlUi before host resources "
+                     "and fonts are ready.\n";
         return false;
     }
 
@@ -168,7 +147,6 @@ bool SilverwareBackend::InitializeRuntime(IPlatformWindow& window)
     int height = 0;
     window.GetFramebufferSize(width, height);
 
-    // Allow initialization if the window is temporarily minimized.
     if (width <= 0 || height <= 0)
     {
         width = 1;
@@ -176,14 +154,33 @@ bool SilverwareBackend::InitializeRuntime(IPlatformWindow& window)
     }
 
     Silverware::Backends::RmlUi::FRmlUiRuntimeConfig config;
-    if (!Silverware::FResourcePath::TryParse(kSilverwareRootDocument, config.rootDocument))
+
+    if (!Silverware::FResourcePath::TryParse(
+            kSilverwareRootDocument,
+            config.rootDocument))
     {
         std::cerr << "[SilverwareBackend]: Invalid root document resource path.\n";
         return false;
     }
 
+    // Resolve Silverware's installation path; the runtime mounts its resources itself.
+    const std::filesystem::path silverwareResourceRoot(
+        UPath::Join(
+            UFileSystem::GetEngineRoot().string(),
+            "Frameworks",
+            "Silverware",
+            "Resources"));
+
     m_RmlUiRuntime = MakeUnique<Silverware::Backends::RmlUi::RmlUiRuntime>();
-    if (!m_RmlUiRuntime->Initialize(*m_RenderingContext, *m_ResourceProvider, *m_FontRegistry, config, width, height))
+
+    if (!m_RmlUiRuntime->Initialize(
+            *m_RenderingContext,
+            *m_ResourceProvider,
+            silverwareResourceRoot,
+            *m_FontRegistry,
+            config,
+            width,
+            height))
     {
         std::cerr << "[SilverwareBackend]: Failed to initialize RmlUi runtime.\n";
         return false;
@@ -208,6 +205,7 @@ void SilverwareBackend::Render(IPlatformWindow& window)
     int width = 0;
     int height = 0;
     window.GetFramebufferSize(width, height);
+
     if (width <= 0 || height <= 0)
         return;
 
@@ -218,14 +216,13 @@ void SilverwareBackend::Render(IPlatformWindow& window)
 
 void SilverwareBackend::Shutdown()
 {
-    // RmlUi retains interfaces and document/backend references until shutdown completes.
+    // Runtime must be destroyed before its borrowed provider and host registry.
     if (m_RmlUiRuntime)
     {
         m_RmlUiRuntime->Shutdown();
         m_RmlUiRuntime.reset();
     }
 
-    // FontRegistry borrows the provider, so destroy it before the provider.
     m_FontRegistry.reset();
     m_ResourceProvider.reset();
     m_RenderingContext.reset();

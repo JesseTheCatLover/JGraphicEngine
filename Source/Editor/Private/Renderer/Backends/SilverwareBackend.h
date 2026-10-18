@@ -28,16 +28,15 @@ public:
     SilverwareBackend(const SilverwareBackend&) = delete;
     SilverwareBackend& operator=(const SilverwareBackend&) = delete;
 
-    // registeredFonts must come from RedleafEngine's prepared Silverware font inventory.
     [[nodiscard]] bool Initialize(EditorRuntime& editorRuntime, IPlatformWindow& window,
         std::span<const Silverware::FResourcePath> registeredFonts);
 
-    // Compatibility path for callers that have not wired the prepared inventory yet.
-    // It does not discover project fonts; RML stylesheet declarations may still load fonts.
     [[nodiscard]] bool Initialize(EditorRuntime& editorRuntime, IPlatformWindow& window);
 
     void Shutdown();
+
     [[nodiscard]] bool Synchronize(Silverware::CoreWidget& root, Silverware::EBackendSyncMode mode);
+
     void Render(IPlatformWindow& window);
     [[nodiscard]] bool IsInitialized() const noexcept;
 
