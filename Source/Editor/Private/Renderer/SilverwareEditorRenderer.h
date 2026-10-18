@@ -3,10 +3,12 @@
 #pragma once
 
 #include "Core/Memory/SmartPointers.h"
+#include "Silverware/Memory/SmartPointers.h"
 
 namespace Silverware
 {
     class ContainerWidget;
+    class ImageWidget;
 }
 
 class EditorHost;
@@ -23,16 +25,20 @@ public:
     SilverwareEditorRenderer& operator=(const SilverwareEditorRenderer&) = delete;
 
 private:
-    bool BuildEditorLayout();
+    [[nodiscard]] bool BuildEditorLayout();
 
     EditorHost* m_EditorHost = nullptr;
     EditorRuntime* m_EditorRuntime = nullptr;
     SilverwareBackend* m_Backend = nullptr;
 
-    TUniquePtr<Silverware::ContainerWidget> m_RootWidget;
+    Silverware::TUniquePtr<Silverware::ContainerWidget> m_RootWidget;
+    Silverware::ImageWidget* m_ViewportImage = nullptr;
 
 public:
-    bool Initialize(EditorHost& editorHost, EditorRuntime& editorRuntime, SilverwareBackend& backend);
+    [[nodiscard]] bool Initialize(
+        EditorHost& editorHost,
+        EditorRuntime& editorRuntime,
+        SilverwareBackend& backend);
 
     void Tick(float deltaTime);
     void Shutdown();

@@ -70,15 +70,30 @@ void RendererSubsystem::RenderFrame(const std::vector<FRenderView> &views)
 {
     m_Backend->BeginFrame();
 
-    // Even if there are no views, it's nice to at least clear the platform surface
+    // // Even if there are no views, it's nice to at least clear the platform surface
+    // if (views.empty())
+    // {
+    //     // Fallback: clear default framebuffer to something neutral
+    //     m_Backend->BindFramebuffer(RFramebufferHandle{});
+    //     m_Backend->SetViewport(0, 0,
+    //                            m_Context.GetFramebufferWidth(),
+    //                            m_Context.GetFramebufferHeight());
+    //     m_Backend->ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
+    //     m_Backend->EndFrame();
+    //     return;
+    // }
+
+    // Actually clear the platform surface every frame.
+    m_Backend->BindFramebuffer(RFramebufferHandle{});
+    m_Backend->SetViewport(
+        0, 0,
+        m_Context.GetFramebufferWidth(),
+        m_Context.GetFramebufferHeight());
+
+    m_Backend->ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
+
     if (views.empty())
     {
-        // Fallback: clear default framebuffer to something neutral
-        m_Backend->BindFramebuffer(RFramebufferHandle{});
-        m_Backend->SetViewport(0, 0,
-                               m_Context.GetFramebufferWidth(),
-                               m_Context.GetFramebufferHeight());
-        m_Backend->ClearColorDepth(0.2f, 0.3f, 0.3f, 1.f, true);
         m_Backend->EndFrame();
         return;
     }
