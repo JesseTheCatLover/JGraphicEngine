@@ -35,6 +35,16 @@ namespace
         sectionContainerLayout.justifyContent = EJustification::Start;
         section->SetContainerLayout(sectionContainerLayout);
 
+        FContainerStyle sectionStyle;
+        sectionStyle.backgroundColor = FColor{0.12f, 0.12f, 0.14f, 1.0f};
+        sectionStyle.borderColor = FColor{0.25f, 0.25f, 0.28f, 1.0f};
+        sectionStyle.borderWidth = 1.0f;
+        sectionStyle.borderStyle = EBorderStyle::Solid;
+        sectionStyle.cornerRadius = 8.0f;
+        sectionStyle.opacity = 1.0f;
+
+        section->SetContainerStyle(sectionStyle);
+
         auto label = Silverware::MakeUnique<TextWidget>(title);
 
         auto labelLayout = label->GetLayout();
@@ -43,10 +53,10 @@ namespace
         label->SetLayout(labelLayout);
 
         FTextStyle labelStyle;
-        labelStyle.fontFamily = "Funnel Sans";
+        labelStyle.fontFamily = "LatoLatin";
         labelStyle.fontSize = 30.0f;
         labelStyle.color = FColor{1.f, 1.f, 1.f, 1.0f};
-        labelStyle.fontWeight = EFontWeight::Bold;
+        labelStyle.fontWeight = EFontWeight::Normal;
         label->SetTextStyle(labelStyle);
 
         if (!section->AddChild(Silverware::TUniquePtr<CoreWidget>(label.release())))
