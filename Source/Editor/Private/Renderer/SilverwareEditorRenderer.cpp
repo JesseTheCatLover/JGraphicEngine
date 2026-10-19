@@ -10,6 +10,7 @@
 #include "Panels/Controllers/Outputs/FViewportOutput.h"
 #include "Panels/Subsystems/ViewportSubsystem.h"
 
+#include "Silverware/Backend/IWidgetBackend.h"
 #include "Silverware/Backend/IRenderingContext.h"
 #include "Silverware/Core/ContainerWidget.h"
 #include "Silverware/Core/CoreWidget.h"
@@ -23,8 +24,6 @@
 #include <cstdint>
 #include <iostream>
 
-#include "Silverware/Backend/IWidgetBackend.h"
-
 namespace
 {
     constexpr char kViewportPanelKey[] = "Viewport:0";
@@ -34,11 +33,6 @@ namespace
     constexpr float kViewportRenderHeight = 720.0f;
 
     constexpr float kViewportImageHeight = 480.0f;
-
-    void SubmitViewportInput(Silverware::Backends::RmlUi::RmlUiRuntime* unused)
-    {
-        (void)unused;
-    }
 
     void SubmitViewportInput(ViewportSubsystem& viewportSubsystem)
     {
@@ -53,16 +47,105 @@ namespace
         viewportSubsystem.SubmitInput(input);
     }
 
+    bool AddTextSample(
+        Silverware::ContainerWidget& parent,
+        const char* text,
+        float fontSize,
+        const Silverware::FColor& color,
+        Silverware::EFontWeight fontWeight,
+        float topMargin)
+    {
+        using namespace Silverware;
+
+        auto label = Silverware::MakeUnique<TextWidget>(text);
+
+        auto layout = label->GetLayout();
+        layout.margin.left = FLayoutLength::Pixels(8.0f);
+        layout.margin.top = FLayoutLength::Pixels(topMargin);
+        label->SetLayout(layout);
+
+        FTextStyle style;
+        style.fontFamily = "LatoLatin";
+        style.fontSize = fontSize;
+        style.color = color;
+        style.fontWeight = fontWeight;
+        label->SetTextStyle(style);
+
+        return parent.AddChild(Silverware::TUniquePtr<CoreWidget>(label.release()));
+    }
+
+    bool AddHierarchyRow(
+        Silverware::ContainerWidget& parent,
+        const char* text,
+        bool selected,
+        bool disabled)
+    {
+        using namespace Silverware;
+
+        auto row = Silverware::MakeUnique<ContainerWidget>();
+
+        auto layout = row->GetLayout();
+        layout.width = FLayoutLength::Percent(100.0f);
+        layout.height = FLayoutLength::Pixels(34.0f);
+        row->SetLayout(layout);
+
+        FContainerLayout containerLayout;
+        containerLayout.direction = ELayoutDirection::Horizontal;
+        containerLayout.gap = FLayoutLength::Pixels(4.0f);
+        containerLayout.alignItems = EAlignment::Start;
+        containerLayout.justifyContent = EJustification::Start;
+        row->SetContainerLayout(containerLayout);
+
+        FContainerStyle style;
+        style.backgroundColor = selected
+            ? FColor{0.18f, 0.29f, 0.44f, 1.0f}
+            : FColor{0.15f, 0.15f, 0.17f, 1.0f};
+        style.cornerRadius = 5.0f;
+        style.opacity = disabled ? 0.45f : 1.0f;
+
+        if (selected)
+        {
+            style.borderColor = FColor{0.35f, 0.58f, 0.92f, 1.0f};
+            style.borderWidth = 1.0f;
+            style.borderStyle = EBorderStyle::Solid;
+        }
+        else
+        {
+            style.borderStyle = EBorderStyle::None;
+        }
+
+        row->SetContainerStyle(style);
+
+        const FColor textColor = disabled
+            ? FColor{0.50f, 0.50f, 0.53f, 1.0f}
+            : FColor{0.90f, 0.90f, 0.92f, 1.0f};
+
+        if (!AddTextSample(
+                *row,
+                text,
+                15.0f,
+                textColor,
+                selected ? EFontWeight::Bold : EFontWeight::Normal,
+                5.0f))
+            return false;
+
+        return parent.AddChild(Silverware::TUniquePtr<CoreWidget>(row.release()));
+    }
+
     bool AddEditorSection(
         Silverware::ContainerWidget& root,
         const char* title,
         float widthPercent,
-        Silverware::ImageWidget** outImage = nullptr)
+        Silverware::ImageWidget** outImage = nullptr,
+        Silverware::ContainerWidget** outSection = nullptr)
     {
         using namespace Silverware;
 
         if (outImage)
             *outImage = nullptr;
+
+        if (outSection)
+            *outSection = nullptr;
 
         auto section = Silverware::MakeUnique<ContainerWidget>();
 
@@ -116,8 +199,9 @@ namespace
             image->SetLayout(imageLayout);
 
             FImageStyle imageStyle;
-            imageStyle.fit = EImageFit::Contain;
+            imageStyle.fit = EImageFit::Cover;
             imageStyle.opacity = 1.0f;
+            imageStyle.cornerRadius = 12.0f;
             image->SetImageStyle(imageStyle);
 
             imageWidget = image.get();
@@ -126,11 +210,16 @@ namespace
                 return false;
         }
 
+        ContainerWidget* sectionWidget = section.get();
+
         if (!root.AddChild(Silverware::TUniquePtr<CoreWidget>(section.release())))
             return false;
 
         if (outImage)
             *outImage = imageWidget;
+
+        if (outSection)
+            *outSection = sectionWidget;
 
         return true;
     }
@@ -204,10 +293,86 @@ bool SilverwareEditorRenderer::BuildEditorLayout()
     if (!m_RootWidget)
         return false;
 
-    return
-        AddEditorSection(*m_RootWidget, "Scene Hierarchy", 20.0f) &&
-        AddEditorSection(*m_RootWidget, "Viewport", 55.0f, &m_ViewportImage) &&
-        AddEditorSection(*m_RootWidget, "Inspector", 20.0f);
+    using namespace Silverware;
+
+    ContainerWidget* hierarchySection = nullptr;
+    ContainerWidget* inspectorSection = nullptr;
+
+    if (!AddEditorSection(
+            *m_RootWidget,
+            "Scene Hierarchy",
+            20.0f,
+            nullptr,
+            &hierarchySection) ||
+        !AddEditorSection(
+            *m_RootWidget,
+            "Viewport",
+            55.0f,
+            &m_ViewportImage) ||
+        !AddEditorSection(
+            *m_RootWidget,
+            "Inspector",
+            20.0f,
+            nullptr,
+            &inspectorSection))
+        return false;
+
+    // Scene Hierarchy: default, selected, and dimmed rows.
+    if (!AddHierarchyRow(*hierarchySection, "Camera", false, false) ||
+        !AddHierarchyRow(*hierarchySection, "Directional Light", true, false) ||
+        !AddHierarchyRow(*hierarchySection, "Cube", false, true))
+        return false;
+
+    // Inspector: experiment with text size, weight, and color.
+    const FColor primaryText{0.92f, 0.92f, 0.94f, 1.0f};
+    const FColor secondaryText{0.65f, 0.66f, 0.70f, 1.0f};
+    const FColor accentText{0.45f, 0.68f, 1.0f, 1.0f};
+
+    if (!AddTextSample(
+            *inspectorSection,
+            "Transform",
+            20.0f,
+            primaryText,
+            EFontWeight::Bold,
+            4.0f) ||
+        !AddTextSample(
+            *inspectorSection,
+            "Position   0, 0, 0",
+            14.0f,
+            secondaryText,
+            EFontWeight::Normal,
+            2.0f) ||
+        !AddTextSample(
+            *inspectorSection,
+            "Rotation   0, 0, 0",
+            14.0f,
+            secondaryText,
+            EFontWeight::Normal,
+            0.0f) ||
+        !AddTextSample(
+            *inspectorSection,
+            "Scale      1, 1, 1",
+            14.0f,
+            secondaryText,
+            EFontWeight::Normal,
+            0.0f) ||
+        !AddTextSample(
+            *inspectorSection,
+            "Mesh Renderer",
+            18.0f,
+            accentText,
+            EFontWeight::Bold,
+            12.0f) ||
+        !AddTextSample(
+            *inspectorSection,
+            "No renderer attached",
+            14.0f,
+            secondaryText,
+            EFontWeight::Normal,
+            0.0f))
+        return false;
+
+    return true;
 }
 
 void SilverwareEditorRenderer::Tick(float deltaTime)
@@ -235,7 +400,9 @@ void SilverwareEditorRenderer::Tick(float deltaTime)
         };
 
         if (!m_ViewportImage->SetExternalTexture(
-                texture, output->width, output->height))
+                texture,
+                output->width,
+                output->height))
         {
             std::cerr << "[SilverwareRenderer]: Failed to assign viewport texture.\n";
             m_ViewportImage->ClearSource();
