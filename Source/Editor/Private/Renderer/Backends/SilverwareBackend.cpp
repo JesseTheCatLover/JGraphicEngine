@@ -197,6 +197,17 @@ bool SilverwareBackend::Synchronize(Silverware::CoreWidget& root, Silverware::EB
     return m_RmlUiRuntime->Synchronize(root, mode);
 }
 
+bool SilverwareBackend::TryGetWidgetSize(const Silverware::CoreWidget& widget, float& outWidth, float& outHeight) const
+{
+    outWidth = 0.0f;
+    outHeight = 0.0f;
+
+    if (!m_RmlUiRuntime || !m_RmlUiRuntime->IsInitialized())
+        return false;
+
+    return m_RmlUiRuntime->TryGetWidgetSize(widget, outWidth, outHeight);
+}
+
 void SilverwareBackend::Render(IPlatformWindow& window)
 {
     if (!m_RmlUiRuntime || !m_RmlUiRuntime->IsInitialized())

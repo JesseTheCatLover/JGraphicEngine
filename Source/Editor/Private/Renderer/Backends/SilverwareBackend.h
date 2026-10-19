@@ -37,6 +37,8 @@ public:
 
     [[nodiscard]] bool Synchronize(Silverware::CoreWidget& root, Silverware::EBackendSyncMode mode);
 
+    [[nodiscard]] bool TryGetWidgetSize(const Silverware::CoreWidget& widget, float& outWidth, float& outHeight) const;
+
     void Render(IPlatformWindow& window);
     [[nodiscard]] bool IsInitialized() const noexcept;
 

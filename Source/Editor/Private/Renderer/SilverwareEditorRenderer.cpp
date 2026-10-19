@@ -28,22 +28,20 @@ namespace
 {
     constexpr char kViewportPanelKey[] = "Viewport:0";
 
-    // Temporary fixed resolution for the first viewport-rendering test.
-    constexpr float kViewportRenderWidth = 1280.0f;
-    constexpr float kViewportRenderHeight = 720.0f;
-
     constexpr float kViewportImageHeight = 480.0f;
 
-    void SubmitViewportInput(ViewportSubsystem& viewportSubsystem)
+    void SubmitViewportInput(ViewportSubsystem& viewportSubsystem, float width, float height)
     {
+        const bool bHasValidSize = width > 0.0f && height > 0.0f;
+
         FViewportPanelInput input{};
         input.panelKey = kViewportPanelKey;
-        input.width = kViewportRenderWidth;
-        input.height = kViewportRenderHeight;
+        input.width = bHasValidSize ? width : 0.0f;
+        input.height = bHasValidSize ? height : 0.0f;
         input.bAppFocused = true;
-        input.bHidden = false;
+        input.bHidden = !bHasValidSize;
 
-        // Rendering-only smoke test: no viewport interaction is submitted yet.
+        // No input interaction submitted yet
         viewportSubsystem.SubmitInput(input);
     }
 
@@ -196,6 +194,7 @@ namespace
             auto imageLayout = image->GetLayout();
             imageLayout.width = FLayoutLength::Percent(100.0f);
             imageLayout.height = FLayoutLength::Pixels(kViewportImageHeight);
+            imageLayout.flexGrow = 1.f;
             image->SetLayout(imageLayout);
 
             FImageStyle imageStyle;
@@ -272,13 +271,11 @@ bool SilverwareEditorRenderer::Initialize(
         return false;
     }
 
-    // Prime the viewport subsystem so its controller can create a render target
-    // on the next EditorHost tick.
-    SubmitViewportInput(editorHost.GetSubsystem<ViewportSubsystem>());
+    /// Register the viewport controller before the first layout measurement.
+    // The render target will be created once the widget has valid dimensions.
+    SubmitViewportInput(editorHost.GetSubsystem<ViewportSubsystem>(), 0.0f, 0.0f);
 
-    if (!m_Backend->Synchronize(
-            *m_RootWidget,
-            Silverware::EBackendSyncMode::Full))
+    if (!m_Backend->Synchronize(*m_RootWidget, Silverware::EBackendSyncMode::Full))
     {
         std::cerr << "[SilverwareRenderer]: Initial synchronization failed.\n";
         Shutdown();
@@ -413,13 +410,18 @@ void SilverwareEditorRenderer::Tick(float deltaTime)
         m_ViewportImage->ClearSource();
     }
 
-    // Keep the viewport controller alive and rendering even when no mouse
-    // input is being supplied by Silverware yet.
-    SubmitViewportInput(viewportSubsystem);
+    float viewportWidth = 0.0f;
+    float viewportHeight = 0.0f;
 
-    if (!m_Backend->Synchronize(
-            *m_RootWidget,
-            Silverware::EBackendSyncMode::Incremental))
+    if (!m_Backend->TryGetWidgetSize(*m_ViewportImage, viewportWidth, viewportHeight))
+    {
+        viewportWidth = 0.0f;
+        viewportHeight = 0.0f;
+    }
+
+    SubmitViewportInput(viewportSubsystem, viewportWidth, viewportHeight);
+
+    if (!m_Backend->Synchronize( *m_RootWidget, Silverware::EBackendSyncMode::Incremental))
         std::cerr << "[SilverwareRenderer]: Incremental synchronization failed.\n";
 }
 
