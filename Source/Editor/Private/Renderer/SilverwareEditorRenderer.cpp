@@ -72,6 +72,34 @@ namespace
         return parent.AddChild(Silverware::TUniquePtr<CoreWidget>(label.release()));
     }
 
+    bool AddRoundedImageTest(Silverware::ContainerWidget& parent)
+    {
+        using namespace Silverware;
+
+        FResourcePath source;
+        if (!FResourcePath::TryParse(
+                "silverware:/Textures/test.png", source))
+            return false;
+
+        auto image = Silverware::MakeUnique<ImageWidget>();
+
+        auto layout = image->GetLayout();
+        layout.width = FLayoutLength::Pixels(400.0f);
+        layout.height = FLayoutLength::Pixels(280.0f);
+        layout.margin.left = FLayoutLength::Pixels(8.0f);
+        layout.margin.top = FLayoutLength::Pixels(8.0f);
+        image->SetLayout(layout);
+
+        image->SetSource(source);
+
+        FImageStyle imageStyle;
+        imageStyle.fit = EImageFit::Cover;
+        imageStyle.cornerRadius = 20.0f;
+        image->SetImageStyle(imageStyle);
+
+        return parent.AddChild(Silverware::TUniquePtr<CoreWidget>(image.release()));
+    }
+
     bool AddHierarchyRow(
         Silverware::ContainerWidget& parent,
         const char* text,
@@ -200,7 +228,7 @@ namespace
             FImageStyle imageStyle;
             imageStyle.fit = EImageFit::Cover;
             imageStyle.opacity = 1.0f;
-            imageStyle.cornerRadius = 12.0f;
+            imageStyle.cornerRadius = 30.f;
             image->SetImageStyle(imageStyle);
 
             imageWidget = image.get();
@@ -312,6 +340,9 @@ bool SilverwareEditorRenderer::BuildEditorLayout()
             20.0f,
             nullptr,
             &inspectorSection))
+        return false;
+
+    if (!AddRoundedImageTest(*hierarchySection))
         return false;
 
     // Scene Hierarchy: default, selected, and dimmed rows.
