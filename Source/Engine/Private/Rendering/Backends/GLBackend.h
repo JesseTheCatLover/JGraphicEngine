@@ -120,6 +120,7 @@ public:
     void SetViewport(int x, int y, int width, int height) override;
     void ClearColorDepth(float r, float g, float b, float a, bool bClearDepth) override;
     void ClearDepthOnly(bool bClearDepth) override;
+    void ClearStencilBuffer(int value) override;
     void ClearDepthStencil(float depth, int stencil) override;
     void ClearColorDepthStencil(float r, float g, float b, float a, float depth, int stencil) override;
 

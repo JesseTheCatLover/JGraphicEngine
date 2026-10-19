@@ -58,6 +58,8 @@ bool GLFWWindow::Initialize()
     // Before creating the window, set hints based on m_State
     glfwWindowHint(GLFW_RESIZABLE, m_State.bResizable ? GLFW_TRUE : GLFW_FALSE);
 
+    glfwWindowHint(GLFW_STENCIL_BITS, 8);
+
     GLFWmonitor* winMonitor = IsFullscreen() ? monitor : nullptr;
     m_Window = glfwCreateWindow(
         m_State.width,

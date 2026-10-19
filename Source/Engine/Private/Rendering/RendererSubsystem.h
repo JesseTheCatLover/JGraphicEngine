@@ -184,11 +184,15 @@ public:
     void DestroyTexture(RTextureHandle h) override;
 
     void SubmitScreenSpaceGeometry(RMeshHandle mesh, RTextureHandle texture, float translationX, float translationY,
-        int viewportWidth, int viewportHeight) override;
+        int viewportWidth, int viewportHeight, bool bWriteColor) override;
 
     void EnableScissorRegion(bool bEnable) override;
 
     void SetScissorRegion(int x, int y, int width, int height) override;
+
+    void ClearStencilBuffer(std::uint8_t value) override;
+
+    void SetClipMaskStencilState(const FClipMaskStencilState& state) override;
 
     RShaderHandle CreateShader(const RShader &data) override;
     void DestroyShader(RShaderHandle h) override;

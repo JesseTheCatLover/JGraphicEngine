@@ -293,6 +293,22 @@ void GLBackend::ClearDepthOnly(bool bClearDepth)
     glClear(mask);
 }
 
+void GLBackend::ClearStencilBuffer(int value)
+{
+    GLint previousWriteMask = 0;
+    GLint previousClearValue = 0;
+
+    glGetIntegerv(GL_STENCIL_WRITEMASK, &previousWriteMask);
+    glGetIntegerv(GL_STENCIL_CLEAR_VALUE, &previousClearValue);
+
+    glStencilMask(0xFF);
+    glClearStencil(std::clamp(value, 0, 255));
+    glClear(GL_STENCIL_BUFFER_BIT);
+
+    glClearStencil(previousClearValue);
+    glStencilMask(static_cast<GLuint>(previousWriteMask));
+}
+
 void GLBackend::ClearDepthStencil(float depth, int stencil)
 {
     // Clamp to sensible ranges

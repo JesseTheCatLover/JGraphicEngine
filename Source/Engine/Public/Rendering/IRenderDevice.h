@@ -2,6 +2,8 @@
 
 #pragma once
 #include <functional>
+#include <cstdint>
+
 #include "Rendering/RHandles.h"
 
 struct FDebugTri;
@@ -14,6 +16,21 @@ struct RShader;
 struct RTexture;
 struct RMesh;
 struct FRenderView;
+
+enum class EClipMaskStencilOperation : std::uint8_t
+{
+    Keep,
+    Replace,
+    Increment
+};
+
+struct FClipMaskStencilState
+{
+    bool bEnable = false;
+    bool bWrite = false;
+    std::uint8_t reference = 0;
+    EClipMaskStencilOperation operation = EClipMaskStencilOperation::Keep;
+};
 
 class IRenderDevice
 {
@@ -40,10 +57,14 @@ public:
 
     virtual void SubmitScreenSpaceGeometry(RMeshHandle mesh, RTextureHandle texture,
     float translationX, float translationY,
-    int viewportWidth, int viewportHeight) = 0;
+    int viewportWidth, int viewportHeight, bool bWriteColor = true) = 0;
 
     virtual void EnableScissorRegion(bool bEnable) = 0;
     virtual void SetScissorRegion(int x, int y, int width, int height) = 0;
+
+    virtual void ClearStencilBuffer(std::uint8_t value) = 0;
+
+    virtual void SetClipMaskStencilState(const FClipMaskStencilState& state) = 0;
 
     // virtual RMaterialHandle CreateMaterial(const RMaterialDesc& d) = 0;
     // Queue a lambda to run on the render thread.

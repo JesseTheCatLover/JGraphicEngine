@@ -56,9 +56,13 @@ public:
     bool UpdateExternalTexture(Silverware::FTextureHandle texture, Silverware::FExternalTextureReference externalTexture) override;
 
     void RenderGeometry(Silverware::FGeometryHandle geometry, Silverware::FTextureHandle texture,
-        float translationX, float translationY) override;
+        float translationX, float translationY, bool bWriteColor) override;
 
     void EnableScissorRegion(bool bEnable) override;
 
     void SetScissorRegion(int x, int y, int width, int height) override;
+
+    void ClearStencilBuffer(std::uint8_t value) override;
+
+    void SetClipMaskStencilState(const Silverware::FClipMaskStencilState &state) override;
 };

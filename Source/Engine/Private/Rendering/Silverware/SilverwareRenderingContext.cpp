@@ -216,7 +216,8 @@ void SilverwareRenderingContext::RenderGeometry(
     Silverware::FGeometryHandle geometry,
     Silverware::FTextureHandle texture,
     float translationX,
-    float translationY)
+    float translationY,
+    bool bWriteColor)
 {
     if (!geometry.IsValid() ||
         m_ViewportWidth <= 0 ||
@@ -246,7 +247,8 @@ void SilverwareRenderingContext::RenderGeometry(
         translationX,
         translationY,
         m_ViewportWidth,
-        m_ViewportHeight);
+        m_ViewportHeight,
+        bWriteColor);
 }
 
 void SilverwareRenderingContext::EnableScissorRegion(bool bEnable)
@@ -257,4 +259,34 @@ void SilverwareRenderingContext::EnableScissorRegion(bool bEnable)
 void SilverwareRenderingContext::SetScissorRegion(int x, int y, int width, int height)
 {
     m_RenderDevice.SetScissorRegion(x, y, width, height);
+}
+
+void SilverwareRenderingContext::ClearStencilBuffer(std::uint8_t value)
+{
+    m_RenderDevice.ClearStencilBuffer(value);
+}
+
+void SilverwareRenderingContext::SetClipMaskStencilState(const Silverware::FClipMaskStencilState& state)
+{
+    ::FClipMaskStencilState renderState{};
+    renderState.bEnable = state.bEnable;
+    renderState.bWrite = state.bWrite;
+    renderState.reference = state.reference;
+
+    switch (state.operation)
+    {
+        case Silverware::EClipMaskStencilOperation::Keep:
+            renderState.operation = ::EClipMaskStencilOperation::Keep;
+            break;
+
+        case Silverware::EClipMaskStencilOperation::Replace:
+            renderState.operation = ::EClipMaskStencilOperation::Replace;
+            break;
+
+        case Silverware::EClipMaskStencilOperation::Increment:
+            renderState.operation = ::EClipMaskStencilOperation::Increment;
+            break;
+    }
+
+    m_RenderDevice.SetClipMaskStencilState(renderState);
 }

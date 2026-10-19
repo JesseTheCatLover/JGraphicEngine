@@ -1862,7 +1862,7 @@ void RendererSubsystem::DestroyTexture(RTextureHandle h)
 }
 
 void RendererSubsystem::SubmitScreenSpaceGeometry(RMeshHandle mesh, RTextureHandle texture, float translationX,
-    float translationY, int viewportWidth, int viewportHeight)
+    float translationY, int viewportWidth, int viewportHeight, bool bWriteColor)
 {
     if (!mesh.IsValid() || viewportWidth <= 0 || viewportHeight <= 0)
         return;
@@ -1880,7 +1880,7 @@ void RendererSubsystem::SubmitScreenSpaceGeometry(RMeshHandle mesh, RTextureHand
         IRenderBackend::EBlendFactor::One,
         IRenderBackend::EBlendFactor::OneMinusSrcAlpha);
 
-    m_Backend->SetColorWriteMask(true, true, true, true);
+    m_Backend->SetColorWriteMask(bWriteColor, bWriteColor, bWriteColor, bWriteColor);
     m_Backend->BindShader(m_UIGeometryShader);
 
     const float translation[] = { translationX, translationY };
@@ -1889,11 +1889,9 @@ void RendererSubsystem::SubmitScreenSpaceGeometry(RMeshHandle mesh, RTextureHand
         static_cast<float>(viewportHeight)
     };
 
-    m_Backend->SetUniformVec2(
-        m_UIGeometryShader, "u_Translation", translation);
+    m_Backend->SetUniformVec2(m_UIGeometryShader, "u_Translation", translation);
 
-    m_Backend->SetUniformVec2(
-        m_UIGeometryShader, "u_ViewportSize", viewportSize);
+    m_Backend->SetUniformVec2(m_UIGeometryShader, "u_ViewportSize", viewportSize);
 
     m_Backend->SetUniformInt(m_UIGeometryShader, "u_Texture", 0);
 
@@ -1904,6 +1902,7 @@ void RendererSubsystem::SubmitScreenSpaceGeometry(RMeshHandle mesh, RTextureHand
         m_Backend->BindTexture(texture, 0);
 
     m_Backend->SubmitMesh(mesh, m_UIGeometryShader, FMatrix4::Identity());
+    m_Backend->SetColorWriteMask(true, true, true, true); // Restore color writes
 }
 
 void RendererSubsystem::EnableScissorRegion(bool bEnable)
@@ -1915,6 +1914,57 @@ void RendererSubsystem::SetScissorRegion(int x, int y, int width, int height)
 {
     m_Backend->SetScissorRegion(x, y, width, height);
 }
+
+void RendererSubsystem::ClearStencilBuffer(std::uint8_t value)
+{
+    m_Backend->ClearStencilBuffer(value);
+}
+
+void RendererSubsystem::SetClipMaskStencilState(const FClipMaskStencilState& state)
+{
+    if (!m_Backend)
+        return;
+
+    IRenderBackend::FStencilState stencil{};
+    stencil.bEnable = state.bEnable;
+
+    if (!state.bEnable)
+    {
+        m_Backend->SetStencilState(stencil);
+        return;
+    }
+
+    const bool bReplacesMask = state.bWrite &&
+    state.operation != EClipMaskStencilOperation::Increment;
+
+    stencil.func = bReplacesMask
+        ? IRenderBackend::ECompareFunc::Always
+        : IRenderBackend::ECompareFunc::Equal;
+
+    stencil.ref = state.reference;
+    stencil.readMask = 0xFF;
+    stencil.writeMask = state.bWrite ? 0xFF : 0x00;
+    stencil.sfail = IRenderBackend::EStencilOp::Keep;
+    stencil.zfail = IRenderBackend::EStencilOp::Keep;
+
+    switch (state.operation)
+    {
+        case EClipMaskStencilOperation::Keep:
+            stencil.zpass = IRenderBackend::EStencilOp::Keep;
+            break;
+
+        case EClipMaskStencilOperation::Replace:
+            stencil.zpass = IRenderBackend::EStencilOp::Replace;
+            break;
+
+        case EClipMaskStencilOperation::Increment:
+            stencil.zpass = IRenderBackend::EStencilOp::Incr;
+            break;
+    }
+
+    m_Backend->SetStencilState(stencil);
+}
+
 RShaderHandle RendererSubsystem::CreateShader(const RShader &data)
 {
     return m_Backend->CreateShader(data);
