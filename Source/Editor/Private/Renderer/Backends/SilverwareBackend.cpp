@@ -5,13 +5,18 @@
 #include "EditorRuntime.h"
 #include "Rendering/IPlatformWindow.h"
 
+#include "Silverware/Backends/RmlUi/RmlUiBackendRuntime.h"
+#include "Silverware/Core/Resources/FDirectoryResource.h"
 #include "Silverware/Core/Resources/ResourcePath.h"
-
-#include "Utilities/UFileSystem.h"
-#include "Utilities/UPath.h"
+#include "Silverware/Core/Resources/IMountableResourceProvider.h"
+#include "Silverware/Core/Resources/LayeredResourceProvider.h"
 
 #include <filesystem>
 #include <iostream>
+#include <string>
+#include <utility>
+
+#include "Utilities/UFileSystem.h"
 
 namespace
 {
@@ -138,8 +143,7 @@ bool SilverwareBackend::InitializeRuntime(IPlatformWindow& window)
 {
     if (!m_RenderingContext || !m_ResourceProvider || !m_FontRegistry)
     {
-        std::cerr << "[SilverwareBackend]: Cannot initialize RmlUi before host resources "
-                     "and fonts are ready.\n";
+        std::cerr << "[SilverwareBackend]: Resources and rendering context must be ready before host initialization.\n";
         return false;
     }
 
@@ -153,36 +157,45 @@ bool SilverwareBackend::InitializeRuntime(IPlatformWindow& window)
         height = 1;
     }
 
-    Silverware::Backends::RmlUi::FRmlUiRuntimeConfig config;
+    Silverware::Backends::RmlUi::FRmlUiBackendRuntimeConfig backendConfig;
 
-    if (!Silverware::FResourcePath::TryParse(
-            kSilverwareRootDocument,
-            config.rootDocument))
+    if (!Silverware::FResourcePath::TryParse(kSilverwareRootDocument, backendConfig.rootDocument))
     {
         std::cerr << "[SilverwareBackend]: Invalid root document resource path.\n";
         return false;
     }
 
+    Silverware::FSilverwareHostConfig hostConfig;
+    hostConfig.backendRuntime =
+        MakeUnique<Silverware::Backends::RmlUi::RmlUiBackendRuntime>(TakeUniqueOwnership(backendConfig));
+    hostConfig.resourceProvider = Silverware::TakeUniqueOwnership(m_ResourceProvider);
+    hostConfig.fontRegistry = Silverware::TakeUniqueOwnership(m_FontRegistry);
+
     // Resolve Silverware's installation path; the runtime mounts its resources itself.
-    const std::filesystem::path silverwareResourceRoot(
-        UPath::Join(
-            UFileSystem::GetEngineRoot().string(),
-            "Frameworks",
-            "Silverware",
-            "Resources"));
+    hostConfig.silverwareRoot = std::filesystem::path(UFileSystem::GetEngineRoot() / "Frameworks" / "Silverware");
 
-    m_RmlUiRuntime = MakeUnique<Silverware::Backends::RmlUi::RmlUiRuntime>();
+    m_Host = MakeUnique<Silverware::SilverwareHost>();
 
-    if (!m_RmlUiRuntime->Initialize(
-            *m_RenderingContext,
-            *m_ResourceProvider,
-            silverwareResourceRoot,
-            *m_FontRegistry,
-            config,
-            width,
-            height))
+    std::string error;
+
+    if (!m_Host->Initialize(Silverware::TakeUniqueOwnership(hostConfig), &error))
     {
-        std::cerr << "[SilverwareBackend]: Failed to initialize RmlUi runtime.\n";
+        std::cerr << "[SilverwareBackend]: Silverware host initialization failed: "
+                  << error << '\n';
+
+        m_Host.reset();
+        return false;
+    }
+
+    m_EditorUIContext = m_Host->CreateUIContext("Redleaf.Editor", *m_RenderingContext, width, height, &error);
+
+    if (!m_EditorUIContext)
+    {
+        std::cerr << "[SilverwareBackend]: Failed to create editor UI context: "
+                  << error << '\n';
+
+        m_Host->Shutdown();
+        m_Host.reset();
         return false;
     }
 
@@ -191,10 +204,70 @@ bool SilverwareBackend::InitializeRuntime(IPlatformWindow& window)
 
 bool SilverwareBackend::Synchronize(Silverware::CoreWidget& root, Silverware::EBackendSyncMode mode)
 {
-    if (!m_RmlUiRuntime || !m_RmlUiRuntime->IsInitialized())
-        return false;
+    return m_EditorUIContext &&
+        m_EditorUIContext->Synchronize(root, mode);
+}
 
-    return m_RmlUiRuntime->Synchronize(root, mode);
+bool SilverwareBackend::RegisterTheme(Silverware::FThemeDefinition theme, std::string* outError)
+{
+    if (!m_EditorUIContext)
+    {
+        if (outError)
+            *outError = "Editor UI context is unavailable.";
+
+        return false;
+    }
+
+    return m_EditorUIContext->RegisterTheme(Silverware::TakeUniqueOwnership(theme), outError);
+}
+
+bool SilverwareBackend::RegisterStylesheet(
+    std::string_view source,
+    Silverware::FStylesheetParseError* outParseError,
+    std::string* outRegistrationError)
+{
+    if (!m_EditorUIContext)
+    {
+        if (outRegistrationError)
+            *outRegistrationError = "Editor UI context is unavailable.";
+
+        return false;
+    }
+
+    return m_EditorUIContext->RegisterStylesheet(
+        source, outParseError, outRegistrationError);
+}
+
+bool SilverwareBackend::UnregisterTheme(const Silverware::FThemeID& themeID, std::string* outError)
+{
+    if (!m_EditorUIContext)
+    {
+        if (outError)
+            *outError = "Editor UI context is unavailable.";
+
+        return false;
+    }
+
+    return m_EditorUIContext->UnregisterTheme(themeID, outError);
+}
+
+bool SilverwareBackend::SetActiveTheme(Silverware::FThemeID themeID, std::string* outError)
+{
+    if (!m_EditorUIContext)
+    {
+        if (outError)
+            *outError = "Editor UI context is unavailable.";
+
+        return false;
+    }
+
+    return m_EditorUIContext->SetActiveTheme(TakeUniqueOwnership(themeID), outError);
+}
+
+void SilverwareBackend::ClearActiveTheme() noexcept
+{
+    if (m_EditorUIContext)
+        m_EditorUIContext->ClearActiveTheme();
 }
 
 bool SilverwareBackend::TryGetWidgetSize(const Silverware::CoreWidget& widget, float& outWidth, float& outHeight) const
@@ -202,15 +275,23 @@ bool SilverwareBackend::TryGetWidgetSize(const Silverware::CoreWidget& widget, f
     outWidth = 0.0f;
     outHeight = 0.0f;
 
-    if (!m_RmlUiRuntime || !m_RmlUiRuntime->IsInitialized())
-        return false;
+    return m_EditorUIContext &&
+        m_EditorUIContext->TryGetWidgetSize(widget, outWidth, outHeight);
+}
 
-    return m_RmlUiRuntime->TryGetWidgetSize(widget, outWidth, outHeight);
+Silverware::SilverwareUIContext* SilverwareBackend::GetEditorUIContext() noexcept
+{
+    return m_EditorUIContext;
+}
+
+Silverware::SilverwareHost* SilverwareBackend::GetHost() noexcept
+{
+    return m_Host.get();
 }
 
 void SilverwareBackend::Render(IPlatformWindow& window)
 {
-    if (!m_RmlUiRuntime || !m_RmlUiRuntime->IsInitialized())
+    if (!IsInitialized())
         return;
 
     int width = 0;
@@ -220,26 +301,32 @@ void SilverwareBackend::Render(IPlatformWindow& window)
     if (width <= 0 || height <= 0)
         return;
 
-    m_RmlUiRuntime->Resize(width, height);
-    m_RmlUiRuntime->Update();
-    m_RmlUiRuntime->Render();
+    m_EditorUIContext->Resize(width, height);
+    m_EditorUIContext->Update();
+    m_EditorUIContext->Render();
 }
 
 void SilverwareBackend::Shutdown()
 {
-    // Runtime must be destroyed before its borrowed provider and host registry.
-    if (m_RmlUiRuntime)
+    // Contexts must be destroyed before the shared backend and resources.
+    m_EditorUIContext = nullptr;
+
+    if (m_Host)
     {
-        m_RmlUiRuntime->Shutdown();
-        m_RmlUiRuntime.reset();
+        m_Host->Shutdown();
+        m_Host.reset();
     }
 
+    // These remain non-null only if initialization failed before ownership transfer.
     m_FontRegistry.reset();
     m_ResourceProvider.reset();
+
+    // The editor rendering context must outlive its backend context.
     m_RenderingContext.reset();
 }
 
 bool SilverwareBackend::IsInitialized() const noexcept
 {
-    return m_RmlUiRuntime && m_RmlUiRuntime->IsInitialized();
+    return m_Host && m_Host->IsInitialized() &&
+        m_EditorUIContext && m_EditorUIContext->IsInitialized();
 }

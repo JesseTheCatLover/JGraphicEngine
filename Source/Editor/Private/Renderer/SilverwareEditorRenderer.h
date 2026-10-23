@@ -34,6 +34,10 @@ private:
     Silverware::TUniquePtr<Silverware::ContainerWidget> m_RootWidget;
     Silverware::ImageWidget* m_ViewportImage = nullptr;
 
+    float m_ThemeSwitchElapsed = 0.0f;
+    bool m_UseOrangeTheme = false;
+    bool m_ThemeCleared = false;
+
 public:
     [[nodiscard]] bool Initialize(
         EditorHost& editorHost,

@@ -12,23 +12,32 @@
 
 #include "Silverware/Backend/IWidgetBackend.h"
 #include "Silverware/Backend/IRenderingContext.h"
-#include "Silverware/Core/ContainerWidget.h"
-#include "Silverware/Core/CoreWidget.h"
-#include "Silverware/Core/Styling/Widgets/ContainerStyle.h"
-#include "Silverware/Core/Styling/Widgets/ImageStyle.h"
-#include "Silverware/Core/Styling/Widgets/TextStyle.h"
-#include "Silverware/Core/WidgetLayout.h"
+#include "Silverware/Core/Widgets/ContainerWidget.h"
+#include "Silverware/Core/Widgets/CoreWidget.h"
+#include "Silverware/Core/Widgets/Styling/ContainerStyle.h"
+#include "Silverware/Core/Widgets/Styling/ImageStyle.h"
+#include "Silverware/Core/Widgets/Styling/TextStyle.h"
+#include "Silverware/Core/Widgets/WidgetLayout.h"
 #include "Silverware/UI/ImageWidget.h"
 #include "Silverware/UI/TextWidget.h"
 
 #include <cstdint>
 #include <iostream>
+#include <optional>
+
+#include <string>
+#include <utility>
 
 namespace
 {
     constexpr char kViewportPanelKey[] = "Viewport:0";
 
     constexpr float kViewportImageHeight = 480.0f;
+
+    constexpr char kEditorCyanThemeID[] = "Redleaf.EditorStylingDemo.Cyan";
+    constexpr char kEditorOrangeThemeID[] = "Redleaf.EditorStylingDemo.Orange";
+
+    constexpr float kThemeSwitchIntervalSeconds = 2.0f;
 
     void SubmitViewportInput(ViewportSubsystem& viewportSubsystem, float width, float height)
     {
@@ -41,7 +50,7 @@ namespace
         input.bAppFocused = true;
         input.bHidden = !bHasValidSize;
 
-        // No input interaction submitted yet
+        // No input interaction submitted yet.
         viewportSubsystem.SubmitInput(input);
     }
 
@@ -49,7 +58,7 @@ namespace
         Silverware::ContainerWidget& parent,
         const char* text,
         float fontSize,
-        const Silverware::FColor& color,
+        std::optional<Silverware::FColor> color,
         Silverware::EFontWeight fontWeight,
         float topMargin)
     {
@@ -63,9 +72,12 @@ namespace
         label->SetLayout(layout);
 
         FTextStyle style;
-        style.fontFamily = "LatoLatin";
+        style.fontFamily = "Funnel Sans";
         style.fontSize = fontSize;
-        style.color = color;
+
+        if (color)
+            style.color = *color;
+
         style.fontWeight = fontWeight;
         label->SetTextStyle(style);
 
@@ -299,7 +311,62 @@ bool SilverwareEditorRenderer::Initialize(
         return false;
     }
 
-    /// Register the viewport controller before the first layout measurement.
+    using namespace Silverware;
+
+    (void)m_Backend->UnregisterTheme(kEditorCyanThemeID);
+    (void)m_Backend->UnregisterTheme(kEditorOrangeThemeID);
+
+    FThemeDefinition cyanTheme;
+    cyanTheme.ID = kEditorCyanThemeID;
+
+    FStyleRule cyanTextRule;
+    cyanTextRule.selector.widgetType = "Text";
+    cyanTextRule.properties.emplace(
+        "color",
+        FColor{0.25f, 0.80f, 1.0f, 1.0f});
+
+    cyanTheme.rules.push_back(std::move(cyanTextRule));
+
+    FThemeDefinition orangeTheme;
+    orangeTheme.ID = kEditorOrangeThemeID;
+
+    FStyleRule orangeTextRule;
+    orangeTextRule.selector.widgetType = "Text";
+    orangeTextRule.properties.emplace(
+        "color",
+        FColor{1.0f, 0.45f, 0.15f, 1.0f});
+
+    orangeTheme.rules.push_back(std::move(orangeTextRule));
+
+    std::string themeError;
+
+    if (!m_Backend->RegisterTheme(std::move(cyanTheme), &themeError))
+    {
+        std::cerr << "[SilverwareRenderer]: Failed to register cyan theme: "
+                  << themeError << '\n';
+        Shutdown();
+        return false;
+    }
+
+    themeError.clear();
+
+    if (!m_Backend->RegisterTheme(std::move(orangeTheme), &themeError))
+    {
+        std::cerr << "[SilverwareRenderer]: Failed to register orange theme: "
+                  << themeError << '\n';
+        Shutdown();
+        return false;
+    }
+
+    if (!m_Backend->SetActiveTheme(kEditorCyanThemeID, &themeError))
+    {
+        std::cerr << "[SilverwareRenderer]: Failed to activate cyan theme: "
+                  << themeError << '\n';
+        Shutdown();
+        return false;
+    }
+
+    // Register the viewport controller before the first layout measurement.
     // The render target will be created once the widget has valid dimensions.
     SubmitViewportInput(editorHost.GetSubsystem<ViewportSubsystem>(), 0.0f, 0.0f);
 
@@ -397,7 +464,14 @@ bool SilverwareEditorRenderer::BuildEditorLayout()
             14.0f,
             secondaryText,
             EFontWeight::Normal,
-            0.0f))
+            0.0f) ||
+        !AddTextSample(
+            *inspectorSection,
+            "Theme-controlled text",
+            16.0f,
+            std::nullopt,
+            EFontWeight::Bold,
+            12.0f))
         return false;
 
     return true;
@@ -405,10 +479,55 @@ bool SilverwareEditorRenderer::BuildEditorLayout()
 
 void SilverwareEditorRenderer::Tick(float deltaTime)
 {
-    (void)deltaTime;
-
     if (!m_Backend || !m_RootWidget || !m_EditorHost || !m_ViewportImage)
         return;
+
+    m_ThemeSwitchElapsed += deltaTime;
+
+    if (m_ThemeSwitchElapsed >= kThemeSwitchIntervalSeconds)
+    {
+        m_ThemeSwitchElapsed -= kThemeSwitchIntervalSeconds;
+
+        std::string themeError;
+
+        if (!m_ThemeCleared && !m_UseOrangeTheme)
+        {
+            if (m_Backend->SetActiveTheme(kEditorOrangeThemeID, &themeError))
+            {
+                m_UseOrangeTheme = true;
+                std::cout << "[SilverwareRenderer]: Orange theme activated.\n";
+            }
+            else
+            {
+                std::cerr << "[SilverwareRenderer]: Failed to activate orange theme: "
+                          << themeError << '\n';
+            }
+        }
+        else if (!m_ThemeCleared && m_UseOrangeTheme)
+        {
+            m_Backend->ClearActiveTheme();
+
+            m_UseOrangeTheme = false;
+            m_ThemeCleared = true;
+
+            std::cout << "[SilverwareRenderer]: Active theme cleared.\n";
+        }
+        else
+        {
+            if (m_Backend->SetActiveTheme(kEditorCyanThemeID, &themeError))
+            {
+                m_UseOrangeTheme = false;
+                m_ThemeCleared = false;
+
+                std::cout << "[SilverwareRenderer]: Cyan theme activated.\n";
+            }
+            else
+            {
+                std::cerr << "[SilverwareRenderer]: Failed to activate cyan theme: "
+                          << themeError << '\n';
+            }
+        }
+    }
 
     auto& viewportSubsystem = m_EditorHost->GetSubsystem<ViewportSubsystem>();
 
@@ -452,7 +571,7 @@ void SilverwareEditorRenderer::Tick(float deltaTime)
 
     SubmitViewportInput(viewportSubsystem, viewportWidth, viewportHeight);
 
-    if (!m_Backend->Synchronize( *m_RootWidget, Silverware::EBackendSyncMode::Incremental))
+    if (!m_Backend->Synchronize(*m_RootWidget, Silverware::EBackendSyncMode::Incremental))
         std::cerr << "[SilverwareRenderer]: Incremental synchronization failed.\n";
 }
 
