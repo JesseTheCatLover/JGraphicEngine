@@ -20,4 +20,5 @@ public:
     virtual void OnSceneLoaded(const std::string& sceneName) = 0;
     virtual void OnRenderOverlay(float deltaTime) = 0;
     virtual void OnTick(float deltaTime) = 0;
+    virtual void OnEngineShuttingDown() = 0;
 };

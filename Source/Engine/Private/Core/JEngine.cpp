@@ -670,6 +670,12 @@ void JEngine::RunMainLoop()
 
 void JEngine::Shutdown()
 {
+    if (m_EditorBridge)
+    {
+        m_EditorBridge->OnEngineShuttingDown();
+        m_EditorBridge = nullptr;
+    }
+
     GEngine = nullptr;
     m_Renderer->Shutdown();
     m_AssetImportSubsystem->Shutdown();
