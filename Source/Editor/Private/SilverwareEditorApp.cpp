@@ -71,7 +71,7 @@ void SilverwareEditorApp::OnProjectInitialized(IPlatformWindow* window, ProjectC
 
     m_SilverwareRenderer = MakeUnique<SilverwareEditorRenderer>();
 
-    if (!m_SilverwareRenderer->Initialize(*m_EditorHost, *m_EditorRuntime, *m_SilverwareBackend))
+    if (!m_SilverwareRenderer->Initialize(*m_EditorHost, *m_EditorRuntime, *m_SilverwareBackend, *window))
     {
         std::cerr << "[SilverwareEditorApp]: Renderer initialization failed.\n";
         Shutdown();

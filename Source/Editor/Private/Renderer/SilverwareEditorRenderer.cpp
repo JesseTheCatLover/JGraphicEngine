@@ -28,6 +28,8 @@
 #include <string>
 #include <utility>
 
+#include "Rendering/IPlatformWindow.h"
+
 namespace
 {
     constexpr char kViewportPanelKey[] = "Viewport:0";
@@ -273,10 +275,8 @@ SilverwareEditorRenderer::~SilverwareEditorRenderer()
     Shutdown();
 }
 
-bool SilverwareEditorRenderer::Initialize(
-    EditorHost& editorHost,
-    EditorRuntime& editorRuntime,
-    SilverwareBackend& backend)
+bool SilverwareEditorRenderer::Initialize(EditorHost& editorHost, EditorRuntime& editorRuntime,
+     SilverwareBackend& backend, IPlatformWindow& window)
 {
     Shutdown();
 
@@ -370,9 +370,71 @@ bool SilverwareEditorRenderer::Initialize(
     // The render target will be created once the widget has valid dimensions.
     SubmitViewportInput(editorHost.GetSubsystem<ViewportSubsystem>(), 0.0f, 0.0f);
 
+    int width = 0;
+    int height = 0;
+    window.GetFramebufferSize(width, height);
+
+    if (width <= 0 || height <= 0)
+    {
+        width = 1;
+        height = 1;
+    }
+
+    m_ViewportRenderingContext = editorRuntime.CreateSilverwareRenderingContext();
+
+    if (!m_ViewportRenderingContext)
+    {
+        std::cerr << "[SilverwareRenderer]: Failed to create viewport rendering context.\n";
+        Shutdown();
+        return false;
+    }
+
+    Silverware::SilverwareHost* host = backend.GetHost();
+
+    if (!host)
+    {
+        std::cerr << "[SilverwareRenderer]: Silverware host is unavailable.\n";
+        Shutdown();
+        return false;
+    }
+
+    std::string error;
+
+    m_ViewportUIContext = host->CreateUIContext(
+        "Redleaf.Viewport",
+        *m_ViewportRenderingContext,
+        width,
+        height,
+        &error);
+
+    if (!m_ViewportUIContext)
+    {
+        std::cerr << "[SilverwareRenderer]: Failed to create viewport UI context: "
+                  << error << '\n';
+        Shutdown();
+        return false;
+    }
+
+    if (!BuildViewportContextLayout())
+    {
+        std::cerr << "[SilverwareRenderer]: Failed to build viewport UI layout.\n";
+        Shutdown();
+        return false;
+    }
+
+    UpdateViewportContextLayout(width, height);
+
     if (!m_Backend->Synchronize(*m_RootWidget, Silverware::EBackendSyncMode::Full))
     {
         std::cerr << "[SilverwareRenderer]: Initial synchronization failed.\n";
+        Shutdown();
+        return false;
+    }
+
+    if (!m_ViewportUIContext->Synchronize(
+            *m_ViewportRootWidget, Silverware::EBackendSyncMode::Full))
+    {
+        std::cerr << "[SilverwareRenderer]: Initial viewport UI synchronization failed.\n";
         Shutdown();
         return false;
     }
@@ -477,6 +539,106 @@ bool SilverwareEditorRenderer::BuildEditorLayout()
     return true;
 }
 
+bool SilverwareEditorRenderer::BuildViewportContextLayout()
+{
+    using namespace Silverware;
+
+    m_ViewportRootWidget = Silverware::MakeUnique<ContainerWidget>();
+
+    auto rootLayout = m_ViewportRootWidget->GetLayout();
+    rootLayout.width = FLayoutLength::Percent(100.0f);
+    rootLayout.height = FLayoutLength::Percent(100.0f);
+    m_ViewportRootWidget->SetLayout(rootLayout);
+
+    FContainerLayout rootContainerLayout;
+    rootContainerLayout.direction = ELayoutDirection::Vertical;
+    rootContainerLayout.alignItems = EAlignment::Start;
+    rootContainerLayout.justifyContent = EJustification::Start;
+    m_ViewportRootWidget->SetContainerLayout(rootContainerLayout);
+
+    auto card = Silverware::MakeUnique<ContainerWidget>();
+
+    auto cardLayout = card->GetLayout();
+    cardLayout.width = FLayoutLength::Pixels(320.0f);
+    cardLayout.height = FLayoutLength::Pixels(96.0f);
+    card->SetLayout(cardLayout);
+
+    FContainerLayout cardContainerLayout;
+    cardContainerLayout.direction = ELayoutDirection::Vertical;
+    cardContainerLayout.gap = FLayoutLength::Pixels(2.0f);
+    cardContainerLayout.alignItems = EAlignment::Start;
+    cardContainerLayout.justifyContent = EJustification::Start;
+    card->SetContainerLayout(cardContainerLayout);
+
+    FContainerStyle cardStyle;
+    cardStyle.backgroundColor = FColor{0.07f, 0.09f, 0.13f, 0.96f};
+    cardStyle.borderColor = FColor{0.30f, 0.52f, 0.82f, 1.0f};
+    cardStyle.borderWidth = 1.0f;
+    cardStyle.borderStyle = EBorderStyle::Solid;
+    cardStyle.cornerRadius = 8.0f;
+    cardStyle.opacity = 1.0f;
+    card->SetContainerStyle(cardStyle);
+
+    if (!AddTextSample(*card, "Viewport UI Context", 18.0f,
+            FColor{1.0f, 1.0f, 1.0f, 1.0f}, EFontWeight::Bold, 8.0f) ||
+        !AddTextSample(*card, "ID: Redleaf.Viewport", 13.0f,
+            FColor{0.55f, 0.76f, 1.0f, 1.0f}, EFontWeight::Normal, 0.0f) ||
+        !AddTextSample(*card, "Independent context, shared host", 12.0f,
+            FColor{0.75f, 0.78f, 0.83f, 1.0f}, EFontWeight::Normal, 0.0f))
+        return false;
+
+    m_ViewportContextCard = card.get();
+
+    if (!m_ViewportRootWidget->AddChild(Silverware::TUniquePtr<CoreWidget>(card.release())))
+    {
+        m_ViewportContextCard = nullptr;
+        return false;
+    }
+
+    return true;
+}
+
+void SilverwareEditorRenderer::UpdateViewportContextLayout(int width, int height)
+{
+    if (!m_ViewportContextCard || width <= 0 || height <= 0)
+        return;
+
+    auto layout = m_ViewportContextCard->GetLayout();
+    layout.margin.left = Silverware::FLayoutLength::Pixels(width * 0.20f + 18.0f);
+    layout.margin.top = Silverware::FLayoutLength::Pixels(60.0f);
+    m_ViewportContextCard->SetLayout(layout);
+
+    m_ViewportContextWidth = width;
+    m_ViewportContextHeight = height;
+}
+
+void SilverwareEditorRenderer::RenderViewportUIContext(IPlatformWindow& window)
+{
+    if (!m_ViewportUIContext || !m_ViewportRootWidget)
+        return;
+
+    int width = 0;
+    int height = 0;
+    window.GetFramebufferSize(width, height);
+
+    if (width <= 0 || height <= 0)
+        return;
+
+    m_ViewportUIContext->Resize(width, height);
+
+    if (width != m_ViewportContextWidth || height != m_ViewportContextHeight)
+    {
+        UpdateViewportContextLayout(width, height);
+
+        if (!m_ViewportUIContext->Synchronize(
+                *m_ViewportRootWidget, Silverware::EBackendSyncMode::Incremental))
+            std::cerr << "[SilverwareRenderer]: Viewport UI synchronization failed.\n";
+    }
+
+    m_ViewportUIContext->Update();
+    m_ViewportUIContext->Render();
+}
+
 void SilverwareEditorRenderer::Tick(float deltaTime)
 {
     if (!m_Backend || !m_RootWidget || !m_EditorHost || !m_ViewportImage)
@@ -577,6 +739,33 @@ void SilverwareEditorRenderer::Tick(float deltaTime)
 
 void SilverwareEditorRenderer::Shutdown()
 {
+    if (m_ViewportUIContext)
+    {
+        Silverware::SilverwareHost* host = m_Backend ? m_Backend->GetHost() : nullptr;
+
+        if (host)
+        {
+            std::string error;
+
+            if (!host->DestroyUIContext("Redleaf.Viewport", &error))
+            {
+                std::cerr << "[SilverwareRenderer]: Failed to destroy viewport UI context: "
+                          << error << '\n';
+
+                // Ensure no remaining host context borrows the viewport rendering context.
+                host->Shutdown();
+            }
+        }
+
+        m_ViewportUIContext = nullptr;
+    }
+
+    m_ViewportContextCard = nullptr;
+    m_ViewportRootWidget.reset();
+
+    // Destroy the borrowed-context consumer before its rendering context.
+    m_ViewportRenderingContext.reset();
+
     if (m_EditorHost)
         m_EditorHost->GetSubsystem<ViewportSubsystem>().Destroy(kViewportPanelKey);
 
