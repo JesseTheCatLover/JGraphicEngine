@@ -118,6 +118,11 @@ void InkBlueEditorApp::OnTick(float deltaTime)
         m_EditorHost->Tick(deltaTime);
 }
 
+void InkBlueEditorApp::OnEngineShuttingDown()
+{
+    Shutdown();
+}
+
 void InkBlueEditorApp::EnsureDefaultEditorLayoutExists(ProjectContext& projectCtx)
 {
     // 1. Resolve target project layout path
