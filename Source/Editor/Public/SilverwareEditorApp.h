@@ -36,4 +36,5 @@ public:
     void OnSceneLoaded(const std::string& sceneName) override;
     void OnRenderOverlay(float deltaTime) override;
     void OnTick(float deltaTime) override;
+    void OnEngineShuttingDown() override;
 };

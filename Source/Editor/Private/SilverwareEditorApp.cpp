@@ -94,10 +94,18 @@ void SilverwareEditorApp::OnTick(float deltaTime)
         m_SilverwareRenderer->Tick(deltaTime);
 }
 
+void SilverwareEditorApp::OnEngineShuttingDown()
+{
+    Shutdown();
+}
+
 void SilverwareEditorApp::OnRenderOverlay(float)
 {
     if (!m_Window || !m_SilverwareBackend)
         return;
 
     m_SilverwareBackend->Render(*m_Window);
+
+    if (m_SilverwareRenderer)
+        m_SilverwareRenderer->RenderViewportUIContext(*m_Window);
 }
